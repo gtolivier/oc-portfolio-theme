@@ -1,0 +1,15 @@
+# Site de démonstration du thème : sert de terrain pour les tests Playwright.
+baseURL = 'http://localhost:1313/'
+title = 'Exemple'
+theme = 'theme'
+themesDir = '../..'
+defaultContentLanguage = 'fr'
+disableKinds = ['taxonomy', 'term']
+
+[languages]
+  [languages.fr]
+    locale = 'fr-FR'
+    weight = 1
+  [languages.en]
+    locale = 'en-US'
+    weight = 2

@@ -1,0 +1,22 @@
+/* Mobile first : les styles de base visent le téléphone,
+   les écrans plus larges sont enrichis via @media (min-width: …). */
+
+:root {
+  --color-ink: #013549;
+  --color-paper: #E3DFCC;
+  --color-accent: #2A888D;
+  --color-accent-dark: #1E6C58;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-sans: 'IBM Plex Sans', Helvetica, sans-serif;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-family: var(--font-sans);
+}
