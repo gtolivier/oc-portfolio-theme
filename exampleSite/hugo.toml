@@ -12,6 +12,19 @@ disableKinds = ['taxonomy', 'term']
   [languages.fr]
     locale = 'fr-FR'
     weight = 1
+    # Menu principal de l'en-tête, propre à chaque langue.
+    [[languages.fr.menus.main]]
+      name = 'Accueil'
+      pageRef = '/'
+      weight = 10
+    [[languages.fr.menus.main]]
+      name = 'Projets'
+      pageRef = '/projets'
+      weight = 20
+    [[languages.fr.menus.main]]
+      name = 'Contact'
+      url = '/#contact'
+      weight = 30
   [languages.en]
     locale = 'en-US'
     weight = 2
