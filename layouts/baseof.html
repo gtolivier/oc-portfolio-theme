@@ -4,11 +4,12 @@
   {{ partial "head.html" . }}
 </head>
 <body>
-  <a class="skip-link" href="#contenu">{{ i18n "skipToContent" }}</a>
+  {{- $mainContentId := "contenu" }}
+  <a class="skip-link" href="#{{ $mainContentId }}">{{ i18n "skipToContent" }}</a>
   <header>
     {{ partial "header.html" . }}
   </header>
-  <main id="contenu">
+  <main id="{{ $mainContentId }}">
     {{ block "main" . }}{{ end }}
   </main>
   <footer>
