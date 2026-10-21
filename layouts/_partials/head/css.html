@@ -1,6 +1,7 @@
 {{- with resources.Get "css/main.css" }}
   {{- $opts := dict
     "minify" (cond hugo.IsDevelopment false true)
+    "externals" (slice "../fonts/*")
     "sourceMap" (cond hugo.IsDevelopment "linked" "none")
   }}
   {{- with . | css.Build $opts }}

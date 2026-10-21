@@ -3,12 +3,15 @@
   "version": "1.0.0",
   "description": "Thème Hugo du portfolio d'Olivier Charvoz",
   "scripts": {
-    "test": "playwright test"
+    "test": "playwright test",
+    "fonts": "node scripts/fonts.mjs"
   },
   "keywords": [],
   "author": "",
   "license": "UNLICENSED",
   "devDependencies": {
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
     "@playwright/test": "^1.64.1",
     "@types/node": "^26.6.5"
   },

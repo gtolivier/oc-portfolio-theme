@@ -4,13 +4,54 @@ title = 'Exemple'
 defaultContentLanguage = 'fr'
 disableKinds = ['taxonomy', 'term']
 
+[params]
+  # Initiales fictives affichées par le logo de l'en-tête.
+  initials = ['E', 'X']
+  # Auteur fictif affiché dans le pied de page.
+  author = 'Jean Exemple'
+
+# Le contenu fictif peut contenir du HTML brut (ex. un encart positionné de
+# la page longue), comme le ferait une carte de projet ou une figure.
+[markup.goldmark.renderer]
+  unsafe = true
+
 [languages]
   [languages.fr]
     locale = 'fr-FR'
     weight = 1
+    # Mention fictive du pied de page, propre à chaque langue.
+    [languages.fr.params]
+      footerNote = 'Horloger de démonstration'
+    # Menu principal de l'en-tête, propre à chaque langue.
+    [[languages.fr.menus.main]]
+      name = 'Accueil'
+      pageRef = '/'
+      weight = 10
+    [[languages.fr.menus.main]]
+      name = 'Projets'
+      pageRef = '/projets'
+      weight = 20
+    [[languages.fr.menus.main]]
+      name = 'Contact'
+      url = '/#contact'
+      weight = 30
   [languages.en]
     locale = 'en-US'
     weight = 2
+    [languages.en.params]
+      footerNote = 'Sample clockmaker'
+    [[languages.en.menus.main]]
+      name = 'Home'
+      pageRef = '/'
+      weight = 10
+    [[languages.en.menus.main]]
+      name = 'Projects'
+      pageRef = '/projets'
+      weight = 20
+    [[languages.en.menus.main]]
+      name = 'Contact'
+      url = '/en/#contact'
+      weight = 30
 
 # Le thème est importé comme module et lu dans le dépôt lui-même (chemin
 # relatif à exampleSite/themes), quel que soit le nom du dossier cloné.

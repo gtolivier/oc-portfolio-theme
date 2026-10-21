@@ -1,6 +1,30 @@
 /* Mobile first : les styles de base visent le téléphone,
    les écrans plus larges sont enrichis via @media (min-width: …). */
 
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('../fonts/ibm-plex-sans-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('../fonts/ibm-plex-mono-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('../fonts/ibm-plex-mono-latin-700-normal.woff2') format('woff2');
+}
+
 :root {
   --color-ink: #013549;
   --color-paper: #E3DFCC;
@@ -8,6 +32,15 @@
   --color-accent-dark: #1E6C58;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
   --font-sans: 'IBM Plex Sans', Helvetica, sans-serif;
+  --sticky-header-clearance: 6rem;
+  /* Plans d'empilement : l'en-tête collant passe au-dessus du contenu
+     positionné, le lien d'évitement au-dessus de l'en-tête. */
+  --layer-sticky-header: 5;
+  --layer-skip-link: 10;
+}
+
+html {
+  scroll-padding-top: var(--sticky-header-clearance);
 }
 
 *, *::before, *::after {
@@ -19,4 +52,55 @@ body {
   background: var(--color-ink);
   color: var(--color-paper);
   font-family: var(--font-sans);
+}
+
+h1 {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.skip-link {
+  position: absolute;
+  top: 0;
+  left: -100vw;
+  z-index: var(--layer-skip-link);
+  padding: 8px 16px;
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+.skip-link:focus {
+  left: 0;
+}
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--layer-sticky-header);
+  background: var(--color-ink);
+  padding-inline: 16px;
+}
+
+@media (min-width: 768px) {
+  .site-header {
+    padding-inline: 48px;
+  }
+}
+
+.site-header a {
+  font-family: var(--font-mono);
+  color: var(--color-paper);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .site-header nav a:not([aria-current="page"]):hover {
+    text-decoration: underline;
+    text-decoration-color: var(--color-accent);
+    text-underline-offset: 5px;
+  }
+}
+
+.site-header nav a[aria-current="page"] {
+  border-bottom: 2px solid var(--color-accent);
 }

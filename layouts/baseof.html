@@ -4,10 +4,12 @@
   {{ partial "head.html" . }}
 </head>
 <body>
-  <header>
+  {{- $mainContentId := "contenu" }}
+  <a class="skip-link" href="#{{ $mainContentId }}">{{ i18n "skipToContent" }}</a>
+  <header class="site-header">
     {{ partial "header.html" . }}
   </header>
-  <main>
+  <main id="{{ $mainContentId }}" tabindex="-1">
     {{ block "main" . }}{{ end }}
   </main>
   <footer>
