@@ -1,3 +1,8 @@
 <a href="{{ site.Home.RelPermalink }}" aria-label="{{ site.Title }}">
   {{- range site.Params.initials }}<span>| {{ . }} |||</span> {{ end -}}
 </a>
+<nav>
+  {{- range site.Menus.main }}
+  <a href="{{ .URL }}">{{ .Name }}</a>
+  {{- end }}
+</nav>
