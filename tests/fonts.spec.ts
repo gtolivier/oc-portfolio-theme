@@ -68,6 +68,22 @@ test('le texte de l’en-tête (logo et navigation) est en IBM Plex Mono, police
     .toBeGreaterThan(0);
 });
 
+test('servi sous un sous-chemin (baseURL /portfolio/), le site charge quand même ses polices IBM Plex Sans et IBM Plex Mono, sans fichier de police introuvable', async ({ page }) => {
+  const policesEnEchec: string[] = [];
+  page.on('response', (response) => {
+    const request = response.request();
+    if (!response.ok() && estUnePolice(request.resourceType(), response.url())) {
+      policesEnEchec.push(`${response.status()} ${response.url()}`);
+    }
+  });
+
+  await page.goto('http://localhost:1315/portfolio/');
+
+  const policesChargees = await famillesChargees(page);
+  expect(policesEnEchec).toEqual([]);
+  expect(policesChargees).toEqual(expect.arrayContaining(['IBM Plex Sans', 'IBM Plex Mono']));
+});
+
 test('le titre de la page est en IBM Plex Mono grasse (700), graisse réellement chargée depuis le site et non simulée par le navigateur', async ({ page }) => {
   await page.goto('/projets/');
 

@@ -72,9 +72,20 @@ export default defineConfig({
 
   /* Sert le site d'exemple du thème, en environnement production
      pour tester le même rendu que celui qui sera déployé. */
-  webServer: {
-    command: 'hugo server --source exampleSite --environment production --port 1314 --disableLiveReload',
-    url: 'http://localhost:1314',
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: [
+    {
+      command: 'hugo server --source exampleSite --environment production --port 1314 --disableLiveReload',
+      url: 'http://localhost:1314',
+      reuseExistingServer: !process.env.CI,
+    },
+    /* Le même site servi sous un sous-chemin, comme un déploiement
+       dans un sous-dossier (baseURL /portfolio/). Rendu en mémoire pour
+       ne pas écraser sur disque les pages du serveur précédent. */
+    {
+      command:
+        'hugo server --source exampleSite --environment production --port 1315 --baseURL http://localhost:1315/portfolio/ --disableLiveReload --renderToMemory',
+      url: 'http://localhost:1315/portfolio/',
+      reuseExistingServer: !process.env.CI,
+    },
+  ],
 });
