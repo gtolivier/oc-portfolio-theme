@@ -10,6 +10,10 @@
   --font-sans: 'IBM Plex Sans', Helvetica, sans-serif;
 }
 
+html {
+  scroll-padding-top: 6rem;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
 }
