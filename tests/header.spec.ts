@@ -59,3 +59,13 @@ test('en anglais, le logo de l’en-tête mène à l’accueil anglais', async (
     .getByRole('link', { name: 'Exemple', exact: true });
   await expect(logo).toHaveAttribute('href', '/en/');
 });
+
+test('les liens de l’en-tête sont de couleur papier et ne sont pas soulignés', async ({ page }) => {
+  await page.goto('/');
+  const liens = page.locator('header').getByRole('link');
+  await expect(liens).toHaveCount(4);
+  for (const lien of await liens.all()) {
+    await expect(lien).toHaveCSS('color', 'rgb(227, 223, 204)');
+    await expect(lien).toHaveCSS('text-decoration-line', 'none');
+  }
+});
