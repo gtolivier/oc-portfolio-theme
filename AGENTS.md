@@ -46,7 +46,7 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
   atteinte, ne pas l'attendre : le dire dans la demande d'accord. Si sa
   relecture automatique se met à fonctionner, ne plus le lancer.
 - **Relecture Claude** : sur chaque PR, quand `/code-review` est disponible,
-  lancer `/code-review <numéro>` (sans `--comment`) et publier ses remarques
+  lancer `/code-review high <numéro>` (sans `--comment`) et publier ses remarques
   comme le décrit le skill `tdd:feature`, y compris hors TDD. Après les
   corrections du tri, la relancer une seule fois : n'en publier que les
   remarques nouvelles, et les soumettre dans la demande d'accord sans
