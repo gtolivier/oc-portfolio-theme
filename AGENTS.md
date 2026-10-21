@@ -39,5 +39,8 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
 - **Outils déterministes** : passer par les CLI (`hugo`, `npm`, `npx`, `git`,
   `gh`) plutôt que par une manipulation manuelle dès qu'ils couvrent
   l'opération.
+- **CodeRabbit** : il ne relit pas les PR de lui-même (dépôt de moins de
+  10 étoiles). Après l'ouverture de chaque PR, le lancer en commentant
+  `@coderabbitai review`.
 - **Aucune donnée personnelle** dans ce dépôt public : le vrai contenu
   (projets, parcours, coordonnées) va dans `oc-portfolio-site`.
