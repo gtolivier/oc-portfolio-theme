@@ -1,4 +1,4 @@
 <span>
-  {{- range site.Params.initials }}<span>| {{ . }} |||</span> {{ end -}}
+  {{- partial "logo.html" . -}}
 </span>
 <small>© {{ now.Year }} {{ site.Params.author }}</small>

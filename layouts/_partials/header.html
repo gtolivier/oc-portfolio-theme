@@ -1,5 +1,5 @@
 <a href="{{ site.Home.RelPermalink }}" aria-label="{{ site.Title }}">
-  {{- range site.Params.initials }}<span>| {{ . }} |||</span> {{ end -}}
+  {{- partial "logo.html" . -}}
 </a>
 <nav>
   {{- $page := . }}
