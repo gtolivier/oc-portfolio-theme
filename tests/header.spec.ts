@@ -1,10 +1,13 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
+
+/* Le logo est le lien de l'en-tête nommé d'après le titre du site. */
+function logoDeLEnTete(page: Page): Locator {
+  return page.locator('header').getByRole('link', { name: 'Exemple', exact: true });
+}
 
 test('le logo de l’en-tête affiche les initiales et mène à l’accueil', async ({ page }) => {
   await page.goto('/');
-  const logo = page
-    .locator('header')
-    .getByRole('link', { name: 'Exemple', exact: true });
+  const logo = logoDeLEnTete(page);
   await expect(logo).toHaveText('| E ||| | X |||');
   await expect(logo).toHaveAttribute('href', '/');
 });
@@ -54,9 +57,7 @@ test('en anglais, la navigation de l’en-tête liste les entrées du menu princ
 
 test('en anglais, le logo de l’en-tête mène à l’accueil anglais', async ({ page }) => {
   await page.goto('/en/');
-  const logo = page
-    .locator('header')
-    .getByRole('link', { name: 'Exemple', exact: true });
+  const logo = logoDeLEnTete(page);
   await expect(logo).toHaveAttribute('href', '/en/');
 });
 
@@ -119,9 +120,7 @@ test('sur téléphone, l’en-tête tient dans la largeur de l’écran : pas de
 
 test('le logo de l’en-tête est à 16 px du bord gauche de la fenêtre sur téléphone, à 48 px sur ordinateur', async ({ page, isMobile }) => {
   await page.goto('/');
-  const logo = page
-    .locator('header')
-    .getByRole('link', { name: 'Exemple', exact: true });
+  const logo = logoDeLEnTete(page);
   const boite = (await logo.boundingBox())!;
   expect(boite.x).toBeCloseTo(isMobile ? 16 : 48, 0);
 });

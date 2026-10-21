@@ -14,14 +14,18 @@ async function estVisibleALEcran(element: Locator): Promise<boolean> {
   );
 }
 
+/* WebKit ne parcourt pas les liens avec Tab seule (réglage de Safari). */
+function toucheDeTabulation(browserName: string): string {
+  return browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
+}
+
 test('sur une page française, la première tabulation focalise un lien « Aller au contenu » invisible jusque-là, qui apparaît à l’écran', async ({ page, browserName }) => {
   await page.goto('/');
   const lien = page.getByRole('link', { name: 'Aller au contenu', exact: true });
   await expect(lien).toBeAttached();
   expect(await estVisibleALEcran(lien)).toBe(false);
 
-  /* WebKit ne parcourt pas les liens avec Tab seule (réglage de Safari). */
-  await page.keyboard.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab');
+  await page.keyboard.press(toucheDeTabulation(browserName));
 
   await expect(lien).toBeFocused();
   await expect(lien).toBeInViewport();
@@ -32,8 +36,7 @@ test('sur la page d’accueil anglaise, la première tabulation focalise un lien
   await page.goto('/en/');
   const lien = page.getByRole('link', { name: 'Skip to content', exact: true });
 
-  /* WebKit ne parcourt pas les liens avec Tab seule (réglage de Safari). */
-  await page.keyboard.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab');
+  await page.keyboard.press(toucheDeTabulation(browserName));
 
   await expect(lien).toBeFocused();
 });
@@ -41,8 +44,7 @@ test('sur la page d’accueil anglaise, la première tabulation focalise un lien
 test('activer « Aller au contenu » à la touche Entrée place le focus sur le contenu principal, et la tabulation suivante atteint le premier lien du contenu', async ({ page, browserName }) => {
   await page.goto('/');
   const lien = page.getByRole('link', { name: 'Aller au contenu', exact: true });
-  /* WebKit ne parcourt pas les liens avec Tab seule (réglage de Safari). */
-  const tabulation = browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
+  const tabulation = toucheDeTabulation(browserName);
 
   await page.keyboard.press(tabulation);
   await expect(lien).toBeFocused();
