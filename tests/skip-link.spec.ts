@@ -28,6 +28,16 @@ test('sur une page française, la première tabulation focalise un lien « Aller
   await expect.poll(() => estVisibleALEcran(lien)).toBe(true);
 });
 
+test('sur la page d’accueil anglaise, la première tabulation focalise un lien intitulé « Skip to content »', async ({ page, browserName }) => {
+  await page.goto('/en/');
+  const lien = page.getByRole('link', { name: 'Skip to content', exact: true });
+
+  /* WebKit ne parcourt pas les liens avec Tab seule (réglage de Safari). */
+  await page.keyboard.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab');
+
+  await expect(lien).toBeFocused();
+});
+
 test('activer « Aller au contenu » à la touche Entrée place le focus sur le contenu principal, et la tabulation suivante atteint le premier lien du contenu', async ({ page, browserName }) => {
   await page.goto('/');
   const lien = page.getByRole('link', { name: 'Aller au contenu', exact: true });
