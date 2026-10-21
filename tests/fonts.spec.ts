@@ -67,3 +67,26 @@ test('le texte de l’en-tête (logo et navigation) est en IBM Plex Mono, police
     .poll(() => policesMonoRecues.filter((url) => new URL(url).origin === origine).length)
     .toBeGreaterThan(0);
 });
+
+test('le titre de la page est en IBM Plex Mono grasse (700), graisse réellement chargée depuis le site et non simulée par le navigateur', async ({ page }) => {
+  await page.goto('/projets/');
+
+  const titre = page.locator('h1');
+  await expect(titre).toHaveText('Projets');
+  const styleDuTitre = await titre.evaluate((h1) => {
+    const style = getComputedStyle(h1);
+    return {
+      famille: style.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
+      graisse: style.fontWeight,
+    };
+  });
+  expect(styleDuTitre).toEqual({ famille: 'IBM Plex Mono', graisse: '700' });
+
+  const policesMonoChargees = await page.evaluate(async () => {
+    await document.fonts.ready;
+    return [...document.fonts]
+      .filter((face) => face.status === 'loaded' && face.family.replace(/["']/g, '') === 'IBM Plex Mono')
+      .map((face) => face.weight);
+  });
+  expect(policesMonoChargees).toContain('700');
+});
