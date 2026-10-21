@@ -26,6 +26,14 @@ header a {
   text-decoration: none;
 }
 
+@media (hover: hover) {
+  header nav a:hover {
+    text-decoration: underline;
+    text-decoration-color: var(--color-accent);
+    text-underline-offset: 5px;
+  }
+}
+
 header nav a[aria-current="page"] {
   border-bottom: 2px solid var(--color-accent);
 }
