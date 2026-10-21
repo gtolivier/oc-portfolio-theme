@@ -6,7 +6,7 @@
 <body>
   {{- $mainContentId := "contenu" }}
   <a class="skip-link" href="#{{ $mainContentId }}">{{ i18n "skipToContent" }}</a>
-  <header>
+  <header class="site-header">
     {{ partial "header.html" . }}
   </header>
   <main id="{{ $mainContentId }}" tabindex="-1">
