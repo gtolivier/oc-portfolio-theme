@@ -117,6 +117,15 @@ test('sur téléphone, l’en-tête tient dans la largeur de l’écran : pas de
   }
 });
 
+test('le logo de l’en-tête est à 16 px du bord gauche de la fenêtre sur téléphone, à 48 px sur ordinateur', async ({ page, isMobile }) => {
+  await page.goto('/');
+  const logo = page
+    .locator('header')
+    .getByRole('link', { name: 'Exemple', exact: true });
+  const boite = (await logo.boundingBox())!;
+  expect(boite.x).toBeCloseTo(isMobile ? 16 : 48, 0);
+});
+
 test('les liens de l’en-tête sont de couleur papier et ne sont pas soulignés', async ({ page }) => {
   await page.goto('/');
   const liens = page.locator('header').getByRole('link');
