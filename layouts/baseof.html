@@ -9,7 +9,7 @@
   <header>
     {{ partial "header.html" . }}
   </header>
-  <main id="{{ $mainContentId }}">
+  <main id="{{ $mainContentId }}" tabindex="-1">
     {{ block "main" . }}{{ end }}
   </main>
   <footer>
