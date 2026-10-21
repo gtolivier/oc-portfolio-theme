@@ -21,6 +21,12 @@ body {
   font-family: var(--font-sans);
 }
 
+header {
+  position: sticky;
+  top: 0;
+  background: var(--color-ink);
+}
+
 header a {
   color: var(--color-paper);
   text-decoration: none;
