@@ -18,6 +18,14 @@ test('la navigation de l’en-tête liste les entrées du menu principal du site
   await expect(liens.nth(2)).toHaveAttribute('href', '/#contact');
 });
 
+test('sur la page d’accueil, seul le lien « Accueil » de la navigation est marqué comme page courante', async ({ page }) => {
+  await page.goto('/');
+  const nav = page.locator('header nav');
+  await expect(nav.getByRole('link', { name: 'Accueil', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(nav.getByRole('link', { name: 'Projets', exact: true })).not.toHaveAttribute('aria-current');
+  await expect(nav.getByRole('link', { name: 'Contact', exact: true })).not.toHaveAttribute('aria-current');
+});
+
 test('en anglais, la navigation de l’en-tête liste les entrées du menu principal anglais', async ({ page }) => {
   await page.goto('/en/');
   const liens = page.locator('header nav').getByRole('link');
