@@ -4,10 +4,11 @@
   {{ partial "head.html" . }}
 </head>
 <body>
+  <a class="skip-link" href="#contenu">{{ i18n "skipToContent" }}</a>
   <header>
     {{ partial "header.html" . }}
   </header>
-  <main>
+  <main id="contenu">
     {{ block "main" . }}{{ end }}
   </main>
   <footer>
