@@ -20,3 +20,7 @@ body {
   color: var(--color-paper);
   font-family: var(--font-sans);
 }
+
+header nav a[aria-current="page"] {
+  border-bottom: 2px solid var(--color-accent);
+}
