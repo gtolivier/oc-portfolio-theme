@@ -86,6 +86,19 @@ test('après défilement d’une page longue, l’en-tête reste collé en haut 
   expect(boite?.y).toBeCloseTo(0, 0);
 });
 
+test('à l’arrivée sur une ancre d’une page longue, l’élément ciblé n’est pas masqué par l’en-tête collant', async ({ page }) => {
+  await page.goto('/page-longue/#quatrième-chapitre');
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+
+  const cible = page.getByRole('heading', { name: 'Quatrième chapitre', level: 2 });
+  await expect(cible).toHaveAttribute('id', 'quatrième-chapitre');
+  await expect(cible).toBeInViewport();
+
+  const boiteEntete = (await page.locator('header').boundingBox())!;
+  const boiteCible = (await cible.boundingBox())!;
+  expect(boiteCible.y).toBeGreaterThanOrEqual(boiteEntete.y + boiteEntete.height);
+});
+
 test('les liens de l’en-tête sont de couleur papier et ne sont pas soulignés', async ({ page }) => {
   await page.goto('/');
   const liens = page.locator('header').getByRole('link');
