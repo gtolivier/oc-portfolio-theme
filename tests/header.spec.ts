@@ -34,6 +34,15 @@ test('sur la page Projets, seul le lien « Projets » de la navigation est marqu
   await expect(nav.getByRole('link', { name: 'Contact', exact: true })).not.toHaveAttribute('aria-current');
 });
 
+test('le lien de la navigation marqué page courante est souligné d’un trait de couleur accent', async ({ page }) => {
+  await page.goto('/');
+  const courant = page.locator('header nav').getByRole('link', { name: 'Accueil', exact: true });
+  await expect(courant).toHaveAttribute('aria-current', 'page');
+  await expect(courant).toHaveCSS('border-bottom-style', 'solid');
+  await expect(courant).toHaveCSS('border-bottom-color', 'rgb(42, 136, 141)');
+  await expect(courant).not.toHaveCSS('border-bottom-width', '0px');
+});
+
 test('en anglais, la navigation de l’en-tête liste les entrées du menu principal anglais', async ({ page }) => {
   await page.goto('/en/');
   const liens = page.locator('header nav').getByRole('link');
