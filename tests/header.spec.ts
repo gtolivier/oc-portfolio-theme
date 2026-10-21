@@ -60,6 +60,17 @@ test('en anglais, le logo de l’en-tête mène à l’accueil anglais', async (
   await expect(logo).toHaveAttribute('href', '/en/');
 });
 
+test('sur ordinateur, un lien de la navigation survolé est souligné en couleur accent, le trait décalé sous le texte', async ({ page, hasTouch }) => {
+  test.skip(hasTouch, 'le survol à la souris n’existe pas sur un écran tactile');
+  await page.goto('/');
+  const lien = page.locator('header nav').getByRole('link', { name: 'Projets', exact: true });
+  await expect(lien).not.toHaveAttribute('aria-current');
+  await lien.hover();
+  await expect(lien).toHaveCSS('text-decoration-line', 'underline');
+  await expect(lien).toHaveCSS('text-decoration-color', 'rgb(42, 136, 141)');
+  await expect(lien).toHaveCSS('text-underline-offset', '5px');
+});
+
 test('les liens de l’en-tête sont de couleur papier et ne sont pas soulignés', async ({ page }) => {
   await page.goto('/');
   const liens = page.locator('header').getByRole('link');
