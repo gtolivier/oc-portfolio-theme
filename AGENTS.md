@@ -39,12 +39,16 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
 - **Outils déterministes** : passer par les CLI (`hugo`, `npm`, `npx`, `git`,
   `gh`) plutôt que par une manipulation manuelle dès qu'ils couvrent
   l'opération.
-- **CodeRabbit** : il ne relit pas les PR de lui-même (dépôt de moins de
-  10 étoiles). Après l'ouverture de chaque PR, le lancer en commentant
-  `@coderabbitai review`.
+- **CodeRabbit** : tant qu'il indique ne pas relire ce dépôt de lui-même
+  (« Review skipped »), le lancer en commentant `@coderabbitai review` à
+  l'ouverture de la PR, puis à nouveau avant de demander l'accord si des
+  commits ont été poussés depuis. Il n'accorde qu'une relecture par heure :
+  ne pas bloquer la PR pour l'attendre.
 - **Relecture Claude** : sur chaque PR, lancer `/code-review <numéro>` (sans
-  `--comment`), retirer de ses remarques tout détail local (chemins, versions,
-  configuration privée), puis les publier en une seule review qui commence
-  par « **Claude (review)** », même sans remarque.
+  `--comment`) et publier ses remarques en une seule review « **Claude
+  (review)** », même sans remarque, selon la procédure de relecture du skill
+  `tdd:feature` (étape 6) : reformuler tout détail local (chemins, versions,
+  configuration privée) sans jamais abandonner une remarque. La relancer sur
+  les nouveaux commits avant de demander l'accord.
 - **Aucune donnée personnelle** dans ce dépôt public : le vrai contenu
   (projets, parcours, coordonnées) va dans `oc-portfolio-site`.
