@@ -9,6 +9,14 @@ test('le pied de page affiche le logo du site suivi de « © <année courante> <
   );
 });
 
+test('les lecteurs d’écran ne lisent pas les barres décoratives du logo du pied de page', async ({ page }) => {
+  await page.goto('/');
+  const annee = new Date().getFullYear();
+  const arbreAccessible = await page.locator('footer').ariaSnapshot();
+  expect(arbreAccessible).toContain(`© ${annee} Jean Exemple`);
+  expect(arbreAccessible).not.toContain('|');
+});
+
 test('le pied de page affiche la mention du site dans la langue de la page', async ({ page }) => {
   await page.goto('/');
   const piedDePageFr = page.locator('footer');
