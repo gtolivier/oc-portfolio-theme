@@ -21,6 +21,11 @@ body {
   font-family: var(--font-sans);
 }
 
+header a {
+  color: var(--color-paper);
+  text-decoration: none;
+}
+
 header nav a[aria-current="page"] {
   border-bottom: 2px solid var(--color-accent);
 }
