@@ -39,16 +39,17 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
 - **Outils déterministes** : passer par les CLI (`hugo`, `npm`, `npx`, `git`,
   `gh`) plutôt que par une manipulation manuelle dès qu'ils couvrent
   l'opération.
-- **CodeRabbit** : tant qu'il indique ne pas relire ce dépôt de lui-même
-  (« Review skipped »), le lancer en commentant `@coderabbitai review` à
-  l'ouverture de la PR, puis à nouveau avant de demander l'accord si des
-  commits ont été poussés depuis. Il n'accorde qu'une relecture par heure :
-  ne pas bloquer la PR pour l'attendre.
+- **CodeRabbit** : tant qu'il ne relit pas les PR de lui-même, le lancer en
+  commentant `@coderabbitai review` à l'ouverture de la PR, puis à nouveau
+  avant de demander l'accord si des commits ont été poussés depuis. S'il
+  répond que sa limite de relectures est atteinte, ne pas bloquer la PR :
+  relancer après le délai qu'il indique, ou signaler dans la demande d'accord
+  que sa relecture des derniers commits manque.
 - **Relecture Claude** : sur chaque PR, lancer `/code-review <numéro>` (sans
-  `--comment`) et publier ses remarques en une seule review « **Claude
-  (review)** », même sans remarque, selon la procédure de relecture du skill
-  `tdd:feature` (étape 6) : reformuler tout détail local (chemins, versions,
-  configuration privée) sans jamais abandonner une remarque. La relancer sur
-  les nouveaux commits avant de demander l'accord.
+  `--comment`), puis publier ses remarques en une seule review « **Claude
+  (review)** », même sans remarque, comme le décrit le skill `tdd:feature`.
+  Tout détail local (chemins, versions, configuration privée) y est reformulé,
+  jamais supprimé. La relancer sur les nouveaux commits avant de demander
+  l'accord.
 - **Aucune donnée personnelle** dans ce dépôt public : le vrai contenu
   (projets, parcours, coordonnées) va dans `oc-portfolio-site`.
