@@ -99,6 +99,24 @@ test('à l’arrivée sur une ancre d’une page longue, l’élément ciblé n�
   expect(boiteCible.y).toBeGreaterThanOrEqual(boiteEntete.y + boiteEntete.height);
 });
 
+test('sur téléphone, l’en-tête tient dans la largeur de l’écran : pas de défilement horizontal, logo et liens entièrement visibles', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'comportement propre au téléphone');
+  await page.goto('/');
+  const largeur = page.viewportSize()!.width;
+
+  const largeurPage = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(largeurPage).toBeLessThanOrEqual(largeur);
+
+  const liens = page.locator('header').getByRole('link');
+  await expect(liens).toHaveCount(4);
+  for (const lien of await liens.all()) {
+    await expect(lien).toBeVisible();
+    const boite = (await lien.boundingBox())!;
+    expect(boite.x).toBeGreaterThanOrEqual(0);
+    expect(boite.x + boite.width).toBeLessThanOrEqual(largeur);
+  }
+});
+
 test('les liens de l’en-tête sont de couleur papier et ne sont pas soulignés', async ({ page }) => {
   await page.goto('/');
   const liens = page.locator('header').getByRole('link');
