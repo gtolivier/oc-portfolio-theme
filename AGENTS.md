@@ -42,5 +42,9 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
 - **CodeRabbit** : il ne relit pas les PR de lui-même (dépôt de moins de
   10 étoiles). Après l'ouverture de chaque PR, le lancer en commentant
   `@coderabbitai review`.
+- **Relecture Claude** : sur chaque PR, lancer `/code-review <numéro>` (sans
+  `--comment`), retirer de ses remarques tout détail local (chemins, versions,
+  configuration privée), puis les publier en une seule review qui commence
+  par « **Claude (review)** », même sans remarque.
 - **Aucune donnée personnelle** dans ce dépôt public : le vrai contenu
   (projets, parcours, coordonnées) va dans `oc-portfolio-site`.
