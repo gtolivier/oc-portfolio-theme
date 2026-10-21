@@ -4,6 +4,10 @@ title = 'Exemple'
 defaultContentLanguage = 'fr'
 disableKinds = ['taxonomy', 'term']
 
+[params]
+  # Initiales fictives affichées par le logo de l'en-tête.
+  initials = ['E', 'X']
+
 [languages]
   [languages.fr]
     locale = 'fr-FR'
