@@ -30,6 +30,13 @@ header {
   position: sticky;
   top: 0;
   background: var(--color-ink);
+  padding-inline: 16px;
+}
+
+@media (min-width: 768px) {
+  header {
+    padding-inline: 48px;
+  }
 }
 
 header a {
