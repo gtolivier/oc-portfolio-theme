@@ -72,6 +72,18 @@ test('sur ordinateur, un lien de la navigation survolé est souligné en couleur
   await expect(lien).toHaveCSS('text-underline-offset', '5px');
 });
 
+test('sur ordinateur, le lien de la page courante survolé garde un seul trait couleur accent (pas de soulignement en plus de sa bordure)', async ({ page, hasTouch }) => {
+  test.skip(hasTouch, 'le survol à la souris n’existe pas sur un écran tactile');
+  await page.goto('/');
+  const courant = page.locator('header nav').getByRole('link', { name: 'Accueil', exact: true });
+  await expect(courant).toHaveAttribute('aria-current', 'page');
+  await courant.hover();
+  await expect(courant).toHaveCSS('border-bottom-style', 'solid');
+  await expect(courant).toHaveCSS('border-bottom-color', 'rgb(42, 136, 141)');
+  await expect(courant).toHaveCSS('border-bottom-width', '2px');
+  await expect(courant).toHaveCSS('text-decoration-line', 'none');
+});
+
 test('après défilement d’une page longue, l’en-tête reste collé en haut de la fenêtre et visible', async ({ page }) => {
   await page.goto('/page-longue/');
   const fenetre = page.viewportSize()!;
