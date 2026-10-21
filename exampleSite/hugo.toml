@@ -14,6 +14,9 @@ disableKinds = ['taxonomy', 'term']
   [languages.fr]
     locale = 'fr-FR'
     weight = 1
+    # Mention fictive du pied de page, propre à chaque langue.
+    [languages.fr.params]
+      footerNote = 'Horloger de démonstration'
     # Menu principal de l'en-tête, propre à chaque langue.
     [[languages.fr.menus.main]]
       name = 'Accueil'
@@ -30,6 +33,8 @@ disableKinds = ['taxonomy', 'term']
   [languages.en]
     locale = 'en-US'
     weight = 2
+    [languages.en.params]
+      footerNote = 'Sample clockmaker'
     [[languages.en.menus.main]]
       name = 'Home'
       pageRef = '/'
