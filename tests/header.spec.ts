@@ -71,6 +71,21 @@ test('sur ordinateur, un lien de la navigation survolé est souligné en couleur
   await expect(lien).toHaveCSS('text-underline-offset', '5px');
 });
 
+test('après défilement d’une page longue, l’en-tête reste collé en haut de la fenêtre et visible', async ({ page }) => {
+  await page.goto('/page-longue/');
+  const fenetre = page.viewportSize()!;
+  const hauteurPage = await page.evaluate(() => document.documentElement.scrollHeight);
+  expect(hauteurPage).toBeGreaterThan(fenetre.height * 2);
+
+  await page.evaluate(() => window.scrollTo(0, window.innerHeight));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+
+  const entete = page.locator('header');
+  await expect(entete).toBeInViewport();
+  const boite = await entete.boundingBox();
+  expect(boite?.y).toBeCloseTo(0, 0);
+});
+
 test('les liens de l’en-tête sont de couleur papier et ne sont pas soulignés', async ({ page }) => {
   await page.goto('/');
   const liens = page.locator('header').getByRole('link');
