@@ -81,7 +81,7 @@ body {
 }
 
 @media (hover: hover) {
-  .site-header nav a:hover {
+  .site-header nav a:not([aria-current="page"]):hover {
     text-decoration: underline;
     text-decoration-color: var(--color-accent);
     text-underline-offset: 5px;
