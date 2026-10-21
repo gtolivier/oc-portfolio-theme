@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="{{ site.Language.LanguageCode }}">
+<head>
+<meta charset="utf-8">
+<title>{{ .Permalink }}</title>
+<link rel="canonical" href="{{ .Permalink }}">
+<noscript><meta http-equiv="refresh" content="0; url={{ .Permalink }}"></noscript>
+<script>
+(function () {
+  var targets = { {{ range .Page.Translations }}{{ .Language.Lang }}: {{ .Permalink }},{{ end }} };
+  var lang = (navigator.language || '').slice(0, 2).toLowerCase();
+  location.replace(targets[lang] || {{ .Permalink }});
+})();
+</script>
+</head>
+</html>
