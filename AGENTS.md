@@ -11,8 +11,9 @@ du projet Claude Design « Portfolio ».
 - `exampleSite/` : site de démonstration bilingue (FR par défaut, EN). Il sert
   de terrain aux tests ; son contenu est fictif.
 - `tests/` : tests e2e Playwright, lancés contre `exampleSite`.
-- `ROADMAP.md` : les fonctionnalités prévues, une conversation par
-  fonctionnalité.
+
+La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
+`oc-portfolio-site`, à côté de ce dépôt : `../site/ROADMAP.md`.
 
 ## Commandes
 
