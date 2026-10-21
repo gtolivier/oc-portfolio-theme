@@ -2,6 +2,7 @@
 baseURL = 'http://localhost:1313/'
 title = 'Exemple'
 defaultContentLanguage = 'fr'
+defaultContentLanguageInSubdir = true
 disableKinds = ['taxonomy', 'term']
 
 [params]
@@ -33,7 +34,7 @@ disableKinds = ['taxonomy', 'term']
       weight = 20
     [[languages.fr.menus.main]]
       name = 'Contact'
-      url = '/#contact'
+      url = '/fr/#contact'
       weight = 30
   [languages.en]
     locale = 'en-US'
