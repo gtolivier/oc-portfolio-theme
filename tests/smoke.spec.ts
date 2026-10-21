@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 // Test d'environnement : le site d'exemple est servi dans les deux langues.
 test('la page d’accueil est servie en français', async ({ page }) => {
-  const response = await page.goto('/fr/');
+  const response = await page.goto('/');
   expect(response?.status()).toBe(200);
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
 });
