@@ -28,6 +28,18 @@ disableKinds = ['taxonomy', 'term']
   [languages.en]
     locale = 'en-US'
     weight = 2
+    [[languages.en.menus.main]]
+      name = 'Home'
+      pageRef = '/'
+      weight = 10
+    [[languages.en.menus.main]]
+      name = 'Projects'
+      pageRef = '/projets'
+      weight = 20
+    [[languages.en.menus.main]]
+      name = 'Contact'
+      url = '/en/#contact'
+      weight = 30
 
 # Le thème est importé comme module et lu dans le dépôt lui-même (chemin
 # relatif à exampleSite/themes), quel que soit le nom du dossier cloné.

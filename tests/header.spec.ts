@@ -18,6 +18,15 @@ test('la navigation de l’en-tête liste les entrées du menu principal du site
   await expect(liens.nth(2)).toHaveAttribute('href', '/#contact');
 });
 
+test('en anglais, la navigation de l’en-tête liste les entrées du menu principal anglais', async ({ page }) => {
+  await page.goto('/en/');
+  const liens = page.locator('header nav').getByRole('link');
+  await expect(liens).toHaveText(['Home', 'Projects', 'Contact']);
+  await expect(liens.nth(0)).toHaveAttribute('href', '/en/');
+  await expect(liens.nth(1)).toHaveAttribute('href', '/en/projets/');
+  await expect(liens.nth(2)).toHaveAttribute('href', '/en/#contact');
+});
+
 test('en anglais, le logo de l’en-tête mène à l’accueil anglais', async ({ page }) => {
   await page.goto('/en/');
   const logo = page
