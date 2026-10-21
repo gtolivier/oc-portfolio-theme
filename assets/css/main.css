@@ -25,11 +25,6 @@
   src: url('/fonts/ibm-plex-mono-latin-700-normal.woff2') format('woff2');
 }
 
-h1 {
-  font-family: var(--font-mono);
-  font-weight: 700;
-}
-
 :root {
   --color-ink: #013549;
   --color-paper: #E3DFCC;
@@ -57,6 +52,11 @@ body {
   background: var(--color-ink);
   color: var(--color-paper);
   font-family: var(--font-sans);
+}
+
+h1 {
+  font-family: var(--font-mono);
+  font-weight: 700;
 }
 
 .skip-link {
