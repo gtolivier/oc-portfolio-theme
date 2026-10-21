@@ -39,17 +39,17 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
 - **Outils déterministes** : passer par les CLI (`hugo`, `npm`, `npx`, `git`,
   `gh`) plutôt que par une manipulation manuelle dès qu'ils couvrent
   l'opération.
-- **CodeRabbit** : tant qu'il ne relit pas les PR de lui-même, le lancer en
-  commentant `@coderabbitai review` à l'ouverture de la PR, puis à nouveau
-  avant de demander l'accord si des commits ont été poussés depuis. S'il
-  répond que sa limite de relectures est atteinte, ne pas bloquer la PR :
-  relancer après le délai qu'il indique, ou signaler dans la demande d'accord
-  que sa relecture des derniers commits manque.
-- **Relecture Claude** : sur chaque PR, lancer `/code-review <numéro>` (sans
-  `--comment`), puis publier ses remarques en une seule review « **Claude
-  (review)** », même sans remarque, comme le décrit le skill `tdd:feature`.
-  Tout détail local (chemins, versions, configuration privée) y est reformulé,
-  jamais supprimé. La relancer sur les nouveaux commits avant de demander
-  l'accord.
+- **CodeRabbit** : sa politique pour les petits dépôts open source l'empêche
+  de relire les PR de lui-même (« Review skipped »). Le lancer en commentant
+  `@coderabbitai review` à l'ouverture de la PR, puis une seule fois de plus
+  avant la demande d'accord si des commits ont suivi. S'il signale une limite
+  atteinte, ne pas l'attendre : le dire dans la demande d'accord. Si sa
+  relecture automatique se met à fonctionner, ne plus le lancer.
+- **Relecture Claude** : sur chaque PR, quand `/code-review` est disponible,
+  lancer `/code-review <numéro>` (sans `--comment`) et publier ses remarques
+  comme le décrit le skill `tdd:feature`, y compris hors TDD. Après les
+  corrections du tri, la relancer une seule fois : n'en publier que les
+  remarques nouvelles, et les soumettre dans la demande d'accord sans
+  nouvelle relance.
 - **Aucune donnée personnelle** dans ce dépôt public : le vrai contenu
   (projets, parcours, coordonnées) va dans `oc-portfolio-site`.
