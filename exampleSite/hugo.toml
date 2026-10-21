@@ -1,8 +1,6 @@
 # Site de démonstration du thème : sert de terrain pour les tests Playwright.
 baseURL = 'http://localhost:1313/'
 title = 'Exemple'
-theme = 'theme'
-themesDir = '../..'
 defaultContentLanguage = 'fr'
 disableKinds = ['taxonomy', 'term']
 
@@ -13,3 +11,10 @@ disableKinds = ['taxonomy', 'term']
   [languages.en]
     locale = 'en-US'
     weight = 2
+
+# Le thème est importé comme module et lu dans le dépôt lui-même (chemin
+# relatif à exampleSite/themes), quel que soit le nom du dossier cloné.
+[module]
+  replacements = 'github.com/gtolivier/oc-portfolio-theme -> ../..'
+  [[module.imports]]
+    path = 'github.com/gtolivier/oc-portfolio-theme'
