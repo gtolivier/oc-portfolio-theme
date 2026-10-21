@@ -25,6 +25,10 @@
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
   --font-sans: 'IBM Plex Sans', Helvetica, sans-serif;
   --sticky-header-clearance: 6rem;
+  /* Plans d'empilement : l'en-tête collant passe au-dessus du contenu
+     positionné, le lien d'évitement au-dessus de l'en-tête. */
+  --layer-sticky-header: 5;
+  --layer-skip-link: 10;
 }
 
 html {
@@ -46,7 +50,7 @@ body {
   position: absolute;
   top: 0;
   left: -100vw;
-  z-index: 10;
+  z-index: var(--layer-skip-link);
   padding: 8px 16px;
   background: var(--color-paper);
   color: var(--color-ink);
@@ -59,7 +63,7 @@ body {
 .site-header {
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: var(--layer-sticky-header);
   background: var(--color-ink);
   padding-inline: 16px;
 }
