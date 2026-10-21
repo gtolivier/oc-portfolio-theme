@@ -2,7 +2,8 @@
   {{- range site.Params.initials }}<span>| {{ . }} |||</span> {{ end -}}
 </a>
 <nav>
+  {{- $page := . }}
   {{- range site.Menus.main }}
-  <a href="{{ .URL }}">{{ .Name }}</a>
+  <a href="{{ .URL }}"{{ if eq .URL $page.RelPermalink }} aria-current="page"{{ end }}>{{ .Name }}</a>
   {{- end }}
 </nav>
