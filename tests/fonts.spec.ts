@@ -25,7 +25,7 @@ test('le texte courant est en IBM Plex Sans, police réellement chargée depuis 
     if (response.ok() && estUnePolice(request.resourceType(), response.url())) policesRecues.push(response.url());
   });
 
-  await page.goto('/');
+  await page.goto('/fr/');
   const origine = new URL(page.url()).origin;
   expect(origine).toBe(new URL(baseURL!).origin);
 
@@ -50,7 +50,7 @@ test('le texte de l’en-tête (logo et navigation) est en IBM Plex Mono, police
     }
   });
 
-  await page.goto('/');
+  await page.goto('/fr/');
   const origine = new URL(page.url()).origin;
 
   const liensDeLEnTete = page.locator('header a');
@@ -77,7 +77,7 @@ test('servi sous un sous-chemin (baseURL /portfolio/), le site charge quand mêm
     }
   });
 
-  await page.goto('http://localhost:1315/portfolio/');
+  await page.goto('http://localhost:1315/portfolio/fr/');
 
   const policesChargees = await famillesChargees(page);
   expect(policesEnEchec).toEqual([]);
@@ -85,7 +85,7 @@ test('servi sous un sous-chemin (baseURL /portfolio/), le site charge quand mêm
 });
 
 test('le titre de la page est en IBM Plex Mono grasse (700), graisse réellement chargée depuis le site et non simulée par le navigateur', async ({ page }) => {
-  await page.goto('/projets/');
+  await page.goto('/fr/projets/');
 
   const titre = page.locator('h1');
   await expect(titre).toHaveText('Projets');

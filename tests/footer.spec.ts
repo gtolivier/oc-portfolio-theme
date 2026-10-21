@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('le pied de page affiche le logo du site suivi de « © <année courante> <auteur du site> »', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/fr/');
   const annee = new Date().getFullYear();
   const piedDePage = page.locator('footer');
   await expect(piedDePage).toHaveText(
@@ -10,7 +10,7 @@ test('le pied de page affiche le logo du site suivi de « © <année courante> <
 });
 
 test('les lecteurs d’écran ne lisent pas les barres décoratives du logo du pied de page', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/fr/');
   const annee = new Date().getFullYear();
   const arbreAccessible = await page.locator('footer').ariaSnapshot();
   expect(arbreAccessible).toContain(`© ${annee} Jean Exemple`);
@@ -18,7 +18,7 @@ test('les lecteurs d’écran ne lisent pas les barres décoratives du logo du p
 });
 
 test('le pied de page affiche la mention du site dans la langue de la page', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/fr/');
   const piedDePageFr = page.locator('footer');
   await expect(piedDePageFr).toContainText('Horloger de démonstration');
   await expect(piedDePageFr).not.toContainText('Sample clockmaker');

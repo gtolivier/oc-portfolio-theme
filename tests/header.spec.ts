@@ -6,23 +6,23 @@ function logoDeLEnTete(page: Page): Locator {
 }
 
 test('le logo de l’en-tête affiche les initiales et mène à l’accueil', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/fr/');
   const logo = logoDeLEnTete(page);
   await expect(logo).toHaveText('| E ||| | X |||');
-  await expect(logo).toHaveAttribute('href', '/');
+  await expect(logo).toHaveAttribute('href', '/fr/');
 });
 
 test('la navigation de l’en-tête liste les entrées du menu principal du site', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/fr/');
   const liens = page.locator('header nav').getByRole('link');
   await expect(liens).toHaveText(['Accueil', 'Projets', 'Contact']);
-  await expect(liens.nth(0)).toHaveAttribute('href', '/');
-  await expect(liens.nth(1)).toHaveAttribute('href', '/projets/');
-  await expect(liens.nth(2)).toHaveAttribute('href', '/#contact');
+  await expect(liens.nth(0)).toHaveAttribute('href', '/fr/');
+  await expect(liens.nth(1)).toHaveAttribute('href', '/fr/projets/');
+  await expect(liens.nth(2)).toHaveAttribute('href', '/fr/#contact');
 });
 
 test('sur la page d’accueil, seul le lien « Accueil » de la navigation est marqué comme page courante', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/fr/');
   const nav = page.locator('header nav');
   await expect(nav.getByRole('link', { name: 'Accueil', exact: true })).toHaveAttribute('aria-current', 'page');
   await expect(nav.getByRole('link', { name: 'Projets', exact: true })).not.toHaveAttribute('aria-current');
@@ -30,7 +30,7 @@ test('sur la page d’accueil, seul le lien « Accueil » de la navigation est m
 });
 
 test('sur la page Projets, seul le lien « Projets » de la navigation est marqué comme page courante', async ({ page }) => {
-  await page.goto('/projets/');
+  await page.goto('/fr/projets/');
   const nav = page.locator('header nav');
   await expect(nav.getByRole('link', { name: 'Projets', exact: true })).toHaveAttribute('aria-current', 'page');
   await expect(nav.getByRole('link', { name: 'Accueil', exact: true })).not.toHaveAttribute('aria-current');
@@ -38,7 +38,7 @@ test('sur la page Projets, seul le lien « Projets » de la navigation est marqu
 });
 
 test('le lien de la navigation marqué page courante est souligné d’un trait de couleur accent', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/fr/');
   const courant = page.locator('header nav').getByRole('link', { name: 'Accueil', exact: true });
   await expect(courant).toHaveAttribute('aria-current', 'page');
   await expect(courant).toHaveCSS('border-bottom-style', 'solid');
@@ -63,7 +63,7 @@ test('en anglais, le logo de l’en-tête mène à l’accueil anglais', async (
 
 test('sur ordinateur, un lien de la navigation survolé est souligné en couleur accent, le trait décalé sous le texte', async ({ page, hasTouch }) => {
   test.skip(hasTouch, 'le survol à la souris n’existe pas sur un écran tactile');
-  await page.goto('/');
+  await page.goto('/fr/');
   const lien = page.locator('header nav').getByRole('link', { name: 'Projets', exact: true });
   await expect(lien).not.toHaveAttribute('aria-current');
   await lien.hover();
@@ -74,7 +74,7 @@ test('sur ordinateur, un lien de la navigation survolé est souligné en couleur
 
 test('sur ordinateur, le lien de la page courante survolé garde un seul trait couleur accent (pas de soulignement en plus de sa bordure)', async ({ page, hasTouch }) => {
   test.skip(hasTouch, 'le survol à la souris n’existe pas sur un écran tactile');
-  await page.goto('/');
+  await page.goto('/fr/');
   const courant = page.locator('header nav').getByRole('link', { name: 'Accueil', exact: true });
   await expect(courant).toHaveAttribute('aria-current', 'page');
   await courant.hover();
@@ -85,7 +85,7 @@ test('sur ordinateur, le lien de la page courante survolé garde un seul trait c
 });
 
 test('après défilement d’une page longue, l’en-tête reste collé en haut de la fenêtre et visible', async ({ page }) => {
-  await page.goto('/page-longue/');
+  await page.goto('/fr/page-longue/');
   const fenetre = page.viewportSize()!;
   const hauteurPage = await page.evaluate(() => document.documentElement.scrollHeight);
   expect(hauteurPage).toBeGreaterThan(fenetre.height * 2);
@@ -100,7 +100,7 @@ test('après défilement d’une page longue, l’en-tête reste collé en haut 
 });
 
 test('l’en-tête collant reste au-dessus d’un contenu positionné qui défile sous lui : logo et liens restent cliquables', async ({ page }) => {
-  await page.goto('/page-longue/');
+  await page.goto('/fr/page-longue/');
   const encart = page.getByText('Encart positionné', { exact: false });
   await expect(encart).toHaveCount(1);
 
@@ -126,7 +126,7 @@ test('l’en-tête collant reste au-dessus d’un contenu positionné qui défil
 });
 
 test('à l’arrivée sur une ancre d’une page longue, l’élément ciblé n’est pas masqué par l’en-tête collant', async ({ page }) => {
-  await page.goto('/page-longue/#quatrième-chapitre');
+  await page.goto('/fr/page-longue/#quatrième-chapitre');
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 
   const cible = page.getByRole('heading', { name: 'Quatrième chapitre', level: 2 });
@@ -140,7 +140,7 @@ test('à l’arrivée sur une ancre d’une page longue, l’élément ciblé n�
 
 test('sur téléphone, l’en-tête tient dans la largeur de l’écran : pas de défilement horizontal, logo et liens entièrement visibles', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'comportement propre au téléphone');
-  await page.goto('/');
+  await page.goto('/fr/');
   const largeur = page.viewportSize()!.width;
 
   const largeurPage = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -157,14 +157,14 @@ test('sur téléphone, l’en-tête tient dans la largeur de l’écran : pas de
 });
 
 test('le logo de l’en-tête est à 16 px du bord gauche de la fenêtre sur téléphone, à 48 px sur ordinateur', async ({ page, isMobile }) => {
-  await page.goto('/');
+  await page.goto('/fr/');
   const logo = logoDeLEnTete(page);
   const boite = (await logo.boundingBox())!;
   expect(boite.x).toBeCloseTo(isMobile ? 16 : 48, 0);
 });
 
 test('les liens de l’en-tête sont de couleur papier et ne sont pas soulignés', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/fr/');
   const liens = page.locator('header').getByRole('link');
   await expect(liens).toHaveCount(4);
   for (const lien of await liens.all()) {
