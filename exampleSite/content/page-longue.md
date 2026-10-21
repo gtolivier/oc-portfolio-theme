@@ -27,6 +27,10 @@ On déplaça les établis, puis les étagères, puis la machine à café.
 La bibliothèque fut la partie la plus délicate : chaque livre miniature devait
 pouvoir s'ouvrir, même si personne ne le lirait jamais.
 
+<div style="position: relative; min-height: 12rem; background: #E3DFCC; color: #013549;">
+Encart positionné : vignette fictive d'une maquette de ville.
+</div>
+
 ## Troisième chapitre
 
 Le port demanda des semaines de travail. Les bateaux, taillés dans du bois

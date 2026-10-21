@@ -10,6 +10,11 @@ disableKinds = ['taxonomy', 'term']
   # Auteur fictif affiché dans le pied de page.
   author = 'Jean Exemple'
 
+# Le contenu fictif peut contenir du HTML brut (ex. un encart positionné de
+# la page longue), comme le ferait une carte de projet ou une figure.
+[markup.goldmark.renderer]
+  unsafe = true
+
 [languages]
   [languages.fr]
     locale = 'fr-FR'

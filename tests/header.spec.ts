@@ -87,6 +87,32 @@ test('après défilement d’une page longue, l’en-tête reste collé en haut 
   expect(boite?.y).toBeCloseTo(0, 0);
 });
 
+test('l’en-tête collant reste au-dessus d’un contenu positionné qui défile sous lui : logo et liens restent cliquables', async ({ page }) => {
+  await page.goto('/page-longue/');
+  const encart = page.getByText('Encart positionné', { exact: false });
+  await expect(encart).toHaveCount(1);
+
+  /* Fait défiler la page jusqu'à placer le haut de l'encart en haut de la fenêtre, sous l'en-tête. */
+  await encart.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+
+  const liens = page.locator('header').getByRole('link');
+  await expect(liens).toHaveCount(4);
+  for (const lien of await liens.all()) {
+    const boite = (await lien.boundingBox())!;
+    const encartSousLeLien = await encart.evaluate(
+      (el, { x, y }) => { const r = el.getBoundingClientRect(); return r.top <= y && y <= r.bottom && r.left <= x && x <= r.right; },
+      { x: boite.x + boite.width / 2, y: boite.y + boite.height / 2 },
+    );
+    expect(encartSousLeLien).toBe(true);
+    const atteintLeLien = await lien.evaluate(
+      (el, { x, y }) => { const touche = document.elementFromPoint(x, y); return touche !== null && el.contains(touche); },
+      { x: boite.x + boite.width / 2, y: boite.y + boite.height / 2 },
+    );
+    expect(atteintLeLien).toBe(true);
+  }
+});
+
 test('à l’arrivée sur une ancre d’une page longue, l’élément ciblé n’est pas masqué par l’en-tête collant', async ({ page }) => {
   await page.goto('/page-longue/#quatrième-chapitre');
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
