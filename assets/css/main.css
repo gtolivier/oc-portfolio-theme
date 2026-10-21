@@ -8,10 +8,11 @@
   --color-accent-dark: #1E6C58;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
   --font-sans: 'IBM Plex Sans', Helvetica, sans-serif;
+  --sticky-header-clearance: 6rem;
 }
 
 html {
-  scroll-padding-top: 6rem;
+  scroll-padding-top: var(--sticky-header-clearance);
 }
 
 *, *::before, *::after {
