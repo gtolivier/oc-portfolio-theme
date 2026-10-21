@@ -17,6 +17,19 @@
   src: url('/fonts/ibm-plex-mono-latin-400-normal.woff2') format('woff2');
 }
 
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-latin-700-normal.woff2') format('woff2');
+}
+
+h1 {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
 :root {
   --color-ink: #013549;
   --color-paper: #E3DFCC;
