@@ -41,27 +41,36 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
   l'opération.
 - **Pull requests** : tout changement passe par une branche et une PR, même
   une simple correction de documentation ; jamais de commit direct sur
-  `main` (une règle GitHub l'impose aussi). Avant chaque push, relire le
-  diff et les messages de commit : ni secret, ni donnée personnelle, ni
-  détail local (chemin, version d'outil, configuration privée). Ne
-  fusionner qu'avec l'accord explicite de l'utilisateur.
+  `main` (une règle GitHub l'impose aussi). Avant chaque publication,
+  relire tout ce qui part sur ce dépôt public (diff, messages de commit,
+  nom de branche, titre et description de la PR, revues et réponses) : ni
+  secret, ni donnée personnelle, ni détail local (chemin, version d'outil,
+  configuration privée). Ne fusionner qu'avec l'accord explicite de
+  l'utilisateur.
 - **CodeRabbit** : sa politique pour les petits dépôts open source l'empêche
   de relire les PR de lui-même (« Review skipped »). Le lancer en commentant
   `@coderabbitai review` à l'ouverture de la PR, puis une seule fois de plus,
   après le dernier tri et juste avant la demande d'accord, si des commits
-  ont suivi. S'il signale une limite atteinte, ne pas l'attendre : le dire
-  dans la demande d'accord. Si sa relecture automatique se met à
-  fonctionner, ne plus le lancer.
+  ont suivi. Ses remarques arrivées avant la fusion sont triées avant de
+  fusionner ; si l'une entraîne une correction, redemander l'accord. S'il
+  signale une limite atteinte, ne pas l'attendre : le dire dans la demande
+  d'accord. Si sa relecture automatique se met à fonctionner, ne plus le
+  lancer.
 - **Relecture Claude** : sur chaque PR, quand `/code-review` est disponible,
   lancer `/code-review high <numéro>` (sans `--comment`), publier ses
-  remarques et les trier comme le décrit le skill `tdd:feature`. Hors TDD,
-  le tri corrige directement la documentation, la configuration et la
-  description de la PR ; une remarque sur le code de production ou les
-  tests devient une proposition, à traiter dans une PR en TDD. Si le tri a
-  poussé des corrections, relancer la relecture une seule fois, publier son
-  résultat de la même façon, même sans remarque, et le trier ; une remarque
-  qui reprend un problème déjà publié au même endroit renvoie à la réponse
-  déjà donnée au lieu d'être republiée. Pas de relance après celle-ci : la
-  demande d'accord liste les corrections qu'elle a entraînées, non relues.
+  remarques, puis trier toutes celles de la PR (Claude, CodeRabbit,
+  utilisateur) comme le décrit le skill `tdd:feature`. Hors TDD, le tri
+  corrige directement la documentation, la configuration du dépôt
+  (`.github/`, `.coderabbit.yaml`) et la description de la PR ; toute
+  autre remarque (gabarits, styles, `i18n/`, `exampleSite/`, scripts,
+  tests, configuration npm ou Playwright) devient une proposition, à
+  traiter dans une PR en TDD. Si le tri a poussé des corrections, relancer
+  la relecture une seule fois, publier son résultat de la même façon et le
+  trier. Une remarque qui reprend un problème déjà décliné renvoie à la
+  réponse donnée au lieu d'être republiée, et le corps de la revue compte
+  ces renvois à part ; un problème déjà marqué corrigé qui revient est une
+  nouvelle remarque, la correction ayant échoué. Pas de relance après
+  celle-ci : la demande d'accord liste les corrections qu'elle a
+  entraînées, non relues.
 - **Aucune donnée personnelle** dans ce dépôt public : le vrai contenu
   (projets, parcours, coordonnées) va dans `oc-portfolio-site`.
