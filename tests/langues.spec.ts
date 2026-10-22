@@ -151,6 +151,24 @@ test.describe('navigateur en français, après un choix explicite de l’anglais
     await expect(autreOnglet).toHaveURL(new URL('/en/', baseURL).href);
     await expect(autreOnglet.locator('html')).toHaveAttribute('lang', 'en-US');
   });
+
+  test('quand la page française interdit les scripts inline (CSP script-src \'self\'), après un clic sur « EN », un navigateur en français qui rouvre / arrive sur /en/', async ({ page, baseURL }) => {
+    /* Le serveur de test n'envoie aucune politique : elle est ajoutée à la seule page
+       française cliquée, pas à /, dont le script de redirection est une autre question. */
+    await page.route(new URL('/fr/', baseURL).href, async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({
+        response,
+        headers: { ...response.headers(), 'content-security-policy': "script-src 'self'" },
+      });
+    });
+    await page.goto('/fr/');
+    await page.locator('header').getByRole('group', { name: 'Langue', exact: true }).getByRole('link', { name: 'EN', exact: true }).click();
+    await expect(page).toHaveURL(new URL('/en/', baseURL).href);
+    await page.goto('/');
+    await expect(page).toHaveURL(new URL('/en/', baseURL).href);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+  });
 });
 
 test.describe('navigateur en anglais, après un choix explicite du français', () => {
