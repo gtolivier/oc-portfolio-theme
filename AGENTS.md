@@ -54,7 +54,7 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
   ont suivi : ce passage couvre aussi le contenu ajouté depuis le premier.
   Les corrections qu'entraînent les remarques de ce dernier passage ne sont
   pas relues par lui ; la demande d'accord les liste. Si du nouveau contenu
-  (voir « Relances » ci-dessous) arrive après ce passage, le relancer une
+  (au sens du skill `tdd:feature`) arrive après ce passage, le relancer une
   fois de plus avant de redemander l'accord. Ses remarques arrivées avant
   la fusion sont triées avant de fusionner ; si l'une entraîne une
   correction, redemander l'accord. S'il signale une limite atteinte, ne pas
@@ -62,8 +62,9 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
   automatique se met à fonctionner, ne plus le lancer.
 - **Relecture Claude** : sur chaque PR, quand `/code-review` est
   disponible, lancer `/code-review high <numéro>` (sans `--comment`),
-  publier ses remarques, puis trier toutes celles de la PR (Claude,
-  CodeRabbit, utilisateur) comme le décrit le skill `tdd:feature`.
+  publier ses remarques, trier toutes celles de la PR (Claude, CodeRabbit,
+  utilisateur) et relancer la relecture comme le décrit le skill
+  `tdd:feature`.
   - **Tri** : hors TDD, il corrige directement la documentation, la
     configuration du dépôt (`.github/`, `.coderabbit.yaml`) et la
     description de la PR ; toute autre remarque (gabarits, styles, `i18n/`,
@@ -73,22 +74,5 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
     à la réponse donnée au lieu d'être republiée, et le corps de la revue
     compte ces renvois à part ; un problème déjà marqué corrigé qui revient
     est une nouvelle remarque, la correction ayant échoué.
-  - **Relances** : une relecture couvre tous les commits poussés avant
-    elle. Ces commits sont soit des corrections de tri (documentation,
-    refactor, cycle TDD qui corrige un comportement mal implémenté), soit
-    du nouveau contenu : un comportement ajouté à la liste approuvée, même
-    proposé par une remarque, ou, hors TDD, un ajout demandé par
-    l'utilisateur.
-    - Après une relecture qui couvre du nouveau contenu (la première de la
-      PR comprise), si son tri pousse des corrections, relancer la
-      relecture une seule fois, publier son résultat de la même façon et le
-      trier. Une relance qui ne couvre que des corrections de tri n'en
-      appelle pas d'autre.
-    - Du nouveau contenu poussé après la dernière relecture en appelle une
-      nouvelle, même s'il a été approuvé avant elle. S'il arrive avant la
-      relance d'un tri, une seule relecture couvre les deux, et elle compte
-      comme une relecture de nouveau contenu.
-    - La demande d'accord liste les corrections du dernier tri, non
-      relues.
 - **Aucune donnée personnelle** dans ce dépôt public : le vrai contenu
   (projets, parcours, coordonnées) va dans `oc-portfolio-site`.
