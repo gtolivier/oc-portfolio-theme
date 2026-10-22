@@ -72,6 +72,19 @@ test.describe('navigateur en français, après un choix explicite de l’anglais
   });
 });
 
+test.describe('navigateur en anglais, après un choix explicite du français', () => {
+  test.use({ locale: 'en-US' });
+
+  test('après un clic sur « FR » depuis une page anglaise, un navigateur anglais qui rouvre / arrive sur /fr/', async ({ page, baseURL }) => {
+    await page.goto('/en/');
+    await page.locator('header').getByRole('group', { name: 'Language', exact: true }).getByRole('link', { name: 'FR', exact: true }).click();
+    await expect(page).toHaveURL(new URL('/fr/', baseURL).href);
+    await page.goto('/');
+    await expect(page).toHaveURL(new URL('/fr/', baseURL).href);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
+  });
+});
+
 test.describe('navigateur dans une autre langue', () => {
   test.use({ locale: 'de-DE' });
 
