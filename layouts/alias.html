@@ -16,7 +16,7 @@
     var lang = languages[i].slice(0, 2).toLowerCase();
     if (targets[lang]) { target = targets[lang]; break; }
   }
-  location.replace(target + location.hash);
+  location.replace(target + location.search + location.hash);
 })();
 </script>
 </head>
