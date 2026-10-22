@@ -7,6 +7,7 @@
   <a href="{{ .URL }}"{{ if eq .URL $page.RelPermalink }} aria-current="page"{{ end }}>{{ .Name }}</a>
   {{- end }}
 </nav>
+<span lang="{{ site.Language.Lang }}" aria-current="true">{{ upper site.Language.Lang }}</span>
 {{- range site.Sites }}
 {{- if ne .Language.Lang site.Language.Lang }}
 {{- $lang := .Language.Lang }}
