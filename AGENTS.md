@@ -49,15 +49,15 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
   l'utilisateur.
 - **CodeRabbit** : sa politique pour les petits dépôts open source l'empêche
   de relire les PR de lui-même (« Review skipped »). Le lancer en commentant
-  `@coderabbitai review` à l'ouverture de la PR. Si des commits ont suivi
-  ce premier passage de CodeRabbit, le relancer une fois de plus, après le
-  tri de la dernière relecture Claude que demande le skill et avant la
-  demande d'accord. Ses remarques se trient comme les autres : le skill dit
-  si leurs corrections appellent une relance Claude, et la demande d'accord
-  liste celles qu'aucune relecture Claude n'a couvertes. Si, après ce
-  second passage, arrive un commit autre qu'une correction de tri
-  (« triage fix », défini par le skill ; une proposition approuvée n'en est
-  jamais une), le relancer une fois de plus avant de redemander l'accord. Ses remarques
+  `@coderabbitai review` à l'ouverture de la PR. Si des commits ont suivi ce
+  premier passage de CodeRabbit, le relancer une fois de plus, après le tri
+  de la dernière relecture Claude que demande le skill et avant la demande
+  d'accord. Ses remarques se trient comme les autres : le skill dit si leurs
+  corrections appellent une relance Claude, et la demande d'accord liste
+  celles qu'aucune relecture Claude n'a couvertes. Si, après ce second
+  passage, arrive un commit autre qu'une correction de tri (« triage fix »,
+  défini par le skill ; une proposition approuvée n'en est jamais une), le
+  relancer une fois de plus avant de redemander l'accord. Ses remarques
   arrivées avant la fusion sont triées avant de fusionner ; si l'une
   entraîne une correction, redemander l'accord. S'il signale une limite
   atteinte, ne pas l'attendre : le dire dans la demande d'accord. Si sa
