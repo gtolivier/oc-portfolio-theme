@@ -13,7 +13,7 @@
   var target = {{ .Permalink }};
   try { var saved = localStorage.getItem({{ partial "lang-storage-key.html" . }}); if (saved) languages = [saved]; } catch (e) {}
   for (var i = 0; i < languages.length; i++) {
-    var lang = languages[i].slice(0, 2).toLowerCase();
+    var lang = languages[i].split('-')[0].toLowerCase();
     if (targets[lang]) { target = targets[lang]; break; }
   }
   location.replace(target + location.search + location.hash);
