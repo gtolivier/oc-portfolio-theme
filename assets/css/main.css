@@ -105,6 +105,10 @@ h1 {
   border-bottom: 2px solid var(--color-accent);
 }
 
+.site-header [role="group"] a {
+  color: rgb(227 223 204 / 0.7);
+}
+
 .site-header [role="group"] [aria-current] {
   color: var(--color-ink);
   background-color: var(--color-paper);
