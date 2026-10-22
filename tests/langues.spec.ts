@@ -140,6 +140,17 @@ test.describe('navigateur en français, après un choix explicite de l’anglais
     await expect(page).toHaveURL(new URL('/en/', baseURL).href);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
   });
+
+  test('après un clic du milieu sur « EN » depuis une page française, un navigateur en français qui rouvre / arrive sur /en/', async ({ page, context, baseURL }) => {
+    await page.goto('/fr/');
+    await page.locator('header').getByRole('group', { name: 'Langue', exact: true }).getByRole('link', { name: 'EN', exact: true }).click({ button: 'middle' });
+    /* Le clic du milieu ouvre d'ordinaire le lien dans un nouvel onglet : / est rouvert
+       dans un autre onglet du même navigateur, qui partage le stockage de la page cliquée. */
+    const autreOnglet = await context.newPage();
+    await autreOnglet.goto('/');
+    await expect(autreOnglet).toHaveURL(new URL('/en/', baseURL).href);
+    await expect(autreOnglet.locator('html')).toHaveAttribute('lang', 'en-US');
+  });
 });
 
 test.describe('navigateur en anglais, après un choix explicite du français', () => {
