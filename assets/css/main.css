@@ -125,6 +125,11 @@ h1 {
 }
 
 .site-header [role="group"] a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
   color: rgb(var(--color-paper-channels) / 0.7);
 }
 
