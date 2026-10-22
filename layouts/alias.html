@@ -6,9 +6,10 @@
 <meta name="robots" content="noindex">
 <link rel="canonical" href="{{ .Permalink }}">
 <noscript><meta http-equiv="refresh" content="0; url={{ .Permalink }}"></noscript>
+{{ $isDefaultLanguageHome := and .Page.IsHome (eq .Page.Language.Lang hugo.Sites.Default.Language.Lang) -}}
 <script>
 (function () {
-  var targets = { {{ if and .Page.IsHome (eq .Page.Language.Lang hugo.Sites.Default.Language.Lang) }}{{ range .Page.AllTranslations }}{{ .Language.Lang }}: {{ .Permalink }},{{ end }}{{ end }} };
+  var targets = { {{ if $isDefaultLanguageHome }}{{ range .Page.AllTranslations }}{{ .Language.Lang }}: {{ .Permalink }},{{ end }}{{ end }} };
   var languages = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
   var target = {{ .Permalink }};
   function primaryLanguage(tag) { return tag.split('-')[0].toLowerCase(); }
