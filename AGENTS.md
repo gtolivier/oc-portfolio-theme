@@ -41,12 +41,30 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
   l'opération.
 - **Pull requests** : tout changement passe par une branche et une PR, même
   une simple correction de documentation ; jamais de commit direct sur
-  `main` (une règle GitHub l'impose aussi). Avant chaque publication,
-  relire tout ce qui part sur ce dépôt public (diff, messages de commit,
-  nom de branche, titre et description de la PR, revues et réponses) : ni
-  secret, ni donnée personnelle, ni détail local (chemin, version d'outil,
-  configuration privée). Ne fusionner qu'avec l'accord explicite de
-  l'utilisateur.
+  `main` (une règle GitHub l'impose aussi). Ne fusionner qu'avec
+  l'accord explicite de l'utilisateur.
+- **Avant publication** : avant chaque push et toute autre publication sur
+  ce dépôt public (PR, issue, release, commentaire), relire tout ce qui
+  part : diff, messages de commit, nom de branche, titre et description de
+  la PR, revues et réponses que Claude publie. Rien qui soit un secret (clé,
+  mot de passe, jeton), une donnée personnelle (voir « Aucune donnée
+  personnelle »), une URL interne (déploiement, webhook) ou un détail
+  local : chemin sur la machine de l'utilisateur, version d'outil installée,
+  contenu ou emplacement de sa configuration et de ses fichiers
+  d'instructions privés, contenu du dépôt privé `oc-portfolio-site` hormis
+  l'intitulé de l'étape de la roadmap que livre la PR et les règles de
+  travail communes aux deux dépôts. Restent permis : les versions que le
+  dépôt fixe lui-même (CI, `package.json`), les chemins relatifs au dépôt
+  (comme `../site/ROADMAP.md`) et les lignes d'attribution des commits et
+  des PR. Si un tel détail apparaît dans le diff, un commit ou le nom de
+  branche, ne pas pousser et le signaler à l'utilisateur, qui décide de la
+  correction ; dans le titre, la description, une revue ou une réponse, le
+  retirer avant de publier, en reformulant les remarques de relecture sans
+  en supprimer aucune. S'il est déjà public (poussé, dans `main`, ou publié
+  par Claude ou par CodeRabbit, dont les revues se relisent dès leur
+  arrivée), le signaler aussitôt à l'utilisateur, qui décide de la suite. Le
+  dépôt du site a la même règle, adaptée à un dépôt privé : toute
+  modification de ce qui leur est commun se reporte dans l'autre.
 - **CodeRabbit** : sa politique pour les petits dépôts open source l'empêche
   de relire les PR de lui-même (« Review skipped »). Le lancer en commentant
   `@coderabbitai review` à l'ouverture de la PR. Si des commits ont suivi ce
