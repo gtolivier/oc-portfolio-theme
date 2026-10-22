@@ -5,6 +5,11 @@ function logoDeLEnTete(page: Page): Locator {
   return page.locator('header').getByRole('link', { name: 'Exemple', exact: true });
 }
 
+/* Le sélecteur de langue est le groupe de l'en-tête nommé dans la langue de la page. */
+function selecteurDeLangue(page: Page, nom: string): Locator {
+  return page.locator('header').getByRole('group', { name: nom, exact: true });
+}
+
 test('le logo de l’en-tête affiche les initiales et mène à l’accueil', async ({ page }) => {
   await page.goto('/fr/');
   const logo = logoDeLEnTete(page);
@@ -110,7 +115,7 @@ test('sur une page française, l’en-tête affiche la langue courante « FR » 
 
 test('sur une page française, le sélecteur de langue de l’en-tête est un groupe nommé « Langue »', async ({ page }) => {
   await page.goto('/fr/');
-  const groupe = page.locator('header').getByRole('group', { name: 'Langue', exact: true });
+  const groupe = selecteurDeLangue(page, 'Langue');
   await expect(groupe).toBeVisible();
   await expect(groupe.getByText('FR', { exact: true })).toHaveAttribute('aria-current');
   await expect(groupe.getByRole('link', { name: 'EN', exact: true })).toHaveAttribute('href', '/en/');
@@ -118,7 +123,7 @@ test('sur une page française, le sélecteur de langue de l’en-tête est un gr
 
 test('en anglais, le sélecteur de langue de l’en-tête est un groupe nommé « Language »', async ({ page }) => {
   await page.goto('/en/');
-  const groupe = page.locator('header').getByRole('group', { name: 'Language', exact: true });
+  const groupe = selecteurDeLangue(page, 'Language');
   await expect(groupe).toBeVisible();
   await expect(groupe.getByText('EN', { exact: true })).toHaveAttribute('aria-current');
   await expect(groupe.getByRole('link', { name: 'FR', exact: true })).toHaveAttribute('href', '/fr/');
@@ -126,7 +131,7 @@ test('en anglais, le sélecteur de langue de l’en-tête est un groupe nommé �
 
 test('dans le sélecteur de langue de l’en-tête, la langue courante est en texte encre sur fond papier', async ({ page }) => {
   await page.goto('/fr/');
-  const groupe = page.locator('header').getByRole('group', { name: 'Langue', exact: true });
+  const groupe = selecteurDeLangue(page, 'Langue');
   const langueCourante = groupe.getByText('FR', { exact: true });
   await expect(langueCourante).toHaveAttribute('aria-current');
   await expect(langueCourante).toHaveCSS('color', 'rgb(1, 53, 73)');
@@ -135,7 +140,7 @@ test('dans le sélecteur de langue de l’en-tête, la langue courante est en te
 
 test('dans le sélecteur de langue de l’en-tête, le lien vers l’autre langue est en crème à 70 % d’opacité, sur fond transparent', async ({ page }) => {
   await page.goto('/fr/');
-  const groupe = page.locator('header').getByRole('group', { name: 'Langue', exact: true });
+  const groupe = selecteurDeLangue(page, 'Langue');
   const autreLangue = groupe.getByRole('link', { name: 'EN', exact: true });
   await expect(autreLangue).toBeVisible();
   await expect(autreLangue).toHaveCSS('color', 'rgba(227, 223, 204, 0.7)');
@@ -144,7 +149,7 @@ test('dans le sélecteur de langue de l’en-tête, le lien vers l’autre langu
 
 test('le sélecteur de langue de l’en-tête est entouré d’une bordure de 1 px crème à 35 % d’opacité', async ({ page }) => {
   await page.goto('/fr/');
-  const groupe = page.locator('header').getByRole('group', { name: 'Langue', exact: true });
+  const groupe = selecteurDeLangue(page, 'Langue');
   await expect(groupe).toBeVisible();
   for (const cote of ['top', 'right', 'bottom', 'left']) {
     await expect(groupe).toHaveCSS(`border-${cote}-style`, 'solid');
@@ -155,7 +160,7 @@ test('le sélecteur de langue de l’en-tête est entouré d’une bordure de 1 
 
 test('le sélecteur de langue de l’en-tête est en IBM Plex Mono 12 px, graisse 600', async ({ page }) => {
   await page.goto('/fr/');
-  const groupe = page.locator('header').getByRole('group', { name: 'Langue', exact: true });
+  const groupe = selecteurDeLangue(page, 'Langue');
   const entrees = groupe.getByText('FR', { exact: true }).or(groupe.getByRole('link', { name: 'EN', exact: true }));
   await expect(entrees).toHaveCount(2);
   const styles = await entrees.evaluateAll((elements) =>
