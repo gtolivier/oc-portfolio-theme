@@ -130,6 +130,15 @@ test.describe('navigateur en français, après un choix explicite de l’anglais
     await expect(page).toHaveURL(new URL('/fr/', baseURL).href);
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
   });
+
+  test('un clic sur « EN » depuis une page française n’enregistre rien dans le navigateur (ni localStorage, ni cookie)', async ({ page, context, baseURL }) => {
+    await page.goto('/fr/');
+    await page.locator('header').getByRole('group', { name: 'Langue', exact: true }).getByRole('link', { name: 'EN', exact: true }).click();
+    await expect(page).toHaveURL(new URL('/en/', baseURL).href);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+    expect(await page.evaluate(() => Object.keys(window.localStorage))).toEqual([]);
+    expect(await context.cookies(baseURL)).toEqual([]);
+  });
 });
 
 test.describe('navigateur dans une autre langue', () => {
