@@ -8,8 +8,13 @@
 <script>
 (function () {
   var targets = { {{ range .Page.Translations }}{{ .Language.Lang }}: {{ .Permalink }},{{ end }} };
-  var lang = (navigator.language || '').slice(0, 2).toLowerCase();
-  location.replace(targets[lang] || {{ .Permalink }});
+  var languages = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
+  var target = {{ .Permalink }};
+  for (var i = 0; i < languages.length; i++) {
+    var lang = languages[i].slice(0, 2).toLowerCase();
+    if (targets[lang]) { target = targets[lang]; break; }
+  }
+  location.replace(target);
 })();
 </script>
 </head>
