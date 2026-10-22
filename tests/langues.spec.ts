@@ -149,3 +149,12 @@ test.describe('navigateur en français, puis en anglais', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
   });
 });
+
+test.describe('navigateur en frison septentrional, puis en anglais', () => {
+  test('un navigateur dont les langues préférées sont [frr, en] (frison septentrional, puis anglais) qui ouvre / arrive sur /en/', async ({ page, baseURL }) => {
+    await definirLesLanguesPreferees(page, ['frr', 'en']);
+    await page.goto('/');
+    await expect(page).toHaveURL(new URL('/en/', baseURL).href);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+  });
+});
