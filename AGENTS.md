@@ -50,25 +50,27 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
 - **CodeRabbit** : sa politique pour les petits dépôts open source l'empêche
   de relire les PR de lui-même (« Review skipped »). Le lancer en commentant
   `@coderabbitai review` à l'ouverture de la PR, puis une fois de plus avant
-  la demande d'accord, quand la relecture Claude n'appelle plus de relance,
-  si des commits ont suivi son premier passage. Ses remarques se trient
-  comme les autres, relance de la relecture Claude comprise ; les
-  corrections qu'elles entraînent ne sont pas relues par lui, et la demande
-  d'accord les liste. Si un commit autre qu'une correction de tri arrive
-  ensuite, le relancer une fois de plus avant de redemander l'accord. Une
-  correction de tri (« triage fix » dans le skill `tdd:feature`) est un
-  commit que pousse un tri ; une proposition approuvée n'en est pas une,
-  même née d'une remarque. Ses remarques arrivées avant la fusion sont
-  triées avant de fusionner ; si l'une entraîne une correction, redemander
-  l'accord. S'il signale une limite atteinte, ne pas l'attendre : le dire
-  dans la demande d'accord. Si sa relecture automatique se met à
-  fonctionner, ne plus le lancer.
+  la demande d'accord, une fois triée la dernière relecture Claude que
+  demande le skill, si des commits ont suivi son premier passage. Ses
+  remarques se trient comme les autres : le skill dit si leurs corrections
+  appellent une relance Claude, et la demande d'accord liste celles
+  qu'aucune relecture Claude n'a couvertes. Si, après ce second passage,
+  arrive un commit autre qu'une correction de tri (« triage fix », défini
+  par le skill ; une proposition approuvée n'en est jamais une), le
+  relancer une fois de plus avant de redemander l'accord. Ses remarques
+  arrivées avant la fusion sont triées avant de fusionner ; si l'une
+  entraîne une correction, redemander l'accord. S'il signale une limite
+  atteinte, ne pas l'attendre : le dire dans la demande d'accord. Si sa
+  relecture automatique se met à fonctionner, ne plus le lancer.
 - **Relecture Claude** : sur chaque PR, quand `/code-review` est
-  disponible, lancer `/code-review high <numéro>` (sans `--comment`), puis
-  publier ses remarques, trier toutes celles de la PR (Claude, CodeRabbit,
-  utilisateur), relancer la relecture et demander l'accord comme le
-  décrivent les étapes 6 et 7 du skill `tdd:feature` (version 0.9.0 ou
-  plus).
+  disponible, lancer `/code-review high <numéro>` (sans `--comment`).
+  Publier ses remarques, trier toutes celles de la PR (Claude, CodeRabbit,
+  utilisateur), relancer la relecture, demander l'accord et trier les
+  remarques tardives comme le décrit le skill `tdd:feature`, dans « Pull
+  request and reviews » à partir de « Collect the reviews », puis
+  « Approval » et « After approval » ; hors TDD, sauter ce qui suppose une
+  liste de comportements. Il faut sa version 0.9.0 ou plus (`claude plugin
+  list`) ; sinon, le mettre à jour avant la relecture.
   - **Tri** : hors TDD, il corrige directement la documentation, la
     configuration du dépôt (`.github/`, `.coderabbit.yaml`) et la
     description de la PR ; toute autre remarque (gabarits, styles, `i18n/`,
