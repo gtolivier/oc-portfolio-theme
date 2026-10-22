@@ -153,6 +153,25 @@ test('le sélecteur de langue de l’en-tête est entouré d’une bordure de 1 
   }
 });
 
+test('le sélecteur de langue de l’en-tête est en IBM Plex Mono 12 px, graisse 600', async ({ page }) => {
+  await page.goto('/fr/');
+  const groupe = page.locator('header').getByRole('group', { name: 'Langue', exact: true });
+  const entrees = groupe.getByText('FR', { exact: true }).or(groupe.getByRole('link', { name: 'EN', exact: true }));
+  await expect(entrees).toHaveCount(2);
+  const styles = await entrees.evaluateAll((elements) =>
+    elements.map((element) => {
+      const style = getComputedStyle(element);
+      return {
+        famille: style.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
+        taille: style.fontSize,
+        graisse: style.fontWeight,
+      };
+    }),
+  );
+  const attendu = { famille: 'IBM Plex Mono', taille: '12px', graisse: '600' };
+  expect(styles).toEqual([attendu, attendu]);
+});
+
 test('sur ordinateur, un lien de la navigation survolé est souligné en couleur accent, le trait décalé sous le texte', async ({ page, hasTouch }) => {
   test.skip(hasTouch, 'le survol à la souris n’existe pas sur un écran tactile');
   await page.goto('/fr/');
