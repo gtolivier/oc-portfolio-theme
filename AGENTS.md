@@ -53,13 +53,13 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
   après le dernier tri et juste avant la demande d'accord, si des commits
   ont suivi : ce passage couvre aussi le contenu ajouté depuis le premier.
   Les corrections qu'entraînent les remarques de ce dernier passage ne sont
-  pas relues par lui ; la demande d'accord les liste. Si du nouveau contenu
-  (au sens du skill `tdd:feature`) arrive après ce passage, le relancer une
-  fois de plus avant de redemander l'accord. Ses remarques arrivées avant
-  la fusion sont triées avant de fusionner ; si l'une entraîne une
-  correction, redemander l'accord. S'il signale une limite atteinte, ne pas
-  l'attendre : le dire dans la demande d'accord. Si sa relecture
-  automatique se met à fonctionner, ne plus le lancer.
+  pas relues par lui ; la demande d'accord les liste. Si un commit autre
+  qu'une correction de tri (au sens du skill `tdd:feature`) arrive après ce
+  passage, le relancer une fois de plus avant de redemander l'accord. Ses
+  remarques arrivées avant la fusion sont triées avant de fusionner ; si
+  l'une entraîne une correction, redemander l'accord. S'il signale une
+  limite atteinte, ne pas l'attendre : le dire dans la demande d'accord. Si
+  sa relecture automatique se met à fonctionner, ne plus le lancer.
 - **Relecture Claude** : sur chaque PR, quand `/code-review` est
   disponible, lancer `/code-review high <numéro>` (sans `--comment`),
   publier ses remarques, trier toutes celles de la PR (Claude, CodeRabbit,
@@ -70,9 +70,5 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
     description de la PR ; toute autre remarque (gabarits, styles, `i18n/`,
     `exampleSite/`, scripts, tests, configuration npm ou Playwright)
     devient une proposition, à traiter dans une PR en TDD.
-  - **Renvois** : une remarque qui reprend un problème déjà décliné renvoie
-    à la réponse donnée au lieu d'être republiée, et le corps de la revue
-    compte ces renvois à part ; un problème déjà marqué corrigé qui revient
-    est une nouvelle remarque, la correction ayant échoué.
 - **Aucune donnée personnelle** dans ce dépôt public : le vrai contenu
   (projets, parcours, coordonnées) va dans `oc-portfolio-site`.
