@@ -11,13 +11,12 @@
 <div role="group" aria-label="{{ i18n "language" }}">
   {{- $currentLang := site.Language.Lang }}
   <span lang="{{ $currentLang }}" aria-current="true">{{ upper $currentLang }}</span>
-  {{- $langStorageKey := partial "lang-storage-key.html" . }}
   {{- range hugo.Sites }}
   {{- $lang := .Language.Lang }}
   {{- if ne $lang $currentLang }}
   {{- $url := .Home.RelPermalink }}
   {{- with where $page.Translations "Language.Lang" $lang }}{{ $url = (index . 0).RelPermalink }}{{ end }}
-  <a href="{{ $url }}" hreflang="{{ $lang }}" lang="{{ $lang }}" data-lang-key="{{ $langStorageKey }}">{{ upper $lang }}</a>
+  <a href="{{ $url }}" hreflang="{{ $lang }}" lang="{{ $lang }}">{{ upper $lang }}</a>
   {{- end }}
   {{- end }}
 </div>
