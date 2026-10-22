@@ -1,0 +1,5 @@
+# Configuration ajoutée à exampleSite/hugo.toml par les tests d'un site
+# d'une seule langue : elle désactive l'anglais, et le site d'exemple n'est
+# plus construit qu'en français.
+[languages.en]
+  disabled = true
