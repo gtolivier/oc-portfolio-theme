@@ -116,6 +116,14 @@ test('sur une page française, le sélecteur de langue de l’en-tête est un gr
   await expect(groupe.getByRole('link', { name: 'EN', exact: true })).toHaveAttribute('href', '/en/');
 });
 
+test('en anglais, le sélecteur de langue de l’en-tête est un groupe nommé « Language »', async ({ page }) => {
+  await page.goto('/en/');
+  const groupe = page.locator('header').getByRole('group', { name: 'Language', exact: true });
+  await expect(groupe).toBeVisible();
+  await expect(groupe.getByText('EN', { exact: true })).toHaveAttribute('aria-current');
+  await expect(groupe.getByRole('link', { name: 'FR', exact: true })).toHaveAttribute('href', '/fr/');
+});
+
 test('sur ordinateur, un lien de la navigation survolé est souligné en couleur accent, le trait décalé sous le texte', async ({ page, hasTouch }) => {
   test.skip(hasTouch, 'le survol à la souris n’existe pas sur un écran tactile');
   await page.goto('/fr/');
