@@ -110,9 +110,6 @@ h1 {
 
 .site-header [role="group"] {
   border: 1px solid rgb(var(--color-paper-channels) / 0.35);
-}
-
-.site-header [role="group"] {
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
