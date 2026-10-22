@@ -18,6 +18,18 @@ test('les pages françaises sont servies sous /fr/ : /fr/ est l’accueil franç
   await expect(page).toHaveURL(new URL('/fr/', baseURL).href);
 });
 
+test('la page de redirection servie pour / demande aux moteurs de recherche de ne pas l’indexer (meta robots noindex)', async ({ page, request }) => {
+  /* / redirige aussitôt : c'est le HTML servi pour / qui est examiné, analysé sans être exécuté. */
+  const response = await request.get('/');
+  expect(response.status()).toBe(200);
+  const html = await response.text();
+  const robots = await page.evaluate((source) => {
+    const document = new DOMParser().parseFromString(source, 'text/html');
+    return Array.from(document.querySelectorAll('head meta[name="robots" i]'), (meta) => meta.getAttribute('content') ?? '');
+  }, html);
+  expect(robots.some((content) => content.split(',').map((directive) => directive.trim().toLowerCase()).includes('noindex'))).toBe(true);
+});
+
 test.describe('navigateur sans JavaScript', () => {
   test.use({ javaScriptEnabled: false });
 
