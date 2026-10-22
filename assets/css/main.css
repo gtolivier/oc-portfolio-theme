@@ -133,6 +133,9 @@ h1 {
   justify-content: center;
   min-width: var(--min-target-size);
   min-height: var(--min-target-size);
+}
+
+.site-header [role="group"] a {
   color: rgb(var(--color-paper-channels) / 0.7);
 }
 
