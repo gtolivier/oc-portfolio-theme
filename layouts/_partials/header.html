@@ -7,6 +7,7 @@
   <a href="{{ .URL }}"{{ if eq .URL $page.RelPermalink }} aria-current="page"{{ end }}>{{ .Name }}</a>
   {{- end }}
 </nav>
+<div role="group" aria-label="{{ i18n "language" }}">
 <span lang="{{ site.Language.Lang }}" aria-current="true">{{ upper site.Language.Lang }}</span>
 {{- range site.Sites }}
 {{- if ne .Language.Lang site.Language.Lang }}
@@ -16,3 +17,4 @@
 <a href="{{ $url }}" hreflang="{{ $lang }}" lang="{{ $lang }}">{{ upper $lang }}</a>
 {{- end }}
 {{- end }}
+</div>
