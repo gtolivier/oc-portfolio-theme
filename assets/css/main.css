@@ -109,6 +109,7 @@ h1 {
 }
 
 .site-header [role="group"] {
+  width: fit-content;
   border: 1px solid rgb(var(--color-paper-channels) / 0.35);
   font-family: var(--font-mono);
   font-size: 12px;
