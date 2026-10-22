@@ -20,7 +20,7 @@ function toucheDeTabulation(browserName: string): string {
 }
 
 test('sur une page française, la première tabulation focalise un lien « Aller au contenu » invisible jusque-là, qui apparaît à l’écran', async ({ page, browserName }) => {
-  await page.goto('/');
+  await page.goto('/fr/');
   const lien = page.getByRole('link', { name: 'Aller au contenu', exact: true });
   await expect(lien).toBeAttached();
   expect(await estVisibleALEcran(lien)).toBe(false);
@@ -42,7 +42,7 @@ test('sur la page d’accueil anglaise, la première tabulation focalise un lien
 });
 
 test('activer « Aller au contenu » à la touche Entrée place le focus sur le contenu principal, et la tabulation suivante atteint le premier lien du contenu', async ({ page, browserName }) => {
-  await page.goto('/');
+  await page.goto('/fr/');
   const lien = page.getByRole('link', { name: 'Aller au contenu', exact: true });
   const tabulation = toucheDeTabulation(browserName);
 

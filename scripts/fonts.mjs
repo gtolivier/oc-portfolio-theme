@@ -6,7 +6,7 @@ import { copyFileSync, mkdirSync } from 'node:fs';
 // Seulement les graisses déclarées en @font-face dans assets/css/main.css :
 // ajouter une graisse ici quand une étape en a besoin, et la déclarer.
 const families = {
-  'ibm-plex-mono': [400, 700],
+  'ibm-plex-mono': [400, 600, 700],
   'ibm-plex-sans': [400],
 };
 const target = 'static/fonts';

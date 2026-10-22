@@ -1,28 +1,46 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
+import { SITE_D_UNE_LANGUE, construireUnSite, servirUnSite, supprimerUnSite } from './helpers/site-construit';
 
 /* Le logo est le lien de l'en-tête nommé d'après le titre du site. */
 function logoDeLEnTete(page: Page): Locator {
   return page.locator('header').getByRole('link', { name: 'Exemple', exact: true });
 }
 
+/* Le sélecteur de langue est le groupe de l'en-tête nommé dans la langue de la page. */
+function selecteurDeLangue(page: Page, nom: string): Locator {
+  return page.locator('header').getByRole('group', { name: nom, exact: true });
+}
+
 test('le logo de l’en-tête affiche les initiales et mène à l’accueil', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/fr/');
   const logo = logoDeLEnTete(page);
   await expect(logo).toHaveText('| E ||| | X |||');
-  await expect(logo).toHaveAttribute('href', '/');
+  await expect(logo).toHaveAttribute('href', '/fr/');
 });
 
 test('la navigation de l’en-tête liste les entrées du menu principal du site', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/fr/');
   const liens = page.locator('header nav').getByRole('link');
   await expect(liens).toHaveText(['Accueil', 'Projets', 'Contact']);
-  await expect(liens.nth(0)).toHaveAttribute('href', '/');
-  await expect(liens.nth(1)).toHaveAttribute('href', '/projets/');
-  await expect(liens.nth(2)).toHaveAttribute('href', '/#contact');
+  await expect(liens.nth(0)).toHaveAttribute('href', '/fr/');
+  await expect(liens.nth(1)).toHaveAttribute('href', '/fr/projets/');
+  await expect(liens.nth(2)).toHaveAttribute('href', '/fr/#contact');
+});
+
+test('servi sous /portfolio/, le lien « Contact » de l’en-tête français mène à /portfolio/fr/#contact', async ({ page }) => {
+  await page.goto('http://localhost:1315/portfolio/fr/');
+  const contact = page.locator('header nav').getByRole('link', { name: 'Contact', exact: true });
+  await expect(contact).toHaveAttribute('href', '/portfolio/fr/#contact');
+});
+
+test('servi sous /portfolio/, le lien « Contact » de l’en-tête anglais mène à /portfolio/en/#contact', async ({ page }) => {
+  await page.goto('http://localhost:1315/portfolio/en/');
+  const contact = page.locator('header nav').getByRole('link', { name: 'Contact', exact: true });
+  await expect(contact).toHaveAttribute('href', '/portfolio/en/#contact');
 });
 
 test('sur la page d’accueil, seul le lien « Accueil » de la navigation est marqué comme page courante', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/fr/');
   const nav = page.locator('header nav');
   await expect(nav.getByRole('link', { name: 'Accueil', exact: true })).toHaveAttribute('aria-current', 'page');
   await expect(nav.getByRole('link', { name: 'Projets', exact: true })).not.toHaveAttribute('aria-current');
@@ -30,7 +48,7 @@ test('sur la page d’accueil, seul le lien « Accueil » de la navigation est m
 });
 
 test('sur la page Projets, seul le lien « Projets » de la navigation est marqué comme page courante', async ({ page }) => {
-  await page.goto('/projets/');
+  await page.goto('/fr/projets/');
   const nav = page.locator('header nav');
   await expect(nav.getByRole('link', { name: 'Projets', exact: true })).toHaveAttribute('aria-current', 'page');
   await expect(nav.getByRole('link', { name: 'Accueil', exact: true })).not.toHaveAttribute('aria-current');
@@ -38,7 +56,7 @@ test('sur la page Projets, seul le lien « Projets » de la navigation est marqu
 });
 
 test('le lien de la navigation marqué page courante est souligné d’un trait de couleur accent', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/fr/');
   const courant = page.locator('header nav').getByRole('link', { name: 'Accueil', exact: true });
   await expect(courant).toHaveAttribute('aria-current', 'page');
   await expect(courant).toHaveCSS('border-bottom-style', 'solid');
@@ -61,9 +79,177 @@ test('en anglais, le logo de l’en-tête mène à l’accueil anglais', async (
   await expect(logo).toHaveAttribute('href', '/en/');
 });
 
+test('sur l’accueil français, l’en-tête propose un lien « EN » vers l’accueil anglais', async ({ page }) => {
+  await page.goto('/fr/');
+  const lienEN = page.locator('header').getByRole('link', { name: 'EN', exact: true });
+  await expect(lienEN).toBeVisible();
+  await expect(lienEN).toHaveAttribute('href', '/en/');
+});
+
+test('sur la page Projets française, le lien « EN » de l’en-tête mène à la page Projets anglaise', async ({ page }) => {
+  await page.goto('/fr/projets/');
+  const lienEN = page.locator('header').getByRole('link', { name: 'EN', exact: true });
+  await expect(lienEN).toBeVisible();
+  await expect(lienEN).toHaveAttribute('href', '/en/projets/');
+});
+
+test('sur une page française sans traduction, le lien « EN » de l’en-tête mène à l’accueil anglais', async ({ page }) => {
+  await page.goto('/fr/page-longue/');
+  const lienEN = page.locator('header').getByRole('link', { name: 'EN', exact: true });
+  await expect(lienEN).toBeVisible();
+  await expect(lienEN).toHaveAttribute('href', '/en/');
+  await lienEN.click();
+  await expect(page).toHaveURL('/en/');
+});
+
+test('sur une page française, le lien « EN » de l’en-tête annonce sa langue : hreflang="en" et lang="en"', async ({ page }) => {
+  await page.goto('/fr/');
+  const lienEN = page.locator('header').getByRole('link', { name: 'EN', exact: true });
+  await expect(lienEN).toHaveAttribute('hreflang', 'en');
+  await expect(lienEN).toHaveAttribute('lang', 'en');
+});
+
+test('sur la page Projets anglaise, le lien « FR » de l’en-tête mène à la page Projets française', async ({ page }) => {
+  await page.goto('/en/projets/');
+  const lienFR = page.locator('header').getByRole('link', { name: 'FR', exact: true });
+  await expect(lienFR).toBeVisible();
+  await expect(lienFR).toHaveAttribute('href', '/fr/projets/');
+});
+
+test('sur une page française, l’en-tête affiche la langue courante « FR » à côté du lien « EN », sans lien, marquée comme courante', async ({ page }) => {
+  await page.goto('/fr/');
+  const entete = page.locator('header');
+  await expect(entete.getByRole('link', { name: 'EN', exact: true })).toBeVisible();
+  const langueCourante = entete.getByText('FR', { exact: true });
+  await expect(langueCourante).toBeVisible();
+  await expect(langueCourante).toHaveAttribute('aria-current');
+  await expect(entete.getByRole('link', { name: 'FR', exact: true })).toHaveCount(0);
+});
+
+test('sur une page française, le sélecteur de langue de l’en-tête est un groupe nommé « Langue »', async ({ page }) => {
+  await page.goto('/fr/');
+  const groupe = selecteurDeLangue(page, 'Langue');
+  await expect(groupe).toBeVisible();
+  await expect(groupe.getByText('FR', { exact: true })).toHaveAttribute('aria-current');
+  await expect(groupe.getByRole('link', { name: 'EN', exact: true })).toHaveAttribute('href', '/en/');
+});
+
+test('en anglais, le sélecteur de langue de l’en-tête est un groupe nommé « Language »', async ({ page }) => {
+  await page.goto('/en/');
+  const groupe = selecteurDeLangue(page, 'Language');
+  await expect(groupe).toBeVisible();
+  await expect(groupe.getByText('EN', { exact: true })).toHaveAttribute('aria-current');
+  await expect(groupe.getByRole('link', { name: 'FR', exact: true })).toHaveAttribute('href', '/fr/');
+});
+
+test.describe('site d’une seule langue', () => {
+  let dossierDuSite: string;
+  test.beforeAll(() => {
+    dossierDuSite = construireUnSite(SITE_D_UNE_LANGUE);
+  });
+  test.afterAll(() => {
+    supprimerUnSite(dossierDuSite);
+  });
+
+  test('sur un site d’une seule langue, l’en-tête n’affiche pas de sélecteur de langue', async ({ page, context }) => {
+    await servirUnSite(context, SITE_D_UNE_LANGUE, dossierDuSite);
+    await page.goto(`${SITE_D_UNE_LANGUE.origine}/fr/`);
+    /* L'en-tête est bien affiché, en français… */
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
+    await expect(logoDeLEnTete(page)).toBeVisible();
+    /* …sans sélecteur de langue, ni la langue courante seule. */
+    await expect(selecteurDeLangue(page, 'Langue')).toHaveCount(0);
+    await expect(page.locator('header').getByText('FR', { exact: true })).toHaveCount(0);
+  });
+});
+
+test('dans le sélecteur de langue de l’en-tête, la langue courante est en texte encre sur fond papier', async ({ page }) => {
+  await page.goto('/fr/');
+  const groupe = selecteurDeLangue(page, 'Langue');
+  const langueCourante = groupe.getByText('FR', { exact: true });
+  await expect(langueCourante).toHaveAttribute('aria-current');
+  await expect(langueCourante).toHaveCSS('color', 'rgb(1, 53, 73)');
+  await expect(langueCourante).toHaveCSS('background-color', 'rgb(227, 223, 204)');
+});
+
+test('dans le sélecteur de langue de l’en-tête, le lien vers l’autre langue est en crème à 70 % d’opacité, sur fond transparent', async ({ page }) => {
+  await page.goto('/fr/');
+  const groupe = selecteurDeLangue(page, 'Langue');
+  const autreLangue = groupe.getByRole('link', { name: 'EN', exact: true });
+  await expect(autreLangue).toBeVisible();
+  await expect(autreLangue).toHaveCSS('color', 'rgba(227, 223, 204, 0.7)');
+  await expect(autreLangue).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+});
+
+test('le sélecteur de langue de l’en-tête est entouré d’une bordure de 1 px crème à 35 % d’opacité', async ({ page }) => {
+  await page.goto('/fr/');
+  const groupe = selecteurDeLangue(page, 'Langue');
+  await expect(groupe).toBeVisible();
+  for (const cote of ['top', 'right', 'bottom', 'left']) {
+    await expect(groupe).toHaveCSS(`border-${cote}-style`, 'solid');
+    await expect(groupe).toHaveCSS(`border-${cote}-width`, '1px');
+    await expect(groupe).toHaveCSS(`border-${cote}-color`, 'rgba(227, 223, 204, 0.35)');
+  }
+});
+
+test('la bordure du sélecteur de langue de l’en-tête entoure seulement ses entrées FR et EN, sans s’étendre sur toute la largeur de l’en-tête', async ({ page }) => {
+  await page.goto('/fr/');
+  const groupe = selecteurDeLangue(page, 'Langue');
+  const boiteGroupe = (await groupe.boundingBox())!;
+  const boiteFR = (await groupe.getByText('FR', { exact: true }).boundingBox())!;
+  const boiteEN = (await groupe.getByRole('link', { name: 'EN', exact: true }).boundingBox())!;
+  const gaucheEntrees = Math.min(boiteFR.x, boiteEN.x);
+  const droiteEntrees = Math.max(boiteFR.x + boiteFR.width, boiteEN.x + boiteEN.width);
+  /* La bordure entoure les deux entrées… */
+  expect(boiteGroupe.x).toBeLessThanOrEqual(gaucheEntrees);
+  expect(boiteGroupe.x + boiteGroupe.width).toBeGreaterThanOrEqual(droiteEntrees);
+  /* …au plus près : au-delà des entrées, seulement la bordure de 1 px de chaque côté et un léger écart. */
+  expect(boiteGroupe.width - (droiteEntrees - gaucheEntrees)).toBeLessThanOrEqual(10);
+});
+
+test('le sélecteur de langue de l’en-tête est en IBM Plex Mono 12 px, graisse 600', async ({ page }) => {
+  await page.goto('/fr/');
+  const groupe = selecteurDeLangue(page, 'Langue');
+  const entrees = groupe.getByText('FR', { exact: true }).or(groupe.getByRole('link', { name: 'EN', exact: true }));
+  await expect(entrees).toHaveCount(2);
+  const styles = await entrees.evaluateAll((elements) =>
+    elements.map((element) => {
+      const style = getComputedStyle(element);
+      return {
+        famille: style.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
+        taille: style.fontSize,
+        graisse: style.fontWeight,
+      };
+    }),
+  );
+  const attendu = { famille: 'IBM Plex Mono', taille: '12px', graisse: '600' };
+  expect(styles).toEqual([attendu, attendu]);
+});
+
+test('dans le sélecteur de langue de l’en-tête, le lien vers l’autre langue offre une cible d’au moins 24 × 24 px (WCAG 2.5.8)', async ({ page }) => {
+  await page.goto('/fr/');
+  const autreLangue = selecteurDeLangue(page, 'Langue').getByRole('link', { name: 'EN', exact: true });
+  await expect(autreLangue).toBeVisible();
+  const boite = (await autreLangue.boundingBox())!;
+  expect.soft(boite.width, 'largeur de la cible').toBeGreaterThanOrEqual(24);
+  expect.soft(boite.height, 'hauteur de la cible').toBeGreaterThanOrEqual(24);
+});
+
+test('dans le sélecteur de langue de l’en-tête, la langue courante a la même hauteur que le lien vers l’autre langue', async ({ page }) => {
+  await page.goto('/fr/');
+  const groupe = selecteurDeLangue(page, 'Langue');
+  const langueCourante = groupe.getByText('FR', { exact: true });
+  const autreLangue = groupe.getByRole('link', { name: 'EN', exact: true });
+  await expect(langueCourante).toHaveAttribute('aria-current');
+  await expect(autreLangue).toBeVisible();
+  const boiteFR = (await langueCourante.boundingBox())!;
+  const boiteEN = (await autreLangue.boundingBox())!;
+  expect(boiteFR.height, 'hauteur de la langue courante').toBeCloseTo(boiteEN.height, 0);
+});
+
 test('sur ordinateur, un lien de la navigation survolé est souligné en couleur accent, le trait décalé sous le texte', async ({ page, hasTouch }) => {
   test.skip(hasTouch, 'le survol à la souris n’existe pas sur un écran tactile');
-  await page.goto('/');
+  await page.goto('/fr/');
   const lien = page.locator('header nav').getByRole('link', { name: 'Projets', exact: true });
   await expect(lien).not.toHaveAttribute('aria-current');
   await lien.hover();
@@ -74,7 +260,7 @@ test('sur ordinateur, un lien de la navigation survolé est souligné en couleur
 
 test('sur ordinateur, le lien de la page courante survolé garde un seul trait couleur accent (pas de soulignement en plus de sa bordure)', async ({ page, hasTouch }) => {
   test.skip(hasTouch, 'le survol à la souris n’existe pas sur un écran tactile');
-  await page.goto('/');
+  await page.goto('/fr/');
   const courant = page.locator('header nav').getByRole('link', { name: 'Accueil', exact: true });
   await expect(courant).toHaveAttribute('aria-current', 'page');
   await courant.hover();
@@ -85,7 +271,7 @@ test('sur ordinateur, le lien de la page courante survolé garde un seul trait c
 });
 
 test('après défilement d’une page longue, l’en-tête reste collé en haut de la fenêtre et visible', async ({ page }) => {
-  await page.goto('/page-longue/');
+  await page.goto('/fr/page-longue/');
   const fenetre = page.viewportSize()!;
   const hauteurPage = await page.evaluate(() => document.documentElement.scrollHeight);
   expect(hauteurPage).toBeGreaterThan(fenetre.height * 2);
@@ -100,7 +286,7 @@ test('après défilement d’une page longue, l’en-tête reste collé en haut 
 });
 
 test('l’en-tête collant reste au-dessus d’un contenu positionné qui défile sous lui : logo et liens restent cliquables', async ({ page }) => {
-  await page.goto('/page-longue/');
+  await page.goto('/fr/page-longue/');
   const encart = page.getByText('Encart positionné', { exact: false });
   await expect(encart).toHaveCount(1);
 
@@ -109,7 +295,7 @@ test('l’en-tête collant reste au-dessus d’un contenu positionné qui défil
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 
   const liens = page.locator('header').getByRole('link');
-  await expect(liens).toHaveCount(4);
+  await expect(liens).toHaveCount(5);
   for (const lien of await liens.all()) {
     const boite = (await lien.boundingBox())!;
     const encartSousLeLien = await encart.evaluate(
@@ -126,7 +312,7 @@ test('l’en-tête collant reste au-dessus d’un contenu positionné qui défil
 });
 
 test('à l’arrivée sur une ancre d’une page longue, l’élément ciblé n’est pas masqué par l’en-tête collant', async ({ page }) => {
-  await page.goto('/page-longue/#quatrième-chapitre');
+  await page.goto('/fr/page-longue/#quatrième-chapitre');
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 
   const cible = page.getByRole('heading', { name: 'Quatrième chapitre', level: 2 });
@@ -140,14 +326,14 @@ test('à l’arrivée sur une ancre d’une page longue, l’élément ciblé n�
 
 test('sur téléphone, l’en-tête tient dans la largeur de l’écran : pas de défilement horizontal, logo et liens entièrement visibles', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'comportement propre au téléphone');
-  await page.goto('/');
+  await page.goto('/fr/');
   const largeur = page.viewportSize()!.width;
 
   const largeurPage = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(largeurPage).toBeLessThanOrEqual(largeur);
 
   const liens = page.locator('header').getByRole('link');
-  await expect(liens).toHaveCount(4);
+  await expect(liens).toHaveCount(5);
   for (const lien of await liens.all()) {
     await expect(lien).toBeVisible();
     const boite = (await lien.boundingBox())!;
@@ -157,15 +343,16 @@ test('sur téléphone, l’en-tête tient dans la largeur de l’écran : pas de
 });
 
 test('le logo de l’en-tête est à 16 px du bord gauche de la fenêtre sur téléphone, à 48 px sur ordinateur', async ({ page, isMobile }) => {
-  await page.goto('/');
+  await page.goto('/fr/');
   const logo = logoDeLEnTete(page);
   const boite = (await logo.boundingBox())!;
   expect(boite.x).toBeCloseTo(isMobile ? 16 : 48, 0);
 });
 
 test('les liens de l’en-tête sont de couleur papier et ne sont pas soulignés', async ({ page }) => {
-  await page.goto('/');
-  const liens = page.locator('header').getByRole('link');
+  await page.goto('/fr/');
+  /* Le logo et les liens de la navigation, sans le lien de changement de langue. */
+  const liens = logoDeLEnTete(page).or(page.locator('header nav').getByRole('link'));
   await expect(liens).toHaveCount(4);
   for (const lien of await liens.all()) {
     await expect(lien).toHaveCSS('color', 'rgb(227, 223, 204)');

@@ -19,6 +19,14 @@
 
 @font-face {
   font-family: 'IBM Plex Mono';
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url('../fonts/ibm-plex-mono-latin-600-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -27,7 +35,10 @@
 
 :root {
   --color-ink: #013549;
-  --color-paper: #E3DFCC;
+  /* Canaux R G B seuls, pour décliner la couleur avec une opacité
+     tout en la définissant une seule fois. */
+  --color-paper-channels: 227 223 204;
+  --color-paper: rgb(var(--color-paper-channels));
   --color-accent: #2A888D;
   --color-accent-dark: #1E6C58;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
@@ -37,6 +48,8 @@
      positionné, le lien d'évitement au-dessus de l'en-tête. */
   --layer-sticky-header: 5;
   --layer-skip-link: 10;
+  /* Taille minimale d'une cible de pointage (WCAG 2.5.8). */
+  --min-target-size: 24px;
 }
 
 html {
@@ -103,4 +116,30 @@ h1 {
 
 .site-header nav a[aria-current="page"] {
   border-bottom: 2px solid var(--color-accent);
+}
+
+.site-header [role="group"] {
+  width: fit-content;
+  border: 1px solid rgb(var(--color-paper-channels) / 0.35);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.site-header [role="group"] a,
+.site-header [role="group"] [aria-current] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--min-target-size);
+  min-height: var(--min-target-size);
+}
+
+.site-header [role="group"] a {
+  color: rgb(var(--color-paper-channels) / 0.7);
+}
+
+.site-header [role="group"] [aria-current] {
+  color: var(--color-ink);
+  background-color: var(--color-paper);
 }

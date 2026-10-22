@@ -25,7 +25,7 @@ test('le texte courant est en IBM Plex Sans, police réellement chargée depuis 
     if (response.ok() && estUnePolice(request.resourceType(), response.url())) policesRecues.push(response.url());
   });
 
-  await page.goto('/');
+  await page.goto('/fr/');
   const origine = new URL(page.url()).origin;
   expect(origine).toBe(new URL(baseURL!).origin);
 
@@ -50,10 +50,14 @@ test('le texte de l’en-tête (logo et navigation) est en IBM Plex Mono, police
     }
   });
 
-  await page.goto('/');
+  await page.goto('/fr/');
   const origine = new URL(page.url()).origin;
 
-  const liensDeLEnTete = page.locator('header a');
+  /* Le logo et les liens de la navigation, sans le lien de changement de langue. */
+  const liensDeLEnTete = page
+    .locator('header')
+    .getByRole('link', { name: 'Exemple', exact: true })
+    .or(page.locator('header nav').getByRole('link'));
   await expect(liensDeLEnTete).toHaveCount(4);
   const famillesDeLEnTete = await liensDeLEnTete.evaluateAll((liens) =>
     liens.map((lien) => getComputedStyle(lien).fontFamily.split(',')[0].trim().replace(/["']/g, '')),
@@ -77,7 +81,7 @@ test('servi sous un sous-chemin (baseURL /portfolio/), le site charge quand mêm
     }
   });
 
-  await page.goto('http://localhost:1315/portfolio/');
+  await page.goto('http://localhost:1315/portfolio/fr/');
 
   const policesChargees = await famillesChargees(page);
   expect(policesEnEchec).toEqual([]);
@@ -85,7 +89,7 @@ test('servi sous un sous-chemin (baseURL /portfolio/), le site charge quand mêm
 });
 
 test('le titre de la page est en IBM Plex Mono grasse (700), graisse réellement chargée depuis le site et non simulée par le navigateur', async ({ page }) => {
-  await page.goto('/projets/');
+  await page.goto('/fr/projets/');
 
   const titre = page.locator('h1');
   await expect(titre).toHaveText('Projets');
@@ -105,4 +109,31 @@ test('le titre de la page est en IBM Plex Mono grasse (700), graisse réellement
       .map((face) => face.weight);
   });
   expect(policesMonoChargees).toContain('700');
+});
+
+test('le sélecteur de langue de l’en-tête est en IBM Plex Mono semi-grasse (600), graisse réellement chargée depuis le site et non remplacée par la grasse (700)', async ({ page }) => {
+  await page.goto('/fr/');
+
+  const groupe = page.locator('header').getByRole('group', { name: 'Langue', exact: true });
+  const entrees = groupe.getByText('FR', { exact: true }).or(groupe.getByRole('link', { name: 'EN', exact: true }));
+  await expect(entrees).toHaveCount(2);
+  const styles = await entrees.evaluateAll((elements) =>
+    elements.map((element) => {
+      const style = getComputedStyle(element);
+      return {
+        famille: style.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
+        graisse: style.fontWeight,
+      };
+    }),
+  );
+  const attendu = { famille: 'IBM Plex Mono', graisse: '600' };
+  expect(styles).toEqual([attendu, attendu]);
+
+  const policesMonoChargees = await page.evaluate(async () => {
+    await document.fonts.ready;
+    return [...document.fonts]
+      .filter((face) => face.status === 'loaded' && face.family.replace(/["']/g, '') === 'IBM Plex Mono')
+      .map((face) => face.weight);
+  });
+  expect(policesMonoChargees).toContain('600');
 });
