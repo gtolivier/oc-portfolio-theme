@@ -1,10 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import {
-  ORIGINE_SITE_AVEC_ALIAS,
-  construireLeSiteAvecAlias,
-  servirLeSiteAvecAlias,
-  supprimerLeSiteAvecAlias,
-} from './helpers/site-avec-alias';
+import { SITE_AVEC_ALIAS, construireUnSite, servirUnSite, supprimerUnSite } from './helpers/site-construit';
 
 /* L'option locale de Playwright ne fixe qu'une langue : la liste complète
    des langues préférées est définie avant que les scripts de la page ne s'exécutent. */
@@ -103,30 +98,30 @@ test.describe('navigateur en français, ancienne adresse d’une page anglaise',
 
   let dossierDuSite: string;
   test.beforeAll(() => {
-    dossierDuSite = construireLeSiteAvecAlias();
+    dossierDuSite = construireUnSite(SITE_AVEC_ALIAS);
   });
   test.afterAll(() => {
-    supprimerLeSiteAvecAlias(dossierDuSite);
+    supprimerUnSite(dossierDuSite);
   });
 
   test('un navigateur en français qui ouvre l’ancienne adresse (alias) d’une page anglaise arrive sur cette page anglaise, pas sur sa traduction française', async ({ page, context }) => {
-    await servirLeSiteAvecAlias(context, dossierDuSite);
-    await page.goto(`${ORIGINE_SITE_AVEC_ALIAS}/en/old-english-page/`);
-    await expect(page).toHaveURL(`${ORIGINE_SITE_AVEC_ALIAS}/en/page-avec-alias/`);
+    await servirUnSite(context, SITE_AVEC_ALIAS, dossierDuSite);
+    await page.goto(`${SITE_AVEC_ALIAS.origine}/en/old-english-page/`);
+    await expect(page).toHaveURL(`${SITE_AVEC_ALIAS.origine}/en/page-avec-alias/`);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
     await expect(page.getByRole('main')).toContainText('Fictional English page, reachable from its old address.');
   });
 
   test('un navigateur en français qui ouvre l’ancienne adresse (alias) de l’accueil anglais arrive sur /en/, pas sur /fr/', async ({ page, context }) => {
-    await servirLeSiteAvecAlias(context, dossierDuSite);
-    await page.goto(`${ORIGINE_SITE_AVEC_ALIAS}/en/english/`);
-    await expect(page).toHaveURL(`${ORIGINE_SITE_AVEC_ALIAS}/en/`);
+    await servirUnSite(context, SITE_AVEC_ALIAS, dossierDuSite);
+    await page.goto(`${SITE_AVEC_ALIAS.origine}/en/english/`);
+    await expect(page).toHaveURL(`${SITE_AVEC_ALIAS.origine}/en/`);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
     await expect(page.getByRole('main')).toContainText('Welcome to this demo site');
   });
 });
 
-test.describe('navigateur en français, après un choix explicite de l’anglais', () => {
+test.describe('navigateur en français, après un clic sur « EN »', () => {
   test.use({ locale: 'fr-FR' });
 
   test('après un clic sur « EN » depuis une page française, un navigateur en français qui rouvre / arrive sur /fr/', async ({ page, baseURL }) => {

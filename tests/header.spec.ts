@@ -1,10 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import {
-  ORIGINE_SITE_D_UNE_LANGUE,
-  construireLeSiteDUneLangue,
-  servirLeSiteDUneLangue,
-  supprimerLeSiteDUneLangue,
-} from './helpers/site-d-une-langue';
+import { SITE_D_UNE_LANGUE, construireUnSite, servirUnSite, supprimerUnSite } from './helpers/site-construit';
 
 /* Le logo est le lien de l'en-tête nommé d'après le titre du site. */
 function logoDeLEnTete(page: Page): Locator {
@@ -150,15 +145,15 @@ test('en anglais, le sélecteur de langue de l’en-tête est un groupe nommé �
 test.describe('site d’une seule langue', () => {
   let dossierDuSite: string;
   test.beforeAll(() => {
-    dossierDuSite = construireLeSiteDUneLangue();
+    dossierDuSite = construireUnSite(SITE_D_UNE_LANGUE);
   });
   test.afterAll(() => {
-    supprimerLeSiteDUneLangue(dossierDuSite);
+    supprimerUnSite(dossierDuSite);
   });
 
   test('sur un site d’une seule langue, l’en-tête n’affiche pas de sélecteur de langue', async ({ page, context }) => {
-    await servirLeSiteDUneLangue(context, dossierDuSite);
-    await page.goto(`${ORIGINE_SITE_D_UNE_LANGUE}/fr/`);
+    await servirUnSite(context, SITE_D_UNE_LANGUE, dossierDuSite);
+    await page.goto(`${SITE_D_UNE_LANGUE.origine}/fr/`);
     /* L'en-tête est bien affiché, en français… */
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
     await expect(logoDeLEnTete(page)).toBeVisible();
