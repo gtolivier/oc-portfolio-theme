@@ -9,6 +9,11 @@
 </nav>
 {{- range site.Sites }}
 {{- if ne .Language.Lang site.Language.Lang }}
-<a href="{{ .Home.RelPermalink }}" lang="{{ .Language.Lang }}">{{ upper .Language.Lang }}</a>
+{{- $lang := .Language.Lang }}
+{{- $url := .Home.RelPermalink }}
+{{- range $page.Translations }}
+{{- if eq .Language.Lang $lang }}{{ $url = .RelPermalink }}{{ end }}
+{{- end }}
+<a href="{{ $url }}" lang="{{ $lang }}">{{ upper $lang }}</a>
 {{- end }}
 {{- end }}
