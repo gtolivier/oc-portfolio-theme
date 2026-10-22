@@ -48,6 +48,12 @@ test.describe('navigateur en anglais', () => {
     await expect(page).toHaveURL(new URL('/en/', baseURL).href);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
   });
+
+  test('un navigateur en anglais qui ouvre /#contact arrive sur /en/#contact', async ({ page, baseURL }) => {
+    await page.goto('/#contact');
+    await expect(page).toHaveURL(new URL('/en/#contact', baseURL).href);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+  });
 });
 
 test.describe('navigateur en anglais, site servi sous un sous-chemin', () => {
