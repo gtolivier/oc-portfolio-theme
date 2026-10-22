@@ -38,6 +38,12 @@ test('servi sous /portfolio/, le lien « Contact » de l’en-tête français m�
   await expect(contact).toHaveAttribute('href', '/portfolio/fr/#contact');
 });
 
+test('servi sous /portfolio/, le lien « Contact » de l’en-tête anglais mène à /portfolio/en/#contact', async ({ page }) => {
+  await page.goto('http://localhost:1315/portfolio/en/');
+  const contact = page.locator('header nav').getByRole('link', { name: 'Contact', exact: true });
+  await expect(contact).toHaveAttribute('href', '/portfolio/en/#contact');
+});
+
 test('sur la page d’accueil, seul le lien « Accueil » de la navigation est marqué comme page courante', async ({ page }) => {
   await page.goto('/fr/');
   const nav = page.locator('header nav');
