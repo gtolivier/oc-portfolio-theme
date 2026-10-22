@@ -43,19 +43,25 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
   une simple correction de documentation ; jamais de commit direct sur
   `main` (une règle GitHub l'impose aussi). Ne fusionner qu'avec
   l'accord explicite de l'utilisateur.
-- **Avant publication** : avant chaque push et chaque publication sur une
-  PR, relire tout ce qui part sur ce dépôt public : diff, messages de
-  commit, nom de branche, titre et description de la PR, revues et réponses.
-  Rien de nouveau qui soit un secret (clé, mot de passe, jeton), une donnée
-  personnelle, une URL interne (déploiement, webhook) ou un détail local :
-  chemin sur la machine de l'utilisateur, version d'outil installée, contenu
-  ou emplacement de sa configuration et de ses fichiers d'instructions
-  privés, contenu du dépôt privé `oc-portfolio-site`. Restent permis : ce
-  que le dépôt documente déjà et les lignes d'attribution des commits et des
-  PR. Si un tel détail apparaît dans le diff, un commit ou le nom de
-  branche, ne pas pousser et le signaler à l'utilisateur ; dans la
-  description, une revue ou une réponse, le retirer avant de publier, en
-  reformulant les remarques de relecture sans en supprimer aucune.
+- **Avant publication** : avant chaque push et toute autre publication sur
+  ce dépôt public (PR, issue, release, commentaire), relire tout ce qui
+  part : diff, messages de commit, nom de branche, titre et description de
+  la PR, revues et réponses que Claude publie. Rien qui soit un secret (clé,
+  mot de passe, jeton), une donnée personnelle, une URL interne
+  (déploiement, webhook) ou un détail local : chemin sur la machine de
+  l'utilisateur, version d'outil installée, contenu ou emplacement de sa
+  configuration et de ses fichiers d'instructions privés, contenu du dépôt
+  privé `oc-portfolio-site` hors intitulé de l'étape de la roadmap que livre
+  la PR. Restent permis, sauf donnée personnelle : ce que `main` documente
+  déjà et les lignes d'attribution des commits et des PR. Si un tel détail
+  apparaît dans le diff, un commit ou le nom de branche, ne pas pousser et
+  le signaler à l'utilisateur ; dans le titre, la description, une revue ou
+  une réponse, le retirer avant de publier, en reformulant les remarques de
+  relecture sans en supprimer aucune. S'il est déjà public (poussé, ou
+  publié par Claude ou par CodeRabbit), le signaler aussitôt à
+  l'utilisateur, qui décide de la suite. Le dépôt du site a la même règle,
+  adaptée à un dépôt privé : toute modification de l'une se reporte dans
+  l'autre.
 - **CodeRabbit** : sa politique pour les petits dépôts open source l'empêche
   de relire les PR de lui-même (« Review skipped »). Le lancer en commentant
   `@coderabbitai review` à l'ouverture de la PR. Si des commits ont suivi ce
