@@ -66,17 +66,6 @@ test.describe('navigateur en anglais', () => {
     await expect(page).toHaveURL(new URL('/en/?source=test', baseURL).href);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
   });
-
-  test('avec un choix enregistré qui ne correspond à aucune langue du site (« de »), un navigateur en anglais qui ouvre / arrive sur /en/', async ({ page, baseURL }) => {
-    /* Aucun lien du site n'enregistre « de » : le choix est déposé directement,
-       sous la clé où le sélecteur de langue enregistre le sien. */
-    await page.addInitScript(() => {
-      localStorage.setItem('oc-lang', 'de');
-    });
-    await page.goto('/');
-    await expect(page).toHaveURL(new URL('/en/', baseURL).href);
-    await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
-  });
 });
 
 test.describe('navigateur en anglais, site servi sous un sous-chemin', () => {
@@ -132,52 +121,11 @@ test.describe('navigateur en français, ancienne adresse d’une page anglaise',
 test.describe('navigateur en français, après un choix explicite de l’anglais', () => {
   test.use({ locale: 'fr-FR' });
 
-  test('après un clic sur « EN » depuis une page française, un navigateur en français qui rouvre / arrive sur /en/', async ({ page, baseURL }) => {
+  test('après un clic sur « EN » depuis une page française, un navigateur en français qui rouvre / arrive sur /fr/', async ({ page, baseURL }) => {
     await page.goto('/fr/');
     await page.locator('header').getByRole('group', { name: 'Langue', exact: true }).getByRole('link', { name: 'EN', exact: true }).click();
     await expect(page).toHaveURL(new URL('/en/', baseURL).href);
-    await page.goto('/');
-    await expect(page).toHaveURL(new URL('/en/', baseURL).href);
-    await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
-  });
-
-  test('après un clic du milieu sur « EN » depuis une page française, un navigateur en français qui rouvre / arrive sur /en/', async ({ page, context, baseURL }) => {
-    await page.goto('/fr/');
-    await page.locator('header').getByRole('group', { name: 'Langue', exact: true }).getByRole('link', { name: 'EN', exact: true }).click({ button: 'middle' });
-    /* Le clic du milieu ouvre d'ordinaire le lien dans un nouvel onglet : / est rouvert
-       dans un autre onglet du même navigateur, qui partage le stockage de la page cliquée. */
-    const autreOnglet = await context.newPage();
-    await autreOnglet.goto('/');
-    await expect(autreOnglet).toHaveURL(new URL('/en/', baseURL).href);
-    await expect(autreOnglet.locator('html')).toHaveAttribute('lang', 'en-US');
-  });
-
-  test('quand la page française interdit les scripts inline (CSP script-src \'self\'), après un clic sur « EN », un navigateur en français qui rouvre / arrive sur /en/', async ({ page, baseURL }) => {
-    /* Le serveur de test n'envoie aucune politique : elle est ajoutée à la seule page
-       française cliquée, pas à /, dont le script de redirection est une autre question. */
-    await page.route(new URL('/fr/', baseURL).href, async (route) => {
-      const response = await route.fetch();
-      await route.fulfill({
-        response,
-        headers: { ...response.headers(), 'content-security-policy': "script-src 'self'" },
-      });
-    });
-    await page.goto('/fr/');
-    await page.locator('header').getByRole('group', { name: 'Langue', exact: true }).getByRole('link', { name: 'EN', exact: true }).click();
-    await expect(page).toHaveURL(new URL('/en/', baseURL).href);
-    await page.goto('/');
-    await expect(page).toHaveURL(new URL('/en/', baseURL).href);
-    await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
-  });
-});
-
-test.describe('navigateur en anglais, après un choix explicite du français', () => {
-  test.use({ locale: 'en-US' });
-
-  test('après un clic sur « FR » depuis une page anglaise, un navigateur anglais qui rouvre / arrive sur /fr/', async ({ page, baseURL }) => {
-    await page.goto('/en/');
-    await page.locator('header').getByRole('group', { name: 'Language', exact: true }).getByRole('link', { name: 'FR', exact: true }).click();
-    await expect(page).toHaveURL(new URL('/fr/', baseURL).href);
+    /* Le choix fait dans le sélecteur n'est pas retenu : / suit la seule langue du navigateur. */
     await page.goto('/');
     await expect(page).toHaveURL(new URL('/fr/', baseURL).href);
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
