@@ -126,7 +126,8 @@ h1 {
   font-weight: 600;
 }
 
-.site-header [role="group"] a {
+.site-header [role="group"] a,
+.site-header [role="group"] [aria-current] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
