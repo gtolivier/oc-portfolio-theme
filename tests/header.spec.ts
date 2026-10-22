@@ -219,6 +219,15 @@ test('le sélecteur de langue de l’en-tête est en IBM Plex Mono 12 px, graiss
   expect(styles).toEqual([attendu, attendu]);
 });
 
+test('dans le sélecteur de langue de l’en-tête, le lien vers l’autre langue offre une cible d’au moins 24 × 24 px (WCAG 2.5.8)', async ({ page }) => {
+  await page.goto('/fr/');
+  const autreLangue = selecteurDeLangue(page, 'Langue').getByRole('link', { name: 'EN', exact: true });
+  await expect(autreLangue).toBeVisible();
+  const boite = (await autreLangue.boundingBox())!;
+  expect.soft(boite.width, 'largeur de la cible').toBeGreaterThanOrEqual(24);
+  expect.soft(boite.height, 'hauteur de la cible').toBeGreaterThanOrEqual(24);
+});
+
 test('sur ordinateur, un lien de la navigation survolé est souligné en couleur accent, le trait décalé sous le texte', async ({ page, hasTouch }) => {
   test.skip(hasTouch, 'le survol à la souris n’existe pas sur un écran tactile');
   await page.goto('/fr/');
