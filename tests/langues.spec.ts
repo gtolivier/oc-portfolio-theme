@@ -38,3 +38,13 @@ test.describe('navigateur en français', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
   });
 });
+
+test.describe('navigateur dans une autre langue', () => {
+  test.use({ locale: 'de-DE' });
+
+  test('un navigateur dans une autre langue (de-DE) qui ouvre / arrive sur /fr/', async ({ page, baseURL }) => {
+    await page.goto('/');
+    await expect(page).toHaveURL(new URL('/fr/', baseURL).href);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
+  });
+});
