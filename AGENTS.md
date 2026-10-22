@@ -28,7 +28,8 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
   production sans test qui échoue d'abord.
 - **Tests e2e avec Playwright** : un test décrit un comportement visible par
   le visiteur (texte, lien, navigation, rendu à une taille d'écran), pas un
-  détail d'implémentation.
+  détail d'implémentation. Ils tournent sur Chromium et WebKit, au format
+  bureau et téléphone ; Firefox en a été retiré pour alléger la CI.
 - **Mobile first** : les styles de base visent le téléphone ; les écrans plus
   larges sont enrichis via `@media (min-width: …)`. Les projets Playwright
   `mobile-chrome` et `mobile-safari` vérifient chaque comportement sur
