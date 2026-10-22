@@ -12,7 +12,6 @@
   var languages = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
   var target = {{ .Permalink }};
   function primaryLanguage(tag) { return tag.split('-')[0].toLowerCase(); }
-  try { var saved = localStorage.getItem({{ partial "lang-storage-key.html" . }}); if (saved && targets[primaryLanguage(saved)]) languages = [saved]; } catch (e) {}
   for (var i = 0; i < languages.length; i++) {
     var lang = primaryLanguage(languages[i]);
     if (targets[lang]) { target = targets[lang]; break; }
