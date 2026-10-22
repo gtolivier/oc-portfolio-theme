@@ -70,7 +70,9 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
   réponse donnée au lieu d'être republiée, et le corps de la revue compte
   ces renvois à part ; un problème déjà marqué corrigé qui revient est une
   nouvelle remarque, la correction ayant échoué. Pas de relance après
-  celle-ci : la demande d'accord liste les corrections qu'elle a
-  entraînées, non relues.
+  celle-ci pour des corrections de tri : la demande d'accord liste les
+  corrections qu'elle a entraînées, non relues. En revanche, de nouveaux
+  comportements (cycles TDD) ajoutés après la dernière relecture en
+  appellent une nouvelle, publiée et triée de la même façon.
 - **Aucune donnée personnelle** dans ce dépôt public : le vrai contenu
   (projets, parcours, coordonnées) va dans `oc-portfolio-site`.
