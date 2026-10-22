@@ -53,7 +53,11 @@ test('le texte de l’en-tête (logo et navigation) est en IBM Plex Mono, police
   await page.goto('/fr/');
   const origine = new URL(page.url()).origin;
 
-  const liensDeLEnTete = page.locator('header a');
+  /* Le logo et les liens de la navigation, sans le lien de changement de langue. */
+  const liensDeLEnTete = page
+    .locator('header')
+    .getByRole('link', { name: 'Exemple', exact: true })
+    .or(page.locator('header nav').getByRole('link'));
   await expect(liensDeLEnTete).toHaveCount(4);
   const famillesDeLEnTete = await liensDeLEnTete.evaluateAll((liens) =>
     liens.map((lien) => getComputedStyle(lien).fontFamily.split(',')[0].trim().replace(/["']/g, '')),

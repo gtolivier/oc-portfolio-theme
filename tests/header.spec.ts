@@ -61,6 +61,13 @@ test('en anglais, le logo de l’en-tête mène à l’accueil anglais', async (
   await expect(logo).toHaveAttribute('href', '/en/');
 });
 
+test('sur l’accueil français, l’en-tête propose un lien « EN » vers l’accueil anglais', async ({ page }) => {
+  await page.goto('/fr/');
+  const lienEN = page.locator('header').getByRole('link', { name: 'EN', exact: true });
+  await expect(lienEN).toBeVisible();
+  await expect(lienEN).toHaveAttribute('href', '/en/');
+});
+
 test('sur ordinateur, un lien de la navigation survolé est souligné en couleur accent, le trait décalé sous le texte', async ({ page, hasTouch }) => {
   test.skip(hasTouch, 'le survol à la souris n’existe pas sur un écran tactile');
   await page.goto('/fr/');
@@ -109,7 +116,7 @@ test('l’en-tête collant reste au-dessus d’un contenu positionné qui défil
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 
   const liens = page.locator('header').getByRole('link');
-  await expect(liens).toHaveCount(4);
+  await expect(liens).toHaveCount(5);
   for (const lien of await liens.all()) {
     const boite = (await lien.boundingBox())!;
     const encartSousLeLien = await encart.evaluate(
@@ -147,7 +154,7 @@ test('sur téléphone, l’en-tête tient dans la largeur de l’écran : pas de
   expect(largeurPage).toBeLessThanOrEqual(largeur);
 
   const liens = page.locator('header').getByRole('link');
-  await expect(liens).toHaveCount(4);
+  await expect(liens).toHaveCount(5);
   for (const lien of await liens.all()) {
     await expect(lien).toBeVisible();
     const boite = (await lien.boundingBox())!;
@@ -165,7 +172,8 @@ test('le logo de l’en-tête est à 16 px du bord gauche de la fenêtre sur té
 
 test('les liens de l’en-tête sont de couleur papier et ne sont pas soulignés', async ({ page }) => {
   await page.goto('/fr/');
-  const liens = page.locator('header').getByRole('link');
+  /* Le logo et les liens de la navigation, sans le lien de changement de langue. */
+  const liens = logoDeLEnTete(page).or(page.locator('header nav').getByRole('link'));
   await expect(liens).toHaveCount(4);
   for (const lien of await liens.all()) {
     await expect(lien).toHaveCSS('color', 'rgb(227, 223, 204)');
