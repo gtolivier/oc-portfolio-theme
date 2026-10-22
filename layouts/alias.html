@@ -7,7 +7,7 @@
 <noscript><meta http-equiv="refresh" content="0; url={{ .Permalink }}"></noscript>
 <script>
 (function () {
-  var targets = { {{ range .Page.Translations }}{{ .Language.Lang }}: {{ .Permalink }},{{ end }} };
+  var targets = { {{ range .Page.AllTranslations }}{{ .Language.Lang }}: {{ .Permalink }},{{ end }} };
   var languages = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
   var target = {{ .Permalink }};
   for (var i = 0; i < languages.length; i++) {
