@@ -8,13 +8,13 @@
   {{- end }}
 </nav>
 <div role="group" aria-label="{{ i18n "language" }}">
-<span lang="{{ site.Language.Lang }}" aria-current="true">{{ upper site.Language.Lang }}</span>
-{{- range site.Sites }}
-{{- if ne .Language.Lang site.Language.Lang }}
-{{- $lang := .Language.Lang }}
-{{- $url := .Home.RelPermalink }}
-{{- with where $page.Translations "Language.Lang" $lang }}{{ $url = (index . 0).RelPermalink }}{{ end }}
-<a href="{{ $url }}" hreflang="{{ $lang }}" lang="{{ $lang }}">{{ upper $lang }}</a>
-{{- end }}
-{{- end }}
+  <span lang="{{ site.Language.Lang }}" aria-current="true">{{ upper site.Language.Lang }}</span>
+  {{- range site.Sites }}
+  {{- if ne .Language.Lang site.Language.Lang }}
+  {{- $lang := .Language.Lang }}
+  {{- $url := .Home.RelPermalink }}
+  {{- with where $page.Translations "Language.Lang" $lang }}{{ $url = (index . 0).RelPermalink }}{{ end }}
+  <a href="{{ $url }}" hreflang="{{ $lang }}" lang="{{ $lang }}">{{ upper $lang }}</a>
+  {{- end }}
+  {{- end }}
 </div>
