@@ -27,7 +27,10 @@
 
 :root {
   --color-ink: #013549;
-  --color-paper: #E3DFCC;
+  /* Canaux R G B seuls, pour décliner la couleur avec une opacité
+     tout en la définissant une seule fois. */
+  --color-paper-channels: 227 223 204;
+  --color-paper: rgb(var(--color-paper-channels));
   --color-accent: #2A888D;
   --color-accent-dark: #1E6C58;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
@@ -106,7 +109,7 @@ h1 {
 }
 
 .site-header [role="group"] a {
-  color: rgb(227 223 204 / 0.7);
+  color: rgb(var(--color-paper-channels) / 0.7);
 }
 
 .site-header [role="group"] [aria-current] {
