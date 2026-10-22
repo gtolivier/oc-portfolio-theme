@@ -158,6 +158,21 @@ test('le sélecteur de langue de l’en-tête est entouré d’une bordure de 1 
   }
 });
 
+test('la bordure du sélecteur de langue de l’en-tête entoure seulement ses entrées FR et EN, sans s’étendre sur toute la largeur de l’en-tête', async ({ page }) => {
+  await page.goto('/fr/');
+  const groupe = selecteurDeLangue(page, 'Langue');
+  const boiteGroupe = (await groupe.boundingBox())!;
+  const boiteFR = (await groupe.getByText('FR', { exact: true }).boundingBox())!;
+  const boiteEN = (await groupe.getByRole('link', { name: 'EN', exact: true }).boundingBox())!;
+  const gaucheEntrees = Math.min(boiteFR.x, boiteEN.x);
+  const droiteEntrees = Math.max(boiteFR.x + boiteFR.width, boiteEN.x + boiteEN.width);
+  /* La bordure entoure les deux entrées… */
+  expect(boiteGroupe.x).toBeLessThanOrEqual(gaucheEntrees);
+  expect(boiteGroupe.x + boiteGroupe.width).toBeGreaterThanOrEqual(droiteEntrees);
+  /* …au plus près : au-delà des entrées, seulement la bordure de 1 px de chaque côté et un léger écart. */
+  expect(boiteGroupe.width - (droiteEntrees - gaucheEntrees)).toBeLessThanOrEqual(10);
+});
+
 test('le sélecteur de langue de l’en-tête est en IBM Plex Mono 12 px, graisse 600', async ({ page }) => {
   await page.goto('/fr/');
   const groupe = selecteurDeLangue(page, 'Langue');
