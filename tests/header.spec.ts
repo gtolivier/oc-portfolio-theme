@@ -75,6 +75,13 @@ test('sur la page Projets française, le lien « EN » de l’en-tête mène à 
   await expect(lienEN).toHaveAttribute('href', '/en/projets/');
 });
 
+test('sur une page française, le lien « EN » de l’en-tête annonce sa langue : hreflang="en" et lang="en"', async ({ page }) => {
+  await page.goto('/fr/');
+  const lienEN = page.locator('header').getByRole('link', { name: 'EN', exact: true });
+  await expect(lienEN).toHaveAttribute('hreflang', 'en');
+  await expect(lienEN).toHaveAttribute('lang', 'en');
+});
+
 test('sur la page Projets anglaise, le lien « FR » de l’en-tête mène à la page Projets française', async ({ page }) => {
   await page.goto('/en/projets/');
   const lienFR = page.locator('header').getByRole('link', { name: 'FR', exact: true });
