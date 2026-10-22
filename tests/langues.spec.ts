@@ -60,6 +60,17 @@ test.describe('navigateur en anglais', () => {
     await expect(page).toHaveURL(new URL('/en/?source=test', baseURL).href);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
   });
+
+  test('avec un choix enregistré qui ne correspond à aucune langue du site (« de »), un navigateur en anglais qui ouvre / arrive sur /en/', async ({ page, baseURL }) => {
+    /* Aucun lien du site n'enregistre « de » : le choix est déposé directement,
+       sous la clé où le sélecteur de langue enregistre le sien. */
+    await page.addInitScript(() => {
+      localStorage.setItem('oc-lang', 'de');
+    });
+    await page.goto('/');
+    await expect(page).toHaveURL(new URL('/en/', baseURL).href);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+  });
 });
 
 test.describe('navigateur en anglais, site servi sous un sous-chemin', () => {
