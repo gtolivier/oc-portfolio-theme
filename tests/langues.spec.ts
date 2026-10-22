@@ -18,3 +18,13 @@ test.describe('navigateur en anglais', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
   });
 });
+
+test.describe('navigateur en français', () => {
+  test.use({ locale: 'fr-FR' });
+
+  test('un navigateur en français (fr-FR) qui ouvre / arrive sur /fr/', async ({ page, baseURL }) => {
+    await page.goto('/');
+    await expect(page).toHaveURL(new URL('/fr/', baseURL).href);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
+  });
+});
