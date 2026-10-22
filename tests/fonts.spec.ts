@@ -110,3 +110,30 @@ test('le titre de la page est en IBM Plex Mono grasse (700), graisse réellement
   });
   expect(policesMonoChargees).toContain('700');
 });
+
+test('le sélecteur de langue de l’en-tête est en IBM Plex Mono semi-grasse (600), graisse réellement chargée depuis le site et non remplacée par la grasse (700)', async ({ page }) => {
+  await page.goto('/fr/');
+
+  const groupe = page.locator('header').getByRole('group', { name: 'Langue', exact: true });
+  const entrees = groupe.getByText('FR', { exact: true }).or(groupe.getByRole('link', { name: 'EN', exact: true }));
+  await expect(entrees).toHaveCount(2);
+  const styles = await entrees.evaluateAll((elements) =>
+    elements.map((element) => {
+      const style = getComputedStyle(element);
+      return {
+        famille: style.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
+        graisse: style.fontWeight,
+      };
+    }),
+  );
+  const attendu = { famille: 'IBM Plex Mono', graisse: '600' };
+  expect(styles).toEqual([attendu, attendu]);
+
+  const policesMonoChargees = await page.evaluate(async () => {
+    await document.fonts.ready;
+    return [...document.fonts]
+      .filter((face) => face.status === 'loaded' && face.family.replace(/["']/g, '') === 'IBM Plex Mono')
+      .map((face) => face.weight);
+  });
+  expect(policesMonoChargees).toContain('600');
+});
