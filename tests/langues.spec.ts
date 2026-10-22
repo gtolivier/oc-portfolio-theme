@@ -1,4 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
+import {
+  ORIGINE_SITE_AVEC_ALIAS,
+  construireLeSiteAvecAlias,
+  servirLeSiteAvecAlias,
+  supprimerLeSiteAvecAlias,
+} from './helpers/site-avec-alias';
 
 /* L'option locale de Playwright ne fixe qu'une langue : la liste complète
    des langues préférées est définie avant que les scripts de la page ne s'exécutent. */
@@ -100,6 +106,26 @@ test.describe('navigateur en français', () => {
     await page.goto('/');
     await expect(page).toHaveURL(new URL('/fr/', baseURL).href);
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
+  });
+});
+
+test.describe('navigateur en français, ancienne adresse d’une page anglaise', () => {
+  test.use({ locale: 'fr-FR' });
+
+  let dossierDuSite: string;
+  test.beforeAll(() => {
+    dossierDuSite = construireLeSiteAvecAlias();
+  });
+  test.afterAll(() => {
+    supprimerLeSiteAvecAlias(dossierDuSite);
+  });
+
+  test('un navigateur en français qui ouvre l’ancienne adresse (alias) d’une page anglaise arrive sur cette page anglaise, pas sur sa traduction française', async ({ page, context }) => {
+    await servirLeSiteAvecAlias(context, dossierDuSite);
+    await page.goto(`${ORIGINE_SITE_AVEC_ALIAS}/en/old-english-page/`);
+    await expect(page).toHaveURL(`${ORIGINE_SITE_AVEC_ALIAS}/en/page-avec-alias/`);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+    await expect(page.getByRole('main')).toContainText('Fictional English page, reachable from its old address.');
   });
 });
 

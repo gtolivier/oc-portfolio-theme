@@ -1,0 +1,10 @@
+# Configuration ajoutée à exampleSite/hugo.toml par les tests des anciennes
+# adresses (alias) : elle monte, à côté du contenu du site d'exemple, des
+# pages de test qui déclarent des alias. Les chemins sont relatifs à
+# exampleSite/, dossier source de la construction.
+[[module.mounts]]
+  source = 'content'
+  target = 'content'
+[[module.mounts]]
+  source = '../tests/fixtures/alias/content'
+  target = 'content'
