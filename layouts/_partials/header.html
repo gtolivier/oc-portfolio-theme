@@ -11,9 +11,7 @@
 {{- if ne .Language.Lang site.Language.Lang }}
 {{- $lang := .Language.Lang }}
 {{- $url := .Home.RelPermalink }}
-{{- range $page.Translations }}
-{{- if eq .Language.Lang $lang }}{{ $url = .RelPermalink }}{{ end }}
-{{- end }}
+{{- with where $page.Translations "Language.Lang" $lang }}{{ $url = (index . 0).RelPermalink }}{{ end }}
 <a href="{{ $url }}" lang="{{ $lang }}">{{ upper $lang }}</a>
 {{- end }}
 {{- end }}
