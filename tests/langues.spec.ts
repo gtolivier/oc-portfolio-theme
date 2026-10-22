@@ -9,6 +9,16 @@ test('les pages françaises sont servies sous /fr/ : /fr/ est l’accueil franç
   await expect(page).toHaveURL(new URL('/fr/', baseURL).href);
 });
 
+test.describe('navigateur sans JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('sans JavaScript, un navigateur qui ouvre / arrive sur /fr/', async ({ page, baseURL }) => {
+    await page.goto('/');
+    await expect(page).toHaveURL(new URL('/fr/', baseURL).href);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
+  });
+});
+
 test.describe('navigateur en anglais', () => {
   test.use({ locale: 'en-US' });
 
