@@ -19,6 +19,16 @@ test.describe('navigateur en anglais', () => {
   });
 });
 
+test.describe('navigateur en anglais britannique', () => {
+  test.use({ locale: 'en-GB' });
+
+  test('un navigateur en anglais britannique (en-GB) qui ouvre / arrive sur /en/', async ({ page, baseURL }) => {
+    await page.goto('/');
+    await expect(page).toHaveURL(new URL('/en/', baseURL).href);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+  });
+});
+
 test.describe('navigateur en français', () => {
   test.use({ locale: 'fr-FR' });
 
