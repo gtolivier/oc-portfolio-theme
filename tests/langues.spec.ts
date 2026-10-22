@@ -29,6 +29,16 @@ test.describe('navigateur en anglais', () => {
   });
 });
 
+test.describe('navigateur en anglais, site servi sous un sous-chemin', () => {
+  test.use({ locale: 'en-US' });
+
+  test('servi sous /portfolio/, un navigateur en anglais qui ouvre /portfolio/ arrive sur /portfolio/en/', async ({ page }) => {
+    await page.goto('http://localhost:1315/portfolio/');
+    await expect(page).toHaveURL('http://localhost:1315/portfolio/en/');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+  });
+});
+
 test.describe('navigateur en anglais britannique', () => {
   test.use({ locale: 'en-GB' });
 
