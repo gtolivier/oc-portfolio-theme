@@ -14,7 +14,7 @@
   {{- $lang := .Language.Lang }}
   {{- $url := .Home.RelPermalink }}
   {{- with where $page.Translations "Language.Lang" $lang }}{{ $url = (index . 0).RelPermalink }}{{ end }}
-  <a href="{{ $url }}" hreflang="{{ $lang }}" lang="{{ $lang }}">{{ upper $lang }}</a>
+  <a href="{{ $url }}" hreflang="{{ $lang }}" lang="{{ $lang }}" onclick="try{localStorage.setItem('lang','{{ $lang }}')}catch(e){}">{{ upper $lang }}</a>
   {{- end }}
   {{- end }}
 </div>
