@@ -104,3 +104,8 @@ h1 {
 .site-header nav a[aria-current="page"] {
   border-bottom: 2px solid var(--color-accent);
 }
+
+.site-header [role="group"] [aria-current] {
+  color: var(--color-ink);
+  background-color: var(--color-paper);
+}
