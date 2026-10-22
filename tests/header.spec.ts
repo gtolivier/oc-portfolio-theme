@@ -133,6 +133,15 @@ test('dans le sélecteur de langue de l’en-tête, la langue courante est en te
   await expect(langueCourante).toHaveCSS('background-color', 'rgb(227, 223, 204)');
 });
 
+test('dans le sélecteur de langue de l’en-tête, le lien vers l’autre langue est en crème à 70 % d’opacité, sur fond transparent', async ({ page }) => {
+  await page.goto('/fr/');
+  const groupe = page.locator('header').getByRole('group', { name: 'Langue', exact: true });
+  const autreLangue = groupe.getByRole('link', { name: 'EN', exact: true });
+  await expect(autreLangue).toBeVisible();
+  await expect(autreLangue).toHaveCSS('color', 'rgba(227, 223, 204, 0.7)');
+  await expect(autreLangue).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+});
+
 test('sur ordinateur, un lien de la navigation survolé est souligné en couleur accent, le trait décalé sous le texte', async ({ page, hasTouch }) => {
   test.skip(hasTouch, 'le survol à la souris n’existe pas sur un écran tactile');
   await page.goto('/fr/');
