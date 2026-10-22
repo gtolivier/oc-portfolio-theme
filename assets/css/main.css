@@ -48,6 +48,8 @@
      positionné, le lien d'évitement au-dessus de l'en-tête. */
   --layer-sticky-header: 5;
   --layer-skip-link: 10;
+  /* Taille minimale d'une cible de pointage (WCAG 2.5.8). */
+  --min-target-size: 24px;
 }
 
 html {
@@ -128,8 +130,8 @@ h1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 24px;
-  min-height: 24px;
+  min-width: var(--min-target-size);
+  min-height: var(--min-target-size);
   color: rgb(var(--color-paper-channels) / 0.7);
 }
 
