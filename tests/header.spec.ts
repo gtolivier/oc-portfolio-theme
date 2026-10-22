@@ -68,6 +68,13 @@ test('sur l’accueil français, l’en-tête propose un lien « EN » vers l’
   await expect(lienEN).toHaveAttribute('href', '/en/');
 });
 
+test('sur la page Projets française, le lien « EN » de l’en-tête mène à la page Projets anglaise', async ({ page }) => {
+  await page.goto('/fr/projets/');
+  const lienEN = page.locator('header').getByRole('link', { name: 'EN', exact: true });
+  await expect(lienEN).toBeVisible();
+  await expect(lienEN).toHaveAttribute('href', '/en/projets/');
+});
+
 test('sur ordinateur, un lien de la navigation survolé est souligné en couleur accent, le trait décalé sous le texte', async ({ page, hasTouch }) => {
   test.skip(hasTouch, 'le survol à la souris n’existe pas sur un écran tactile');
   await page.goto('/fr/');
