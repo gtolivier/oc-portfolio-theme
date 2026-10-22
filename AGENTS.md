@@ -51,28 +51,37 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
   de relire les PR de lui-même (« Review skipped »). Le lancer en commentant
   `@coderabbitai review` à l'ouverture de la PR, puis une seule fois de plus,
   après le dernier tri et juste avant la demande d'accord, si des commits
-  ont suivi. Ses remarques arrivées avant la fusion sont triées avant de
-  fusionner ; si l'une entraîne une correction, redemander l'accord. S'il
-  signale une limite atteinte, ne pas l'attendre : le dire dans la demande
-  d'accord. Si sa relecture automatique se met à fonctionner, ne plus le
-  lancer.
-- **Relecture Claude** : sur chaque PR, quand `/code-review` est disponible,
-  lancer `/code-review high <numéro>` (sans `--comment`), publier ses
-  remarques, puis trier toutes celles de la PR (Claude, CodeRabbit,
-  utilisateur) comme le décrit le skill `tdd:feature`. Hors TDD, le tri
-  corrige directement la documentation, la configuration du dépôt
-  (`.github/`, `.coderabbit.yaml`) et la description de la PR ; toute
-  autre remarque (gabarits, styles, `i18n/`, `exampleSite/`, scripts,
-  tests, configuration npm ou Playwright) devient une proposition, à
-  traiter dans une PR en TDD. Si le tri a poussé des corrections, relancer
-  la relecture une seule fois, publier son résultat de la même façon et le
-  trier. Une remarque qui reprend un problème déjà décliné renvoie à la
-  réponse donnée au lieu d'être republiée, et le corps de la revue compte
-  ces renvois à part ; un problème déjà marqué corrigé qui revient est une
-  nouvelle remarque, la correction ayant échoué. Pas de relance après
-  celle-ci pour des corrections de tri : la demande d'accord liste les
-  corrections qu'elle a entraînées, non relues. En revanche, de nouveaux
-  comportements (cycles TDD) ajoutés après la dernière relecture en
-  appellent une nouvelle, publiée et triée de la même façon.
+  ont suivi : ce passage couvre aussi les comportements ajoutés depuis le
+  premier. Les corrections qu'entraînent ses remarques ne sont pas relues
+  de nouveau, comme pour la relecture Claude. Ses remarques arrivées avant
+  la fusion sont triées avant de fusionner ; si l'une entraîne une
+  correction, redemander l'accord. S'il signale une limite atteinte, ne pas
+  l'attendre : le dire dans la demande d'accord. Si sa relecture
+  automatique se met à fonctionner, ne plus le lancer.
+- **Relecture Claude** : sur chaque PR, quand `/code-review` est
+  disponible, lancer `/code-review high <numéro>` (sans `--comment`),
+  publier ses remarques, puis trier toutes celles de la PR (Claude,
+  CodeRabbit, utilisateur) comme le décrit le skill `tdd:feature`.
+  - **Tri** : hors TDD, il corrige directement la documentation, la
+    configuration du dépôt (`.github/`, `.coderabbit.yaml`) et la
+    description de la PR ; toute autre remarque (gabarits, styles, `i18n/`,
+    `exampleSite/`, scripts, tests, configuration npm ou Playwright)
+    devient une proposition, à traiter dans une PR en TDD.
+  - **Renvois** : une remarque qui reprend un problème déjà décliné renvoie
+    à la réponse donnée au lieu d'être republiée, et le corps de la revue
+    compte ces renvois à part ; un problème déjà marqué corrigé qui revient
+    est une nouvelle remarque, la correction ayant échoué.
+  - **Relances** : une relecture couvre tous les commits poussés avant
+    elle.
+    - Si le tri pousse des corrections, relancer la relecture une seule
+      fois, publier son résultat de la même façon et le trier. Les
+      corrections de ce second tri ne sont pas relues.
+    - De nouveaux comportements, c'est-à-dire ajoutés à la liste approuvée
+      après la dernière relecture (un cycle TDD qui corrige une remarque
+      n'en est pas un), appellent une nouvelle relecture, qui suit les
+      mêmes règles, relance comprise. S'ils arrivent avant la relance d'un
+      tri, une seule relecture couvre les deux.
+    - La demande d'accord liste les corrections du dernier tri, non
+      relues.
 - **Aucune donnée personnelle** dans ce dépôt public : le vrai contenu
   (projets, parcours, coordonnées) va dans `oc-portfolio-site`.
