@@ -48,3 +48,20 @@ test.describe('navigateur dans une autre langue', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
   });
 });
+
+test.describe('navigateur en allemand, puis en anglais', () => {
+  test.use({ locale: 'de-DE' });
+
+  test('un navigateur dont les langues préférées sont [de-DE, en] qui ouvre / arrive sur /en/', async ({ page, baseURL }) => {
+    /* L'option locale de Playwright ne fixe qu'une langue : la liste complète
+       des langues préférées est définie avant que les scripts de la page ne s'exécutent. */
+    await page.addInitScript(() => {
+      const languages = ['de-DE', 'en'];
+      Object.defineProperty(Navigator.prototype, 'languages', { get: () => languages, configurable: true });
+      Object.defineProperty(Navigator.prototype, 'language', { get: () => languages[0], configurable: true });
+    });
+    await page.goto('/');
+    await expect(page).toHaveURL(new URL('/en/', baseURL).href);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+  });
+});
