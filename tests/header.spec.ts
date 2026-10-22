@@ -240,6 +240,18 @@ test('dans le sélecteur de langue de l’en-tête, le lien vers l’autre langu
   expect.soft(boite.height, 'hauteur de la cible').toBeGreaterThanOrEqual(24);
 });
 
+test('dans le sélecteur de langue de l’en-tête, la langue courante a la même hauteur que le lien vers l’autre langue', async ({ page }) => {
+  await page.goto('/fr/');
+  const groupe = selecteurDeLangue(page, 'Langue');
+  const langueCourante = groupe.getByText('FR', { exact: true });
+  const autreLangue = groupe.getByRole('link', { name: 'EN', exact: true });
+  await expect(langueCourante).toHaveAttribute('aria-current');
+  await expect(autreLangue).toBeVisible();
+  const boiteFR = (await langueCourante.boundingBox())!;
+  const boiteEN = (await autreLangue.boundingBox())!;
+  expect(boiteFR.height, 'hauteur de la langue courante').toBeCloseTo(boiteEN.height, 0);
+});
+
 test('sur ordinateur, un lien de la navigation survolé est souligné en couleur accent, le trait décalé sous le texte', async ({ page, hasTouch }) => {
   test.skip(hasTouch, 'le survol à la souris n’existe pas sur un écran tactile');
   await page.goto('/fr/');
