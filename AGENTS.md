@@ -41,12 +41,21 @@ La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
   l'opération.
 - **Pull requests** : tout changement passe par une branche et une PR, même
   une simple correction de documentation ; jamais de commit direct sur
-  `main` (une règle GitHub l'impose aussi). Avant chaque publication,
-  relire tout ce qui part sur ce dépôt public (diff, messages de commit,
-  nom de branche, titre et description de la PR, revues et réponses) : ni
-  secret, ni donnée personnelle, ni détail local (chemin, version d'outil,
-  configuration privée). Ne fusionner qu'avec l'accord explicite de
-  l'utilisateur.
+  `main` (une règle GitHub l'impose aussi). Ne fusionner qu'avec
+  l'accord explicite de l'utilisateur.
+- **Avant publication** : avant chaque push et chaque publication sur une
+  PR, relire tout ce qui part sur ce dépôt public : diff, messages de
+  commit, nom de branche, titre et description de la PR, revues et réponses.
+  Rien de nouveau qui soit un secret (clé, mot de passe, jeton), une donnée
+  personnelle, une URL interne (déploiement, webhook) ou un détail local :
+  chemin sur la machine de l'utilisateur, version d'outil installée, contenu
+  ou emplacement de sa configuration et de ses fichiers d'instructions
+  privés, contenu du dépôt privé `oc-portfolio-site`. Restent permis : ce
+  que le dépôt documente déjà et les lignes d'attribution des commits et des
+  PR. Si un tel détail apparaît dans le diff, un commit ou le nom de
+  branche, ne pas pousser et le signaler à l'utilisateur ; dans la
+  description, une revue ou une réponse, le retirer avant de publier, en
+  reformulant les remarques de relecture sans en supprimer aucune.
 - **CodeRabbit** : sa politique pour les petits dépôts open source l'empêche
   de relire les PR de lui-même (« Review skipped »). Le lancer en commentant
   `@coderabbitai review` à l'ouverture de la PR. Si des commits ont suivi ce
