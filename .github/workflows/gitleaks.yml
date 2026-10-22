@@ -1,0 +1,25 @@
+name: Gitleaks
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  # Lancement manuel : analyse tout l'historique du dépôt.
+  workflow_dispatch:
+permissions:
+  contents: read
+  # Commentaire sur la ligne fautive d'une PR (secret masqué).
+  pull-requests: write
+jobs:
+  scan:
+    name: gitleaks
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+    - uses: gitleaks/gitleaks-action@v3
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITLEAKS_VERSION: '8.30.1'
