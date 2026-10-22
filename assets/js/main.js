@@ -1,6 +1,8 @@
 // Point d'entrée JavaScript du thème.
 
-// Mémorise le choix explicite d'une langue (clic ou clic du milieu).
+// Un choix explicite de langue l'emporte ensuite sur les langues du
+// navigateur quand la redirection de / (layouts/alias.html) le relit.
+// Le clic du milieu compte aussi : il ouvre la page dans un nouvel onglet.
 function rememberLanguage(event) {
   const link = event.target.closest?.('a[data-lang-key]');
   if (!link) return;

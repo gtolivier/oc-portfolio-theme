@@ -9,11 +9,12 @@
 </nav>
 {{- if gt (len hugo.Sites) 1 }}
 <div role="group" aria-label="{{ i18n "language" }}">
-  <span lang="{{ site.Language.Lang }}" aria-current="true">{{ upper site.Language.Lang }}</span>
+  {{- $currentLang := site.Language.Lang }}
+  <span lang="{{ $currentLang }}" aria-current="true">{{ upper $currentLang }}</span>
   {{- $langStorageKey := partial "lang-storage-key.html" . }}
   {{- range hugo.Sites }}
-  {{- if ne .Language.Lang site.Language.Lang }}
   {{- $lang := .Language.Lang }}
+  {{- if ne $lang $currentLang }}
   {{- $url := .Home.RelPermalink }}
   {{- with where $page.Translations "Language.Lang" $lang }}{{ $url = (index . 0).RelPermalink }}{{ end }}
   <a href="{{ $url }}" hreflang="{{ $lang }}" lang="{{ $lang }}" data-lang-key="{{ $langStorageKey }}">{{ upper $lang }}</a>
