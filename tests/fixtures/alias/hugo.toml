@@ -2,6 +2,15 @@
 # adresses (alias) : elle monte, à côté du contenu du site d'exemple, des
 # pages de test qui déclarent des alias. Les chemins sont relatifs à
 # exampleSite/, dossier source de la construction.
+#
+# L'accueil anglais du site d'exemple reçoit lui aussi une ancienne adresse,
+# /en/english/, sans que son contenu soit recopié ici.
+[[cascade]]
+  aliases = ['/english/']
+  [cascade.target]
+    kind = 'home'
+    [cascade.target.sites.matrix]
+      languages = ['en']
 [[module.mounts]]
   source = 'content'
   target = 'content'

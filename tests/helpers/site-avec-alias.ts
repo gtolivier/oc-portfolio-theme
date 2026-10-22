@@ -3,8 +3,9 @@ import { construireUnSite, servirUnSite, supprimerUnSite } from './site-construi
 
 /* Le site d'exemple n'a aucune page avec des alias : ce site-ci lui ajoute
    les pages de tests/fixtures/alias/content (une page anglaise qui déclare
-   une ancienne adresse, et sa traduction française). Il est servi sous
-   cette adresse. */
+   une ancienne adresse, et sa traduction française), et donne à son
+   accueil anglais l'ancienne adresse /en/english/ (voir
+   tests/fixtures/alias/hugo.toml). Il est servi sous cette adresse. */
 export const ORIGINE_SITE_AVEC_ALIAS = 'http://localhost:1316';
 
 export function construireLeSiteAvecAlias(): string {

@@ -116,6 +116,14 @@ test.describe('navigateur en français, ancienne adresse d’une page anglaise',
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
     await expect(page.getByRole('main')).toContainText('Fictional English page, reachable from its old address.');
   });
+
+  test('un navigateur en français qui ouvre l’ancienne adresse (alias) de l’accueil anglais arrive sur /en/, pas sur /fr/', async ({ page, context }) => {
+    await servirLeSiteAvecAlias(context, dossierDuSite);
+    await page.goto(`${ORIGINE_SITE_AVEC_ALIAS}/en/english/`);
+    await expect(page).toHaveURL(`${ORIGINE_SITE_AVEC_ALIAS}/en/`);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+    await expect(page.getByRole('main')).toContainText('Welcome to this demo site');
+  });
 });
 
 test.describe('navigateur en français, après un choix explicite de l’anglais', () => {
