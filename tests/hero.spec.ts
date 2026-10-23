@@ -36,6 +36,31 @@ async function verifierLignesDansLOrdre(principal: Locator, lignes: string[]) {
   }
 }
 
+/* Texte affiché à l'écran par un élément, dans l'ordre de rendu : ses nœuds texte et le
+   contenu généré de ses pseudo-éléments ::before et ::after (sans le texte alternatif d'un
+   `content: "…" / "…"`), éléments masqués exclus. Indépendant du balisage choisi. */
+async function texteAffiche(element: Locator): Promise<string> {
+  const texte = await element.evaluate((racine) => {
+    const genere = (el: Element, pseudo: '::before' | '::after') => {
+      const contenu = getComputedStyle(el, pseudo).content;
+      const chaines = contenu.split(/\s+\/\s+/)[0].match(/"(?:[^"\\]|\\.)*"/g) ?? [];
+      return chaines.map((chaine) => JSON.parse(chaine) as string).join('');
+    };
+    const parcourir = (el: Element): string => {
+      const style = getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden') return '';
+      let resultat = genere(el, '::before');
+      for (const enfant of Array.from(el.childNodes)) {
+        if (enfant.nodeType === Node.TEXT_NODE) resultat += enfant.textContent ?? '';
+        else if (enfant.nodeType === Node.ELEMENT_NODE) resultat += parcourir(enfant as Element);
+      }
+      return resultat + genere(el, '::after');
+    };
+    return parcourir(racine);
+  });
+  return texte.replace(/\s+/g, ' ').trim();
+}
+
 test('sur l’accueil français, le titre principal commence par le nom de l’auteur du site', async ({ page }) => {
   await page.goto('/fr/');
   const titrePrincipal = page.getByRole('main').getByRole('heading', { level: 1 });
@@ -89,6 +114,16 @@ test('sur l’accueil français, le premier bouton du hero, « Voir les projets 
   await expect(premierBouton).toHaveAttribute('href', '/fr/projets/');
   await premierBouton.click();
   await expect(page).toHaveURL('/fr/projets/');
+});
+
+test('sur l’accueil français, le premier bouton du hero affiche une flèche « → » après « Voir les projets », que les lecteurs d’écran ne lisent pas', async ({ page }) => {
+  await page.goto('/fr/');
+  /* Le hero précède le texte d'accueil : son premier bouton est le premier lien du contenu
+     principal. À l'écran, la flèche suit le libellé ; le nom accessible du lien reste le seul
+     libellé. */
+  const premierBouton = page.getByRole('main').getByRole('link').first();
+  await expect(premierBouton).toHaveAccessibleName('Voir les projets');
+  expect(await texteAffiche(premierBouton)).toMatch(/^Voir les projets ?→$/);
 });
 
 test('sur l’accueil français, le second bouton du hero, placé après « Voir les projets », est « Contact » et mène à #contact', async ({ page }) => {
