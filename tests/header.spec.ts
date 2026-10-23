@@ -69,7 +69,7 @@ test('en anglais, la navigation de l’en-tête liste les entrées du menu princ
   const liens = page.locator('header nav').getByRole('link');
   await expect(liens).toHaveText(['Home', 'Projects', 'Contact']);
   await expect(liens.nth(0)).toHaveAttribute('href', '/en/');
-  await expect(liens.nth(1)).toHaveAttribute('href', '/en/projets/');
+  await expect(liens.nth(1)).toHaveAttribute('href', '/en/projects/');
   await expect(liens.nth(2)).toHaveAttribute('href', '/en/#contact');
 });
 
@@ -90,7 +90,7 @@ test('sur la page Projets française, le lien « EN » de l’en-tête mène à 
   await page.goto('/fr/projets/');
   const lienEN = page.locator('header').getByRole('link', { name: 'EN', exact: true });
   await expect(lienEN).toBeVisible();
-  await expect(lienEN).toHaveAttribute('href', '/en/projets/');
+  await expect(lienEN).toHaveAttribute('href', '/en/projects/');
 });
 
 test('sur une page française sans traduction, le lien « EN » de l’en-tête mène à l’accueil anglais', async ({ page }) => {
@@ -110,7 +110,7 @@ test('sur une page française, le lien « EN » de l’en-tête annonce sa langu
 });
 
 test('sur la page Projets anglaise, le lien « FR » de l’en-tête mène à la page Projets française', async ({ page }) => {
-  await page.goto('/en/projets/');
+  await page.goto('/en/projects/');
   const lienFR = page.locator('header').getByRole('link', { name: 'FR', exact: true });
   await expect(lienFR).toBeVisible();
   await expect(lienFR).toHaveAttribute('href', '/fr/projets/');
