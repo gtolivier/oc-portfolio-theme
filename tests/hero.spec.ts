@@ -221,6 +221,33 @@ test('sur l’accueil français, le premier bouton du hero affiche une flèche �
   expect(await texteAffiche(premierBouton)).toMatch(/^Voir les projets ?→$/);
 });
 
+test('sur l’accueil français, le premier bouton du hero, « Voir les projets », est plein : texte encre sur fond papier, en IBM Plex Mono demi-grasse (600), non souligné', async ({ page }) => {
+  await page.goto('/fr/');
+  /* Le hero précède le texte d'accueil : son premier bouton est le premier lien du contenu
+     principal. Référence de design : encre #013549, papier #E3DFCC. Ce sont les styles
+     calculés du lien qui décident de son allure. */
+  const premierBouton = page.getByRole('main').getByRole('link').first();
+  await expect(premierBouton).toHaveText(/^\s*Voir les projets/);
+  const { famille, graisse, couleur } = await styleDuTexte(premierBouton);
+  const { fond, soulignement } = await premierBouton.evaluate((lien) => {
+    const style = getComputedStyle(lien);
+    return { fond: style.backgroundColor, soulignement: style.textDecorationLine };
+  });
+  expect({
+    famille,
+    graisse,
+    couleur: composantesDeCouleur(couleur),
+    fond: composantesDeCouleur(fond),
+    soulignement,
+  }, 'style du premier bouton').toEqual({
+    famille: 'IBM Plex Mono',
+    graisse: '600',
+    couleur: { rouge: 1, vert: 53, bleu: 73, opacite: 1 },
+    fond: { rouge: 227, vert: 223, bleu: 204, opacite: 1 },
+    soulignement: 'none',
+  });
+});
+
 test('sur l’accueil français, le second bouton du hero, placé après « Voir les projets », est « Contact » et mène à #contact', async ({ page }) => {
   await page.goto('/fr/');
   /* Les boutons viennent du front matter de exampleSite/content/_index.md, blocs
