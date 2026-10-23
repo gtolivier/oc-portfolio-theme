@@ -114,15 +114,6 @@ export const SITE_A_UN_HERO_SANS_AUTEUR = siteDeTest('hero-sans-auteur');
    destinations valides. */
 export const SITE_A_UN_BOUTON_A_URL_ET_PAGE_REF = siteDeTest('bouton-url-et-page-ref');
 
-/* Le site d'exemple est servi à la racine de son origine : ce site-ci est
-   servi sous /portfolio/ et remplace l'accueil français par celui de
-   tests/fixtures/url-avec-sous-chemin/content, dont l'unique bouton déclare
-   une url qui contient déjà ce sous-chemin,
-   url = '/portfolio/fr/page-longue/'. */
-export const SITE_SOUS_PORTFOLIO_A_UNE_URL_AVEC_SOUS_CHEMIN = siteDeTest('url-avec-sous-chemin', {
-  sousChemin: '/portfolio/',
-});
-
 /* Hugo ne lit une configuration que dans un fichier : celle qui monte le
    contenu de la fixture est écrite dans un dossier temporaire à part, pour
    ne pas finir parmi les pages construites, et supprimée après la
