@@ -1,4 +1,8 @@
 {{ define "main" }}
-  <h1>{{ site.Params.author }}</h1>
+  <h1>{{ site.Params.author }}
+    {{- with .Params.hero.title }}
+    <span style="display: block">{{ . }}</span>
+    {{- end }}
+  </h1>
   {{ .Content }}
 {{ end }}

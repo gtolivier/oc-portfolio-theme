@@ -1,5 +1,8 @@
 +++
 title = 'Accueil'
+
+[params.hero]
+title = 'Horloger indépendant'
 +++
 
 Bienvenue sur ce site de démonstration : un texte d’exemple, fictif, pour le
