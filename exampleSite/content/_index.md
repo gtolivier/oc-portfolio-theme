@@ -3,6 +3,11 @@ title = 'Accueil'
 
 [params.hero]
 title = 'Horloger indépendant'
+tagline = [
+  'Montres mécaniques sur mesure — 20 ans d’atelier.',
+  'Conception, réparation et entretien',
+  'de pendules et de montres anciennes.',
+]
 +++
 
 Bienvenue sur ce site de démonstration : un texte d’exemple, fictif, pour le

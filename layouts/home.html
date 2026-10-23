@@ -4,5 +4,10 @@
     <span class="hero-title">{{ . }}</span>
     {{- end }}
   </h1>
+  {{- with .Params.hero.tagline }}
+  <p class="hero-tagline">
+    {{- range . }}{{ . }}<br>{{ end -}}
+  </p>
+  {{- end }}
   {{ .Content }}
 {{ end }}
