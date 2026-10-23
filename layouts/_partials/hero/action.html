@@ -12,7 +12,7 @@
     {{- errorf "hero : le pageRef %q ne correspond à aucune page" $ref }}
   {{- end }}
 {{- end }}
-{{- if not $href }}{{ errorf "hero : un bouton n’a ni champ url ni champ pageRef" }}{{ end }}
+{{- if and (not $href) (not .pageRef) }}{{ errorf "hero : un bouton n’a ni champ url ni champ pageRef" }}{{ end }}
 {{- if not .label }}{{ errorf "hero : un bouton n’a pas de champ label" }}{{ end -}}
 <a href="{{ $href }}">{{ .label }}</a>
 {{- /* Rien après le lien, pas même le saut de ligne final du fichier :
