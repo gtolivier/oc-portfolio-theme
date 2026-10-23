@@ -150,6 +150,8 @@ h1 {
   }
 }
 
+/* Focus clavier : le même accent qu'au survol, mais hors de la requête
+   (hover: hover), car on navigue aussi au clavier sur un téléphone. */
 .hero-actions a:nth-child(2):focus-visible {
   color: var(--color-accent);
   border-color: var(--color-accent);
