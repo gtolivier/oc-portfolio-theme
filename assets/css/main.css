@@ -115,6 +115,13 @@ h1 {
   color: var(--color-accent);
 }
 
+/* Cible d'au moins 24 × 24 px (WCAG 2.5.8) : un lien en ligne ignore le
+   padding vertical dans sa hauteur, d'où inline-block. */
+.hero-actions a {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+}
+
 /* Premier bouton : plein. */
 .hero-actions a:first-child {
   font-family: var(--font-mono);
