@@ -1,0 +1,20 @@
+{{- $href := .url }}
+{{- /* « //hôte/… » désigne un autre site : seule une url relative à la
+     racine de ce site reçoit le préfixe de la baseURL. */}}
+{{- if and .url (hasPrefix .url "/") (not (hasPrefix .url "//")) }}
+  {{- $href = relURL (strings.TrimPrefix "/" .url) }}
+{{- end }}
+{{- with .pageRef }}
+  {{- $ref := . }}
+  {{- with site.GetPage $ref }}
+    {{- $href = .RelPermalink }}
+  {{- else }}
+    {{- errorf "hero : le pageRef %q ne correspond à aucune page" $ref }}
+  {{- end }}
+{{- end }}
+{{- if and .url .pageRef }}{{ errorf "hero : un bouton déclare à la fois un champ url et un champ pageRef, il n’en faut qu’un" }}{{ end }}
+{{- if and (not .url) (not .pageRef) }}{{ errorf "hero : un bouton n’a ni champ url ni champ pageRef" }}{{ end }}
+{{- if not .label }}{{ errorf "hero : un bouton n’a pas de champ label" }}{{ end -}}
+<a href="{{ $href }}">{{ .label }}</a>
+{{- /* Rien après le lien, pas même le saut de ligne final du fichier :
+     l'espacement entre les boutons appartient à la page qui les place. */ -}}

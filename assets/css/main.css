@@ -43,13 +43,27 @@
   --color-accent-dark: #1E6C58;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
   --font-sans: 'IBM Plex Sans', Helvetica, sans-serif;
-  --sticky-header-clearance: 6rem;
+  /* Hauteur minimale de l'en-tête collant ; le hero la retranche de la
+     fenêtre pour la remplir juste sous l'en-tête. */
+  --header-height: 4rem;
+  /* Espace laissé au-dessus d'une cible d'ancre pour que l'en-tête collant
+     ne la masque pas : sa hauteur, plus un peu d'air. */
+  --sticky-header-clearance: calc(var(--header-height) + 2rem);
   /* Plans d'empilement : l'en-tête collant passe au-dessus du contenu
      positionné, le lien d'évitement au-dessus de l'en-tête. */
   --layer-sticky-header: 5;
   --layer-skip-link: 10;
   /* Taille minimale d'une cible de pointage (WCAG 2.5.8). */
   --min-target-size: 24px;
+  /* Marge latérale commune à l'en-tête et au contenu, pour aligner
+     le contenu sur le logo. */
+  --page-gutter: 16px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --page-gutter: 48px;
+  }
 }
 
 html {
@@ -72,6 +86,87 @@ h1 {
   font-weight: 700;
 }
 
+/* flow-root retient les marges du titre et des paragraphes dans la section :
+   sans lui, elles débordent et la section ne remplit plus la fenêtre. */
+.hero {
+  display: flow-root;
+  min-height: calc(100vh - var(--header-height));
+  padding-inline: var(--page-gutter);
+}
+
+.hero h1 {
+  text-transform: uppercase;
+  font-size: clamp(44px, 6.4vw, 100px);
+  /* Un mot plus long que la ligne se coupe au lieu de déborder. */
+  overflow-wrap: anywhere;
+}
+
+.hero-title {
+  display: block;
+  font-size: clamp(22px, 3vw, 46px);
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.hero-tagline {
+  color: rgb(var(--color-paper-channels) / 0.88);
+}
+
+.hero-stack {
+  font-family: var(--font-mono);
+  color: var(--color-accent);
+}
+
+/* Cible de taille minimale (WCAG 2.5.8) : un lien en ligne ignore la
+   hauteur minimale et le padding vertical, d'où inline-block. */
+.hero-actions a {
+  display: inline-block;
+  min-width: var(--min-target-size);
+  min-height: var(--min-target-size);
+  padding: 0.5rem 1rem;
+}
+
+/* Premier bouton : plein. */
+.hero-actions a:first-child {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--color-ink);
+  background-color: var(--color-paper);
+  text-decoration: none;
+}
+
+/* Second bouton : en contour. */
+.hero-actions a:nth-child(2) {
+  color: var(--color-paper);
+  background-color: transparent;
+  border: 1px solid rgb(var(--color-paper-channels) / 0.5);
+  text-decoration: none;
+}
+
+/* Survol réservé aux appareils qui survolent : sur écran tactile, il
+   resterait affiché après un toucher. */
+@media (hover: hover) {
+  .hero-actions a:nth-child(2):hover {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+}
+
+/* Focus clavier : le même accent qu'au survol, mais hors de la requête
+   (hover: hover), car on navigue aussi au clavier sur un téléphone. */
+.hero-actions a:nth-child(2):focus-visible {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* La flèche est décorative : la seconde déclaration lui donne un texte
+   alternatif vide pour les lecteurs d'écran ; la première sert de repli
+   aux navigateurs qui ne connaissent pas cette syntaxe. */
+.hero-actions a:first-child::after {
+  content: " →";
+  content: " →" / "";
+}
+
 .skip-link {
   position: absolute;
   top: 0;
@@ -89,15 +184,10 @@ h1 {
 .site-header {
   position: sticky;
   top: 0;
+  min-height: var(--header-height);
   z-index: var(--layer-sticky-header);
   background: var(--color-ink);
-  padding-inline: 16px;
-}
-
-@media (min-width: 768px) {
-  .site-header {
-    padding-inline: 48px;
-  }
+  padding-inline: var(--page-gutter);
 }
 
 .site-header a {

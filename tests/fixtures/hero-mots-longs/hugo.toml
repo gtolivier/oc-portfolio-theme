@@ -1,0 +1,7 @@
+# Configuration ajoutée à exampleSite/hugo.toml par le test d'un hero aux
+# mots longs : l'auteur du site est remplacé, en plus de l'accueil français,
+# remplacé par content/_index.md.
+[params]
+  # Autrice fictive dont le nom de famille composé forme un mot de plus de
+  # 12 caractères : « Vanderkerckhove-Fictive ».
+  author = 'Apolline Vanderkerckhove-Fictive'

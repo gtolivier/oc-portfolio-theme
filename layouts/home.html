@@ -1,3 +1,28 @@
 {{ define "main" }}
+  {{- with .Params.hero }}
+  {{- if not site.Params.author }}{{ errorf "hero : le paramètre author du site n’est pas renseigné" }}{{ end }}
+  <section class="hero" aria-labelledby="hero-heading">
+    <h1 id="hero-heading">{{ site.Params.author }}
+      {{- with .title }}
+      <span class="hero-title">{{ . }}</span>
+      {{- end }}
+    </h1>
+    {{- with .tagline }}
+    <p class="hero-tagline">
+      {{- range $index, $line := . }}{{ if $index }}<br>{{ end }}{{ $line }}{{ end -}}
+    </p>
+    {{- end }}
+    {{- with .stack }}
+    <p class="hero-stack">{{ delimit . " · " }}</p>
+    {{- end }}
+    {{- with .actions }}
+    <p class="hero-actions">
+      {{- range . }}
+      {{ partial "hero/action.html" . }}
+      {{- end }}
+    </p>
+    {{- end }}
+  </section>
+  {{- end }}
   {{ .Content }}
 {{ end }}
