@@ -357,6 +357,33 @@ test('sur l’accueil français, le hero occupe au moins toute la hauteur de la 
     .toBeGreaterThanOrEqual(hauteurFenetre - 1);
 });
 
+test('le contenu du hero est aligné sur le logo de l’en-tête : à 16 px du bord gauche sur téléphone, à 48 px sur ordinateur', async ({ page, isMobile }) => {
+  await page.goto('/fr/');
+  /* Référence de design : 16 px de marge latérale sur téléphone, 48 px sur ordinateur, comme
+     l'en-tête. Le logo est le lien de l'en-tête nommé d'après le titre du site. */
+  const logo = page.locator('header').getByRole('link', { name: 'Exemple', exact: true });
+  await expect(logo).toBeVisible();
+  const bordGaucheAttendu = isMobile ? 16 : 48;
+  expect((await logo.boundingBox())!.x, 'bord gauche du logo').toBeCloseTo(bordGaucheAttendu, 0);
+  /* Les éléments du hero : nom et titre professionnel dans le h1, accroche, stack et premier
+     bouton (le premier lien du contenu principal, le hero précédant le texte d'accueil). */
+  const principal = page.getByRole('main');
+  const titrePrincipal = principal.getByRole('heading', { level: 1 });
+  const elements = {
+    'nom de l’auteur (h1)': titrePrincipal,
+    'titre professionnel': titrePrincipal.getByText('Horloger indépendant', { exact: true }),
+    'accroche': principal.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
+    'stack': principal.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
+    'premier bouton': principal.getByRole('link').first(),
+  };
+  await expect(elements['premier bouton']).toHaveText(/^\s*Voir les projets/);
+  for (const [nom, element] of Object.entries(elements)) {
+    await expect(element, nom).toBeVisible();
+    const boite = (await element.boundingBox())!;
+    expect.soft(boite.x, `bord gauche : ${nom}`).toBeCloseTo(bordGaucheAttendu, 0);
+  }
+});
+
 test('servi sous /portfolio/, le premier bouton du hero de l’accueil français, « Voir les projets », mène à /portfolio/fr/projets/', async ({ page }) => {
   await page.goto('http://localhost:1315/portfolio/fr/');
   /* Le hero précède le texte d'accueil : son premier bouton est le premier lien du contenu
