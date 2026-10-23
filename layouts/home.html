@@ -1,18 +1,19 @@
 {{ define "main" }}
+  {{- with .Params.hero }}
   <h1>{{ site.Params.author }}
-    {{- with .Params.hero.title }}
+    {{- with .title }}
     <span class="hero-title">{{ . }}</span>
     {{- end }}
   </h1>
-  {{- with .Params.hero.tagline }}
+  {{- with .tagline }}
   <p class="hero-tagline">
     {{- range . }}{{ . }}<br>{{ end -}}
   </p>
   {{- end }}
-  {{- with .Params.hero.stack }}
+  {{- with .stack }}
   <p class="hero-stack">{{ delimit . " · " }}</p>
   {{- end }}
-  {{- with .Params.hero.actions }}
+  {{- with .actions }}
   <p class="hero-actions">
     {{- range . }}
     {{- $href := .url }}
@@ -20,6 +21,7 @@
     <a href="{{ $href }}">{{ .label }}</a>
     {{- end }}
   </p>
+  {{- end }}
   {{- end }}
   {{ .Content }}
 {{ end }}
