@@ -683,6 +683,17 @@ test.describe('erreurs de contenu du hero : échec de la construction', () => {
     expect(construction.erreurs).toContain('/page-fictive-introuvable');
   });
 
+  test('un accueil dont un bouton du hero déclare un pageRef vers une page qui n’existe pas fait échouer la construction du site avec le seul message qui cite ce pageRef, sans le message « ni champ url ni champ pageRef »', () => {
+    /* Le premier bouton de tests/fixtures/page-ref-introuvable/content/_index.md déclare bien
+       un pageRef, '/page-fictive-introuvable'. Lui reprocher en plus de n'avoir ni url ni
+       pageRef égarerait la personne qui construit le site : seul le message qui nomme ce
+       pageRef doit apparaître, quelle que soit la phrase choisie pour l'autre. */
+    const construction = tenterDeConstruireUnSite(SITE_A_UN_PAGE_REF_INTROUVABLE);
+    expect(construction.reussie, 'la construction du site devrait échouer').toBe(false);
+    expect(construction.erreurs).toContain('/page-fictive-introuvable');
+    expect(construction.erreurs).not.toMatch(/\bni\s+(?:de\s+)?(?:champ\s+)?url\b/i);
+  });
+
   test('un accueil dont un bouton du hero n’a pas de label fait échouer la construction du site, avec un message d’erreur qui cite le champ label manquant', () => {
     /* Le second bouton de tests/fixtures/bouton-sans-libelle/content/_index.md a une
        url = '#contact' valide mais pas de label. Plutôt qu'un lien vide, la personne qui
