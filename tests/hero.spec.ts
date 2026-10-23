@@ -20,3 +20,11 @@ test('sur l’accueil français, le titre principal affiche, à la ligne sous le
   const boiteTitreProfessionnel = await titreProfessionnel.boundingBox();
   expect(boiteTitreProfessionnel!.y - boiteTitrePrincipal!.y).toBeGreaterThanOrEqual(boiteTitreProfessionnel!.height / 2);
 });
+
+test('sur l’accueil anglais, le titre sous le nom de l’auteur est le titre professionnel anglais', async ({ page }) => {
+  await page.goto('/en/');
+  const titrePrincipal = page.getByRole('main').getByRole('heading', { level: 1 });
+  /* Le titre vient du front matter de exampleSite/content/_index.en.md, bloc [params.hero], clé title.
+     Texte du DOM, tel qu'écrit dans le front matter : l'affichage en majuscules relève du CSS. */
+  await expect(titrePrincipal.getByText('Independent clockmaker', { exact: true })).toBeVisible();
+});
