@@ -1,6 +1,7 @@
 {{ define "main" }}
   {{- with .Params.hero }}
-  <h1>{{ site.Params.author }}
+  <section class="hero" aria-labelledby="hero-heading">
+  <h1 id="hero-heading">{{ site.Params.author }}
     {{- with .title }}
     <span class="hero-title">{{ . }}</span>
     {{- end }}
@@ -22,6 +23,7 @@
     {{- end }}
   </p>
   {{- end }}
+  </section>
   {{- end }}
   {{ .Content }}
 {{ end }}

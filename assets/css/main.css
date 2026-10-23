@@ -44,6 +44,7 @@
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
   --font-sans: 'IBM Plex Sans', Helvetica, sans-serif;
   --sticky-header-clearance: 6rem;
+  --header-height: 4rem;
   /* Plans d'empilement : l'en-tête collant passe au-dessus du contenu
      positionné, le lien d'évitement au-dessus de l'en-tête. */
   --layer-sticky-header: 5;
@@ -70,6 +71,11 @@ body {
 h1 {
   font-family: var(--font-mono);
   font-weight: 700;
+}
+
+.hero {
+  display: flow-root;
+  min-height: calc(100vh - var(--header-height));
 }
 
 .hero-title {
@@ -101,6 +107,7 @@ h1 {
 .site-header {
   position: sticky;
   top: 0;
+  min-height: var(--header-height);
   z-index: var(--layer-sticky-header);
   background: var(--color-ink);
   padding-inline: 16px;
