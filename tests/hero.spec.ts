@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import {
   SITE_A_UN_AUTRE_HERO,
+  SITE_A_UN_BOUTON_SANS_LIBELLE,
   SITE_A_UN_PAGE_REF_INTROUVABLE,
   SITE_SANS_HERO,
   construireUnSite,
@@ -578,4 +579,14 @@ test('un accueil dont un bouton du hero déclare un pageRef vers une page qui n�
   const construction = tenterDeConstruireUnSite(SITE_A_UN_PAGE_REF_INTROUVABLE);
   expect(construction.reussie, 'la construction du site devrait échouer').toBe(false);
   expect(construction.erreurs).toContain('/page-fictive-introuvable');
+});
+
+test('un accueil dont un bouton du hero n’a pas de label fait échouer la construction du site, avec un message d’erreur qui cite le champ label manquant', () => {
+  /* Le second bouton de tests/fixtures/bouton-sans-libelle/content/_index.md a une
+     url = '#contact' valide mais pas de label. Plutôt qu'un lien vide, la personne qui
+     construit le site doit obtenir un échec dont le message nomme le champ label du front
+     matter, quelle que soit la phrase choisie. */
+  const construction = tenterDeConstruireUnSite(SITE_A_UN_BOUTON_SANS_LIBELLE);
+  expect(construction.reussie, 'la construction du site devrait échouer').toBe(false);
+  expect(construction.erreurs).toMatch(/\blabel\b/);
 });

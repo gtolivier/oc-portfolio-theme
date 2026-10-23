@@ -66,6 +66,17 @@ export const SITE_A_UN_PAGE_REF_INTROUVABLE: SiteConstruit = {
   prefixeDuDossier: 'oc-portfolio-page-ref-introuvable-',
 };
 
+/* L'accueil français du site d'exemple a un hero dont chaque bouton a un
+   libellé : ce site-ci remplace cet accueil par celui de
+   tests/fixtures/bouton-sans-libelle/content, dont le second bouton a une
+   url = '#contact' valide mais pas de label (voir
+   tests/fixtures/bouton-sans-libelle/hugo.toml). */
+export const SITE_A_UN_BOUTON_SANS_LIBELLE: SiteConstruit = {
+  surcharge: '../tests/fixtures/bouton-sans-libelle/hugo.toml',
+  origine: 'http://localhost:1321',
+  prefixeDuDossier: 'oc-portfolio-bouton-sans-libelle-',
+};
+
 const racineDuTheme = path.resolve(__dirname, '..', '..');
 
 function argumentsDeConstruction(site: SiteConstruit, destination: string): string[] {
