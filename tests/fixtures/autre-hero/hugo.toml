@@ -1,0 +1,17 @@
+# Configuration ajoutée à exampleSite/hugo.toml par les tests d'un hero
+# différent de celui du site d'exemple : l'auteur du site est remplacé, et
+# l'accueil français du site d'exemple (content/_index.md) est remplacé par
+# celui de tests/fixtures/autre-hero/content, qui a son propre bloc
+# [params.hero]. Le reste du contenu du site d'exemple est monté tel quel.
+# Les chemins sont relatifs à exampleSite/, dossier source de la
+# construction.
+[params]
+  # Autrice fictive, distincte de celle du site d'exemple.
+  author = 'Camille Fictive'
+[[module.mounts]]
+  source = 'content'
+  target = 'content'
+  files = ['! /_index.md']
+[[module.mounts]]
+  source = '../tests/fixtures/autre-hero/content'
+  target = 'content'

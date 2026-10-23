@@ -45,6 +45,16 @@ export const SITE_SANS_HERO: SiteConstruit = {
   prefixeDuDossier: 'oc-portfolio-sans-hero-',
 };
 
+/* Le site d'exemple a pour auteur « Jean Exemple » et un hero d'horloger :
+   ce site-ci change d'autrice et remplace l'accueil français par celui de
+   tests/fixtures/autre-hero/content, au hero complet mais différent (voir
+   tests/fixtures/autre-hero/hugo.toml). */
+export const SITE_A_UN_AUTRE_HERO: SiteConstruit = {
+  surcharge: '../tests/fixtures/autre-hero/hugo.toml',
+  origine: 'http://localhost:1319',
+  prefixeDuDossier: 'oc-portfolio-autre-hero-',
+};
+
 const racineDuTheme =path.resolve(__dirname, '..', '..');
 
 export function construireUnSite(site: SiteConstruit): string {

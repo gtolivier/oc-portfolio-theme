@@ -1,5 +1,5 @@
 import { test, expect, type Locator } from '@playwright/test';
-import { SITE_SANS_HERO, construireUnSite, servirUnSite, supprimerUnSite } from './helpers/site-construit';
+import { SITE_A_UN_AUTRE_HERO, SITE_SANS_HERO, construireUnSite, servirUnSite, supprimerUnSite } from './helpers/site-construit';
 
 /* Vérifie que chaque ligne de l'accroche est visible dans la zone, et que chacune commence
    sous la précédente, dans l'ordre donné. */
@@ -217,5 +217,25 @@ test.describe('accueil sans hero', () => {
     await expect(principal.getByText('Jean Exemple')).toHaveCount(0);
     await expect(principal.getByRole('link')).toHaveCount(0);
     await expect(principal).toHaveText(texteDeLAccueil);
+  });
+});
+
+test.describe('accueil d’un autre site, au hero différent', () => {
+  let dossierDuSite: string;
+  test.beforeAll(() => {
+    dossierDuSite = construireUnSite(SITE_A_UN_AUTRE_HERO);
+  });
+  test.afterAll(() => {
+    supprimerUnSite(dossierDuSite);
+  });
+
+  test('le titre principal affiche le nom de l’autrice de ce site, puis le titre de son hero, et non ceux du site d’exemple', async ({ page, context }) => {
+    await servirUnSite(context, SITE_A_UN_AUTRE_HERO, dossierDuSite);
+    await page.goto(`${SITE_A_UN_AUTRE_HERO.origine}/fr/`);
+    const titrePrincipal = page.getByRole('main').getByRole('heading', { level: 1 });
+    /* L'autrice vient de params.author (tests/fixtures/autre-hero/hugo.toml), le titre du
+       bloc [params.hero], clé title, de tests/fixtures/autre-hero/content/_index.md.
+       Texte du DOM, tel qu'écrit dans la configuration : l'affichage en majuscules relève du CSS. */
+    await expect(titrePrincipal).toHaveText(/^\s*Camille Fictive\s*Relieuse d’art\s*$/);
   });
 });
