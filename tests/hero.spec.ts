@@ -91,6 +91,19 @@ test('sur l’accueil français, le premier bouton du hero, « Voir les projets 
   await expect(page).toHaveURL('/fr/projets/');
 });
 
+test('sur l’accueil français, le second bouton du hero, placé après « Voir les projets », est « Contact » et mène à #contact', async ({ page }) => {
+  await page.goto('/fr/');
+  /* Les boutons viennent du front matter de exampleSite/content/_index.md, blocs
+     [[params.hero.actions]] ; le second a url = '#contact'. L'en-tête a aussi un lien
+     « Contact » : on cherche dans le contenu principal, où le hero précède le texte d'accueil,
+     donc son second bouton est le deuxième lien. */
+  const liens = page.getByRole('main').getByRole('link');
+  await expect(liens.first()).toHaveText('Voir les projets');
+  const secondBouton = liens.nth(1);
+  await expect(secondBouton).toHaveText('Contact');
+  await expect(secondBouton).toHaveAttribute('href', '#contact');
+});
+
 test('servi sous /portfolio/, le premier bouton du hero de l’accueil français, « Voir les projets », mène à /portfolio/fr/projets/', async ({ page }) => {
   await page.goto('http://localhost:1315/portfolio/fr/');
   /* Le hero précède le texte d'accueil : son premier bouton est le premier lien du contenu
