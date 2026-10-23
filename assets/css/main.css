@@ -78,6 +78,14 @@ h1 {
 .hero {
   display: flow-root;
   min-height: calc(100vh - var(--header-height));
+  padding-inline: 16px;
+}
+
+/* Même marge latérale que l'en-tête, pour aligner le contenu sur le logo. */
+@media (min-width: 768px) {
+  .hero {
+    padding-inline: 48px;
+  }
 }
 
 .hero h1 {
