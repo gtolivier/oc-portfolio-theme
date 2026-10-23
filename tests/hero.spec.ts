@@ -140,6 +140,28 @@ test('sur l’accueil français, le second bouton du hero, placé après « Voir
   await expect(secondBouton).toHaveAttribute('href', '#contact');
 });
 
+test('sur l’accueil français, le hero occupe au moins toute la hauteur de la fenêtre sous l’en-tête : il commence juste sous l’en-tête et finit au bas de la fenêtre, ou plus bas', async ({ page }) => {
+  await page.goto('/fr/');
+  /* Le hero est la région du contenu principal nommée par son titre principal (une section
+     étiquetée par le h1) : elle regroupe le titre, l'accroche, la stack et les boutons. */
+  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  await expect(hero.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.')).toBeVisible();
+  await expect(hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true })).toBeVisible();
+  await expect(hero.getByRole('link', { name: 'Voir les projets' })).toBeVisible();
+  await expect(hero.getByRole('link', { name: 'Contact' })).toBeVisible();
+  /* Référence de design : hauteur minimale « 100vh moins la hauteur de l'en-tête ». Page en
+     haut de défilement : le haut du hero touche le bas de l'en-tête, son bas atteint au moins
+     le bas de la fenêtre. */
+  const hauteurFenetre = page.viewportSize()!.height;
+  const boiteEntete = (await page.locator('header').boundingBox())!;
+  const boiteHero = (await hero.boundingBox())!;
+  const basEntete = boiteEntete.y + boiteEntete.height;
+  expect(Math.abs(boiteHero.y - basEntete), 'le haut du hero est juste sous l’en-tête').toBeLessThanOrEqual(1);
+  expect(boiteHero.y + boiteHero.height, 'le bas du hero est au bas de la fenêtre, ou plus bas')
+    .toBeGreaterThanOrEqual(hauteurFenetre - 1);
+});
+
 test('servi sous /portfolio/, le premier bouton du hero de l’accueil français, « Voir les projets », mène à /portfolio/fr/projets/', async ({ page }) => {
   await page.goto('http://localhost:1315/portfolio/fr/');
   /* Le hero précède le texte d'accueil : son premier bouton est le premier lien du contenu
