@@ -11,11 +11,11 @@ tagline = [
 stack = ['Laiton', 'Acier', 'Rubis', 'Émail']
 
 [[params.hero.actions]]
-text = 'Voir les projets'
+label = 'Voir les projets'
 pageRef = '/projets'
 
 [[params.hero.actions]]
-text = 'Contact'
+label = 'Contact'
 url = '#contact'
 +++
 
