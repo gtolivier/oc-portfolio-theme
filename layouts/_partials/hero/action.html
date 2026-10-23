@@ -13,4 +13,7 @@
   {{- end }}
 {{- end }}
 {{- if not $href }}{{ errorf "hero : un bouton n’a ni champ url ni champ pageRef" }}{{ end }}
-{{- return $href }}
+{{- if not .label }}{{ errorf "hero : un bouton n’a pas de champ label" }}{{ end -}}
+<a href="{{ $href }}">{{ .label }}</a>
+{{- /* Rien après le lien, pas même le saut de ligne final du fichier :
+     l'espacement entre les boutons appartient à la page qui les place. */ -}}

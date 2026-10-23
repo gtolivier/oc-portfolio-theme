@@ -18,9 +18,7 @@
     {{- with .actions }}
     <p class="hero-actions">
       {{- range . }}
-      {{- $href := partial "hero/action-href.html" . }}
-      {{- if not .label }}{{ errorf "hero : un bouton n’a pas de champ label" }}{{ end }}
-      <a href="{{ $href }}">{{ .label }}</a>
+      {{ partial "hero/action.html" . }}
       {{- end }}
     </p>
     {{- end }}
