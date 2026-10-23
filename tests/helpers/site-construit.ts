@@ -1,19 +1,40 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { BrowserContext } from '@playwright/test';
 
-/* Un site construit pour un test : le site d'exemple, augmenté d'une
-   configuration de surcharge, construit dans un dossier temporaire et servi
-   aux navigateurs par interception des requêtes sous sa propre origine,
-   sans serveur Hugo de plus. */
+/* Un site construit pour un test : le site d'exemple, modifié par une
+   fixture, construit dans un dossier temporaire et servi aux navigateurs par
+   interception des requêtes sous sa propre origine, sans serveur Hugo de
+   plus. */
 
 export interface SiteConstruit {
-  /* Chemin relatif à exampleSite/, dossier source de la construction. */
-  surcharge: string;
+  /* Dossier tests/fixtures/<nom>/ de la fixture. Son hugo.toml, s'il
+     existe, s'ajoute à exampleSite/hugo.toml ; son dossier content/, s'il
+     existe, est monté devant le contenu du site d'exemple, dont il remplace
+     les pages de même chemin. */
+  fixture: string;
   origine: string;
   prefixeDuDossier: string;
+}
+
+const racineDuTheme = path.resolve(__dirname, '..', '..');
+
+/* Chaque site de test a sa propre origine, donc son propre port : les ports
+   sont attribués dans l'ordre de déclaration des sites ci-dessous, à la
+   suite de ceux des serveurs Hugo de playwright.config.ts (1314 et 1315). */
+const PREMIER_PORT_DES_SITES_DE_TEST = 1316;
+let nombreDeSitesDeTest = 0;
+
+/* Le site d'exemple, modifié par la fixture tests/fixtures/<nom>/. */
+function siteDeTest(nomDeLaFixture: string): SiteConstruit {
+  const port = PREMIER_PORT_DES_SITES_DE_TEST + nombreDeSitesDeTest++;
+  return {
+    fixture: path.join(racineDuTheme, 'tests', 'fixtures', nomDeLaFixture),
+    origine: `http://localhost:${port}`,
+    prefixeDuDossier: `oc-portfolio-${nomDeLaFixture}-`,
+  };
 }
 
 /* Le site d'exemple n'a aucune page avec des alias : ce site-ci lui ajoute
@@ -21,69 +42,74 @@ export interface SiteConstruit {
    une ancienne adresse, et sa traduction française), et donne à son
    accueil anglais l'ancienne adresse /en/english/ (voir
    tests/fixtures/alias/hugo.toml). */
-export const SITE_AVEC_ALIAS: SiteConstruit = {
-  surcharge: '../tests/fixtures/alias/hugo.toml',
-  origine: 'http://localhost:1316',
-  prefixeDuDossier: 'oc-portfolio-alias-',
-};
+export const SITE_AVEC_ALIAS = siteDeTest('alias');
 
 /* Le site d'exemple est bilingue : ce site-ci est le même, construit en
    français seulement (tests/fixtures/une-langue/hugo.toml désactive
    l'anglais). */
-export const SITE_D_UNE_LANGUE: SiteConstruit = {
-  surcharge: '../tests/fixtures/une-langue/hugo.toml',
-  origine: 'http://localhost:1317',
-  prefixeDuDossier: 'oc-portfolio-une-langue-',
-};
+export const SITE_D_UNE_LANGUE = siteDeTest('une-langue');
 
 /* L'accueil français du site d'exemple a un hero : ce site-ci remplace cet
    accueil par celui de tests/fixtures/sans-hero/content, sans bloc
-   [params.hero] (voir tests/fixtures/sans-hero/hugo.toml). */
-export const SITE_SANS_HERO: SiteConstruit = {
-  surcharge: '../tests/fixtures/sans-hero/hugo.toml',
-  origine: 'http://localhost:1318',
-  prefixeDuDossier: 'oc-portfolio-sans-hero-',
-};
+   [params.hero]. */
+export const SITE_SANS_HERO = siteDeTest('sans-hero');
 
 /* Le site d'exemple a pour auteur « Jean Exemple » et un hero d'horloger :
    ce site-ci change d'autrice et remplace l'accueil français par celui de
    tests/fixtures/autre-hero/content, au hero complet mais différent (voir
    tests/fixtures/autre-hero/hugo.toml). */
-export const SITE_A_UN_AUTRE_HERO: SiteConstruit = {
-  surcharge: '../tests/fixtures/autre-hero/hugo.toml',
-  origine: 'http://localhost:1319',
-  prefixeDuDossier: 'oc-portfolio-autre-hero-',
-};
+export const SITE_A_UN_AUTRE_HERO = siteDeTest('autre-hero');
 
 /* L'accueil français du site d'exemple a un hero dont chaque bouton mène à
    une page existante ou à une adresse : ce site-ci remplace cet accueil par
    celui de tests/fixtures/page-ref-introuvable/content, dont un bouton
-   déclare pageRef = '/page-fictive-introuvable', page qui n'existe pas
-   (voir tests/fixtures/page-ref-introuvable/hugo.toml). */
-export const SITE_A_UN_PAGE_REF_INTROUVABLE: SiteConstruit = {
-  surcharge: '../tests/fixtures/page-ref-introuvable/hugo.toml',
-  origine: 'http://localhost:1320',
-  prefixeDuDossier: 'oc-portfolio-page-ref-introuvable-',
-};
+   déclare pageRef = '/page-fictive-introuvable', page qui n'existe pas. */
+export const SITE_A_UN_PAGE_REF_INTROUVABLE = siteDeTest('page-ref-introuvable');
 
 /* L'accueil français du site d'exemple a un hero dont chaque bouton a un
    libellé : ce site-ci remplace cet accueil par celui de
    tests/fixtures/bouton-sans-libelle/content, dont le second bouton a une
-   url = '#contact' valide mais pas de label (voir
-   tests/fixtures/bouton-sans-libelle/hugo.toml). */
-export const SITE_A_UN_BOUTON_SANS_LIBELLE: SiteConstruit = {
-  surcharge: '../tests/fixtures/bouton-sans-libelle/hugo.toml',
-  origine: 'http://localhost:1321',
-  prefixeDuDossier: 'oc-portfolio-bouton-sans-libelle-',
-};
+   url = '#contact' valide mais pas de label. */
+export const SITE_A_UN_BOUTON_SANS_LIBELLE = siteDeTest('bouton-sans-libelle');
 
-const racineDuTheme = path.resolve(__dirname, '..', '..');
+/* Hugo ne lit une configuration que dans un fichier : celle qui monte le
+   contenu de la fixture est écrite dans un dossier temporaire à part, pour
+   ne pas finir parmi les pages construites, et supprimée après la
+   construction. */
+function avecLaConfigurationDuSite<T>(site: SiteConstruit, construire: (configuration: string) => T): T {
+  const dossier = mkdtempSync(path.join(tmpdir(), `${site.prefixeDuDossier}configuration-`));
+  try {
+    const fichiers = ['hugo.toml', ...montageDuContenuDeLaFixture(site, dossier), ...configurationDeLaFixture(site)];
+    return construire(fichiers.join(','));
+  } finally {
+    rmSync(dossier, { recursive: true, force: true });
+  }
+}
 
-function argumentsDeConstruction(site: SiteConstruit, destination: string): string[] {
+function montageDuContenuDeLaFixture(site: SiteConstruit, dossierDeLaConfiguration: string): string[] {
+  const contenu = path.join(site.fixture, 'content');
+  if (!existsSync(contenu)) return [];
+  const fichier = path.join(dossierDeLaConfiguration, 'contenu.json');
+  /* Le premier montage l'emporte sur le second pour une page de même
+     chemin. */
+  const montages = [
+    { source: contenu, target: 'content' },
+    { source: 'content', target: 'content' },
+  ];
+  writeFileSync(fichier, JSON.stringify({ module: { mounts: montages } }));
+  return [fichier];
+}
+
+function configurationDeLaFixture(site: SiteConstruit): string[] {
+  const fichier = path.join(site.fixture, 'hugo.toml');
+  return existsSync(fichier) ? [fichier] : [];
+}
+
+function argumentsDeConstruction(site: SiteConstruit, configuration: string, destination: string): string[] {
   return [
     'build',
     '--source', 'exampleSite',
-    '--config', `hugo.toml,${site.surcharge}`,
+    '--config', configuration,
     '--environment', 'production',
     '--baseURL', `${site.origine}/`,
     '--destination', destination,
@@ -97,10 +123,12 @@ function creerLeDossierDeConstruction(site: SiteConstruit): string {
 
 export function construireUnSite(site: SiteConstruit): string {
   const destination = creerLeDossierDeConstruction(site);
-  execFileSync('hugo', [...argumentsDeConstruction(site, destination), '--quiet'], {
-    cwd: racineDuTheme,
-    stdio: 'pipe',
-  });
+  avecLaConfigurationDuSite(site, (configuration) =>
+    execFileSync('hugo', [...argumentsDeConstruction(site, configuration, destination), '--quiet'], {
+      cwd: racineDuTheme,
+      stdio: 'pipe',
+    }),
+  );
   return destination;
 }
 
@@ -118,10 +146,12 @@ export interface TentativeDeConstruction {
 export function tenterDeConstruireUnSite(site: SiteConstruit): TentativeDeConstruction {
   const destination = creerLeDossierDeConstruction(site);
   try {
-    const resultat = spawnSync('hugo', [...argumentsDeConstruction(site, destination), '--logLevel', 'error'], {
-      cwd: racineDuTheme,
-      encoding: 'utf8',
-    });
+    const resultat = avecLaConfigurationDuSite(site, (configuration) =>
+      spawnSync('hugo', [...argumentsDeConstruction(site, configuration, destination), '--logLevel', 'error'], {
+        cwd: racineDuTheme,
+        encoding: 'utf8',
+      }),
+    );
     if (resultat.error) throw resultat.error;
     return { reussie: resultat.status === 0, erreurs: resultat.stderr };
   } finally {
