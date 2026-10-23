@@ -97,6 +97,8 @@ h1 {
 .hero h1 {
   text-transform: uppercase;
   font-size: clamp(44px, 6.4vw, 100px);
+  /* Un mot plus long que la ligne se coupe au lieu de déborder. */
+  overflow-wrap: anywhere;
 }
 
 .hero-title {
