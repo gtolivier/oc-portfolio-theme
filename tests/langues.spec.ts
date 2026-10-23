@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { SITE_AVEC_ALIAS, construireUnSite, servirUnSite, supprimerUnSite } from './helpers/site-construit';
+import { SITE_AVEC_ALIAS, construireUnSite, servirUnSite, supprimerUnDossier } from './helpers/site-construit';
 
 /* L'option locale de Playwright ne fixe qu'une langue : la liste complète
    des langues préférées est définie avant que les scripts de la page ne s'exécutent. */
@@ -101,7 +101,7 @@ test.describe('navigateur en français, ancienne adresse d’une page anglaise',
     dossierDuSite = construireUnSite(SITE_AVEC_ALIAS);
   });
   test.afterAll(() => {
-    supprimerUnSite(dossierDuSite);
+    supprimerUnDossier(dossierDuSite);
   });
 
   test('un navigateur en français qui ouvre l’ancienne adresse (alias) d’une page anglaise arrive sur cette page anglaise, pas sur sa traduction française', async ({ page, context }) => {

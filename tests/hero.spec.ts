@@ -12,7 +12,7 @@ import {
   SITE_SOUS_PORTFOLIO_A_UNE_URL_DEPUIS_LA_RACINE,
   construireUnSite,
   servirUnSite,
-  supprimerUnSite,
+  supprimerUnDossier,
   tenterDeConstruireUnSite,
 } from './helpers/site-construit';
 import { tabulerJusqua } from './helpers/clavier';
@@ -541,7 +541,7 @@ test.describe('accueil sans hero', () => {
     dossierDuSite = construireUnSite(SITE_SANS_HERO);
   });
   test.afterAll(() => {
-    supprimerUnSite(dossierDuSite);
+    supprimerUnDossier(dossierDuSite);
   });
 
   test('un accueil dont le front matter n’a pas de bloc [params.hero] n’affiche ni titre principal, ni accroche, ni boutons d’action : seulement l’en-tête et son contenu', async ({ page, context }) => {
@@ -568,7 +568,7 @@ test.describe('accueil d’un autre site, au hero différent', () => {
     dossierDuSite = construireUnSite(SITE_A_UN_AUTRE_HERO);
   });
   test.afterAll(() => {
-    supprimerUnSite(dossierDuSite);
+    supprimerUnDossier(dossierDuSite);
   });
 
   test('le titre principal affiche le nom de l’autrice de ce site, puis le titre de son hero, et non ceux du site d’exemple', async ({ page, context }) => {
@@ -614,7 +614,7 @@ test.describe('accueil d’un site au hero aux mots longs, sur un téléphone de
   /* Le test.skip ci-dessus saute le beforeAll, mais pas l'afterAll : sur ordinateur, aucun
      site n'a été construit. */
   test.afterAll(() => {
-    if (dossierDuSite) supprimerUnSite(dossierDuSite);
+    if (dossierDuSite) supprimerUnDossier(dossierDuSite);
   });
 
   test('sur un téléphone de 320 px de large, un hero dont le nom de l’auteur et le titre contiennent chacun un mot de 12 caractères ou plus tient dans la largeur : pas de défilement horizontal, h1 entièrement visible', async ({ page, context }) => {
@@ -651,7 +651,7 @@ test.describe('accueil d’un site servi sous /portfolio/, au bouton déclaré p
     dossierDuSite = construireUnSite(SITE_SOUS_PORTFOLIO_A_UNE_URL_DEPUIS_LA_RACINE);
   });
   test.afterAll(() => {
-    supprimerUnSite(dossierDuSite);
+    supprimerUnDossier(dossierDuSite);
   });
 
   test('servi sous /portfolio/, un bouton du hero déclaré par url = « /fr/page-longue/ », relative à la racine du site, mène à /portfolio/fr/page-longue/', async ({ page, context }) => {
@@ -676,7 +676,7 @@ test.describe('accueil d’un site servi sous /portfolio/, au bouton déclaré p
     dossierDuSite = construireUnSite(SITE_SOUS_PORTFOLIO_A_UNE_URL_COMMENCANT_PAR_LE_SOUS_CHEMIN);
   });
   test.afterAll(() => {
-    supprimerUnSite(dossierDuSite);
+    supprimerUnDossier(dossierDuSite);
   });
 
   test('servi sous /portfolio/, un bouton du hero déclaré par url = « /portfolio/galerie/ », relative à la racine du site et commençant par le même mot que le sous-chemin, reçoit tout de même le préfixe : il mène à /portfolio/portfolio/galerie/', async ({ page, context }) => {

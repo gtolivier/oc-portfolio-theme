@@ -177,7 +177,7 @@ function creerLeDossierDeConstruction(site: SiteConstruit): string {
 }
 
 /* Le dossier construit est rendu au test, qui le supprime avec
-   supprimerUnSite ; si la construction échoue, il est supprimé ici, avant
+   supprimerUnDossier ; si la construction échoue, il est supprimé ici, avant
    que l'erreur ne remonte. */
 export function construireUnSite(site: SiteConstruit): string {
   const destination = creerLeDossierDeConstruction(site);
@@ -189,7 +189,7 @@ export function construireUnSite(site: SiteConstruit): string {
       }),
     );
   } catch (erreur) {
-    supprimerUnSite(destination);
+    supprimerUnDossier(destination);
     throw erreur;
   }
   return destination;
@@ -234,15 +234,11 @@ export function tenterDeConstruireUnSite(site: SiteConstruit): TentativeDeConstr
     }
     return { reussie: resultat.status === 0, erreurs: resultat.stderr };
   } finally {
-    supprimerUnSite(destination);
+    supprimerUnDossier(destination);
   }
 }
 
-export function supprimerUnSite(dossier: string): void {
-  supprimerUnDossier(dossier);
-}
-
-function supprimerUnDossier(dossier: string): void {
+export function supprimerUnDossier(dossier: string): void {
   rmSync(dossier, { recursive: true, force: true });
 }
 

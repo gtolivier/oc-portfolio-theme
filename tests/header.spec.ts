@@ -1,5 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import { SITE_D_UNE_LANGUE, construireUnSite, servirUnSite, supprimerUnSite } from './helpers/site-construit';
+import { SITE_D_UNE_LANGUE, construireUnSite, servirUnSite, supprimerUnDossier } from './helpers/site-construit';
 
 /* Le logo est le lien de l'en-tête nommé d'après le titre du site. */
 function logoDeLEnTete(page: Page): Locator {
@@ -148,7 +148,7 @@ test.describe('site d’une seule langue', () => {
     dossierDuSite = construireUnSite(SITE_D_UNE_LANGUE);
   });
   test.afterAll(() => {
-    supprimerUnSite(dossierDuSite);
+    supprimerUnDossier(dossierDuSite);
   });
 
   test('sur un site d’une seule langue, l’en-tête n’affiche pas de sélecteur de langue', async ({ page, context }) => {
