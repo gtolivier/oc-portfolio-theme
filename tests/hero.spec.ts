@@ -600,19 +600,24 @@ test.describe('accueil d’un autre site, au hero différent', () => {
 test.describe('accueil d’un site au hero aux mots longs, sur un téléphone de 320 px de large', () => {
   /* 320 px : la plus petite largeur de téléphone courante (WCAG 1.4.10, refusion). */
   test.use({ viewport: { width: 320, height: 640 } });
+  /* Seuls les projets mobile-chrome et mobile-safari émulent un téléphone (fenêtre
+     d'affichage mobile, écran tactile, agent utilisateur de téléphone) : sur les projets
+     d'ordinateur, une fenêtre de 320 px ne serait qu'un navigateur de bureau rétréci.
+     La condition lit l'option isMobile du projet plutôt que la fixture isMobile, propre à
+     chaque test : sans fixture de test, Playwright l'évalue avant le beforeAll, et les
+     projets d'ordinateur ne construisent pas le site pour rien. */
+  test.skip(() => !test.info().project.use.isMobile, 'comportement propre au téléphone');
   let dossierDuSite: string;
   test.beforeAll(() => {
     dossierDuSite = construireUnSite(SITE_A_UN_HERO_AUX_MOTS_LONGS);
   });
+  /* Le test.skip ci-dessus saute le beforeAll, mais pas l'afterAll : sur ordinateur, aucun
+     site n'a été construit. */
   test.afterAll(() => {
-    supprimerUnSite(dossierDuSite);
+    if (dossierDuSite) supprimerUnSite(dossierDuSite);
   });
 
-  test('sur un téléphone de 320 px de large, un hero dont le nom de l’auteur et le titre contiennent chacun un mot de 12 caractères ou plus tient dans la largeur : pas de défilement horizontal, h1 entièrement visible', async ({ page, context, isMobile }) => {
-    /* Seuls les projets mobile-chrome et mobile-safari émulent un téléphone (fenêtre
-       d'affichage mobile, écran tactile, agent utilisateur de téléphone) : sur les projets
-       d'ordinateur, une fenêtre de 320 px ne serait qu'un navigateur de bureau rétréci. */
-    test.skip(!isMobile, 'comportement propre au téléphone');
+  test('sur un téléphone de 320 px de large, un hero dont le nom de l’auteur et le titre contiennent chacun un mot de 12 caractères ou plus tient dans la largeur : pas de défilement horizontal, h1 entièrement visible', async ({ page, context }) => {
     await servirUnSite(context, SITE_A_UN_HERO_AUX_MOTS_LONGS, dossierDuSite);
     await page.goto(`${SITE_A_UN_HERO_AUX_MOTS_LONGS.origine}/fr/`);
     const largeur = page.viewportSize()!.width;

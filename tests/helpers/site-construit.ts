@@ -133,7 +133,7 @@ function avecLaConfigurationDuSite<T>(site: SiteConstruit, construire: (configur
     const fichiers = ['hugo.toml', ...montageDuContenuDeLaFixture(site, dossier), ...configurationDeLaFixture(site)];
     return construire(fichiers.join(','));
   } finally {
-    rmSync(dossier, { recursive: true, force: true });
+    supprimerUnDossier(dossier);
   }
 }
 
@@ -172,14 +172,22 @@ function creerLeDossierDeConstruction(site: SiteConstruit): string {
   return mkdtempSync(path.join(tmpdir(), site.prefixeDuDossier));
 }
 
+/* Le dossier construit est rendu au test, qui le supprime avec
+   supprimerUnSite ; si la construction échoue, il est supprimé ici, avant
+   que l'erreur ne remonte. */
 export function construireUnSite(site: SiteConstruit): string {
   const destination = creerLeDossierDeConstruction(site);
-  avecLaConfigurationDuSite(site, (configuration) =>
-    execFileSync('hugo', [...argumentsDeConstruction(site, configuration, destination), '--quiet'], {
-      cwd: racineDuTheme,
-      stdio: 'pipe',
-    }),
-  );
+  try {
+    avecLaConfigurationDuSite(site, (configuration) =>
+      execFileSync('hugo', [...argumentsDeConstruction(site, configuration, destination), '--quiet'], {
+        cwd: racineDuTheme,
+        stdio: 'pipe',
+      }),
+    );
+  } catch (erreur) {
+    supprimerUnSite(destination);
+    throw erreur;
+  }
   return destination;
 }
 
@@ -227,6 +235,10 @@ export function tenterDeConstruireUnSite(site: SiteConstruit): TentativeDeConstr
 }
 
 export function supprimerUnSite(dossier: string): void {
+  supprimerUnDossier(dossier);
+}
+
+function supprimerUnDossier(dossier: string): void {
   rmSync(dossier, { recursive: true, force: true });
 }
 
