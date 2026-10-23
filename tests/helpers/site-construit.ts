@@ -72,6 +72,12 @@ export const SITE_A_UN_PAGE_REF_INTROUVABLE = siteDeTest('page-ref-introuvable')
    url = '#contact' valide mais pas de label. */
 export const SITE_A_UN_BOUTON_SANS_LIBELLE = siteDeTest('bouton-sans-libelle');
 
+/* L'accueil français du site d'exemple a un hero dont chaque bouton a une
+   destination : ce site-ci remplace cet accueil par celui de
+   tests/fixtures/bouton-sans-destination/content, dont le second bouton a un
+   label mais ni url ni pageRef. */
+export const SITE_A_UN_BOUTON_SANS_DESTINATION = siteDeTest('bouton-sans-destination');
+
 /* Hugo ne lit une configuration que dans un fichier : celle qui monte le
    contenu de la fixture est écrite dans un dossier temporaire à part, pour
    ne pas finir parmi les pages construites, et supprimée après la

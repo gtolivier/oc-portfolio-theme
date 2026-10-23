@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import {
   SITE_A_UN_AUTRE_HERO,
+  SITE_A_UN_BOUTON_SANS_DESTINATION,
   SITE_A_UN_BOUTON_SANS_LIBELLE,
   SITE_A_UN_PAGE_REF_INTROUVABLE,
   SITE_SANS_HERO,
@@ -603,5 +604,16 @@ test.describe('erreurs de contenu du hero : échec de la construction', () => {
     const construction = tenterDeConstruireUnSite(SITE_A_UN_BOUTON_SANS_LIBELLE);
     expect(construction.reussie, 'la construction du site devrait échouer').toBe(false);
     expect(construction.erreurs).toMatch(/\blabel\b/);
+  });
+
+  test('un accueil dont un bouton du hero n’a ni url ni pageRef fait échouer la construction du site, avec un message d’erreur qui cite ces deux champs', () => {
+    /* Le second bouton de tests/fixtures/bouton-sans-destination/content/_index.md a un label
+       mais ni url ni pageRef. Plutôt qu'un lien qui ne mène nulle part, la personne qui
+       construit le site doit obtenir un échec dont le message nomme les champs url et pageRef
+       du front matter, quelle que soit la phrase choisie. */
+    const construction = tenterDeConstruireUnSite(SITE_A_UN_BOUTON_SANS_DESTINATION);
+    expect(construction.reussie, 'la construction du site devrait échouer').toBe(false);
+    expect(construction.erreurs).toMatch(/\burl\b/);
+    expect(construction.erreurs).toMatch(/\bpageRef\b/);
   });
 });
