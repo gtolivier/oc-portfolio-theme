@@ -70,6 +70,15 @@ test('sur l’accueil français, le hero affiche l’accroche, une ligne par ent
   await verifierLignesDansLOrdre(principal, lignes);
 });
 
+test('sur l’accueil français, le hero affiche la stack sur une ligne, entrées séparées par « · »', async ({ page }) => {
+  await page.goto('/fr/');
+  const principal = page.getByRole('main');
+  /* La stack vient du front matter de exampleSite/content/_index.md, bloc [params.hero],
+     clé stack (une liste de chaînes : 'Laiton', 'Acier', 'Rubis', 'Émail'). Le gabarit les
+     joint en un seul élément, séparées par un point médian entouré d'espaces. */
+  await expect(principal.getByText('Laiton · Acier · Rubis · Émail', { exact: true })).toBeVisible();
+});
+
 test('sur l’accueil anglais, le titre sous le nom de l’auteur est le titre professionnel anglais', async ({ page }) => {
   await page.goto('/en/');
   const titrePrincipal = page.getByRole('main').getByRole('heading', { level: 1 });
