@@ -251,7 +251,8 @@ export async function servirUnSite(context: BrowserContext, site: SiteConstruit,
     const chemin = `/${adresse.slice(site.sousChemin.length)}`;
     let fichier = path.join(dossier, chemin);
     if (existsSync(fichier) && statSync(fichier).isDirectory()) fichier = path.join(fichier, 'index.html');
-    if (!fichier.startsWith(dossier) || !existsSync(fichier)) {
+    /* Le séparateur écarte un dossier voisin dont le nom commence comme celui du site. */
+    if (!fichier.startsWith(dossier + path.sep) || !existsSync(fichier)) {
       await route.fulfill({ status: 404, body: 'Not found' });
       return;
     }
