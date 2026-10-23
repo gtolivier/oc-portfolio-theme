@@ -72,6 +72,10 @@ h1 {
   font-weight: 700;
 }
 
+.hero-title {
+  display: block;
+}
+
 .skip-link {
   position: absolute;
   top: 0;
