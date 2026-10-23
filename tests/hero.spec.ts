@@ -4,6 +4,7 @@ import {
   SITE_A_UN_BOUTON_SANS_DESTINATION,
   SITE_A_UN_BOUTON_SANS_LIBELLE,
   SITE_A_UN_HERO_AUX_MOTS_LONGS,
+  SITE_A_UN_HERO_SANS_AUTEUR,
   SITE_A_UN_PAGE_REF_INTROUVABLE,
   SITE_SANS_HERO,
   SITE_SOUS_PORTFOLIO_A_UNE_URL_DEPUIS_LA_RACINE,
@@ -702,5 +703,15 @@ test.describe('erreurs de contenu du hero : échec de la construction', () => {
     expect(construction.reussie, 'la construction du site devrait échouer').toBe(false);
     expect(construction.erreurs).toMatch(/\burl\b/);
     expect(construction.erreurs).toMatch(/\bpageRef\b/);
+  });
+
+  test('un site dont l’accueil déclare un hero sans que params.author soit renseigné fait échouer la construction du site, avec un message d’erreur qui cite le champ author', () => {
+    /* tests/fixtures/hero-sans-auteur/hugo.toml vide le params.author du site d'exemple, et
+       son accueil déclare un hero complet. Plutôt qu'un titre de hero sans nom, la personne
+       qui construit le site doit obtenir un échec dont le message nomme le paramètre author
+       de la configuration, quelle que soit la phrase choisie. */
+    const construction = tenterDeConstruireUnSite(SITE_A_UN_HERO_SANS_AUTEUR);
+    expect(construction.reussie, 'la construction du site devrait échouer').toBe(false);
+    expect(construction.erreurs).toMatch(/\bauthor\b/);
   });
 });

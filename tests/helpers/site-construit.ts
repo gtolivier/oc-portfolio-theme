@@ -101,6 +101,12 @@ export const SITE_SOUS_PORTFOLIO_A_UNE_URL_DEPUIS_LA_RACINE = siteDeTest('url-de
    (voir tests/fixtures/hero-mots-longs/hugo.toml). */
 export const SITE_A_UN_HERO_AUX_MOTS_LONGS = siteDeTest('hero-mots-longs');
 
+/* Le site d'exemple a pour auteur « Jean Exemple », que le titre du hero
+   affiche : ce site-ci vide params.author (voir
+   tests/fixtures/hero-sans-auteur/hugo.toml) et remplace l'accueil français
+   par celui de tests/fixtures/hero-sans-auteur/content, au hero complet. */
+export const SITE_A_UN_HERO_SANS_AUTEUR = siteDeTest('hero-sans-auteur');
+
 /* Hugo ne lit une configuration que dans un fichier : celle qui monte le
    contenu de la fixture est écrite dans un dossier temporaire à part, pour
    ne pas finir parmi les pages construites, et supprimée après la
