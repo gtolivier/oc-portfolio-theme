@@ -8,6 +8,7 @@ import {
   SITE_A_UN_HERO_SANS_AUTEUR,
   SITE_A_UN_PAGE_REF_INTROUVABLE,
   SITE_SANS_HERO,
+  SITE_SOUS_PORTFOLIO_A_UNE_URL_COMMENCANT_PAR_LE_SOUS_CHEMIN,
   SITE_SOUS_PORTFOLIO_A_UNE_URL_DEPUIS_LA_RACINE,
   construireUnSite,
   servirUnSite,
@@ -666,6 +667,32 @@ test.describe('accueil d’un site servi sous /portfolio/, au bouton déclaré p
     await bouton.click();
     await expect(page).toHaveURL(`${site.origine}/portfolio/fr/page-longue/`);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Page longue');
+  });
+});
+
+test.describe('accueil d’un site servi sous /portfolio/, au bouton déclaré par une url depuis la racine du site qui commence par le même mot que le sous-chemin', () => {
+  let dossierDuSite: string;
+  test.beforeAll(() => {
+    dossierDuSite = construireUnSite(SITE_SOUS_PORTFOLIO_A_UNE_URL_COMMENCANT_PAR_LE_SOUS_CHEMIN);
+  });
+  test.afterAll(() => {
+    supprimerUnSite(dossierDuSite);
+  });
+
+  test('servi sous /portfolio/, un bouton du hero déclaré par url = « /portfolio/galerie/ », relative à la racine du site et commençant par le même mot que le sous-chemin, reçoit tout de même le préfixe : il mène à /portfolio/portfolio/galerie/', async ({ page, context }) => {
+    const site = SITE_SOUS_PORTFOLIO_A_UNE_URL_COMMENCANT_PAR_LE_SOUS_CHEMIN;
+    await servirUnSite(context, site, dossierDuSite);
+    await page.goto(`${site.origine}/portfolio/fr/`);
+    /* L'unique bouton de tests/fixtures/url-commencant-par-le-sous-chemin/content/_index.md
+       déclare url = '/portfolio/galerie/' : la page galerie.md de la même fixture, publiée à
+       /portfolio/galerie/ depuis la racine du site. Servi sous /portfolio/, ce site la publie
+       à /portfolio/portfolio/galerie/. */
+    const bouton = premierBoutonDuHero(page);
+    await expect(bouton).toHaveText('Voir la galerie');
+    await expect(bouton).toHaveAttribute('href', '/portfolio/portfolio/galerie/');
+    await bouton.click();
+    await expect(page).toHaveURL(`${site.origine}/portfolio/portfolio/galerie/`);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Galerie');
   });
 });
 

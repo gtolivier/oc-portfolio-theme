@@ -94,6 +94,19 @@ export const SITE_SOUS_PORTFOLIO_A_UNE_URL_DEPUIS_LA_RACINE = siteDeTest('url-de
   sousChemin: '/portfolio/',
 });
 
+/* Le site d'exemple est servi à la racine de son origine : ce site-ci est
+   servi sous /portfolio/ et ajoute les pages de
+   tests/fixtures/url-commencant-par-le-sous-chemin/content : un accueil
+   français dont l'unique bouton déclare une url relative à la racine du
+   site qui commence par le même mot que le sous-chemin,
+   url = '/portfolio/galerie/', et la page qu'elle désigne, publiée à cette
+   adresse depuis la racine du site (url = '/portfolio/galerie/' dans son
+   front matter). */
+export const SITE_SOUS_PORTFOLIO_A_UNE_URL_COMMENCANT_PAR_LE_SOUS_CHEMIN = siteDeTest(
+  'url-commencant-par-le-sous-chemin',
+  { sousChemin: '/portfolio/' },
+);
+
 /* Le nom de l'auteur du site d'exemple et le titre de son hero sont faits de
    mots courts : ce site-ci change d'autrice, au nom de famille composé de
    plus de 12 caractères, et remplace l'accueil français par celui de
