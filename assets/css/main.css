@@ -73,6 +73,8 @@ h1 {
   font-weight: 700;
 }
 
+/* flow-root retient les marges du titre et des paragraphes dans la section :
+   sans lui, elles débordent et la section ne remplit plus la fenêtre. */
 .hero {
   display: flow-root;
   min-height: calc(100vh - var(--header-height));

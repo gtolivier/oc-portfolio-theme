@@ -1,28 +1,28 @@
 {{ define "main" }}
   {{- with .Params.hero }}
   <section class="hero" aria-labelledby="hero-heading">
-  <h1 id="hero-heading">{{ site.Params.author }}
-    {{- with .title }}
-    <span class="hero-title">{{ . }}</span>
+    <h1 id="hero-heading">{{ site.Params.author }}
+      {{- with .title }}
+      <span class="hero-title">{{ . }}</span>
+      {{- end }}
+    </h1>
+    {{- with .tagline }}
+    <p class="hero-tagline">
+      {{- range . }}{{ . }}<br>{{ end -}}
+    </p>
     {{- end }}
-  </h1>
-  {{- with .tagline }}
-  <p class="hero-tagline">
-    {{- range . }}{{ . }}<br>{{ end -}}
-  </p>
-  {{- end }}
-  {{- with .stack }}
-  <p class="hero-stack">{{ delimit . " · " }}</p>
-  {{- end }}
-  {{- with .actions }}
-  <p class="hero-actions">
-    {{- range . }}
-    {{- $href := .url }}
-    {{- with .pageRef }}{{ with site.GetPage . }}{{ $href = .RelPermalink }}{{ end }}{{ end }}
-    <a href="{{ $href }}">{{ .label }}</a>
+    {{- with .stack }}
+    <p class="hero-stack">{{ delimit . " · " }}</p>
     {{- end }}
-  </p>
-  {{- end }}
+    {{- with .actions }}
+    <p class="hero-actions">
+      {{- range . }}
+      {{- $href := .url }}
+      {{- with .pageRef }}{{ with site.GetPage . }}{{ $href = .RelPermalink }}{{ end }}{{ end }}
+      <a href="{{ $href }}">{{ .label }}</a>
+      {{- end }}
+    </p>
+    {{- end }}
   </section>
   {{- end }}
   {{ .Content }}
