@@ -88,6 +88,8 @@ h1 {
 .hero-title {
   display: block;
   font-size: clamp(22px, 3vw, 46px);
+  font-weight: 600;
+  color: var(--color-accent);
 }
 
 /* La flèche est décorative : la seconde déclaration lui donne un texte
