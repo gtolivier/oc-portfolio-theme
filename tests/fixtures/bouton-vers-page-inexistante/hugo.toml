@@ -1,0 +1,14 @@
+# Configuration ajoutée à exampleSite/hugo.toml par le test d'un bouton du
+# hero qui mène à une page inexistante : l'accueil français du site d'exemple
+# (content/_index.md) est remplacé par celui de
+# tests/fixtures/bouton-vers-page-inexistante/content, dont un bouton déclare
+# un pageRef vers une page qu'aucun contenu ne définit. Le reste du contenu
+# du site d'exemple est monté tel quel. Les chemins sont relatifs à
+# exampleSite/, dossier source de la construction.
+[[module.mounts]]
+  source = 'content'
+  target = 'content'
+  files = ['! /_index.md']
+[[module.mounts]]
+  source = '../tests/fixtures/bouton-vers-page-inexistante/content'
+  target = 'content'
