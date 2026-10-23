@@ -76,6 +76,11 @@ h1 {
   display: block;
 }
 
+.hero-actions a:first-child::after {
+  content: " →";
+  content: " →" / "";
+}
+
 .skip-link {
   position: absolute;
   top: 0;
