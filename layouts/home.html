@@ -18,6 +18,9 @@
     <p class="hero-actions">
       {{- range . }}
       {{- $href := .url }}
+      {{- if and .url (hasPrefix .url "/") (not (hasPrefix .url "//")) }}
+        {{- $href = printf "%s%s" (strings.TrimSuffix "/" (urls.Parse site.BaseURL).Path) .url }}
+      {{- end }}
       {{- with .pageRef }}
         {{- $ref := . }}
         {{- with site.GetPage $ref }}
