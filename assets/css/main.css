@@ -51,6 +51,15 @@
   --layer-skip-link: 10;
   /* Taille minimale d'une cible de pointage (WCAG 2.5.8). */
   --min-target-size: 24px;
+  /* Marge latérale commune à l'en-tête et au contenu, pour aligner
+     le contenu sur le logo. */
+  --page-gutter: 16px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --page-gutter: 48px;
+  }
 }
 
 html {
@@ -78,14 +87,7 @@ h1 {
 .hero {
   display: flow-root;
   min-height: calc(100vh - var(--header-height));
-  padding-inline: 16px;
-}
-
-/* Même marge latérale que l'en-tête, pour aligner le contenu sur le logo. */
-@media (min-width: 768px) {
-  .hero {
-    padding-inline: 48px;
-  }
+  padding-inline: var(--page-gutter);
 }
 
 .hero h1 {
@@ -162,13 +164,7 @@ h1 {
   min-height: var(--header-height);
   z-index: var(--layer-sticky-header);
   background: var(--color-ink);
-  padding-inline: 16px;
-}
-
-@media (min-width: 768px) {
-  .site-header {
-    padding-inline: 48px;
-  }
+  padding-inline: var(--page-gutter);
 }
 
 .site-header a {
