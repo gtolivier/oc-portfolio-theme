@@ -91,8 +91,12 @@ function argumentsDeConstruction(site: SiteConstruit, destination: string): stri
   ];
 }
 
+function creerLeDossierDeConstruction(site: SiteConstruit): string {
+  return mkdtempSync(path.join(tmpdir(), site.prefixeDuDossier));
+}
+
 export function construireUnSite(site: SiteConstruit): string {
-  const destination = mkdtempSync(path.join(tmpdir(), site.prefixeDuDossier));
+  const destination = creerLeDossierDeConstruction(site);
   execFileSync('hugo', [...argumentsDeConstruction(site, destination), '--quiet'], {
     cwd: racineDuTheme,
     stdio: 'pipe',
@@ -112,7 +116,7 @@ export interface TentativeDeConstruction {
    --logLevel error n'en garde que les erreurs. Le dossier temporaire est
    supprimé dans tous les cas. */
 export function tenterDeConstruireUnSite(site: SiteConstruit): TentativeDeConstruction {
-  const destination = mkdtempSync(path.join(tmpdir(), site.prefixeDuDossier));
+  const destination = creerLeDossierDeConstruction(site);
   try {
     const resultat = spawnSync('hugo', [...argumentsDeConstruction(site, destination), '--logLevel', 'error'], {
       cwd: racineDuTheme,

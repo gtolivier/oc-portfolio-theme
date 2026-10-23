@@ -140,16 +140,20 @@ function secondBoutonDuHero(page: Page): Locator {
   return page.getByRole('main').getByRole('link').nth(1);
 }
 
+function titrePrincipalDuContenu(page: Page): Locator {
+  return page.getByRole('main').getByRole('heading', { level: 1 });
+}
+
 test('sur l’accueil français, le titre principal commence par le nom de l’auteur du site', async ({ page }) => {
   await page.goto('/fr/');
-  const titrePrincipal = page.getByRole('main').getByRole('heading', { level: 1 });
+  const titrePrincipal = titrePrincipalDuContenu(page);
   /* Le texte du DOM, tel qu'écrit dans params.author : l'affichage en majuscules relève du CSS. */
   await expect(titrePrincipal).toHaveText(/^\s*Jean Exemple/);
 });
 
 test('sur l’accueil français, le titre principal affiche, à la ligne sous le nom de l’auteur, son titre professionnel', async ({ page }) => {
   await page.goto('/fr/');
-  const titrePrincipal = page.getByRole('main').getByRole('heading', { level: 1 });
+  const titrePrincipal = titrePrincipalDuContenu(page);
   /* Le titre vient du front matter de exampleSite/content/_index.md, bloc [params.hero], clé title.
      Texte du DOM, tel qu'écrit dans le front matter : l'affichage en majuscules relève du CSS. */
   await expect(titrePrincipal).toHaveText(/^\s*Jean Exemple\s*Horloger indépendant\s*$/);
@@ -163,7 +167,7 @@ test('sur l’accueil français, le titre principal affiche, à la ligne sous le
 
 test('sur l’accueil français, le nom de l’auteur s’affiche en majuscules, en IBM Plex Mono grasse (700), couleur papier, plus grand que le titre professionnel qui le suit', async ({ page }) => {
   await page.goto('/fr/');
-  const titrePrincipal = page.getByRole('main').getByRole('heading', { level: 1 });
+  const titrePrincipal = titrePrincipalDuContenu(page);
   await expect(titrePrincipal).toHaveText(/^\s*Jean Exemple/);
   const titreProfessionnel = titrePrincipal.getByText('Horloger indépendant', { exact: true });
   await expect(titreProfessionnel).toBeVisible();
@@ -183,7 +187,7 @@ test('sur l’accueil français, le nom de l’auteur s’affiche en majuscules,
 
 test('sur l’accueil français, le titre professionnel qui suit le nom de l’auteur s’affiche en majuscules, en IBM Plex Mono demi-grasse (600), couleur accent', async ({ page }) => {
   await page.goto('/fr/');
-  const titrePrincipal = page.getByRole('main').getByRole('heading', { level: 1 });
+  const titrePrincipal = titrePrincipalDuContenu(page);
   /* Le titre est un élément à part dans le h1 : ce sont ses propres styles calculés qui
      décident de son allure. Référence de design : accent #2A888D. */
   const titreProfessionnel = titrePrincipal.getByText('Horloger indépendant', { exact: true });
@@ -471,7 +475,7 @@ test('servi sous /portfolio/, le premier bouton du hero de l’accueil français
 
 test('sur l’accueil anglais, le titre sous le nom de l’auteur est le titre professionnel anglais', async ({ page }) => {
   await page.goto('/en/');
-  const titrePrincipal = page.getByRole('main').getByRole('heading', { level: 1 });
+  const titrePrincipal = titrePrincipalDuContenu(page);
   /* Le titre vient du front matter de exampleSite/content/_index.en.md, bloc [params.hero], clé title.
      Texte du DOM, tel qu'écrit dans le front matter : l'affichage en majuscules relève du CSS. */
   await expect(titrePrincipal.getByText('Independent clockmaker', { exact: true })).toBeVisible();
@@ -548,7 +552,7 @@ test.describe('accueil d’un autre site, au hero différent', () => {
   test('le titre principal affiche le nom de l’autrice de ce site, puis le titre de son hero, et non ceux du site d’exemple', async ({ page, context }) => {
     await servirUnSite(context, SITE_A_UN_AUTRE_HERO, dossierDuSite);
     await page.goto(`${SITE_A_UN_AUTRE_HERO.origine}/fr/`);
-    const titrePrincipal = page.getByRole('main').getByRole('heading', { level: 1 });
+    const titrePrincipal = titrePrincipalDuContenu(page);
     /* L'autrice vient de params.author (tests/fixtures/autre-hero/hugo.toml), le titre du
        bloc [params.hero], clé title, de tests/fixtures/autre-hero/content/_index.md.
        Texte du DOM, tel qu'écrit dans la configuration : l'affichage en majuscules relève du CSS. */

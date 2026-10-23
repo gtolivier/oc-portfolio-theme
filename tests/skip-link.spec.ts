@@ -1,4 +1,5 @@
 import { test, expect, type Locator } from '@playwright/test';
+import { toucheDeTabulation } from './helpers/clavier';
 
 /* Ce qu'un visiteur voyant perçoit : une boîte de taille réelle (plus d'un
    pixel de côté) qui se trouve dans la fenêtre. */
@@ -12,11 +13,6 @@ async function estVisibleALEcran(element: Locator): Promise<boolean> {
     boite.x < fenetre.width &&
     boite.y < fenetre.height
   );
-}
-
-/* WebKit ne parcourt pas les liens avec Tab seule (réglage de Safari). */
-function toucheDeTabulation(browserName: string): string {
-  return browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
 }
 
 test('sur une page française, la première tabulation focalise un lien « Aller au contenu » invisible jusque-là, qui apparaît à l’écran', async ({ page, browserName }) => {
