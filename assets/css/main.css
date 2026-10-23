@@ -71,6 +71,8 @@ body {
 h1 {
   font-family: var(--font-mono);
   font-weight: 700;
+  text-transform: uppercase;
+  font-size: clamp(44px, 6.4vw, 100px);
 }
 
 /* flow-root retient les marges du titre et des paragraphes dans la section :
@@ -82,6 +84,7 @@ h1 {
 
 .hero-title {
   display: block;
+  font-size: clamp(22px, 3vw, 46px);
 }
 
 /* La flèche est décorative : la seconde déclaration lui donne un texte
