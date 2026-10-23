@@ -36,7 +36,16 @@ export const SITE_D_UNE_LANGUE: SiteConstruit = {
   prefixeDuDossier: 'oc-portfolio-une-langue-',
 };
 
-const racineDuTheme = path.resolve(__dirname, '..', '..');
+/* L'accueil français du site d'exemple a un hero : ce site-ci remplace cet
+   accueil par celui de tests/fixtures/sans-hero/content, sans bloc
+   [params.hero] (voir tests/fixtures/sans-hero/hugo.toml). */
+export const SITE_SANS_HERO: SiteConstruit = {
+  surcharge: '../tests/fixtures/sans-hero/hugo.toml',
+  origine: 'http://localhost:1318',
+  prefixeDuDossier: 'oc-portfolio-sans-hero-',
+};
+
+const racineDuTheme =path.resolve(__dirname, '..', '..');
 
 export function construireUnSite(site: SiteConstruit): string {
   const destination = mkdtempSync(path.join(tmpdir(), site.prefixeDuDossier));

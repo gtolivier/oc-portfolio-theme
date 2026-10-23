@@ -1,4 +1,5 @@
 import { test, expect, type Locator } from '@playwright/test';
+import { SITE_SANS_HERO, construireUnSite, servirUnSite, supprimerUnSite } from './helpers/site-construit';
 
 /* Vérifie que chaque ligne de l'accroche est visible dans la zone, et que chacune commence
    sous la précédente, dans l'ordre donné. */
@@ -190,4 +191,31 @@ test('sur l’accueil anglais, le premier bouton du hero, « View projects », m
   await expect(premierBouton).toHaveAttribute('href', '/en/projects/');
   await premierBouton.click();
   await expect(page).toHaveURL('/en/projects/');
+});
+
+test.describe('accueil sans hero', () => {
+  let dossierDuSite: string;
+  test.beforeAll(() => {
+    dossierDuSite = construireUnSite(SITE_SANS_HERO);
+  });
+  test.afterAll(() => {
+    supprimerUnSite(dossierDuSite);
+  });
+
+  test('un accueil dont le front matter n’a pas de bloc [params.hero] n’affiche ni titre principal, ni accroche, ni boutons d’action : seulement l’en-tête et son contenu', async ({ page, context }) => {
+    await servirUnSite(context, SITE_SANS_HERO, dossierDuSite);
+    await page.goto(`${SITE_SANS_HERO.origine}/fr/`);
+    /* L'en-tête est affiché normalement. */
+    await expect(page.locator('header').getByRole('link', { name: 'Exemple', exact: true })).toBeVisible();
+    /* Le contenu de l'accueil (tests/fixtures/sans-hero/content/_index.md) est affiché… */
+    const principal = page.getByRole('main');
+    const texteDeLAccueil = 'Accueil fictif sans hero : seul ce texte occupe le corps de la page.';
+    await expect(principal.getByText(texteDeLAccueil)).toBeVisible();
+    /* …sans hero : ni titre principal (h1, pas même le nom de l'auteur), ni accroche, ni
+       boutons d'action. Le contenu principal n'affiche que le texte de l'accueil. */
+    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(0);
+    await expect(principal.getByText('Jean Exemple')).toHaveCount(0);
+    await expect(principal.getByRole('link')).toHaveCount(0);
+    await expect(principal).toHaveText(texteDeLAccueil);
+  });
 });

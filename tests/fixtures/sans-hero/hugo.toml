@@ -1,0 +1,13 @@
+# Configuration ajoutée à exampleSite/hugo.toml par les tests d'un accueil
+# sans hero : l'accueil français du site d'exemple (content/_index.md, qui a
+# un bloc [params.hero]) est remplacé par celui de
+# tests/fixtures/sans-hero/content, qui n'en a pas. Le reste du contenu du
+# site d'exemple est monté tel quel. Les chemins sont relatifs à
+# exampleSite/, dossier source de la construction.
+[[module.mounts]]
+  source = 'content'
+  target = 'content'
+  files = ['! /_index.md']
+[[module.mounts]]
+  source = '../tests/fixtures/sans-hero/content'
+  target = 'content'
