@@ -21,6 +21,49 @@ test('sur l’accueil français, le titre principal affiche, à la ligne sous le
   expect(boiteTitreProfessionnel!.y - boiteTitrePrincipal!.y).toBeGreaterThanOrEqual(boiteTitreProfessionnel!.height / 2);
 });
 
+test('sur l’accueil français, le hero affiche l’accroche, une ligne par entrée : les trois lignes, dans l’ordre, chacune sous la précédente', async ({ page }) => {
+  await page.goto('/fr/');
+  const principal = page.getByRole('main');
+  /* L'accroche vient du front matter de exampleSite/content/_index.md, bloc [params.hero],
+     clé tagline (une liste de chaînes, une par ligne). */
+  const lignes = [
+    'Montres mécaniques sur mesure — 20 ans d’atelier.',
+    'Conception, réparation et entretien',
+    'de pendules et de montres anciennes.',
+  ];
+  for (const ligne of lignes) {
+    await expect(principal.getByText(ligne)).toBeVisible();
+  }
+  /* Position à l'écran du début et de la fin de chaque ligne, quelle que soit la façon dont
+     le gabarit les sépare. Une ligne longue peut elle-même passer à la ligne sur téléphone :
+     on compare le début d'une ligne à la fin de la précédente. */
+  const positions = await principal.evaluate((racine, textes) => {
+    return textes.map((texte) => {
+      const parcours = document.createTreeWalker(racine, NodeFilter.SHOW_TEXT);
+      for (let noeud = parcours.nextNode(); noeud; noeud = parcours.nextNode()) {
+        const debut = (noeud.textContent ?? '').indexOf(texte);
+        if (debut === -1) continue;
+        const plage = document.createRange();
+        plage.setStart(noeud, debut);
+        plage.setEnd(noeud, debut + texte.length);
+        const boites = Array.from(plage.getClientRects()).filter((boite) => boite.height > 0);
+        const premiere = boites[0];
+        const derniere = boites[boites.length - 1];
+        return { haut: premiere.top, hautFin: derniere.top, hauteurFin: derniere.height };
+      }
+      return null;
+    });
+  }, lignes);
+  for (let i = 1; i < lignes.length; i++) {
+    const precedente = positions[i - 1];
+    const courante = positions[i];
+    expect(precedente, `ligne introuvable : ${lignes[i - 1]}`).not.toBeNull();
+    expect(courante, `ligne introuvable : ${lignes[i]}`).not.toBeNull();
+    expect(courante!.haut - precedente!.hautFin, `« ${lignes[i]} » commence sous « ${lignes[i - 1]} »`)
+      .toBeGreaterThanOrEqual(precedente!.hauteurFin / 2);
+  }
+});
+
 test('sur l’accueil anglais, le titre sous le nom de l’auteur est le titre professionnel anglais', async ({ page }) => {
   await page.goto('/en/');
   const titrePrincipal = page.getByRole('main').getByRole('heading', { level: 1 });
