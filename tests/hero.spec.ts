@@ -79,6 +79,18 @@ test('sur l’accueil français, le hero affiche la stack sur une ligne, entrée
   await expect(principal.getByText('Laiton · Acier · Rubis · Émail', { exact: true })).toBeVisible();
 });
 
+test('sur l’accueil français, le premier bouton du hero, « Voir les projets », mène à la page Projets française', async ({ page }) => {
+  await page.goto('/fr/');
+  /* Les boutons viennent du front matter de exampleSite/content/_index.md, blocs
+     [[params.hero.actions]] ; le premier a pageRef = '/projets'. Le hero précède le texte
+     d'accueil : son premier bouton est le premier lien du contenu principal. */
+  const premierBouton = page.getByRole('main').getByRole('link').first();
+  await expect(premierBouton).toHaveText('Voir les projets');
+  await expect(premierBouton).toHaveAttribute('href', '/fr/projets/');
+  await premierBouton.click();
+  await expect(page).toHaveURL('/fr/projets/');
+});
+
 test('sur l’accueil anglais, le titre sous le nom de l’auteur est le titre professionnel anglais', async ({ page }) => {
   await page.goto('/en/');
   const titrePrincipal = page.getByRole('main').getByRole('heading', { level: 1 });
