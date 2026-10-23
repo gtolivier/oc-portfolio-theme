@@ -19,7 +19,7 @@
       {{- range . }}
       {{- $href := .url }}
       {{- if and .url (hasPrefix .url "/") (not (hasPrefix .url "//")) }}
-        {{- $href = printf "%s%s" (strings.TrimSuffix "/" (urls.Parse site.BaseURL).Path) .url }}
+        {{- $href = relURL (strings.TrimPrefix "/" .url) }}
       {{- end }}
       {{- with .pageRef }}
         {{- $ref := . }}
