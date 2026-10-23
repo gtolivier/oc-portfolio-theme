@@ -9,5 +9,8 @@
     {{- range . }}{{ . }}<br>{{ end -}}
   </p>
   {{- end }}
+  {{- with .Params.hero.stack }}
+  <p class="hero-stack">{{ delimit . " · " }}</p>
+  {{- end }}
   {{ .Content }}
 {{ end }}

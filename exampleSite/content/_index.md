@@ -8,6 +8,7 @@ tagline = [
   'Conception, réparation et entretien',
   'de pendules et de montres anciennes.',
 ]
+stack = ['Laiton', 'Acier', 'Rubis', 'Émail']
 +++
 
 Bienvenue sur ce site de démonstration : un texte d’exemple, fictif, pour le
