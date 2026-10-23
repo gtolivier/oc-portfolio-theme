@@ -4,9 +4,7 @@
 {{- if and .url (hasPrefix .url "/") (not (hasPrefix .url "//")) }}
   {{- /* Une url qui contient déjà le sous-chemin de la baseURL ne le reçoit pas deux fois. */}}
   {{- $base := (urls.Parse site.BaseURL).Path }}
-  {{- if and (ne $base "/") (hasPrefix .url $base) }}
-    {{- $href = .url }}
-  {{- else }}
+  {{- if or (eq $base "/") (not (hasPrefix .url $base)) }}
     {{- $href = relURL (strings.TrimPrefix "/" .url) }}
   {{- end }}
 {{- end }}
@@ -19,7 +17,7 @@
   {{- end }}
 {{- end }}
 {{- if and .url .pageRef }}{{ errorf "hero : un bouton déclare à la fois un champ url et un champ pageRef, il n’en faut qu’un" }}{{ end }}
-{{- if and (not $href) (not .pageRef) }}{{ errorf "hero : un bouton n’a ni champ url ni champ pageRef" }}{{ end }}
+{{- if and (not .url) (not .pageRef) }}{{ errorf "hero : un bouton n’a ni champ url ni champ pageRef" }}{{ end }}
 {{- if not .label }}{{ errorf "hero : un bouton n’a pas de champ label" }}{{ end -}}
 <a href="{{ $href }}">{{ .label }}</a>
 {{- /* Rien après le lien, pas même le saut de ligne final du fichier :
