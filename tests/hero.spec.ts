@@ -133,6 +133,27 @@ async function styleDuBouton(bouton: Locator) {
   };
 }
 
+/* Couleur du texte d'un bouton et couleur de sa bordure de chaque côté, en composantes. */
+async function couleursDuTexteEtDesBordures(bouton: Locator) {
+  const { couleur, bordures } = await styleDuBouton(bouton);
+  return {
+    couleur,
+    bordures: bordures.map(({ cote, couleur: couleurDuCote }) => ({ cote, couleur: couleurDuCote })),
+  };
+}
+
+/* Étendue horizontale affichée d'un élément, en px depuis le bord gauche de la fenêtre : la
+   boîte de l'élément et celle de son contenu (un texte trop long peut déborder de sa boîte
+   sans l'élargir). */
+async function etendueAffichee(element: Locator): Promise<{ gauche: number; droite: number }> {
+  return element.evaluate((el) => {
+    const plage = document.createRange();
+    plage.selectNodeContents(el);
+    const boites = [el.getBoundingClientRect(), plage.getBoundingClientRect()];
+    return { gauche: Math.min(...boites.map((b) => b.left)), droite: Math.max(...boites.map((b) => b.right)) };
+  });
+}
+
 /* Le hero précède le texte d'accueil : ses boutons d'action sont, dans l'ordre, les premiers
    liens du contenu principal. On les cherche là, et non dans toute la page, parce que l'en-tête
    a ses propres liens, dont un « Contact ». */
@@ -329,13 +350,9 @@ test('sur ordinateur, le second bouton du hero, « Contact », survolé passe en
   await expect(secondBouton).toHaveText('Contact');
   await secondBouton.hover();
   const accent = { rouge: 42, vert: 136, bleu: 141, opacite: 1 };
-  await expect.poll(async () => {
-    const { couleur, bordures } = await styleDuBouton(secondBouton);
-    return {
-      couleur,
-      bordures: bordures.map(({ cote, couleur: couleurDuCote }) => ({ cote, couleur: couleurDuCote })),
-    };
-  }, { message: 'style du second bouton survolé' }).toEqual({
+  await expect.poll(() => couleursDuTexteEtDesBordures(secondBouton), {
+    message: 'style du second bouton survolé',
+  }).toEqual({
     couleur: accent,
     bordures: (['top', 'right', 'bottom', 'left'] as const).map((cote) => ({ cote, couleur: accent })),
   });
@@ -352,13 +369,9 @@ test('sur téléphone comme sur ordinateur, le second bouton du hero, « Contact
   await tabulerJusqua(secondBouton, browserName);
   await expect(secondBouton).toBeFocused();
   const accent = { rouge: 42, vert: 136, bleu: 141, opacite: 1 };
-  await expect.poll(async () => {
-    const { couleur, bordures } = await styleDuBouton(secondBouton);
-    return {
-      couleur,
-      bordures: bordures.map(({ cote, couleur: couleurDuCote }) => ({ cote, couleur: couleurDuCote })),
-    };
-  }, { message: 'style du second bouton atteint au clavier' }).toEqual({
+  await expect.poll(() => couleursDuTexteEtDesBordures(secondBouton), {
+    message: 'style du second bouton atteint au clavier',
+  }).toEqual({
     couleur: accent,
     bordures: (['top', 'right', 'bottom', 'left'] as const).map((cote) => ({ cote, couleur: accent })),
   });
@@ -397,7 +410,7 @@ test('le contenu du hero est aligné sur le logo de l’en-tête : à 16 px du b
   /* Les éléments du hero : nom et titre professionnel dans le h1, accroche, stack et premier
      bouton. */
   const principal = page.getByRole('main');
-  const titrePrincipal = principal.getByRole('heading', { level: 1 });
+  const titrePrincipal = titrePrincipalDuContenu(page);
   const elements = {
     'nom de l’auteur (h1)': titrePrincipal,
     'titre professionnel': titrePrincipal.getByText('Horloger indépendant', { exact: true }),
@@ -424,7 +437,7 @@ test('sur téléphone, le hero tient dans la largeur de l’écran : pas de déf
   /* Les éléments du hero : nom et titre professionnel dans le h1, les trois lignes de
      l'accroche, la stack et les deux boutons. */
   const principal = page.getByRole('main');
-  const titrePrincipal = principal.getByRole('heading', { level: 1 });
+  const titrePrincipal = titrePrincipalDuContenu(page);
   const elements = {
     'nom de l’auteur (h1)': titrePrincipal,
     'titre professionnel': titrePrincipal.getByText('Horloger indépendant', { exact: true }),
@@ -439,14 +452,7 @@ test('sur téléphone, le hero tient dans la largeur de l’écran : pas de déf
   await expect(elements['second bouton']).toHaveText('Contact');
   for (const [nom, element] of Object.entries(elements)) {
     await expect(element, nom).toBeVisible();
-    /* Étendue affichée : la boîte de l'élément et celle de son contenu (un texte trop long
-       peut déborder de sa boîte sans l'élargir). */
-    const { gauche, droite } = await element.evaluate((el) => {
-      const plage = document.createRange();
-      plage.selectNodeContents(el);
-      const boites = [el.getBoundingClientRect(), plage.getBoundingClientRect()];
-      return { gauche: Math.min(...boites.map((b) => b.left)), droite: Math.max(...boites.map((b) => b.right)) };
-    });
+    const { gauche, droite } = await etendueAffichee(element);
     expect.soft(gauche, `bord gauche dans la fenêtre : ${nom}`).toBeGreaterThanOrEqual(0);
     expect.soft(droite, `bord droit dans la fenêtre : ${nom}`).toBeLessThanOrEqual(largeur);
   }
@@ -625,14 +631,7 @@ test.describe('accueil d’un site au hero aux mots longs, sur un téléphone de
     };
     for (const [nom, element] of Object.entries(elements)) {
       await expect(element, nom).toBeVisible();
-      /* Étendue affichée : la boîte de l'élément et celle de son contenu (un mot trop long
-         peut déborder de sa boîte sans l'élargir). */
-      const { gauche, droite } = await element.evaluate((el) => {
-        const plage = document.createRange();
-        plage.selectNodeContents(el);
-        const boites = [el.getBoundingClientRect(), plage.getBoundingClientRect()];
-        return { gauche: Math.min(...boites.map((b) => b.left)), droite: Math.max(...boites.map((b) => b.right)) };
-      });
+      const { gauche, droite } = await etendueAffichee(element);
       expect.soft(gauche, `bord gauche dans la fenêtre : ${nom}`).toBeGreaterThanOrEqual(0);
       expect.soft(droite, `bord droit dans la fenêtre : ${nom}`).toBeLessThanOrEqual(largeur);
     }
