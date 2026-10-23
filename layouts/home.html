@@ -12,8 +12,14 @@
   {{- with .Params.hero.stack }}
   <p class="hero-stack">{{ delimit . " · " }}</p>
   {{- end }}
-  {{- with site.GetPage "projets" }}
-  <p class="hero-actions"><a href="{{ .RelPermalink }}">{{ i18n "viewProjects" }}</a></p>
+  {{- with .Params.hero.actions }}
+  <p class="hero-actions">
+    {{- range . }}
+    {{- $href := .url }}
+    {{- with .pageRef }}{{ with site.GetPage . }}{{ $href = .RelPermalink }}{{ end }}{{ end }}
+    <a href="{{ $href }}">{{ .text }}</a>
+    {{- end }}
+  </p>
   {{- end }}
   {{ .Content }}
 {{ end }}

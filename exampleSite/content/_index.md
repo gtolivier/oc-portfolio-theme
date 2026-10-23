@@ -9,6 +9,14 @@ tagline = [
   'de pendules et de montres anciennes.',
 ]
 stack = ['Laiton', 'Acier', 'Rubis', 'Émail']
+
+[[params.hero.actions]]
+text = 'Voir les projets'
+pageRef = '/projets'
+
+[[params.hero.actions]]
+text = 'Contact'
+url = '#contact'
 +++
 
 Bienvenue sur ce site de démonstration : un texte d’exemple, fictif, pour le
