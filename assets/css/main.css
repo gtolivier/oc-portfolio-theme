@@ -92,6 +92,15 @@ h1 {
   color: var(--color-accent);
 }
 
+.hero-tagline {
+  color: rgb(var(--color-paper-channels) / 0.88);
+}
+
+.hero-stack {
+  font-family: var(--font-mono);
+  color: var(--color-accent);
+}
+
 /* La flèche est décorative : la seconde déclaration lui donne un texte
    alternatif vide pour les lecteurs d'écran ; la première sert de repli
    aux navigateurs qui ne connaissent pas cette syntaxe. */
