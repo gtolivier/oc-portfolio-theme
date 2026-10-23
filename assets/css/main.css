@@ -101,6 +101,15 @@ h1 {
   color: var(--color-accent);
 }
 
+/* Premier bouton : plein, texte encre sur fond papier. */
+.hero-actions a:first-child {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--color-ink);
+  background-color: var(--color-paper);
+  text-decoration: none;
+}
+
 /* La flèche est décorative : la seconde déclaration lui donne un texte
    alternatif vide pour les lecteurs d'écran ; la première sert de repli
    aux navigateurs qui ne connaissent pas cette syntaxe. */
