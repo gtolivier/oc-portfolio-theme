@@ -94,6 +94,13 @@ export const SITE_SOUS_PORTFOLIO_A_UNE_URL_DEPUIS_LA_RACINE = siteDeTest('url-de
   sousChemin: '/portfolio/',
 });
 
+/* Le nom de l'auteur du site d'exemple et le titre de son hero sont faits de
+   mots courts : ce site-ci change d'autrice, au nom de famille composé de
+   plus de 12 caractères, et remplace l'accueil français par celui de
+   tests/fixtures/hero-mots-longs/content, au titre « Horlogère-restauratrice »
+   (voir tests/fixtures/hero-mots-longs/hugo.toml). */
+export const SITE_A_UN_HERO_AUX_MOTS_LONGS = siteDeTest('hero-mots-longs');
+
 /* Hugo ne lit une configuration que dans un fichier : celle qui monte le
    contenu de la fixture est écrite dans un dossier temporaire à part, pour
    ne pas finir parmi les pages construites, et supprimée après la

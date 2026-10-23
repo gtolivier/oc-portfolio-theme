@@ -3,6 +3,7 @@ import {
   SITE_A_UN_AUTRE_HERO,
   SITE_A_UN_BOUTON_SANS_DESTINATION,
   SITE_A_UN_BOUTON_SANS_LIBELLE,
+  SITE_A_UN_HERO_AUX_MOTS_LONGS,
   SITE_A_UN_PAGE_REF_INTROUVABLE,
   SITE_SANS_HERO,
   SITE_SOUS_PORTFOLIO_A_UNE_URL_DEPUIS_LA_RACINE,
@@ -584,6 +585,56 @@ test.describe('accueil d’un autre site, au hero différent', () => {
     await expect(liens.first()).toHaveAttribute('href', 'mailto:camille@example.org');
     await expect(principal.getByRole('link', { name: 'Voir les projets' })).toHaveCount(0);
     await expect(principal.getByRole('link', { name: 'Contact' })).toHaveCount(0);
+  });
+});
+
+test.describe('accueil d’un site au hero aux mots longs, sur un téléphone de 320 px de large', () => {
+  /* 320 px : la plus petite largeur de téléphone courante (WCAG 1.4.10, refusion). */
+  test.use({ viewport: { width: 320, height: 640 } });
+  let dossierDuSite: string;
+  test.beforeAll(() => {
+    dossierDuSite = construireUnSite(SITE_A_UN_HERO_AUX_MOTS_LONGS);
+  });
+  test.afterAll(() => {
+    supprimerUnSite(dossierDuSite);
+  });
+
+  test('sur un téléphone de 320 px de large, un hero dont le nom de l’auteur et le titre contiennent chacun un mot de 12 caractères ou plus tient dans la largeur : pas de défilement horizontal, h1 entièrement visible', async ({ page, context, isMobile }) => {
+    /* Seuls les projets mobile-chrome et mobile-safari émulent un téléphone (fenêtre
+       d'affichage mobile, écran tactile, agent utilisateur de téléphone) : sur les projets
+       d'ordinateur, une fenêtre de 320 px ne serait qu'un navigateur de bureau rétréci. */
+    test.skip(!isMobile, 'comportement propre au téléphone');
+    await servirUnSite(context, SITE_A_UN_HERO_AUX_MOTS_LONGS, dossierDuSite);
+    await page.goto(`${SITE_A_UN_HERO_AUX_MOTS_LONGS.origine}/fr/`);
+    const largeur = page.viewportSize()!.width;
+    expect(largeur, 'largeur de la fenêtre').toBe(320);
+
+    /* L'autrice vient de params.author (tests/fixtures/hero-mots-longs/hugo.toml), le titre
+       du bloc [params.hero], clé title, de tests/fixtures/hero-mots-longs/content/_index.md.
+       « Vanderkerckhove-Fictive » et « Horlogère-restauratrice » ont plus de 12 caractères. */
+    const titrePrincipal = titrePrincipalDuContenu(page);
+    await expect(titrePrincipal).toHaveText(/^\s*Apolline Vanderkerckhove-Fictive\s*Horlogère-restauratrice\s*$/);
+
+    const largeurPage = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect.soft(largeurPage, 'pas de défilement horizontal').toBeLessThanOrEqual(largeur);
+
+    const elements = {
+      'nom de l’auteur (h1)': titrePrincipal,
+      'titre professionnel': titrePrincipal.getByText('Horlogère-restauratrice', { exact: true }),
+    };
+    for (const [nom, element] of Object.entries(elements)) {
+      await expect(element, nom).toBeVisible();
+      /* Étendue affichée : la boîte de l'élément et celle de son contenu (un mot trop long
+         peut déborder de sa boîte sans l'élargir). */
+      const { gauche, droite } = await element.evaluate((el) => {
+        const plage = document.createRange();
+        plage.selectNodeContents(el);
+        const boites = [el.getBoundingClientRect(), plage.getBoundingClientRect()];
+        return { gauche: Math.min(...boites.map((b) => b.left)), droite: Math.max(...boites.map((b) => b.right)) };
+      });
+      expect.soft(gauche, `bord gauche dans la fenêtre : ${nom}`).toBeGreaterThanOrEqual(0);
+      expect.soft(droite, `bord droit dans la fenêtre : ${nom}`).toBeLessThanOrEqual(largeur);
+    }
   });
 });
 
