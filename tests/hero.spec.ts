@@ -411,6 +411,22 @@ test('sur téléphone, le hero tient dans la largeur de l’écran : pas de déf
   }
 });
 
+test('sur téléphone comme sur ordinateur, chaque bouton du hero offre une cible d’au moins 24 × 24 px (WCAG 2.5.8)', async ({ page }) => {
+  await page.goto('/fr/');
+  const boutons = {
+    'premier bouton, « Voir les projets »': premierBoutonDuHero(page),
+    'second bouton, « Contact »': secondBoutonDuHero(page),
+  };
+  await expect(boutons['premier bouton, « Voir les projets »']).toHaveText(/^\s*Voir les projets/);
+  await expect(boutons['second bouton, « Contact »']).toHaveText('Contact');
+  for (const [nom, bouton] of Object.entries(boutons)) {
+    await expect(bouton, nom).toBeVisible();
+    const boite = (await bouton.boundingBox())!;
+    expect.soft(boite.width, `largeur de la cible : ${nom}`).toBeGreaterThanOrEqual(24);
+    expect.soft(boite.height, `hauteur de la cible : ${nom}`).toBeGreaterThanOrEqual(24);
+  }
+});
+
 test('servi sous /portfolio/, le premier bouton du hero de l’accueil français, « Voir les projets », mène à /portfolio/fr/projets/', async ({ page }) => {
   await page.goto('http://localhost:1315/portfolio/fr/');
   const premierBouton = premierBoutonDuHero(page);
