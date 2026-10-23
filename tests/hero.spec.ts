@@ -475,6 +475,16 @@ test('servi sous /portfolio/, le premier bouton du hero de l’accueil français
   await expect(page).toHaveURL('http://localhost:1315/portfolio/fr/projets/');
 });
 
+test('servi sous /portfolio/, le second bouton du hero de l’accueil français, déclaré par l’ancre « #contact », mène toujours à « #contact », sans préfixe', async ({ page }) => {
+  await page.goto('http://localhost:1315/portfolio/fr/');
+  /* Le second bouton de exampleSite/content/_index.md déclare url = '#contact' : une ancre de
+     la page courante, que le chemin de publication du site ne doit pas préfixer. */
+  await expect(premierBoutonDuHero(page)).toHaveText('Voir les projets');
+  const secondBouton = secondBoutonDuHero(page);
+  await expect(secondBouton).toHaveText('Contact');
+  await expect(secondBouton).toHaveAttribute('href', '#contact');
+});
+
 test('sur l’accueil anglais, le titre sous le nom de l’auteur est le titre professionnel anglais', async ({ page }) => {
   await page.goto('/en/');
   const titrePrincipal = titrePrincipalDuContenu(page);
