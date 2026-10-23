@@ -55,42 +55,24 @@ export const SITE_A_UN_AUTRE_HERO: SiteConstruit = {
   prefixeDuDossier: 'oc-portfolio-autre-hero-',
 };
 
-/* Ce site-ci remplace l'accueil français du site d'exemple par celui de
-   tests/fixtures/bouton-vers-page-inexistante/content, dont le bouton du
-   hero déclare le pageRef '/page-fictive-introuvable', qu'aucune page ne
-   porte (voir tests/fixtures/bouton-vers-page-inexistante/hugo.toml). */
-export const SITE_AU_BOUTON_VERS_UNE_PAGE_INEXISTANTE: SiteConstruit = {
-  surcharge: '../tests/fixtures/bouton-vers-page-inexistante/hugo.toml',
-  origine: 'http://localhost:1320',
-  prefixeDuDossier: 'oc-portfolio-page-inexistante-',
-};
-
 const racineDuTheme = path.resolve(__dirname, '..', '..');
 
 export function construireUnSite(site: SiteConstruit): string {
   const destination = mkdtempSync(path.join(tmpdir(), site.prefixeDuDossier));
-  try {
-    execFileSync(
-      'hugo',
-      [
-        'build',
-        '--source', 'exampleSite',
-        '--config', `hugo.toml,${site.surcharge}`,
-        '--environment', 'production',
-        '--baseURL', `${site.origine}/`,
-        '--destination', destination,
-        '--noBuildLock',
-        '--quiet',
-      ],
-      { cwd: racineDuTheme, stdio: 'pipe' },
-    );
-  } catch (erreur) {
-    /* Une construction qui échoue ne laisse pas de dossier temporaire
-       derrière elle ; l'erreur (et la sortie d'erreur de hugo, dans sa
-       propriété stderr) remonte telle quelle. */
-    supprimerUnSite(destination);
-    throw erreur;
-  }
+  execFileSync(
+    'hugo',
+    [
+      'build',
+      '--source', 'exampleSite',
+      '--config', `hugo.toml,${site.surcharge}`,
+      '--environment', 'production',
+      '--baseURL', `${site.origine}/`,
+      '--destination', destination,
+      '--noBuildLock',
+      '--quiet',
+    ],
+    { cwd: racineDuTheme, stdio: 'pipe' },
+  );
   return destination;
 }
 
