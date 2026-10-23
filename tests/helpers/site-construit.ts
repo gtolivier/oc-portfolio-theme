@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -55,25 +55,63 @@ export const SITE_A_UN_AUTRE_HERO: SiteConstruit = {
   prefixeDuDossier: 'oc-portfolio-autre-hero-',
 };
 
+/* L'accueil français du site d'exemple a un hero dont chaque bouton mène à
+   une page existante ou à une adresse : ce site-ci remplace cet accueil par
+   celui de tests/fixtures/page-ref-introuvable/content, dont un bouton
+   déclare pageRef = '/page-fictive-introuvable', page qui n'existe pas
+   (voir tests/fixtures/page-ref-introuvable/hugo.toml). */
+export const SITE_A_UN_PAGE_REF_INTROUVABLE: SiteConstruit = {
+  surcharge: '../tests/fixtures/page-ref-introuvable/hugo.toml',
+  origine: 'http://localhost:1320',
+  prefixeDuDossier: 'oc-portfolio-page-ref-introuvable-',
+};
+
 const racineDuTheme = path.resolve(__dirname, '..', '..');
+
+function argumentsDeConstruction(site: SiteConstruit, destination: string): string[] {
+  return [
+    'build',
+    '--source', 'exampleSite',
+    '--config', `hugo.toml,${site.surcharge}`,
+    '--environment', 'production',
+    '--baseURL', `${site.origine}/`,
+    '--destination', destination,
+    '--noBuildLock',
+  ];
+}
 
 export function construireUnSite(site: SiteConstruit): string {
   const destination = mkdtempSync(path.join(tmpdir(), site.prefixeDuDossier));
-  execFileSync(
-    'hugo',
-    [
-      'build',
-      '--source', 'exampleSite',
-      '--config', `hugo.toml,${site.surcharge}`,
-      '--environment', 'production',
-      '--baseURL', `${site.origine}/`,
-      '--destination', destination,
-      '--noBuildLock',
-      '--quiet',
-    ],
-    { cwd: racineDuTheme, stdio: 'pipe' },
-  );
+  execFileSync('hugo', [...argumentsDeConstruction(site, destination), '--quiet'], {
+    cwd: racineDuTheme,
+    stdio: 'pipe',
+  });
   return destination;
+}
+
+export interface TentativeDeConstruction {
+  reussie: boolean;
+  /* Ce que Hugo écrit sur sa sortie d'erreur : ses messages d'erreur. */
+  erreurs: string;
+}
+
+/* Construit le site comme construireUnSite, mais sans lever d'exception si
+   la construction échoue, pour observer ce que Hugo en dit à la personne qui
+   construit le site. Sans --quiet, qui ferait taire ses messages d'erreur ;
+   --logLevel error n'en garde que les erreurs. Le dossier temporaire est
+   supprimé dans tous les cas. */
+export function tenterDeConstruireUnSite(site: SiteConstruit): TentativeDeConstruction {
+  const destination = mkdtempSync(path.join(tmpdir(), site.prefixeDuDossier));
+  try {
+    const resultat = spawnSync('hugo', [...argumentsDeConstruction(site, destination), '--logLevel', 'error'], {
+      cwd: racineDuTheme,
+      encoding: 'utf8',
+    });
+    if (resultat.error) throw resultat.error;
+    return { reussie: resultat.status === 0, erreurs: resultat.stderr };
+  } finally {
+    supprimerUnSite(destination);
+  }
 }
 
 export function supprimerUnSite(dossier: string): void {

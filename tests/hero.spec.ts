@@ -1,5 +1,13 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import { SITE_A_UN_AUTRE_HERO, SITE_SANS_HERO, construireUnSite, servirUnSite, supprimerUnSite } from './helpers/site-construit';
+import {
+  SITE_A_UN_AUTRE_HERO,
+  SITE_A_UN_PAGE_REF_INTROUVABLE,
+  SITE_SANS_HERO,
+  construireUnSite,
+  servirUnSite,
+  supprimerUnSite,
+  tenterDeConstruireUnSite,
+} from './helpers/site-construit';
 import { tabulerJusqua } from './helpers/clavier';
 
 /* Vérifie que chaque ligne de l'accroche est visible dans la zone, et que chacune commence
@@ -560,4 +568,14 @@ test.describe('accueil d’un autre site, au hero différent', () => {
     await expect(principal.getByRole('link', { name: 'Voir les projets' })).toHaveCount(0);
     await expect(principal.getByRole('link', { name: 'Contact' })).toHaveCount(0);
   });
+});
+
+test('un accueil dont un bouton du hero déclare un pageRef vers une page qui n’existe pas fait échouer la construction du site, avec un message d’erreur qui cite ce pageRef', () => {
+  /* Le premier bouton de tests/fixtures/page-ref-introuvable/content/_index.md déclare
+     pageRef = '/page-fictive-introuvable', que le site ne contient pas. Plutôt qu'un bouton
+     sans destination, la personne qui construit le site doit obtenir un échec qui nomme ce
+     pageRef. */
+  const construction = tenterDeConstruireUnSite(SITE_A_UN_PAGE_REF_INTROUVABLE);
+  expect(construction.reussie, 'la construction du site devrait échouer').toBe(false);
+  expect(construction.erreurs).toContain('/page-fictive-introuvable');
 });
