@@ -303,6 +303,38 @@ test('sur l’accueil français, le second bouton du hero, « Contact », est en
   });
 });
 
+test('sur ordinateur, le second bouton du hero, « Contact », survolé passe en couleur accent : texte et bordure sur les quatre côtés', async ({ page, hasTouch }) => {
+  test.skip(hasTouch, 'le survol à la souris n’existe pas sur un écran tactile');
+  await page.goto('/fr/');
+  /* Le hero précède le texte d'accueil : son second bouton est le deuxième lien du contenu
+     principal. Référence de design : au survol, texte et bordure en accent #2A888D, opaques.
+     Ce sont les styles calculés du lien qui décident de son allure ; on attend qu'ils se
+     stabilisent, au cas où une transition accompagne le survol. */
+  const liens = page.getByRole('main').getByRole('link');
+  await expect(liens.first()).toHaveText(/^\s*Voir les projets/);
+  const secondBouton = liens.nth(1);
+  await expect(secondBouton).toHaveText('Contact');
+  await secondBouton.hover();
+  const accent = { rouge: 42, vert: 136, bleu: 141, opacite: 1 };
+  await expect.poll(async () => {
+    const { couleur, bordures } = await secondBouton.evaluate((lien) => {
+      const style = getComputedStyle(lien);
+      const cotes = ['top', 'right', 'bottom', 'left'] as const;
+      return {
+        couleur: style.color,
+        bordures: cotes.map((cote) => ({ cote, couleur: style.getPropertyValue(`border-${cote}-color`) })),
+      };
+    });
+    return {
+      couleur: composantesDeCouleur(couleur),
+      bordures: bordures.map((bordure) => ({ ...bordure, couleur: composantesDeCouleur(bordure.couleur) })),
+    };
+  }, { message: 'style du second bouton survolé' }).toEqual({
+    couleur: accent,
+    bordures: (['top', 'right', 'bottom', 'left'] as const).map((cote) => ({ cote, couleur: accent })),
+  });
+});
+
 test('sur l’accueil français, le hero occupe au moins toute la hauteur de la fenêtre sous l’en-tête : il commence juste sous l’en-tête et finit au bas de la fenêtre, ou plus bas', async ({ page }) => {
   await page.goto('/fr/');
   /* Le hero est la région du contenu principal nommée par son titre principal (une section
