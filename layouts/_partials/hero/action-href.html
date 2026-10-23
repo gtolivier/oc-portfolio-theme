@@ -1,0 +1,16 @@
+{{- $href := .url }}
+{{- /* « //hôte/… » désigne un autre site : seule une url relative à la
+     racine de ce site reçoit le préfixe de la baseURL. */}}
+{{- if and .url (hasPrefix .url "/") (not (hasPrefix .url "//")) }}
+  {{- $href = relURL (strings.TrimPrefix "/" .url) }}
+{{- end }}
+{{- with .pageRef }}
+  {{- $ref := . }}
+  {{- with site.GetPage $ref }}
+    {{- $href = .RelPermalink }}
+  {{- else }}
+    {{- errorf "hero : le pageRef %q ne correspond à aucune page" $ref }}
+  {{- end }}
+{{- end }}
+{{- if not $href }}{{ errorf "hero : un bouton n’a ni champ url ni champ pageRef" }}{{ end }}
+{{- return $href }}

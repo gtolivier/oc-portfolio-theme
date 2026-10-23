@@ -18,20 +18,8 @@
     {{- with .actions }}
     <p class="hero-actions">
       {{- range . }}
-      {{- $href := .url }}
-      {{- if and .url (hasPrefix .url "/") (not (hasPrefix .url "//")) }}
-        {{- $href = relURL (strings.TrimPrefix "/" .url) }}
-      {{- end }}
-      {{- with .pageRef }}
-        {{- $ref := . }}
-        {{- with site.GetPage $ref }}
-          {{- $href = .RelPermalink }}
-        {{- else }}
-          {{- errorf "hero : le pageRef %q ne correspond à aucune page" $ref }}
-        {{- end }}
-      {{- end }}
-      {{- if not $href }}{{ errorf "hero : un bouton n’a ni champ url ni champ pageRef" }}{{ end }}
-      {{- with .label }}{{ else }}{{ errorf "hero : un bouton n’a pas de champ label" }}{{ end }}
+      {{- $href := partial "hero/action-href.html" . }}
+      {{- if not .label }}{{ errorf "hero : un bouton n’a pas de champ label" }}{{ end }}
       <a href="{{ $href }}">{{ .label }}</a>
       {{- end }}
     </p>
