@@ -91,6 +91,17 @@ test('sur l’accueil français, le premier bouton du hero, « Voir les projets 
   await expect(page).toHaveURL('/fr/projets/');
 });
 
+test('servi sous /portfolio/, le premier bouton du hero de l’accueil français, « Voir les projets », mène à /portfolio/fr/projets/', async ({ page }) => {
+  await page.goto('http://localhost:1315/portfolio/fr/');
+  /* Le hero précède le texte d'accueil : son premier bouton est le premier lien du contenu
+     principal. */
+  const premierBouton = page.getByRole('main').getByRole('link').first();
+  await expect(premierBouton).toHaveText('Voir les projets');
+  await expect(premierBouton).toHaveAttribute('href', '/portfolio/fr/projets/');
+  await premierBouton.click();
+  await expect(page).toHaveURL('http://localhost:1315/portfolio/fr/projets/');
+});
+
 test('sur l’accueil anglais, le titre sous le nom de l’auteur est le titre professionnel anglais', async ({ page }) => {
   await page.goto('/en/');
   const titrePrincipal = page.getByRole('main').getByRole('heading', { level: 1 });
