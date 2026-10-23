@@ -238,4 +238,19 @@ test.describe('accueil d’un autre site, au hero différent', () => {
        Texte du DOM, tel qu'écrit dans la configuration : l'affichage en majuscules relève du CSS. */
     await expect(titrePrincipal).toHaveText(/^\s*Camille Fictive\s*Relieuse d’art\s*$/);
   });
+
+  test('le hero affiche le seul bouton déclaré par ce site, « Écrire à Camille », vers son adresse mailto:, et non les boutons du site d’exemple', async ({ page, context }) => {
+    await servirUnSite(context, SITE_A_UN_AUTRE_HERO, dossierDuSite);
+    await page.goto(`${SITE_A_UN_AUTRE_HERO.origine}/fr/`);
+    /* Le bouton vient de tests/fixtures/autre-hero/content/_index.md, unique bloc
+       [[params.hero.actions]], avec une url externe. Le texte de cet accueil n'a aucun lien :
+       le seul lien du contenu principal est ce bouton (l'en-tête a ses propres liens). */
+    const principal = page.getByRole('main');
+    const liens = principal.getByRole('link');
+    await expect(liens).toHaveCount(1);
+    await expect(liens.first()).toHaveText('Écrire à Camille');
+    await expect(liens.first()).toHaveAttribute('href', 'mailto:camille@example.org');
+    await expect(principal.getByRole('link', { name: 'Voir les projets' })).toHaveCount(0);
+    await expect(principal.getByRole('link', { name: 'Contact' })).toHaveCount(0);
+  });
 });
