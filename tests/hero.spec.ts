@@ -261,6 +261,48 @@ test('sur l’accueil français, le second bouton du hero, placé après « Voir
   await expect(secondBouton).toHaveAttribute('href', '#contact');
 });
 
+test('sur l’accueil français, le second bouton du hero, « Contact », est en contour : texte papier, bordure pleine de 1 px papier à 50 % d’opacité sur les quatre côtés, fond transparent, non souligné', async ({ page }) => {
+  await page.goto('/fr/');
+  /* Le hero précède le texte d'accueil : son second bouton est le deuxième lien du contenu
+     principal. Référence de design : papier #E3DFCC, bordure 1px solid à 50 % d'opacité.
+     Ce sont les styles calculés du lien qui décident de son allure. */
+  const liens = page.getByRole('main').getByRole('link');
+  await expect(liens.first()).toHaveText(/^\s*Voir les projets/);
+  const secondBouton = liens.nth(1);
+  await expect(secondBouton).toHaveText('Contact');
+  const { couleur, fond, soulignement, bordures } = await secondBouton.evaluate((lien) => {
+    const style = getComputedStyle(lien);
+    const cotes = ['top', 'right', 'bottom', 'left'] as const;
+    return {
+      couleur: style.color,
+      fond: style.backgroundColor,
+      soulignement: style.textDecorationLine,
+      bordures: cotes.map((cote) => ({
+        cote,
+        epaisseur: style.getPropertyValue(`border-${cote}-width`),
+        trait: style.getPropertyValue(`border-${cote}-style`),
+        couleur: style.getPropertyValue(`border-${cote}-color`),
+      })),
+    };
+  });
+  expect({
+    couleur: composantesDeCouleur(couleur),
+    opaciteDuFond: composantesDeCouleur(fond).opacite,
+    soulignement,
+    bordures: bordures.map((bordure) => ({ ...bordure, couleur: composantesDeCouleur(bordure.couleur) })),
+  }, 'style du second bouton').toEqual({
+    couleur: { rouge: 227, vert: 223, bleu: 204, opacite: 1 },
+    opaciteDuFond: 0,
+    soulignement: 'none',
+    bordures: (['top', 'right', 'bottom', 'left'] as const).map((cote) => ({
+      cote,
+      epaisseur: '1px',
+      trait: 'solid',
+      couleur: { rouge: 227, vert: 223, bleu: 204, opacite: 0.5 },
+    })),
+  });
+});
+
 test('sur l’accueil français, le hero occupe au moins toute la hauteur de la fenêtre sous l’en-tête : il commence juste sous l’en-tête et finit au bas de la fenêtre, ou plus bas', async ({ page }) => {
   await page.goto('/fr/');
   /* Le hero est la région du contenu principal nommée par son titre principal (une section
