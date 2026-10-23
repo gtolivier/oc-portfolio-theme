@@ -115,10 +115,12 @@ h1 {
   color: var(--color-accent);
 }
 
-/* Cible d'au moins 24 × 24 px (WCAG 2.5.8) : un lien en ligne ignore le
-   padding vertical dans sa hauteur, d'où inline-block. */
+/* Cible de taille minimale (WCAG 2.5.8) : un lien en ligne ignore la
+   hauteur minimale et le padding vertical, d'où inline-block. */
 .hero-actions a {
   display: inline-block;
+  min-width: var(--min-target-size);
+  min-height: var(--min-target-size);
   padding: 0.5rem 1rem;
 }
 
