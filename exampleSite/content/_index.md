@@ -10,6 +10,14 @@ tagline = [
 ]
 stack = ['Laiton', 'Acier', 'Rubis', 'Émail']
 
+# Chaque bouton a un label et une seule destination :
+# - pageRef : une page du site, dont le thème calcule l'adresse ;
+# - url : une ancre (« #contact »), une adresse externe (« https://… »,
+#   « mailto:… »), ou une adresse qui commence par « / ». Celle-ci s'écrit
+#   depuis la racine du site, sans le sous-chemin de la baseURL : si le site
+#   est servi sous /portfolio/, url = '/fr/page-longue/' mène à
+#   /portfolio/fr/page-longue/ (et url = '/portfolio/…' à
+#   /portfolio/portfolio/…).
 [[params.hero.actions]]
 label = 'Voir les projets'
 pageRef = '/projets'
