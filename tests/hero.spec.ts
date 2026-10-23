@@ -83,6 +83,34 @@ test('sur l’accueil français, le titre principal affiche, à la ligne sous le
   expect(boiteTitreProfessionnel!.y - boiteTitrePrincipal!.y).toBeGreaterThanOrEqual(boiteTitreProfessionnel!.height / 2);
 });
 
+test('sur l’accueil français, le nom de l’auteur s’affiche en majuscules, en IBM Plex Mono grasse (700), couleur papier, plus grand que le titre professionnel qui le suit', async ({ page }) => {
+  await page.goto('/fr/');
+  const titrePrincipal = page.getByRole('main').getByRole('heading', { level: 1 });
+  await expect(titrePrincipal).toHaveText(/^\s*Jean Exemple/);
+  const titreProfessionnel = titrePrincipal.getByText('Horloger indépendant', { exact: true });
+  await expect(titreProfessionnel).toBeVisible();
+  /* Le nom est un nœud texte direct du h1 : il prend les styles calculés du h1. Référence de
+     design : nom en clamp(44px, 6.4vw, 100px), titre en clamp(22px, 3vw, 46px). */
+  const styleDuNom = await titrePrincipal.evaluate((h1) => {
+    const style = getComputedStyle(h1);
+    return {
+      casse: style.textTransform,
+      famille: style.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
+      graisse: style.fontWeight,
+      couleur: style.color,
+    };
+  });
+  expect(styleDuNom).toEqual({
+    casse: 'uppercase',
+    famille: 'IBM Plex Mono',
+    graisse: '700',
+    couleur: 'rgb(227, 223, 204)',
+  });
+  const tailleDuNom = await titrePrincipal.evaluate((h1) => parseFloat(getComputedStyle(h1).fontSize));
+  const tailleDuTitre = await titreProfessionnel.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  expect(tailleDuNom, 'le nom est plus grand que le titre professionnel').toBeGreaterThan(tailleDuTitre);
+});
+
 test('sur l’accueil français, le hero affiche l’accroche, une ligne par entrée : les trois lignes, dans l’ordre, chacune sous la précédente', async ({ page }) => {
   await page.goto('/fr/');
   const principal = page.getByRole('main');
