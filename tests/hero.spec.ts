@@ -5,6 +5,7 @@ import {
   SITE_A_UN_BOUTON_SANS_LIBELLE,
   SITE_A_UN_PAGE_REF_INTROUVABLE,
   SITE_SANS_HERO,
+  SITE_SOUS_PORTFOLIO_A_UNE_URL_DEPUIS_LA_RACINE,
   construireUnSite,
   servirUnSite,
   supprimerUnSite,
@@ -573,6 +574,31 @@ test.describe('accueil d’un autre site, au hero différent', () => {
     await expect(liens.first()).toHaveAttribute('href', 'mailto:camille@example.org');
     await expect(principal.getByRole('link', { name: 'Voir les projets' })).toHaveCount(0);
     await expect(principal.getByRole('link', { name: 'Contact' })).toHaveCount(0);
+  });
+});
+
+test.describe('accueil d’un site servi sous /portfolio/, au bouton déclaré par une url depuis la racine du site', () => {
+  let dossierDuSite: string;
+  test.beforeAll(() => {
+    dossierDuSite = construireUnSite(SITE_SOUS_PORTFOLIO_A_UNE_URL_DEPUIS_LA_RACINE);
+  });
+  test.afterAll(() => {
+    supprimerUnSite(dossierDuSite);
+  });
+
+  test('servi sous /portfolio/, un bouton du hero déclaré par url = « /fr/page-longue/ », relative à la racine du site, mène à /portfolio/fr/page-longue/', async ({ page, context }) => {
+    const site = SITE_SOUS_PORTFOLIO_A_UNE_URL_DEPUIS_LA_RACINE;
+    await servirUnSite(context, site, dossierDuSite);
+    await page.goto(`${site.origine}/portfolio/fr/`);
+    /* L'unique bouton de tests/fixtures/url-depuis-la-racine/content/_index.md déclare
+       url = '/fr/page-longue/' : la page exampleSite/content/page-longue.md, depuis la racine
+       du site. Servi sous /portfolio/, ce site la publie à /portfolio/fr/page-longue/. */
+    const bouton = premierBoutonDuHero(page);
+    await expect(bouton).toHaveText('Lire la page longue');
+    await expect(bouton).toHaveAttribute('href', '/portfolio/fr/page-longue/');
+    await bouton.click();
+    await expect(page).toHaveURL(`${site.origine}/portfolio/fr/page-longue/`);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Page longue');
   });
 });
 

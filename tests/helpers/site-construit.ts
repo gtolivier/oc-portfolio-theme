@@ -16,6 +16,11 @@ export interface SiteConstruit {
      les pages de même chemin. */
   fixture: string;
   origine: string;
+  /* Chemin sous lequel le site est servi, de la forme '/…/' : '/' pour un
+     site servi à la racine de son origine, '/portfolio/' pour un site
+     déployé dans un sous-dossier. Il complète l'origine dans la baseURL de
+     la construction. */
+  sousChemin: string;
   prefixeDuDossier: string;
 }
 
@@ -27,12 +32,14 @@ const racineDuTheme = path.resolve(__dirname, '..', '..');
 const PREMIER_PORT_DES_SITES_DE_TEST = 1316;
 let nombreDeSitesDeTest = 0;
 
-/* Le site d'exemple, modifié par la fixture tests/fixtures/<nom>/. */
-function siteDeTest(nomDeLaFixture: string): SiteConstruit {
+/* Le site d'exemple, modifié par la fixture tests/fixtures/<nom>/, servi à
+   la racine de son origine ou sous le sous-chemin donné. */
+function siteDeTest(nomDeLaFixture: string, { sousChemin = '/' }: { sousChemin?: string } = {}): SiteConstruit {
   const port = PREMIER_PORT_DES_SITES_DE_TEST + nombreDeSitesDeTest++;
   return {
     fixture: path.join(racineDuTheme, 'tests', 'fixtures', nomDeLaFixture),
     origine: `http://localhost:${port}`,
+    sousChemin,
     prefixeDuDossier: `oc-portfolio-${nomDeLaFixture}-`,
   };
 }
@@ -78,6 +85,15 @@ export const SITE_A_UN_BOUTON_SANS_LIBELLE = siteDeTest('bouton-sans-libelle');
    label mais ni url ni pageRef. */
 export const SITE_A_UN_BOUTON_SANS_DESTINATION = siteDeTest('bouton-sans-destination');
 
+/* Le site d'exemple est servi à la racine de son origine : ce site-ci est
+   servi sous /portfolio/, comme un déploiement dans un sous-dossier, et
+   remplace l'accueil français par celui de
+   tests/fixtures/url-depuis-la-racine/content, dont l'unique bouton déclare
+   une url relative à la racine du site, url = '/fr/page-longue/'. */
+export const SITE_SOUS_PORTFOLIO_A_UNE_URL_DEPUIS_LA_RACINE = siteDeTest('url-depuis-la-racine', {
+  sousChemin: '/portfolio/',
+});
+
 /* Hugo ne lit une configuration que dans un fichier : celle qui monte le
    contenu de la fixture est écrite dans un dossier temporaire à part, pour
    ne pas finir parmi les pages construites, et supprimée après la
@@ -117,7 +133,7 @@ function argumentsDeConstruction(site: SiteConstruit, configuration: string, des
     '--source', 'exampleSite',
     '--config', configuration,
     '--environment', 'production',
-    '--baseURL', `${site.origine}/`,
+    '--baseURL', `${site.origine}${site.sousChemin}`,
     '--destination', destination,
     '--noBuildLock',
   ];
@@ -185,9 +201,13 @@ export function supprimerUnSite(dossier: string): void {
   rmSync(dossier, { recursive: true, force: true });
 }
 
+/* Seules les adresses sous le sous-chemin du site sont servies : Hugo écrit
+   les pages à la racine du dossier construit, le sous-chemin ne figurant que
+   dans leurs adresses. */
 export async function servirUnSite(context: BrowserContext, site: SiteConstruit, dossier: string): Promise<void> {
-  await context.route(`${site.origine}/**`, async (route) => {
-    const chemin = decodeURIComponent(new URL(route.request().url()).pathname);
+  await context.route(`${site.origine}${site.sousChemin}**`, async (route) => {
+    const adresse = decodeURIComponent(new URL(route.request().url()).pathname);
+    const chemin = `/${adresse.slice(site.sousChemin.length)}`;
     let fichier = path.join(dossier, chemin);
     if (existsSync(fichier) && statSync(fichier).isDirectory()) fichier = path.join(fichier, 'index.html');
     if (!fichier.startsWith(dossier) || !existsSync(fichier)) {
