@@ -138,11 +138,20 @@ export interface TentativeDeConstruction {
   erreurs: string;
 }
 
+/* Un Hugo bloqué ne doit pas bloquer le test avec lui : passé ce délai, il
+   est arrêté, et la tentative lève une exception. */
+const DELAI_MAXIMAL_DE_CONSTRUCTION_EN_MS = 60_000;
+
 /* Construit le site comme construireUnSite, mais sans lever d'exception si
    la construction échoue, pour observer ce que Hugo en dit à la personne qui
    construit le site. Sans --quiet, qui ferait taire ses messages d'erreur ;
-   --logLevel error n'en garde que les erreurs. Le dossier temporaire est
-   supprimé dans tous les cas. */
+   --logLevel error n'en garde que les erreurs. Seule une fin normale de Hugo
+   compte : reussie vaut true s'il sort avec le code 0, false avec tout autre
+   code. S'il ne finit pas normalement (lancement impossible, délai
+   DELAI_MAXIMAL_DE_CONSTRUCTION_EN_MS dépassé, arrêt par un signal), la
+   tentative lève une exception, pour qu'un test qui attend un échec de la
+   construction ne passe pas pour une mauvaise raison. Le dossier temporaire
+   est supprimé dans tous les cas. */
 export function tenterDeConstruireUnSite(site: SiteConstruit): TentativeDeConstruction {
   const destination = creerLeDossierDeConstruction(site);
   try {
@@ -150,9 +159,16 @@ export function tenterDeConstruireUnSite(site: SiteConstruit): TentativeDeConstr
       spawnSync('hugo', [...argumentsDeConstruction(site, configuration, destination), '--logLevel', 'error'], {
         cwd: racineDuTheme,
         encoding: 'utf8',
+        timeout: DELAI_MAXIMAL_DE_CONSTRUCTION_EN_MS,
       }),
     );
-    if (resultat.error) throw resultat.error;
+    if (resultat.error || resultat.signal) {
+      throw new Error(
+        `Hugo n'a pas fini normalement (signal : ${resultat.signal ?? 'aucun'})` +
+          (resultat.error ? ` : ${resultat.error.message}` : ''),
+        { cause: resultat.error },
+      );
+    }
     return { reussie: resultat.status === 0, erreurs: resultat.stderr };
   } finally {
     supprimerUnSite(destination);
