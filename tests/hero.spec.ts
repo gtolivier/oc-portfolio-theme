@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { SITE_A_UN_AUTRE_HERO, SITE_SANS_HERO, construireUnSite, servirUnSite, supprimerUnSite } from './helpers/site-construit';
+import { tabulerJusqua } from './helpers/clavier';
 
 /* Vérifie que chaque ligne de l'accroche est visible dans la zone, et que chacune commence
    sous la précédente, dans l'ordre donné. */
@@ -318,6 +319,29 @@ test('sur ordinateur, le second bouton du hero, « Contact », survolé passe en
       bordures: bordures.map(({ cote, couleur: couleurDuCote }) => ({ cote, couleur: couleurDuCote })),
     };
   }, { message: 'style du second bouton survolé' }).toEqual({
+    couleur: accent,
+    bordures: (['top', 'right', 'bottom', 'left'] as const).map((cote) => ({ cote, couleur: accent })),
+  });
+});
+
+test('sur téléphone comme sur ordinateur, le second bouton du hero, « Contact », atteint au clavier passe en couleur accent : texte et bordure sur les quatre côtés', async ({ page, browserName }) => {
+  await page.goto('/fr/');
+  /* Référence de design : au focus clavier, comme au survol, texte et bordure en accent
+     #2A888D, opaques. Le focus vient de la touche Tab, comme pour un visiteur au clavier. On
+     attend que les couleurs se stabilisent, au cas où une transition accompagne le focus. */
+  await expect(premierBoutonDuHero(page)).toHaveText(/^\s*Voir les projets/);
+  const secondBouton = secondBoutonDuHero(page);
+  await expect(secondBouton).toHaveText('Contact');
+  await tabulerJusqua(secondBouton, browserName);
+  await expect(secondBouton).toBeFocused();
+  const accent = { rouge: 42, vert: 136, bleu: 141, opacite: 1 };
+  await expect.poll(async () => {
+    const { couleur, bordures } = await styleDuBouton(secondBouton);
+    return {
+      couleur,
+      bordures: bordures.map(({ cote, couleur: couleurDuCote }) => ({ cote, couleur: couleurDuCote })),
+    };
+  }, { message: 'style du second bouton atteint au clavier' }).toEqual({
     couleur: accent,
     bordures: (['top', 'right', 'bottom', 'left'] as const).map((cote) => ({ cote, couleur: accent })),
   });
