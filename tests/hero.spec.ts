@@ -1,4 +1,4 @@
-import { test, expect, type Locator } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { SITE_A_UN_AUTRE_HERO, SITE_SANS_HERO, construireUnSite, servirUnSite, supprimerUnSite } from './helpers/site-construit';
 
 /* Vérifie que chaque ligne de l'accroche est visible dans la zone, et que chacune commence
@@ -93,6 +93,43 @@ function composantesDeCouleur(couleur: string) {
   return { rouge, vert, bleu, opacite };
 }
 
+/* Styles calculés qui décident de l'allure d'un bouton : couleur du texte, fond,
+   soulignement, et bordure de chaque côté. Couleurs en composantes. */
+async function styleDuBouton(bouton: Locator) {
+  const { couleur, fond, soulignement, bordures } = await bouton.evaluate((lien) => {
+    const style = getComputedStyle(lien);
+    const cotes = ['top', 'right', 'bottom', 'left'] as const;
+    return {
+      couleur: style.color,
+      fond: style.backgroundColor,
+      soulignement: style.textDecorationLine,
+      bordures: cotes.map((cote) => ({
+        cote,
+        epaisseur: style.getPropertyValue(`border-${cote}-width`),
+        trait: style.getPropertyValue(`border-${cote}-style`),
+        couleur: style.getPropertyValue(`border-${cote}-color`),
+      })),
+    };
+  });
+  return {
+    couleur: composantesDeCouleur(couleur),
+    fond: composantesDeCouleur(fond),
+    soulignement,
+    bordures: bordures.map((bordure) => ({ ...bordure, couleur: composantesDeCouleur(bordure.couleur) })),
+  };
+}
+
+/* Le hero précède le texte d'accueil : ses boutons d'action sont, dans l'ordre, les premiers
+   liens du contenu principal. On les cherche là, et non dans toute la page, parce que l'en-tête
+   a ses propres liens, dont un « Contact ». */
+function premierBoutonDuHero(page: Page): Locator {
+  return page.getByRole('main').getByRole('link').first();
+}
+
+function secondBoutonDuHero(page: Page): Locator {
+  return page.getByRole('main').getByRole('link').nth(1);
+}
+
 test('sur l’accueil français, le titre principal commence par le nom de l’auteur du site', async ({ page }) => {
   await page.goto('/fr/');
   const titrePrincipal = page.getByRole('main').getByRole('heading', { level: 1 });
@@ -106,7 +143,7 @@ test('sur l’accueil français, le titre principal affiche, à la ligne sous le
   /* Le titre vient du front matter de exampleSite/content/_index.md, bloc [params.hero], clé title.
      Texte du DOM, tel qu'écrit dans le front matter : l'affichage en majuscules relève du CSS. */
   await expect(titrePrincipal).toHaveText(/^\s*Jean Exemple\s*Horloger indépendant\s*$/);
-  /* Le titre est un élément à part dans le h1, rendu à la ligne, sous le nom. */
+  /* À la ligne : le titre professionnel commence au moins une demi-ligne plus bas que le nom. */
   const titreProfessionnel = titrePrincipal.getByText('Horloger indépendant', { exact: true });
   await expect(titreProfessionnel).toBeVisible();
   const boiteTitrePrincipal = await titrePrincipal.boundingBox();
@@ -166,8 +203,8 @@ test('sur l’accueil français, le hero affiche la stack sur une ligne, entrée
   await page.goto('/fr/');
   const principal = page.getByRole('main');
   /* La stack vient du front matter de exampleSite/content/_index.md, bloc [params.hero],
-     clé stack (une liste de chaînes : 'Laiton', 'Acier', 'Rubis', 'Émail'). Le gabarit les
-     joint en un seul élément, séparées par un point médian entouré d'espaces. */
+     clé stack (une liste de chaînes : 'Laiton', 'Acier', 'Rubis', 'Émail'). Elles s'affichent
+     d'un seul tenant, séparées par un point médian entouré d'espaces. */
   await expect(principal.getByText('Laiton · Acier · Rubis · Émail', { exact: true })).toBeVisible();
 });
 
@@ -175,7 +212,7 @@ test('sur l’accueil français, l’accroche du hero s’affiche en IBM Plex Sa
   await page.goto('/fr/');
   const principal = page.getByRole('main');
   /* Référence de design : papier #E3DFCC à 88 % d'opacité pour l'accroche, accent #2A888D
-     pour la stack. Ce sont les styles calculés de l'élément qui porte chaque texte. */
+     pour la stack. */
   const lignes = [
     'Montres mécaniques sur mesure — 20 ans d’atelier.',
     'Conception, réparation et entretien',
@@ -202,9 +239,8 @@ test('sur l’accueil français, l’accroche du hero s’affiche en IBM Plex Sa
 test('sur l’accueil français, le premier bouton du hero, « Voir les projets », mène à la page Projets française', async ({ page }) => {
   await page.goto('/fr/');
   /* Les boutons viennent du front matter de exampleSite/content/_index.md, blocs
-     [[params.hero.actions]] ; le premier a pageRef = '/projets'. Le hero précède le texte
-     d'accueil : son premier bouton est le premier lien du contenu principal. */
-  const premierBouton = page.getByRole('main').getByRole('link').first();
+     [[params.hero.actions]] ; le premier a pageRef = '/projets'. */
+  const premierBouton = premierBoutonDuHero(page);
   await expect(premierBouton).toHaveText('Voir les projets');
   await expect(premierBouton).toHaveAttribute('href', '/fr/projets/');
   await premierBouton.click();
@@ -213,33 +249,20 @@ test('sur l’accueil français, le premier bouton du hero, « Voir les projets 
 
 test('sur l’accueil français, le premier bouton du hero affiche une flèche « → » après « Voir les projets », que les lecteurs d’écran ne lisent pas', async ({ page }) => {
   await page.goto('/fr/');
-  /* Le hero précède le texte d'accueil : son premier bouton est le premier lien du contenu
-     principal. À l'écran, la flèche suit le libellé ; le nom accessible du lien reste le seul
-     libellé. */
-  const premierBouton = page.getByRole('main').getByRole('link').first();
+  /* À l'écran, la flèche suit le libellé ; le nom accessible du lien reste le seul libellé. */
+  const premierBouton = premierBoutonDuHero(page);
   await expect(premierBouton).toHaveAccessibleName('Voir les projets');
   expect(await texteAffiche(premierBouton)).toMatch(/^Voir les projets ?→$/);
 });
 
 test('sur l’accueil français, le premier bouton du hero, « Voir les projets », est plein : texte encre sur fond papier, en IBM Plex Mono demi-grasse (600), non souligné', async ({ page }) => {
   await page.goto('/fr/');
-  /* Le hero précède le texte d'accueil : son premier bouton est le premier lien du contenu
-     principal. Référence de design : encre #013549, papier #E3DFCC. Ce sont les styles
-     calculés du lien qui décident de son allure. */
-  const premierBouton = page.getByRole('main').getByRole('link').first();
+  /* Référence de design : encre #013549, papier #E3DFCC. */
+  const premierBouton = premierBoutonDuHero(page);
   await expect(premierBouton).toHaveText(/^\s*Voir les projets/);
-  const { famille, graisse, couleur } = await styleDuTexte(premierBouton);
-  const { fond, soulignement } = await premierBouton.evaluate((lien) => {
-    const style = getComputedStyle(lien);
-    return { fond: style.backgroundColor, soulignement: style.textDecorationLine };
-  });
-  expect({
-    famille,
-    graisse,
-    couleur: composantesDeCouleur(couleur),
-    fond: composantesDeCouleur(fond),
-    soulignement,
-  }, 'style du premier bouton').toEqual({
+  const { famille, graisse } = await styleDuTexte(premierBouton);
+  const { couleur, fond, soulignement } = await styleDuBouton(premierBouton);
+  expect({ famille, graisse, couleur, fond, soulignement }, 'style du premier bouton').toEqual({
     famille: 'IBM Plex Mono',
     graisse: '600',
     couleur: { rouge: 1, vert: 53, bleu: 73, opacite: 1 },
@@ -251,46 +274,21 @@ test('sur l’accueil français, le premier bouton du hero, « Voir les projets 
 test('sur l’accueil français, le second bouton du hero, placé après « Voir les projets », est « Contact » et mène à #contact', async ({ page }) => {
   await page.goto('/fr/');
   /* Les boutons viennent du front matter de exampleSite/content/_index.md, blocs
-     [[params.hero.actions]] ; le second a url = '#contact'. L'en-tête a aussi un lien
-     « Contact » : on cherche dans le contenu principal, où le hero précède le texte d'accueil,
-     donc son second bouton est le deuxième lien. */
-  const liens = page.getByRole('main').getByRole('link');
-  await expect(liens.first()).toHaveText('Voir les projets');
-  const secondBouton = liens.nth(1);
+     [[params.hero.actions]] ; le second a url = '#contact'. */
+  await expect(premierBoutonDuHero(page)).toHaveText('Voir les projets');
+  const secondBouton = secondBoutonDuHero(page);
   await expect(secondBouton).toHaveText('Contact');
   await expect(secondBouton).toHaveAttribute('href', '#contact');
 });
 
 test('sur l’accueil français, le second bouton du hero, « Contact », est en contour : texte papier, bordure pleine de 1 px papier à 50 % d’opacité sur les quatre côtés, fond transparent, non souligné', async ({ page }) => {
   await page.goto('/fr/');
-  /* Le hero précède le texte d'accueil : son second bouton est le deuxième lien du contenu
-     principal. Référence de design : papier #E3DFCC, bordure 1px solid à 50 % d'opacité.
-     Ce sont les styles calculés du lien qui décident de son allure. */
-  const liens = page.getByRole('main').getByRole('link');
-  await expect(liens.first()).toHaveText(/^\s*Voir les projets/);
-  const secondBouton = liens.nth(1);
+  /* Référence de design : papier #E3DFCC, bordure 1px solid à 50 % d'opacité. */
+  await expect(premierBoutonDuHero(page)).toHaveText(/^\s*Voir les projets/);
+  const secondBouton = secondBoutonDuHero(page);
   await expect(secondBouton).toHaveText('Contact');
-  const { couleur, fond, soulignement, bordures } = await secondBouton.evaluate((lien) => {
-    const style = getComputedStyle(lien);
-    const cotes = ['top', 'right', 'bottom', 'left'] as const;
-    return {
-      couleur: style.color,
-      fond: style.backgroundColor,
-      soulignement: style.textDecorationLine,
-      bordures: cotes.map((cote) => ({
-        cote,
-        epaisseur: style.getPropertyValue(`border-${cote}-width`),
-        trait: style.getPropertyValue(`border-${cote}-style`),
-        couleur: style.getPropertyValue(`border-${cote}-color`),
-      })),
-    };
-  });
-  expect({
-    couleur: composantesDeCouleur(couleur),
-    opaciteDuFond: composantesDeCouleur(fond).opacite,
-    soulignement,
-    bordures: bordures.map((bordure) => ({ ...bordure, couleur: composantesDeCouleur(bordure.couleur) })),
-  }, 'style du second bouton').toEqual({
+  const { couleur, fond, soulignement, bordures } = await styleDuBouton(secondBouton);
+  expect({ couleur, opaciteDuFond: fond.opacite, soulignement, bordures }, 'style du second bouton').toEqual({
     couleur: { rouge: 227, vert: 223, bleu: 204, opacite: 1 },
     opaciteDuFond: 0,
     soulignement: 'none',
@@ -306,28 +304,18 @@ test('sur l’accueil français, le second bouton du hero, « Contact », est en
 test('sur ordinateur, le second bouton du hero, « Contact », survolé passe en couleur accent : texte et bordure sur les quatre côtés', async ({ page, hasTouch }) => {
   test.skip(hasTouch, 'le survol à la souris n’existe pas sur un écran tactile');
   await page.goto('/fr/');
-  /* Le hero précède le texte d'accueil : son second bouton est le deuxième lien du contenu
-     principal. Référence de design : au survol, texte et bordure en accent #2A888D, opaques.
-     Ce sont les styles calculés du lien qui décident de son allure ; on attend qu'ils se
-     stabilisent, au cas où une transition accompagne le survol. */
-  const liens = page.getByRole('main').getByRole('link');
-  await expect(liens.first()).toHaveText(/^\s*Voir les projets/);
-  const secondBouton = liens.nth(1);
+  /* Référence de design : au survol, texte et bordure en accent #2A888D, opaques. On attend
+     que les couleurs se stabilisent, au cas où une transition accompagne le survol. */
+  await expect(premierBoutonDuHero(page)).toHaveText(/^\s*Voir les projets/);
+  const secondBouton = secondBoutonDuHero(page);
   await expect(secondBouton).toHaveText('Contact');
   await secondBouton.hover();
   const accent = { rouge: 42, vert: 136, bleu: 141, opacite: 1 };
   await expect.poll(async () => {
-    const { couleur, bordures } = await secondBouton.evaluate((lien) => {
-      const style = getComputedStyle(lien);
-      const cotes = ['top', 'right', 'bottom', 'left'] as const;
-      return {
-        couleur: style.color,
-        bordures: cotes.map((cote) => ({ cote, couleur: style.getPropertyValue(`border-${cote}-color`) })),
-      };
-    });
+    const { couleur, bordures } = await styleDuBouton(secondBouton);
     return {
-      couleur: composantesDeCouleur(couleur),
-      bordures: bordures.map((bordure) => ({ ...bordure, couleur: composantesDeCouleur(bordure.couleur) })),
+      couleur,
+      bordures: bordures.map(({ cote, couleur: couleurDuCote }) => ({ cote, couleur: couleurDuCote })),
     };
   }, { message: 'style du second bouton survolé' }).toEqual({
     couleur: accent,
@@ -366,7 +354,7 @@ test('le contenu du hero est aligné sur le logo de l’en-tête : à 16 px du b
   const bordGaucheAttendu = isMobile ? 16 : 48;
   expect((await logo.boundingBox())!.x, 'bord gauche du logo').toBeCloseTo(bordGaucheAttendu, 0);
   /* Les éléments du hero : nom et titre professionnel dans le h1, accroche, stack et premier
-     bouton (le premier lien du contenu principal, le hero précédant le texte d'accueil). */
+     bouton. */
   const principal = page.getByRole('main');
   const titrePrincipal = principal.getByRole('heading', { level: 1 });
   const elements = {
@@ -374,7 +362,7 @@ test('le contenu du hero est aligné sur le logo de l’en-tête : à 16 px du b
     'titre professionnel': titrePrincipal.getByText('Horloger indépendant', { exact: true }),
     'accroche': principal.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
     'stack': principal.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
-    'premier bouton': principal.getByRole('link').first(),
+    'premier bouton': premierBoutonDuHero(page),
   };
   await expect(elements['premier bouton']).toHaveText(/^\s*Voir les projets/);
   for (const [nom, element] of Object.entries(elements)) {
@@ -393,11 +381,9 @@ test('sur téléphone, le hero tient dans la largeur de l’écran : pas de déf
   expect(largeurPage, 'pas de défilement horizontal').toBeLessThanOrEqual(largeur);
 
   /* Les éléments du hero : nom et titre professionnel dans le h1, les trois lignes de
-     l'accroche, la stack et les deux boutons (les deux premiers liens du contenu principal,
-     le hero précédant le texte d'accueil). */
+     l'accroche, la stack et les deux boutons. */
   const principal = page.getByRole('main');
   const titrePrincipal = principal.getByRole('heading', { level: 1 });
-  const liens = principal.getByRole('link');
   const elements = {
     'nom de l’auteur (h1)': titrePrincipal,
     'titre professionnel': titrePrincipal.getByText('Horloger indépendant', { exact: true }),
@@ -405,8 +391,8 @@ test('sur téléphone, le hero tient dans la largeur de l’écran : pas de déf
     'accroche, ligne 2': principal.getByText('Conception, réparation et entretien'),
     'accroche, ligne 3': principal.getByText('de pendules et de montres anciennes.'),
     'stack': principal.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
-    'premier bouton': liens.first(),
-    'second bouton': liens.nth(1),
+    'premier bouton': premierBoutonDuHero(page),
+    'second bouton': secondBoutonDuHero(page),
   };
   await expect(elements['premier bouton']).toHaveText(/^\s*Voir les projets/);
   await expect(elements['second bouton']).toHaveText('Contact');
@@ -427,9 +413,7 @@ test('sur téléphone, le hero tient dans la largeur de l’écran : pas de déf
 
 test('servi sous /portfolio/, le premier bouton du hero de l’accueil français, « Voir les projets », mène à /portfolio/fr/projets/', async ({ page }) => {
   await page.goto('http://localhost:1315/portfolio/fr/');
-  /* Le hero précède le texte d'accueil : son premier bouton est le premier lien du contenu
-     principal. */
-  const premierBouton = page.getByRole('main').getByRole('link').first();
+  const premierBouton = premierBoutonDuHero(page);
   await expect(premierBouton).toHaveText('Voir les projets');
   await expect(premierBouton).toHaveAttribute('href', '/portfolio/fr/projets/');
   await premierBouton.click();
@@ -461,17 +445,15 @@ test('sur l’accueil anglais, le hero affiche la stack anglaise, entrées sépa
   await page.goto('/en/');
   const principal = page.getByRole('main');
   /* La stack vient du front matter de exampleSite/content/_index.en.md, bloc [params.hero],
-     clé stack (une liste de chaînes : 'Brass', 'Steel', 'Ruby', 'Enamel'). Le gabarit les
-     joint en un seul élément, séparées par un point médian entouré d'espaces. */
+     clé stack (une liste de chaînes : 'Brass', 'Steel', 'Ruby', 'Enamel'). Elles s'affichent
+     d'un seul tenant, séparées par un point médian entouré d'espaces. */
   await expect(principal.getByText('Brass · Steel · Ruby · Enamel', { exact: true })).toBeVisible();
 });
 
 test('sur l’accueil anglais, le premier bouton du hero, « View projects », mène à la page Projets anglaise', async ({ page }) => {
   await page.goto('/en/');
-  /* Le hero précède le texte d'accueil : son premier bouton est le premier lien du contenu
-     principal. La page Projets anglaise a pour slug 'projects'
-     (exampleSite/content/projets/_index.en.md). */
-  const premierBouton = page.getByRole('main').getByRole('link').first();
+  /* La page Projets anglaise a pour slug 'projects' (exampleSite/content/projets/_index.en.md). */
+  const premierBouton = premierBoutonDuHero(page);
   await expect(premierBouton).toHaveText('View projects');
   await expect(premierBouton).toHaveAttribute('href', '/en/projects/');
   await premierBouton.click();

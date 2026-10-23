@@ -55,7 +55,7 @@ export const SITE_A_UN_AUTRE_HERO: SiteConstruit = {
   prefixeDuDossier: 'oc-portfolio-autre-hero-',
 };
 
-const racineDuTheme =path.resolve(__dirname, '..', '..');
+const racineDuTheme = path.resolve(__dirname, '..', '..');
 
 export function construireUnSite(site: SiteConstruit): string {
   const destination = mkdtempSync(path.join(tmpdir(), site.prefixeDuDossier));
