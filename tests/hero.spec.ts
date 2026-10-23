@@ -62,6 +62,20 @@ async function texteAffiche(element: Locator): Promise<string> {
   return texte.replace(/\s+/g, ' ').trim();
 }
 
+/* Styles calculés qui décident de l'allure d'un texte : casse affichée, première police de la
+   pile, graisse et couleur. */
+async function styleDuTexte(element: Locator) {
+  return element.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return {
+      casse: style.textTransform,
+      famille: style.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
+      graisse: style.fontWeight,
+      couleur: style.color,
+    };
+  });
+}
+
 test('sur l’accueil français, le titre principal commence par le nom de l’auteur du site', async ({ page }) => {
   await page.goto('/fr/');
   const titrePrincipal = page.getByRole('main').getByRole('heading', { level: 1 });
@@ -91,15 +105,7 @@ test('sur l’accueil français, le nom de l’auteur s’affiche en majuscules,
   await expect(titreProfessionnel).toBeVisible();
   /* Le nom est un nœud texte direct du h1 : il prend les styles calculés du h1. Référence de
      design : nom en clamp(44px, 6.4vw, 100px), titre en clamp(22px, 3vw, 46px). */
-  const styleDuNom = await titrePrincipal.evaluate((h1) => {
-    const style = getComputedStyle(h1);
-    return {
-      casse: style.textTransform,
-      famille: style.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
-      graisse: style.fontWeight,
-      couleur: style.color,
-    };
-  });
+  const styleDuNom = await styleDuTexte(titrePrincipal);
   expect(styleDuNom).toEqual({
     casse: 'uppercase',
     famille: 'IBM Plex Mono',
@@ -109,6 +115,21 @@ test('sur l’accueil français, le nom de l’auteur s’affiche en majuscules,
   const tailleDuNom = await titrePrincipal.evaluate((h1) => parseFloat(getComputedStyle(h1).fontSize));
   const tailleDuTitre = await titreProfessionnel.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
   expect(tailleDuNom, 'le nom est plus grand que le titre professionnel').toBeGreaterThan(tailleDuTitre);
+});
+
+test('sur l’accueil français, le titre professionnel qui suit le nom de l’auteur s’affiche en majuscules, en IBM Plex Mono demi-grasse (600), couleur accent', async ({ page }) => {
+  await page.goto('/fr/');
+  const titrePrincipal = page.getByRole('main').getByRole('heading', { level: 1 });
+  /* Le titre est un élément à part dans le h1 : ce sont ses propres styles calculés qui
+     décident de son allure. Référence de design : accent #2A888D. */
+  const titreProfessionnel = titrePrincipal.getByText('Horloger indépendant', { exact: true });
+  await expect(titreProfessionnel).toBeVisible();
+  expect(await styleDuTexte(titreProfessionnel)).toEqual({
+    casse: 'uppercase',
+    famille: 'IBM Plex Mono',
+    graisse: '600',
+    couleur: 'rgb(42, 136, 141)',
+  });
 });
 
 test('sur l’accueil français, le hero affiche l’accroche, une ligne par entrée : les trois lignes, dans l’ordre, chacune sous la précédente', async ({ page }) => {
