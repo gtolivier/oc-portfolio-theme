@@ -107,6 +107,13 @@ export const SITE_A_UN_HERO_AUX_MOTS_LONGS = siteDeTest('hero-mots-longs');
    par celui de tests/fixtures/hero-sans-auteur/content, au hero complet. */
 export const SITE_A_UN_HERO_SANS_AUTEUR = siteDeTest('hero-sans-auteur');
 
+/* L'accueil français du site d'exemple a un hero dont chaque bouton a une
+   seule destination : ce site-ci remplace cet accueil par celui de
+   tests/fixtures/bouton-url-et-page-ref/content, dont le second bouton a un
+   label et déclare à la fois url = '#contact' et pageRef = '/projets', deux
+   destinations valides. */
+export const SITE_A_UN_BOUTON_A_URL_ET_PAGE_REF = siteDeTest('bouton-url-et-page-ref');
+
 /* Hugo ne lit une configuration que dans un fichier : celle qui monte le
    contenu de la fixture est écrite dans un dossier temporaire à part, pour
    ne pas finir parmi les pages construites, et supprimée après la

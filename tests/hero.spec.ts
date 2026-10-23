@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import {
   SITE_A_UN_AUTRE_HERO,
+  SITE_A_UN_BOUTON_A_URL_ET_PAGE_REF,
   SITE_A_UN_BOUTON_SANS_DESTINATION,
   SITE_A_UN_BOUTON_SANS_LIBELLE,
   SITE_A_UN_HERO_AUX_MOTS_LONGS,
@@ -713,6 +714,20 @@ test.describe('erreurs de contenu du hero : échec de la construction', () => {
     expect(construction.reussie, 'la construction du site devrait échouer').toBe(false);
     expect(construction.erreurs).toMatch(/\burl\b/);
     expect(construction.erreurs).toMatch(/\bpageRef\b/);
+  });
+
+  test('un accueil dont un bouton du hero déclare à la fois une url et un pageRef fait échouer la construction du site, avec un message d’erreur qui cite ces deux champs, et non le message « ni champ url ni champ pageRef »', () => {
+    /* Le second bouton de tests/fixtures/bouton-url-et-page-ref/content/_index.md a un label
+       et déclare à la fois url = '#contact' et pageRef = '/projets', deux destinations
+       valides. Plutôt qu'un lien dont l'une des deux destinations serait ignorée sans
+       prévenir, la personne qui construit le site doit obtenir un échec dont le message nomme
+       les champs url et pageRef du front matter, quelle que soit la phrase choisie ; lui
+       reprocher de n'avoir ni l'un ni l'autre l'égarerait. */
+    const construction = tenterDeConstruireUnSite(SITE_A_UN_BOUTON_A_URL_ET_PAGE_REF);
+    expect(construction.reussie, 'la construction du site devrait échouer').toBe(false);
+    expect(construction.erreurs).toMatch(/\burl\b/);
+    expect(construction.erreurs).toMatch(/\bpageRef\b/);
+    expect(construction.erreurs).not.toMatch(/\bni\s+(?:de\s+)?(?:champ\s+)?url\b/i);
   });
 
   test('un site dont l’accueil déclare un hero sans que params.author soit renseigné fait échouer la construction du site, avec un message d’erreur qui cite le champ author', () => {
