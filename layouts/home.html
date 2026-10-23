@@ -26,6 +26,7 @@
           {{- errorf "hero : le pageRef %q ne correspond à aucune page" $ref }}
         {{- end }}
       {{- end }}
+      {{- if not $href }}{{ errorf "hero : un bouton n’a ni champ url ni champ pageRef" }}{{ end }}
       {{- with .label }}{{ else }}{{ errorf "hero : un bouton n’a pas de champ label" }}{{ end }}
       <a href="{{ $href }}">{{ .label }}</a>
       {{- end }}
