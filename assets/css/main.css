@@ -43,8 +43,12 @@
   --color-accent-dark: #1E6C58;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
   --font-sans: 'IBM Plex Sans', Helvetica, sans-serif;
-  --sticky-header-clearance: 6rem;
+  /* Hauteur minimale de l'en-tête collant ; le hero la retranche de la
+     fenêtre pour la remplir juste sous l'en-tête. */
   --header-height: 4rem;
+  /* Espace laissé au-dessus d'une cible d'ancre pour que l'en-tête collant
+     ne la masque pas : sa hauteur, plus un peu d'air. */
+  --sticky-header-clearance: calc(var(--header-height) + 2rem);
   /* Plans d'empilement : l'en-tête collant passe au-dessus du contenu
      positionné, le lien d'évitement au-dessus de l'en-tête. */
   --layer-sticky-header: 5;
@@ -111,7 +115,7 @@ h1 {
   color: var(--color-accent);
 }
 
-/* Premier bouton : plein, texte encre sur fond papier. */
+/* Premier bouton : plein. */
 .hero-actions a:first-child {
   font-family: var(--font-mono);
   font-weight: 600;
@@ -120,7 +124,7 @@ h1 {
   text-decoration: none;
 }
 
-/* Second bouton : en contour, texte papier, bordure papier à 50 %, fond transparent. */
+/* Second bouton : en contour. */
 .hero-actions a:nth-child(2) {
   color: var(--color-paper);
   background-color: transparent;
@@ -128,7 +132,8 @@ h1 {
   text-decoration: none;
 }
 
-/* Survol à la souris : texte et bordure du second bouton passent en accent. */
+/* Survol réservé aux appareils qui survolent : sur écran tactile, il
+   resterait affiché après un toucher. */
 @media (hover: hover) {
   .hero-actions a:nth-child(2):hover {
     color: var(--color-accent);

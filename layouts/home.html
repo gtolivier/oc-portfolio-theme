@@ -8,7 +8,7 @@
     </h1>
     {{- with .tagline }}
     <p class="hero-tagline">
-      {{- range . }}{{ . }}<br>{{ end -}}
+      {{- range $index, $line := . }}{{ if $index }}<br>{{ end }}{{ $line }}{{ end -}}
     </p>
     {{- end }}
     {{- with .stack }}
