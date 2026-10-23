@@ -18,7 +18,7 @@
     <p class="hero-actions">
       {{- range . }}
       {{- $href := .url }}
-      {{- with .pageRef }}{{ with site.GetPage . }}{{ $href = .RelPermalink }}{{ end }}{{ end }}
+      {{- with .pageRef }}{{ $ref := . }}{{ with site.GetPage $ref }}{{ $href = .RelPermalink }}{{ else }}{{ errorf "hero : le pageRef %q ne correspond à aucune page" $ref }}{{ end }}{{ end }}
       <a href="{{ $href }}">{{ .label }}</a>
       {{- end }}
     </p>
