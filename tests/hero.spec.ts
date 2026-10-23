@@ -99,3 +99,12 @@ test('sur l’accueil anglais, le hero affiche les trois lignes de l’accroche 
   ];
   await verifierLignesDansLOrdre(principal, lignes);
 });
+
+test('sur l’accueil anglais, le hero affiche la stack anglaise, entrées séparées par « · »', async ({ page }) => {
+  await page.goto('/en/');
+  const principal = page.getByRole('main');
+  /* La stack vient du front matter de exampleSite/content/_index.en.md, bloc [params.hero],
+     clé stack (une liste de chaînes : 'Brass', 'Steel', 'Ruby', 'Enamel'). Le gabarit les
+     joint en un seul élément, séparées par un point médian entouré d'espaces. */
+  await expect(principal.getByText('Brass · Steel · Ruby · Enamel', { exact: true })).toBeVisible();
+});
