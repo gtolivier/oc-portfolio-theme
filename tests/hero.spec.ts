@@ -384,6 +384,47 @@ test('le contenu du hero est aligné sur le logo de l’en-tête : à 16 px du b
   }
 });
 
+test('sur téléphone, le hero tient dans la largeur de l’écran : pas de défilement horizontal, nom, titre, accroche, stack et boutons entièrement visibles', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'comportement propre au téléphone');
+  await page.goto('/fr/');
+  const largeur = page.viewportSize()!.width;
+
+  const largeurPage = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(largeurPage, 'pas de défilement horizontal').toBeLessThanOrEqual(largeur);
+
+  /* Les éléments du hero : nom et titre professionnel dans le h1, les trois lignes de
+     l'accroche, la stack et les deux boutons (les deux premiers liens du contenu principal,
+     le hero précédant le texte d'accueil). */
+  const principal = page.getByRole('main');
+  const titrePrincipal = principal.getByRole('heading', { level: 1 });
+  const liens = principal.getByRole('link');
+  const elements = {
+    'nom de l’auteur (h1)': titrePrincipal,
+    'titre professionnel': titrePrincipal.getByText('Horloger indépendant', { exact: true }),
+    'accroche, ligne 1': principal.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
+    'accroche, ligne 2': principal.getByText('Conception, réparation et entretien'),
+    'accroche, ligne 3': principal.getByText('de pendules et de montres anciennes.'),
+    'stack': principal.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
+    'premier bouton': liens.first(),
+    'second bouton': liens.nth(1),
+  };
+  await expect(elements['premier bouton']).toHaveText(/^\s*Voir les projets/);
+  await expect(elements['second bouton']).toHaveText('Contact');
+  for (const [nom, element] of Object.entries(elements)) {
+    await expect(element, nom).toBeVisible();
+    /* Étendue affichée : la boîte de l'élément et celle de son contenu (un texte trop long
+       peut déborder de sa boîte sans l'élargir). */
+    const { gauche, droite } = await element.evaluate((el) => {
+      const plage = document.createRange();
+      plage.selectNodeContents(el);
+      const boites = [el.getBoundingClientRect(), plage.getBoundingClientRect()];
+      return { gauche: Math.min(...boites.map((b) => b.left)), droite: Math.max(...boites.map((b) => b.right)) };
+    });
+    expect.soft(gauche, `bord gauche dans la fenêtre : ${nom}`).toBeGreaterThanOrEqual(0);
+    expect.soft(droite, `bord droit dans la fenêtre : ${nom}`).toBeLessThanOrEqual(largeur);
+  }
+});
+
 test('servi sous /portfolio/, le premier bouton du hero de l’accueil français, « Voir les projets », mène à /portfolio/fr/projets/', async ({ page }) => {
   await page.goto('http://localhost:1315/portfolio/fr/');
   /* Le hero précède le texte d'accueil : son premier bouton est le premier lien du contenu
