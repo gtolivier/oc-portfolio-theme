@@ -2,11 +2,7 @@
 {{- /* « //hôte/… » désigne un autre site : seule une url relative à la
      racine de ce site reçoit le préfixe de la baseURL. */}}
 {{- if and .url (hasPrefix .url "/") (not (hasPrefix .url "//")) }}
-  {{- /* Une url qui contient déjà le sous-chemin de la baseURL ne le reçoit pas deux fois. */}}
-  {{- $base := (urls.Parse site.BaseURL).Path }}
-  {{- if or (eq $base "/") (not (hasPrefix .url $base)) }}
-    {{- $href = relURL (strings.TrimPrefix "/" .url) }}
-  {{- end }}
+  {{- $href = relURL (strings.TrimPrefix "/" .url) }}
 {{- end }}
 {{- with .pageRef }}
   {{- $ref := . }}
