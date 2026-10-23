@@ -120,3 +120,15 @@ test('sur l’accueil anglais, le hero affiche la stack anglaise, entrées sépa
      joint en un seul élément, séparées par un point médian entouré d'espaces. */
   await expect(principal.getByText('Brass · Steel · Ruby · Enamel', { exact: true })).toBeVisible();
 });
+
+test('sur l’accueil anglais, le premier bouton du hero, « View projects », mène à la page Projets anglaise', async ({ page }) => {
+  await page.goto('/en/');
+  /* Le hero précède le texte d'accueil : son premier bouton est le premier lien du contenu
+     principal. La page Projets anglaise a pour slug 'projects'
+     (exampleSite/content/projets/_index.en.md). */
+  const premierBouton = page.getByRole('main').getByRole('link').first();
+  await expect(premierBouton).toHaveText('View projects');
+  await expect(premierBouton).toHaveAttribute('href', '/en/projects/');
+  await premierBouton.click();
+  await expect(page).toHaveURL('/en/projects/');
+});
