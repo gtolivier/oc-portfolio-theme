@@ -76,6 +76,23 @@ async function styleDuTexte(element: Locator) {
   });
 }
 
+/* Composantes d'une couleur calculée, quelle que soit la façon dont le navigateur la
+   sérialise (`rgb(…)`, `rgba(…)` ou `color(srgb …)`) : rouge, vert et bleu de 0 à 255
+   arrondis à l'unité, opacité de 0 à 1 arrondie au centième. */
+function composantesDeCouleur(couleur: string) {
+  const nombre = '([\\d.]+%?)';
+  const versUnite = (valeur: string) => (valeur.endsWith('%') ? parseFloat(valeur) / 100 : parseFloat(valeur));
+  const rgb = couleur.match(new RegExp(`^rgba?\\(\\s*${nombre}[\\s,]+${nombre}[\\s,]+${nombre}(?:\\s*[,/]\\s*${nombre})?\\s*\\)$`));
+  const srgb = couleur.match(new RegExp(`^color\\(srgb\\s+${nombre}\\s+${nombre}\\s+${nombre}(?:\\s*/\\s*${nombre})?\\s*\\)$`));
+  const correspondance = rgb ?? srgb;
+  if (!correspondance) throw new Error(`couleur non reconnue : ${couleur}`);
+  const echelle = rgb ? 1 : 255;
+  const [rouge, vert, bleu] = correspondance.slice(1, 4).map((valeur) =>
+    Math.round(valeur.endsWith('%') ? versUnite(valeur) * 255 : parseFloat(valeur) * echelle));
+  const opacite = correspondance[4] === undefined ? 1 : Math.round(versUnite(correspondance[4]) * 100) / 100;
+  return { rouge, vert, bleu, opacite };
+}
+
 test('sur l’accueil français, le titre principal commence par le nom de l’auteur du site', async ({ page }) => {
   await page.goto('/fr/');
   const titrePrincipal = page.getByRole('main').getByRole('heading', { level: 1 });
@@ -152,6 +169,34 @@ test('sur l’accueil français, le hero affiche la stack sur une ligne, entrée
      clé stack (une liste de chaînes : 'Laiton', 'Acier', 'Rubis', 'Émail'). Le gabarit les
      joint en un seul élément, séparées par un point médian entouré d'espaces. */
   await expect(principal.getByText('Laiton · Acier · Rubis · Émail', { exact: true })).toBeVisible();
+});
+
+test('sur l’accueil français, l’accroche du hero s’affiche en IBM Plex Sans, couleur papier à 88 % d’opacité, et la stack en IBM Plex Mono, couleur accent', async ({ page }) => {
+  await page.goto('/fr/');
+  const principal = page.getByRole('main');
+  /* Référence de design : papier #E3DFCC à 88 % d'opacité pour l'accroche, accent #2A888D
+     pour la stack. Ce sont les styles calculés de l'élément qui porte chaque texte. */
+  const lignes = [
+    'Montres mécaniques sur mesure — 20 ans d’atelier.',
+    'Conception, réparation et entretien',
+    'de pendules et de montres anciennes.',
+  ];
+  for (const ligne of lignes) {
+    const element = principal.getByText(ligne);
+    await expect(element).toBeVisible();
+    const { famille, couleur } = await styleDuTexte(element);
+    expect({ famille, couleur: composantesDeCouleur(couleur) }, `style de « ${ligne} »`).toEqual({
+      famille: 'IBM Plex Sans',
+      couleur: { rouge: 227, vert: 223, bleu: 204, opacite: 0.88 },
+    });
+  }
+  const stack = principal.getByText('Laiton · Acier · Rubis · Émail', { exact: true });
+  await expect(stack).toBeVisible();
+  const { famille, couleur } = await styleDuTexte(stack);
+  expect({ famille, couleur: composantesDeCouleur(couleur) }, 'style de la stack').toEqual({
+    famille: 'IBM Plex Mono',
+    couleur: { rouge: 42, vert: 136, bleu: 141, opacite: 1 },
+  });
 });
 
 test('sur l’accueil français, le premier bouton du hero, « Voir les projets », mène à la page Projets française', async ({ page }) => {
