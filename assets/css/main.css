@@ -150,6 +150,11 @@ h1 {
   }
 }
 
+.hero-actions a:nth-child(2):focus-visible {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
 /* La flèche est décorative : la seconde déclaration lui donne un texte
    alternatif vide pour les lecteurs d'écran ; la première sert de repli
    aux navigateurs qui ne connaissent pas cette syntaxe. */
