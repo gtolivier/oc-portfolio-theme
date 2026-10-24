@@ -538,6 +538,45 @@ test('on the English home page, the first hero button, "View projects", leads to
   await expect(page).toHaveURL('/en/projects/');
 });
 
+test.describe('home page without JavaScript', () => {
+  /* The theme rule: no JavaScript is required to read the content. Animations (the decoding
+     heading, the tick field behind the hero) are an enhancement. */
+  test.use({ javaScriptEnabled: false });
+
+  test('without JavaScript, the hero of the French home page is complete and readable: the heading shows the author name and the professional title in clear, with the tagline, the stack and both buttons, nothing left transparent', async ({ page }) => {
+    await page.goto('/fr/');
+    const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+    const mainHeading = hero.getByRole('heading', { level: 1 });
+    /* In clear: the heading displays the name and the title themselves, not scrambled signs,
+       whether in its text or in generated content. */
+    await expect(mainHeading).toHaveText(/^\s*Jean Exemple\s*Horloger indépendant\s*$/);
+    expect(await displayedText(mainHeading), 'text displayed by the heading').toBe('Jean Exemple Horloger indépendant');
+    const elements = {
+      'author name (h1)': mainHeading,
+      'professional title': mainHeading.getByText('Horloger indépendant', { exact: true }),
+      'tagline, line 1': hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
+      'tagline, line 2': hero.getByText('Conception, réparation et entretien'),
+      'tagline, line 3': hero.getByText('de pendules et de montres anciennes.'),
+      'stack': hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
+      'first button': hero.getByRole('link', { name: 'Voir les projets' }),
+      'second button': hero.getByRole('link', { name: 'Contact' }),
+    };
+    for (const [name, element] of Object.entries(elements)) {
+      await expect(element, name).toBeVisible();
+      /* Readable: no element is left transparent, waiting for a script to reveal it. The
+         effective opacity multiplies those of the element and of its ancestors. */
+      const opacity = await element.evaluate((el) => {
+        let product = 1;
+        for (let node: Element | null = el; node; node = node.parentElement) {
+          product *= parseFloat(getComputedStyle(node).opacity);
+        }
+        return product;
+      });
+      expect.soft(opacity, `effective opacity: ${name}`).toBe(1);
+    }
+  });
+});
+
 test.describe('home page without a hero', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
