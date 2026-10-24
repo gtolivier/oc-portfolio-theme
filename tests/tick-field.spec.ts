@@ -1,5 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator } from '@playwright/test';
 import { CATALOG_SITE, buildSite, removeDirectory, serveSite } from './helpers/built-site';
+import { stopClockBeforeLoad } from './helpers/clock';
 
 test.describe('catalog: tick-field', () => {
   let siteDirectory: string;
@@ -58,4 +59,52 @@ test.describe('catalog: tick-field', () => {
     });
     expect(linkIsUnderThePointer, 'at the middle of the link, the element under the pointer is the link').toBe(true);
   });
+
+  test('right after load, a tick-field is empty: on screen, it only shows its background', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    /* Right after load: the first animation frame has run. */
+    await page.clock.runFor(16);
+
+    const screenshot = await tickField.screenshot();
+    const differingPixels = await countPixelsNotOfBackground(tickField, screenshot);
+    expect(differingPixels, 'pixels of the tick-field that differ from its background').toBe(0);
+  });
 });
+
+/* Number of pixels of the screenshot of an element that differ from the element's background
+   colour by more than a rounding error on a channel. Decoded in the page, so that the
+   background colour is read through the same colour handling as the screenshot. */
+async function countPixelsNotOfBackground(element: Locator, screenshot: Buffer): Promise<number> {
+  return element.evaluate(async (el, base64) => {
+    const TOLERANCE = 2;
+    const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+    const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+    const canvas = document.createElement('canvas');
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext('2d', { willReadFrequently: true })!;
+    context.fillStyle = getComputedStyle(el).backgroundColor;
+    context.fillRect(0, 0, 1, 1);
+    const background = context.getImageData(0, 0, 1, 1).data;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0);
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    let count = 0;
+    for (let i = 0; i < pixels.length; i += 4) {
+      for (let channel = 0; channel < 3; channel++) {
+        if (Math.abs(pixels[i + channel] - background[channel]) > TOLERANCE) {
+          count += 1;
+          break;
+        }
+      }
+    }
+    return count;
+  }, screenshot.toString('base64'));
+}
