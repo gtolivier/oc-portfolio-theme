@@ -11,6 +11,12 @@ const SIGNS = '|/\\<>[]{}=+#·';
    or reduced to a box of at most 1px with its overflow hidden. Independent of the chosen
    markup. */
 async function textOnScreen(element: Locator): Promise<string> {
+  return (await textOnScreenWithSpaces(element)).replace(/ /g, '');
+}
+
+/* Same as textOnScreen, but with its spaces kept: every run of whitespace becomes a single
+   space, as the browser renders it, and leading and trailing whitespace is dropped. */
+async function textOnScreenWithSpaces(element: Locator): Promise<string> {
   const text = await element.evaluate((root) => {
     const hides = (el: Element) => {
       const style = getComputedStyle(el);
@@ -40,7 +46,7 @@ async function textOnScreen(element: Locator): Promise<string> {
     };
     return walk(root);
   });
-  return text.replace(/\s+/g, '');
+  return text.replace(/\s+/g, ' ').trim();
 }
 
 test.describe('catalog: scramble-text', () => {
@@ -177,5 +183,33 @@ test.describe('catalog: scramble-text', () => {
       shown.some((character, index) => character !== letters[index] && SIGNS.includes(character)),
       `when the short text is in clear, the long one, "${shown.join('')}", still shows signs in place of some of its letters`,
     ).toBe(true);
+  });
+
+  test('while a scramble-text decodes, its spaces stay spaces, at the same positions', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it, step by step, to watch the decoding as it goes. */
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.clock.install({ time: new Date('2026-01-01T09:00:00') });
+    await page.clock.pauseAt(new Date('2026-01-01T09:00:00'));
+    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-lengths/`);
+    /* The second scramble-text of the page (tests/fixtures/catalog/content/scramble-text-lengths.md),
+       a long sentence with many spaces, still decoding 1.5 s after load. */
+    const scrambleTexts = page.getByRole('main').locator('scramble-text');
+    await expect(scrambleTexts).toHaveCount(2);
+    const sentence = Array.from('Un texte brouillé se décode de gauche à droite, une lettre après une autre, puis finit par se montrer entièrement en clair');
+    /* From load to 1.5 s later, every 25 ms: one character is shown per character of the
+       sentence, a space exactly where the sentence has one, and no space elsewhere. */
+    for (let elapsed = 0; elapsed <= 1500; elapsed += 25) {
+      if (elapsed > 0) await page.clock.runFor(25);
+      const shown = Array.from(await textOnScreenWithSpaces(scrambleTexts.nth(1)));
+      expect(shown, `at ${elapsed} ms, "${shown.join('')}" shows one character per character of the sentence`).toHaveLength(sentence.length);
+      sentence.forEach((character, index) => {
+        expect(
+          shown[index] === ' ',
+          `at ${elapsed} ms, in "${shown.join('')}", character ${index} is a space exactly when the sentence has one there`,
+        ).toBe(character === ' ');
+      });
+    }
   });
 });
