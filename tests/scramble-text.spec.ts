@@ -123,4 +123,31 @@ test.describe('catalog: scramble-text', () => {
       `at some moment, the first letters are in clear and the last ones still scrambled (letters in clear, every 25 ms: ${clearCounts.join(', ')})`,
     ).toBe(true);
   });
+
+  test('a scramble-text takes longer to decode the longer its text: when a short one is in clear, a long one on the same page is still partly scrambled', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it: animation frames and timers then run as they would in 1.5 s. */
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.clock.install({ time: new Date('2026-01-01T09:00:00') });
+    await page.clock.pauseAt(new Date('2026-01-01T09:00:00'));
+    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-lengths/`);
+    /* The two scramble-texts of the page (tests/fixtures/catalog/content/scramble-text-lengths.md):
+       a short one, "Échappement" (11 letters), then a long sentence (over 90 letters). */
+    const scrambleTexts = page.getByRole('main').locator('scramble-text');
+    await expect(scrambleTexts).toHaveCount(2);
+    const short = 'Échappement';
+    const long = 'Un texte brouillé se décode de gauche à droite, une lettre après une autre, puis finit par se montrer entièrement en clair'.replace(/\s+/g, '');
+    /* 1.5 s after load, the short text is in clear. */
+    await page.clock.runFor(1500);
+    expect(await textOnScreen(scrambleTexts.nth(0))).toBe(short);
+    /* At that moment, the long one still shows signs in place of some of its letters. */
+    const shown = Array.from(await textOnScreen(scrambleTexts.nth(1)));
+    const letters = Array.from(long);
+    expect(shown, `"${shown.join('')}" shows one character per letter of the long text`).toHaveLength(letters.length);
+    expect(
+      shown.some((character, index) => character !== letters[index] && SIGNS.includes(character)),
+      `when the short text is in clear, the long one, "${shown.join('')}", still shows signs in place of some of its letters`,
+    ).toBe(true);
+  });
 });
