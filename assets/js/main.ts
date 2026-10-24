@@ -39,21 +39,23 @@ class ScrambleText extends HTMLElement {
 
   private decode(text: string): void {
     this.textContent = scramble(text);
+    const delayMs = Number(this.getAttribute('delay')) || 0;
+    setTimeout(() => this.revealLeftToRight(text), delayMs);
+  }
+
+  private revealLeftToRight(text: string): void {
     const letterCount = Array.from(text).length;
     const totalTicks = decodeDurationMs(letterCount) / TICK_MS;
-    const delayMs = Number(this.getAttribute('delay')) || 0;
-    setTimeout(() => {
-      let tick = 0;
-      const timer = setInterval(() => {
-        tick += 1;
-        if (tick >= totalTicks) {
-          clearInterval(timer);
-          this.textContent = text;
-          return;
-        }
-        this.textContent = scramble(text, Math.floor((tick / totalTicks) * letterCount));
-      }, TICK_MS);
-    }, delayMs);
+    let tick = 0;
+    const timer = setInterval(() => {
+      tick += 1;
+      if (tick >= totalTicks) {
+        clearInterval(timer);
+        this.textContent = text;
+        return;
+      }
+      this.textContent = scramble(text, Math.floor((tick / totalTicks) * letterCount));
+    }, TICK_MS);
   }
 }
 
