@@ -217,7 +217,9 @@ class TickField extends HTMLElement {
     const start = performance.now();
     const step = (): void => {
       const elapsedMs = performance.now() - start - FIELD_REVEAL_DELAY_MS;
-      this.progress = Math.min(1, Math.max(0, elapsedMs / FIELD_REVEAL_DURATION_MS));
+      this.progress = reducedMotionQuery().matches
+        ? 1
+        : Math.min(1, Math.max(0, elapsedMs / FIELD_REVEAL_DURATION_MS));
       this.draw(canvas, this.progress);
       if (this.progress < 1) requestAnimationFrame(step);
     };
