@@ -239,11 +239,15 @@ class TickField extends HTMLElement {
       this.revealing = true;
       requestAnimationFrame(step);
     };
+    this.trackOnScreen(resume);
+    resume();
+  }
+
+  private trackOnScreen(onBackOnScreen: () => void): void {
     new IntersectionObserver((entries) => {
       this.onScreen = entries[entries.length - 1].isIntersecting;
-      if (this.onScreen) resume();
+      if (this.onScreen) onBackOnScreen();
     }).observe(this);
-    resume();
   }
 
   private draw(canvas: HTMLCanvasElement, progress: number): void {
