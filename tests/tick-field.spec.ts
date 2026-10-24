@@ -3,6 +3,7 @@ import { CATALOG_SITE, buildSite, removeDirectory, serveSite } from './helpers/b
 import { stopClockBeforeLoad } from './helpers/clock';
 import {
   countPixelsNotOfBackground,
+  luminanceAboveBackgroundInRectangle,
   luminanceAboveBackgroundPerColumn,
   pixelsNotOfBackgroundPerColumn,
 } from './helpers/pixels';
@@ -195,5 +196,40 @@ test.describe('catalog: tick-field', () => {
       right,
       `brightness above the background of the right quarter (${Math.round(width - QUARTER)}–${Math.round(width)}px), against ${Math.round(left)} for the left quarter (0–${Math.round(QUARTER)}px)`,
     ).toBeGreaterThan(2 * left);
+  });
+
+  test('with a fine pointer, hovering a tick-field brightens the ticks under the pointer: once revealed, the zone around the pointer shows more than 1.5 times the brightness above the background it showed before the hover', async ({ page, context, hasTouch }) => {
+    test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await tickField.scrollIntoViewIfNeeded();
+    /* Fully revealed. */
+    await page.clock.runFor(2000);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    /* A point in the left half, where the ticks are dim, at mid-height; the zone is the 40px
+       square centred on it. */
+    const point = { x: 0.2 * fieldBox!.width, y: fieldBox!.height / 2 };
+    const HALF_SIDE = 20;
+    const zone = { x: point.x - HALF_SIDE, y: point.y - HALF_SIDE, width: 2 * HALF_SIDE, height: 2 * HALF_SIDE };
+
+    const before = await luminanceAboveBackgroundInRectangle(tickField, await tickField.screenshot(), zone);
+
+    await page.mouse.move(fieldBox!.x + point.x, fieldBox!.y + point.y);
+    /* A few animation frames. */
+    await page.clock.runFor(100);
+    const after = await luminanceAboveBackgroundInRectangle(tickField, await tickField.screenshot(), zone);
+
+    expect(
+      after,
+      `brightness above the background of the 40px square around the pointer at (${Math.round(point.x)}, ${Math.round(point.y)})px, against ${Math.round(before)} before the hover`,
+    ).toBeGreaterThan(1.5 * before);
   });
 });
