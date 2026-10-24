@@ -112,4 +112,54 @@ test.describe('catalog: tick-field', () => {
     }
     expect(emptyBands, `bands of the ${Math.round(width)}px-wide tick-field with no drawn pixel`).toEqual([]);
   });
+
+  test('a tick-field reveals from left to right: 500 ms after load, every vertical band of its left part shows drawn pixels, while its right part still only shows its background', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    /* Midway through the reveal, which sweeps the width in about 1.1 s: the front is near
+       the middle, well past the left part and well short of the right part. */
+    await page.clock.runFor(500);
+
+    const screenshot = await tickField.screenshot();
+    const { columns, scale } = await pixelsNotOfBackgroundPerColumn(tickField, screenshot);
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const width = fieldBox!.width;
+
+    /* The left part, the first 30% of the width, split into adjacent vertical bands at least
+       40px wide each: every band must show drawn pixels. */
+    const LEFT_PART_END = 0.3 * width;
+    const MIN_BAND_WIDTH = 40;
+    const bandCount = Math.max(1, Math.floor(LEFT_PART_END / MIN_BAND_WIDTH));
+    const bandWidth = LEFT_PART_END / bandCount;
+    const emptyBands: string[] = [];
+    for (let band = 0; band < bandCount; band++) {
+      const fromColumn = Math.round(band * bandWidth * scale);
+      const toColumn = Math.round((band + 1) * bandWidth * scale);
+      const drawn = columns.slice(fromColumn, toColumn).some((count) => count > 0);
+      if (!drawn) {
+        emptyBands.push(`${Math.round(band * bandWidth)}–${Math.round((band + 1) * bandWidth)}px`);
+      }
+    }
+    expect(
+      emptyBands,
+      `bands of the left part (0–${Math.round(LEFT_PART_END)}px) of the ${Math.round(width)}px-wide tick-field with no drawn pixel`,
+    ).toEqual([]);
+
+    /* The right part, the last 40% of the width: still nothing but the background. */
+    const RIGHT_PART_START = 0.6 * width;
+    const drawnPixelsOnTheRight = columns
+      .slice(Math.round(RIGHT_PART_START * scale))
+      .reduce((sum, count) => sum + count, 0);
+    expect(
+      drawnPixelsOnTheRight,
+      `pixels of the right part (${Math.round(RIGHT_PART_START)}–${Math.round(width)}px) of the tick-field that differ from its background`,
+    ).toBe(0);
+  });
 });
