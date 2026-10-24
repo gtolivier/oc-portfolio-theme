@@ -1,8 +1,22 @@
-import { test, expect, type Locator } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { CATALOG_SITE, buildSite, removeDirectory, serveSite } from './helpers/built-site';
 
 /* The signs a scrambled letter can be replaced with. */
 const SIGNS = '|/\\<>[]{}=+#·';
+
+/* The fake clock starts at CLOCK_INSTALL_TIME and stops at CLOCK_STOP_TIME, later: real time
+   keeps moving between the two calls, and Firefox refuses to pause at a time already past
+   ("Cannot fast-forward to the past"). */
+const CLOCK_INSTALL_TIME = new Date('2026-01-01T09:00:00');
+const CLOCK_STOP_TIME = new Date('2026-01-01T09:00:01');
+
+/* Time stands still from before the page loads: no animation frame runs and no timer fires
+   until the test advances the clock. To call before page.goto, so that moving the clock to
+   CLOCK_STOP_TIME affects no page timer. */
+async function stopClockBeforeLoad(page: Page): Promise<void> {
+  await page.clock.install({ time: CLOCK_INSTALL_TIME });
+  await page.clock.pauseAt(CLOCK_STOP_TIME);
+}
 
 /* Text an element shows on screen, in rendering order: its text nodes and the generated
    content of its ::before and ::after pseudo-elements (without the alternative text of a
@@ -64,8 +78,7 @@ test.describe('catalog: scramble-text', () => {
        animation frame runs and no timer with a delay fires, the page stays as it is right
        after load. */
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.clock.install({ time: new Date('2026-01-01T09:00:00') });
-    await page.clock.pauseAt(new Date('2026-01-01T09:00:00'));
+    await stopClockBeforeLoad(page);
     await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text/`);
     /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text.md),
        whose text is "Échappement": 11 letters. */
@@ -84,8 +97,7 @@ test.describe('catalog: scramble-text', () => {
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it: animation frames and timers then run as they would in 1.5 s. */
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.clock.install({ time: new Date('2026-01-01T09:00:00') });
-    await page.clock.pauseAt(new Date('2026-01-01T09:00:00'));
+    await stopClockBeforeLoad(page);
     await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text/`);
     /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text.md),
        whose text is a single short word: "Échappement". */
@@ -100,8 +112,7 @@ test.describe('catalog: scramble-text', () => {
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it, step by step, to watch the decoding as it goes. */
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.clock.install({ time: new Date('2026-01-01T09:00:00') });
-    await page.clock.pauseAt(new Date('2026-01-01T09:00:00'));
+    await stopClockBeforeLoad(page);
     await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text/`);
     /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text.md),
        whose text is "Échappement": 11 letters. */
@@ -135,8 +146,7 @@ test.describe('catalog: scramble-text', () => {
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it, step by step, to watch the text during the delay and after it. */
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.clock.install({ time: new Date('2026-01-01T09:00:00') });
-    await page.clock.pauseAt(new Date('2026-01-01T09:00:00'));
+    await stopClockBeforeLoad(page);
     await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-delay/`);
     /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text-delay.md),
        whose text is "Échappement" (11 letters) and whose delay is 1000 ms. */
@@ -163,8 +173,7 @@ test.describe('catalog: scramble-text', () => {
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it: animation frames and timers then run as they would in 1.5 s. */
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.clock.install({ time: new Date('2026-01-01T09:00:00') });
-    await page.clock.pauseAt(new Date('2026-01-01T09:00:00'));
+    await stopClockBeforeLoad(page);
     await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-lengths/`);
     /* The two scramble-texts of the page (tests/fixtures/catalog/content/scramble-text-lengths.md):
        a short one, "Échappement" (11 letters), then a long sentence (over 90 letters). */
@@ -190,8 +199,7 @@ test.describe('catalog: scramble-text', () => {
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it, step by step, to watch the decoding as it goes. */
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.clock.install({ time: new Date('2026-01-01T09:00:00') });
-    await page.clock.pauseAt(new Date('2026-01-01T09:00:00'));
+    await stopClockBeforeLoad(page);
     await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-heading/`);
     /* The only second-level heading of the page (tests/fixtures/catalog/content/scramble-text-heading.md),
        whose whole text is a scramble-text: "Échappement". */
@@ -216,8 +224,7 @@ test.describe('catalog: scramble-text', () => {
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it, step by step, to watch the decoding as it goes. */
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.clock.install({ time: new Date('2026-01-01T09:00:00') });
-    await page.clock.pauseAt(new Date('2026-01-01T09:00:00'));
+    await stopClockBeforeLoad(page);
     await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-lengths/`);
     /* The second scramble-text of the page (tests/fixtures/catalog/content/scramble-text-lengths.md),
        a long sentence with many spaces, still decoding 1.5 s after load. */
@@ -244,8 +251,7 @@ test.describe('catalog: scramble-text', () => {
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it, step by step, to watch the decoding as it goes. */
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.clock.install({ time: new Date('2026-01-01T09:00:00') });
-    await page.clock.pauseAt(new Date('2026-01-01T09:00:00'));
+    await stopClockBeforeLoad(page);
     await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text/`);
     /* The size of a text depends on its font: the theme's fonts are loaded before measuring. */
     await page.evaluate(async () => {
