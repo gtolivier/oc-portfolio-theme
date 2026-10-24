@@ -41,16 +41,19 @@ class ScrambleText extends HTMLElement {
     this.textContent = scramble(text);
     const letterCount = Array.from(text).length;
     const totalTicks = decodeDurationMs(letterCount) / TICK_MS;
-    let tick = 0;
-    const timer = setInterval(() => {
-      tick += 1;
-      if (tick >= totalTicks) {
-        clearInterval(timer);
-        this.textContent = text;
-        return;
-      }
-      this.textContent = scramble(text, Math.floor((tick / totalTicks) * letterCount));
-    }, TICK_MS);
+    const delayMs = Number(this.getAttribute('delay')) || 0;
+    setTimeout(() => {
+      let tick = 0;
+      const timer = setInterval(() => {
+        tick += 1;
+        if (tick >= totalTicks) {
+          clearInterval(timer);
+          this.textContent = text;
+          return;
+        }
+        this.textContent = scramble(text, Math.floor((tick / totalTicks) * letterCount));
+      }, TICK_MS);
+    }, delayMs);
   }
 }
 
