@@ -17,7 +17,7 @@ test('screen readers do not read the decorative bars of the footer logo', async 
   expect(accessibilityTree).not.toContain('|');
 });
 
-test('the footer displays the site tagline in the page language', async ({ page }) => {
+test('the footer displays the site footer note in the page language', async ({ page }) => {
   await page.goto('/fr/');
   const frenchFooter = page.locator('footer');
   await expect(frenchFooter).toContainText('Horloger de démonstration');

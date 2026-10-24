@@ -48,7 +48,7 @@ async function expectLinesInOrder(main: Locator, lines: string[]) {
     const current = positions[i];
     expect(previous, `line not found: ${lines[i - 1]}`).not.toBeNull();
     expect(current, `line not found: ${lines[i]}`).not.toBeNull();
-    expect(current!.top - previous!.lastTop, `« ${lines[i]} » starts below « ${lines[i - 1]} »`)
+    expect(current!.top - previous!.lastTop, `"${lines[i]}" starts below "${lines[i - 1]}"`)
       .toBeGreaterThanOrEqual(previous!.lastHeight / 2);
   }
 }
@@ -264,7 +264,7 @@ test('on the French home page, the hero tagline is displayed in IBM Plex Sans, p
     const element = main.getByText(line);
     await expect(element).toBeVisible();
     const { family, color } = await textStyle(element);
-    expect({ family, color: colorComponents(color) }, `style of « ${line} »`).toEqual({
+    expect({ family, color: colorComponents(color) }, `style of "${line}"`).toEqual({
       family: 'IBM Plex Sans',
       color: { red: 227, green: 223, blue: 204, alpha: 0.88 },
     });
@@ -465,11 +465,11 @@ test('on a phone, the hero fits within the screen width: no horizontal scrolling
 test('on phone as on desktop, each hero button offers a target of at least 24 × 24 px (WCAG 2.5.8)', async ({ page }) => {
   await page.goto('/fr/');
   const buttons = {
-    'first button, « Voir les projets »': firstHeroButton(page),
-    'second button, « Contact »': secondHeroButton(page),
+    'first button, "Voir les projets"': firstHeroButton(page),
+    'second button, "Contact"': secondHeroButton(page),
   };
-  await expect(buttons['first button, « Voir les projets »']).toHaveText(/^\s*Voir les projets/);
-  await expect(buttons['second button, « Contact »']).toHaveText('Contact');
+  await expect(buttons['first button, "Voir les projets"']).toHaveText(/^\s*Voir les projets/);
+  await expect(buttons['second button, "Contact"']).toHaveText('Contact');
   for (const [name, button] of Object.entries(buttons)) {
     await expect(button, name).toBeVisible();
     const box = (await button.boundingBox())!;
@@ -710,7 +710,7 @@ test.describe('hero content errors: build failure', () => {
     `build without a browser, identical in every project: run in ${BUILD_TESTS_PROJECT} only`,
   );
 
-  test('a home page where a hero button declares a pageRef to a page that does not exist makes the site build fail with only the message that cites this pageRef, without the « ni champ url ni champ pageRef » message', () => {
+  test('a home page where a hero button declares a pageRef to a page that does not exist makes the site build fail with only the message that cites this pageRef, without the "ni champ url ni champ pageRef" message', () => {
     /* The first button of tests/fixtures/page-ref-not-found/content/_index.md declares
        pageRef = '/page-fictive-introuvable', which the site does not contain. Rather than a
        button without a destination, the person building the site must get a failure that
@@ -743,7 +743,7 @@ test.describe('hero content errors: build failure', () => {
     expect(build.errors).toMatch(/\bpageRef\b/);
   });
 
-  test('a home page where a hero button declares both a url and a pageRef makes the site build fail, with an error message that cites both fields, and not the « ni champ url ni champ pageRef » message', () => {
+  test('a home page where a hero button declares both a url and a pageRef makes the site build fail, with an error message that cites both fields, and not the "ni champ url ni champ pageRef" message', () => {
     /* The second button of tests/fixtures/button-with-url-and-page-ref/content/_index.md has a
        label and declares both url = '#contact' and pageRef = '/projets', two valid
        destinations. Rather than a link where one of the two destinations would be silently
