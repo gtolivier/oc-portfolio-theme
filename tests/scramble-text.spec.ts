@@ -63,6 +63,55 @@ async function textOnScreenWithSpaces(element: Locator): Promise<string> {
   return text.replace(/\s+/g, ' ').trim();
 }
 
+/* Where the characters an element shows on screen are drawn: the box of each visible
+   character of its text nodes, whitespace excluded, under the same visibility rules as
+   textOnScreen. */
+async function visibleCharacterBoxes(element: Locator): Promise<{ left: number; right: number; top: number; bottom: number }[]> {
+  return element.evaluate((root) => {
+    const hides = (el: Element) => {
+      const style = getComputedStyle(el);
+      const box = el.getBoundingClientRect();
+      return (
+        style.display === 'none' ||
+        style.visibility === 'hidden' ||
+        style.opacity === '0' ||
+        style.clipPath !== 'none' ||
+        (style.clip !== '' && style.clip !== 'auto') ||
+        (style.overflow !== 'visible' && (box.width <= 1 || box.height <= 1))
+      );
+    };
+    const boxes: { left: number; right: number; top: number; bottom: number }[] = [];
+    const walk = (el: Element) => {
+      if (hides(el)) return;
+      for (const child of Array.from(el.childNodes)) {
+        if (child.nodeType === Node.ELEMENT_NODE) {
+          walk(child as Element);
+          continue;
+        }
+        if (child.nodeType !== Node.TEXT_NODE) continue;
+        const text = child.textContent ?? '';
+        let offset = 0;
+        for (const character of Array.from(text)) {
+          const end = offset + character.length;
+          if (!/\s/.test(character)) {
+            const range = document.createRange();
+            range.setStart(child, offset);
+            range.setEnd(child, end);
+            for (const rect of Array.from(range.getClientRects())) {
+              if (rect.width > 0 && rect.height > 0) {
+                boxes.push({ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom });
+              }
+            }
+          }
+          offset = end;
+        }
+      }
+    };
+    walk(root);
+    return boxes;
+  });
+}
+
 test.describe('catalog: scramble-text', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
@@ -288,5 +337,54 @@ test.describe('catalog: scramble-text', () => {
         `at ${elapsed} ms, while "${shown}" is shown, the box is ${height}px high, the final text ${final.height}px`,
       ).toBeLessThanOrEqual(0.5);
     }
+  });
+
+  test('a long scramble-text wraps like plain text in a narrow container: while it decodes and once in clear, it spans several lines and stays within the container width', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it, step by step, to watch the decoding as it goes. */
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-wrap/`);
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+    });
+    /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text-wrap.md):
+       a long sentence, in a container 200px wide, much narrower than the sentence on one line. */
+    const container = page.getByRole('main').getByTestId('narrow-container');
+    const scrambleText = container.locator('scramble-text');
+    await expect(scrambleText).toHaveCount(1);
+    const sentence = 'Un texte brouillé se décode de gauche à droite, une lettre après une autre, puis finit par se montrer entièrement en clair'.replace(/\s+/g, '');
+    const containerBox = await container.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      return { left: box.left, right: box.right };
+    });
+    /* From load until the sentence is in clear (about 10 s for its letters), every 500 ms:
+       the characters shown lie within the container's width and over several lines, as the
+       same text would as plain text. Signs and letters may not have the same width, so the
+       exact line breaks are not checked. */
+    const checkWrapping = async (moment: string) => {
+      const shown = await textOnScreen(scrambleText);
+      const boxes = await visibleCharacterBoxes(scrambleText);
+      expect(boxes.length, `${moment}, "${shown}" is drawn on screen`).toBeGreaterThan(0);
+      const left = Math.min(...boxes.map((box) => box.left));
+      const right = Math.max(...boxes.map((box) => box.right));
+      const top = Math.min(...boxes.map((box) => box.top));
+      const bottom = Math.max(...boxes.map((box) => box.bottom));
+      const characterHeight = Math.max(...boxes.map((box) => box.bottom - box.top));
+      expect(left, `${moment}, "${shown}" starts at ${left}px, the container at ${containerBox.left}px`).toBeGreaterThanOrEqual(containerBox.left - 0.5);
+      expect(right, `${moment}, "${shown}" ends at ${right}px, the container at ${containerBox.right}px`).toBeLessThanOrEqual(containerBox.right + 0.5);
+      expect(
+        bottom - top,
+        `${moment}, "${shown}" is ${bottom - top}px high, for characters ${characterHeight}px high: it spans several lines`,
+      ).toBeGreaterThan(1.5 * characterHeight);
+      return shown;
+    };
+    let shown = await checkWrapping('right after load');
+    for (let elapsed = 500; elapsed <= 15000 && shown !== sentence; elapsed += 500) {
+      await page.clock.runFor(500);
+      shown = await checkWrapping(`at ${elapsed} ms`);
+    }
+    expect(shown, 'the sentence ends in clear').toBe(sentence);
   });
 });
