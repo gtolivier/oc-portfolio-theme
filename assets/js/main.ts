@@ -16,6 +16,10 @@ function isWhitespace(character: string): boolean {
   return /\s/.test(character);
 }
 
+function prefersReducedMotion(): boolean {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 function decodeDurationMs(letterCount: number): number {
   return Math.max(MIN_DURATION_MS, letterCount * DURATION_PER_LETTER_MS);
 }
@@ -51,7 +55,7 @@ class ScrambleText extends HTMLElement {
 
   private decode(text: string): void {
     this.replaceChildren(invisibleSizer(text), this.shown);
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (prefersReducedMotion()) {
       this.shown.textContent = text;
       return;
     }
