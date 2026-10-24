@@ -185,6 +185,32 @@ test.describe('catalog: scramble-text', () => {
     ).toBe(true);
   });
 
+  test('while a scramble-text decodes, the accessible name of the heading that contains it is its final text', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it, step by step, to watch the decoding as it goes. */
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.clock.install({ time: new Date('2026-01-01T09:00:00') });
+    await page.clock.pauseAt(new Date('2026-01-01T09:00:00'));
+    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-heading/`);
+    /* The only second-level heading of the page (tests/fixtures/catalog/content/scramble-text-heading.md),
+       whose whole text is a scramble-text: "Échappement". */
+    const heading = page.getByRole('main').getByRole('heading', { level: 2 });
+    await expect(heading).toHaveCount(1);
+    await expect(heading.locator('scramble-text')).toHaveCount(1);
+    /* From load until the text is in clear (1.5 s), every 25 ms: assistive technologies
+       name the heading "Échappement", never the signs shown on screen. */
+    for (let elapsed = 0; elapsed < 1500; elapsed += 25) {
+      if (elapsed > 0) await page.clock.runFor(25);
+      const shown = await textOnScreen(heading);
+      await expect(heading, `at ${elapsed} ms, while "${shown}" is shown`).toHaveAccessibleName('Échappement');
+      await expect(
+        page.getByRole('main').getByRole('heading', { level: 2, name: 'Échappement', exact: true }),
+        `at ${elapsed} ms, while "${shown}" is shown, the heading is found by its name`,
+      ).toHaveCount(1);
+    }
+  });
+
   test('while a scramble-text decodes, its spaces stay spaces, at the same positions', async ({ page, context }) => {
     await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Animations are allowed, and time stands still from before the page loads, until the
