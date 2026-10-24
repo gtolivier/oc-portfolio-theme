@@ -419,4 +419,79 @@ test.describe('catalog: tick-field', () => {
       `change in brightness above the background of the 40px square at (${Math.round(point.x)}, ${Math.round(point.y)})px 4 s after the pointer left (${Math.round(before)} before the hover → ${Math.round(later)}; ${Math.round(lit)} under the pointer)`,
     ).toBeLessThanOrEqual(0.1 * before);
   });
+
+  test('a click (a tap on mobile) starts a ripple: once revealed, 300 ms after the click, zones all around the click point, about 84px from it, are brighter than just before the click, while the zone at the click point is not', async ({ page, context, hasTouch }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await tickField.scrollIntoViewIfNeeded();
+    /* Fully revealed. */
+    await page.clock.runFor(2000);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    /* The centre of the field, with room for the ring all around it. */
+    const point = { x: fieldBox!.width / 2, y: fieldBox!.height / 2 };
+    const onScreen = { x: fieldBox!.x + point.x, y: fieldBox!.y + point.y };
+
+    /* The ring grows about 0.28px per ms: 300 ms after the click, it is about 84px from the
+       click point. Four zones straddle the ring, 20px deep across it and 40px long along it,
+       to its right, left, top and bottom; one 30px square sits at the click point, well inside
+       the ring. All of them are far enough from the click point for the ring alone to light
+       them, not the glow of a pointer hovering the click point. */
+    const RADIUS = 84;
+    const DEPTH = 20;
+    const LENGTH = 40;
+    const ringZones = [
+      { name: 'right', rectangle: { x: point.x + RADIUS - DEPTH / 2, y: point.y - LENGTH / 2, width: DEPTH, height: LENGTH } },
+      { name: 'left', rectangle: { x: point.x - RADIUS - DEPTH / 2, y: point.y - LENGTH / 2, width: DEPTH, height: LENGTH } },
+      { name: 'top', rectangle: { x: point.x - LENGTH / 2, y: point.y - RADIUS - DEPTH / 2, width: LENGTH, height: DEPTH } },
+      { name: 'bottom', rectangle: { x: point.x - LENGTH / 2, y: point.y + RADIUS - DEPTH / 2, width: LENGTH, height: DEPTH } },
+    ];
+    const HALF_SIDE = 15;
+    const centre = { x: point.x - HALF_SIDE, y: point.y - HALF_SIDE, width: 2 * HALF_SIDE, height: 2 * HALF_SIDE };
+    const zones = [...ringZones.map((zone) => zone.rectangle), centre];
+
+    const brightness = async (): Promise<number[]> => {
+      const screenshot = await tickField.screenshot();
+      return Promise.all(zones.map((zone) => luminanceAboveBackgroundInRectangle(tickField, screenshot, zone)));
+    };
+
+    /* With a fine pointer, a click first brings the pointer over the click point, which lights
+       the ticks under it: the pointer hovers it already before the click, so that both
+       measures show the same hover and differ by the ripple alone. */
+    if (!hasTouch) await page.mouse.move(onScreen.x, onScreen.y);
+    await page.clock.runFor(300);
+    const before = await brightness();
+
+    if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
+    else await page.mouse.click(onScreen.x, onScreen.y);
+    await page.clock.runFor(300);
+    const after = await brightness();
+
+    const dimRingZones = ringZones
+      .map((zone, index) => ({ zone, before: before[index], after: after[index] }))
+      .filter(({ before, after }) => !(after > 1.25 * before))
+      .map(
+        ({ zone, before, after }) =>
+          `${zone.name} (${Math.round(zone.rectangle.x)}, ${Math.round(zone.rectangle.y)})px: ${Math.round(before)} → ${Math.round(after)}`,
+      );
+    expect(
+      dimRingZones,
+      `zones about ${RADIUS}px around the click point at (${Math.round(point.x)}, ${Math.round(point.y)})px that do not show more than 1.25 times the brightness above the background they showed before the click, 300 ms after it`,
+    ).toEqual([]);
+
+    /* The click point itself: what it showed before the click, within 10%. */
+    const centreBefore = before[ringZones.length];
+    const centreAfter = after[ringZones.length];
+    expect(
+      Math.abs(centreAfter - centreBefore),
+      `change in brightness above the background of the 30px square at the click point (${Math.round(point.x)}, ${Math.round(point.y)})px, 300 ms after the click (${Math.round(centreBefore)} before → ${Math.round(centreAfter)})`,
+    ).toBeLessThanOrEqual(0.1 * centreBefore);
+  });
 });
