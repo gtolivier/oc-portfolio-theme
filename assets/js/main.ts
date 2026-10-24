@@ -135,12 +135,11 @@ class TickField extends HTMLElement {
     /* A tap near the field can be redirected to it by the browser: only the raw press
        point tells whether it was inside. */
     document.addEventListener('pointerdown', (event) => {
-      const { x, y } = this.localPoint(event);
-      this.pressedInside = x >= 0 && y >= 0 && x <= this.clientWidth && y <= this.clientHeight;
+      this.pressedInside = this.isInside(event);
     });
     this.addEventListener('click', (event) => {
-      const { x, y } = this.localPoint(event);
       if (!this.pressedInside) return;
+      const { x, y } = this.localPoint(event);
       this.startRipple(canvas, x, y);
     });
     this.revealLeftToRight(canvas);
@@ -149,6 +148,11 @@ class TickField extends HTMLElement {
   private localPoint(event: MouseEvent): { x: number; y: number } {
     const box = this.getBoundingClientRect();
     return { x: event.clientX - box.left, y: event.clientY - box.top };
+  }
+
+  private isInside(event: MouseEvent): boolean {
+    const { x, y } = this.localPoint(event);
+    return x >= 0 && y >= 0 && x <= this.clientWidth && y <= this.clientHeight;
   }
 
   private pressedInside = false;
