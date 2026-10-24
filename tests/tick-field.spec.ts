@@ -121,6 +121,49 @@ test.describe('catalog: tick-field', () => {
     expect(emptyBands, `bands of the ${Math.round(width)}px-wide tick-field with no drawn pixel`).toEqual([]);
   });
 
+  test('under prefers-reduced-motion: reduce, a tick-field is drawn across its whole width from load: right after load, every vertical band of it, from the left edge to the right edge, shows pixels that differ from its background', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* The visitor asks for reduced motion, and time stands still from before the page
+       loads, until the test advances it by a single animation frame. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    /* Right after load: the first animation frame has run, long before the reveal, which
+       sweeps the width in about 1.1 s, would have reached the right edge. */
+    await page.clock.runFor(16);
+
+    const screenshot = await tickField.screenshot();
+    const { columns, scale } = await pixelsNotOfBackgroundPerColumn(tickField, screenshot);
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const width = fieldBox!.width;
+
+    /* The width split into adjacent vertical bands, at least 40px wide each: the first starts
+       at the left edge, the last ends at the right edge. Every band must show drawn pixels,
+       so that the drawing reaches both edges and leaves no gap in between. */
+    const MIN_BAND_WIDTH = 40;
+    const bandCount = Math.max(1, Math.floor(width / MIN_BAND_WIDTH));
+    const bandWidth = width / bandCount;
+    const emptyBands: string[] = [];
+    for (let band = 0; band < bandCount; band++) {
+      const fromColumn = Math.round(band * bandWidth * scale);
+      const toColumn = Math.round((band + 1) * bandWidth * scale);
+      const drawn = columns.slice(fromColumn, toColumn).some((count) => count > 0);
+      if (!drawn) {
+        emptyBands.push(`${Math.round(band * bandWidth)}–${Math.round((band + 1) * bandWidth)}px`);
+      }
+    }
+    expect(
+      emptyBands,
+      `bands of the ${Math.round(width)}px-wide tick-field with no drawn pixel, right after load under reduced motion`,
+    ).toEqual([]);
+  });
+
   test('a tick-field reveals from left to right: 500 ms after load, every vertical band of its left part shows drawn pixels, while its right part still only shows its background', async ({ page, context }) => {
     await serveSite(context, CATALOG_SITE, siteDirectory);
     await stopClockBeforeLoad(page);
