@@ -129,15 +129,14 @@ class TickField extends HTMLElement {
     const start = performance.now();
     const step = (): void => {
       const elapsedMs = performance.now() - start - FIELD_REVEAL_DELAY_MS;
-      const progress = Math.min(1, Math.max(0, elapsedMs / FIELD_REVEAL_DURATION_MS));
-      this.draw(canvas, progress);
-      if (progress < 1) requestAnimationFrame(step);
+      this.progress = Math.min(1, Math.max(0, elapsedMs / FIELD_REVEAL_DURATION_MS));
+      this.draw(canvas, this.progress);
+      if (this.progress < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
   }
 
   private draw(canvas: HTMLCanvasElement, progress: number): void {
-    this.progress = progress;
     canvas.width = this.clientWidth;
     canvas.height = this.clientHeight;
     const context = canvas.getContext('2d');
@@ -145,10 +144,16 @@ class TickField extends HTMLElement {
     context.fillStyle = getComputedStyle(this).color;
     const front = progress * canvas.width;
     for (let x = 0; x < front; x += FIELD_TICK_SPACING_PX) {
-      const underPointer = this.pointerX !== undefined && Math.abs(x - this.pointerX) < FIELD_HOVER_RADIUS_PX;
-      context.globalAlpha = underPointer ? 1 : FIELD_MIN_ALPHA + (1 - FIELD_MIN_ALPHA) * (x / canvas.width);
+      context.globalAlpha = this.tickAlpha(x, canvas.width);
       context.fillRect(x, 0, FIELD_TICK_WIDTH_PX, canvas.height);
     }
+  }
+
+  /* Brighter from left to right; at full brightness under the pointer. */
+  private tickAlpha(x: number, width: number): number {
+    const isUnderPointer = this.pointerX !== undefined && Math.abs(x - this.pointerX) < FIELD_HOVER_RADIUS_PX;
+    if (isUnderPointer) return 1;
+    return FIELD_MIN_ALPHA + (1 - FIELD_MIN_ALPHA) * (x / width);
   }
 }
 
