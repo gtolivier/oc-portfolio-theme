@@ -2,7 +2,9 @@
 
 const SIGNS = ['|', '/', '\\', '<', '>', '[', ']', '{', '}', '=', '+', '#', '·'];
 
-const CLEAR_DELAY_MS = 1500;
+const MIN_DURATION_MS = 1500;
+
+const DURATION_PER_LETTER_MS = 100;
 
 const TICK_MS = 25;
 
@@ -34,7 +36,7 @@ class ScrambleText extends HTMLElement {
   private decode(text: string): void {
     this.textContent = scramble(text);
     const letterCount = Array.from(text).length;
-    const totalTicks = CLEAR_DELAY_MS / TICK_MS;
+    const totalTicks = Math.max(MIN_DURATION_MS, letterCount * DURATION_PER_LETTER_MS) / TICK_MS;
     let tick = 0;
     const timer = setInterval(() => {
       tick += 1;
