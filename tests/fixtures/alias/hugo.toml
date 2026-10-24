@@ -1,7 +1,7 @@
-# Configuration ajoutée à exampleSite/hugo.toml par les tests des anciennes
-# adresses (alias), en plus des pages de test de content/ qui en déclarent :
-# l'accueil anglais du site d'exemple reçoit lui aussi une ancienne adresse,
-# /en/english/, sans que son contenu soit recopié ici.
+# Configuration added to exampleSite/hugo.toml by the tests of old addresses
+# (aliases), on top of the test pages in content/ that declare some: the
+# example site's English home page also gets an old address, /en/english/,
+# without its content being copied here.
 [[cascade]]
   aliases = ['/english/']
   [cascade.target]

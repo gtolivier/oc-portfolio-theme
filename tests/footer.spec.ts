@@ -1,30 +1,30 @@
 import { test, expect } from '@playwright/test';
 
-test('le pied de page affiche le logo du site suivi de « © <année courante> <auteur du site> »', async ({ page }) => {
+test('the footer displays the site logo followed by "© <current year> <site author>"', async ({ page }) => {
   await page.goto('/fr/');
-  const annee = new Date().getFullYear();
-  const piedDePage = page.locator('footer');
-  await expect(piedDePage).toHaveText(
-    new RegExp(`\\| E \\|\\|\\| \\| X \\|\\|\\|\\s*(—\\s*)?© ${annee} Jean Exemple`),
+  const year = new Date().getFullYear();
+  const footer = page.locator('footer');
+  await expect(footer).toHaveText(
+    new RegExp(`\\| E \\|\\|\\| \\| X \\|\\|\\|\\s*(—\\s*)?© ${year} Jean Exemple`),
   );
 });
 
-test('les lecteurs d’écran ne lisent pas les barres décoratives du logo du pied de page', async ({ page }) => {
+test('screen readers do not read the decorative bars of the footer logo', async ({ page }) => {
   await page.goto('/fr/');
-  const annee = new Date().getFullYear();
-  const arbreAccessible = await page.locator('footer').ariaSnapshot();
-  expect(arbreAccessible).toContain(`© ${annee} Jean Exemple`);
-  expect(arbreAccessible).not.toContain('|');
+  const year = new Date().getFullYear();
+  const accessibilityTree = await page.locator('footer').ariaSnapshot();
+  expect(accessibilityTree).toContain(`© ${year} Jean Exemple`);
+  expect(accessibilityTree).not.toContain('|');
 });
 
-test('le pied de page affiche la mention du site dans la langue de la page', async ({ page }) => {
+test('the footer displays the site footer note in the page language', async ({ page }) => {
   await page.goto('/fr/');
-  const piedDePageFr = page.locator('footer');
-  await expect(piedDePageFr).toContainText('Horloger de démonstration');
-  await expect(piedDePageFr).not.toContainText('Sample clockmaker');
+  const frenchFooter = page.locator('footer');
+  await expect(frenchFooter).toContainText('Horloger de démonstration');
+  await expect(frenchFooter).not.toContainText('Sample clockmaker');
 
   await page.goto('/en/');
-  const piedDePageEn = page.locator('footer');
-  await expect(piedDePageEn).toContainText('Sample clockmaker');
-  await expect(piedDePageEn).not.toContainText('Horloger de démonstration');
+  const englishFooter = page.locator('footer');
+  await expect(englishFooter).toContainText('Sample clockmaker');
+  await expect(englishFooter).not.toContainText('Horloger de démonstration');
 });

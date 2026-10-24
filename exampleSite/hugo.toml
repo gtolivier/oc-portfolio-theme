@@ -1,4 +1,4 @@
-# Site de démonstration du thème : sert de terrain pour les tests Playwright.
+# The theme's demo site: the ground the Playwright tests run against.
 baseURL = 'http://localhost:1313/'
 title = 'Exemple'
 defaultContentLanguage = 'fr'
@@ -6,13 +6,13 @@ defaultContentLanguageInSubdir = true
 disableKinds = ['taxonomy', 'term']
 
 [params]
-  # Initiales fictives affichées par le logo de l'en-tête.
+  # Sample initials shown by the header logo.
   initials = ['E', 'X']
-  # Auteur fictif affiché dans le pied de page.
+  # Sample author shown in the footer.
   author = 'Jean Exemple'
 
-# Le contenu fictif peut contenir du HTML brut (ex. un encart positionné de
-# la page longue), comme le ferait une carte de projet ou une figure.
+# The sample content may contain raw HTML (e.g. a positioned box on the
+# long page), as a project card or a figure would.
 [markup.goldmark.renderer]
   unsafe = true
 
@@ -20,10 +20,10 @@ disableKinds = ['taxonomy', 'term']
   [languages.fr]
     locale = 'fr-FR'
     weight = 1
-    # Mention fictive du pied de page, propre à chaque langue.
+    # Sample footer note, specific to each language.
     [languages.fr.params]
       footerNote = 'Horloger de démonstration'
-    # Menu principal de l'en-tête, propre à chaque langue.
+    # Main header menu, specific to each language.
     [[languages.fr.menus.main]]
       name = 'Accueil'
       pageRef = '/'
@@ -54,8 +54,8 @@ disableKinds = ['taxonomy', 'term']
       url = '/en/#contact'
       weight = 30
 
-# Le thème est importé comme module et lu dans le dépôt lui-même (chemin
-# relatif à exampleSite/themes), quel que soit le nom du dossier cloné.
+# The theme is imported as a module and read from this repository itself
+# (path relative to exampleSite/themes), whatever the cloned folder's name.
 [module]
   replacements = 'github.com/gtolivier/oc-portfolio-theme -> ../..'
   [[module.imports]]

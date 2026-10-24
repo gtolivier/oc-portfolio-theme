@@ -1,6 +1,6 @@
 {{- $href := .url }}
-{{- /* « //hôte/… » désigne un autre site : seule une url relative à la
-     racine de ce site reçoit le préfixe de la baseURL. */}}
+{{- /* "//host/…" points to another site: only a url relative to this
+     site's root gets the baseURL prefix. */}}
 {{- if and .url (hasPrefix .url "/") (not (hasPrefix .url "//")) }}
   {{- $href = relURL (strings.TrimPrefix "/" .url) }}
 {{- end }}
@@ -16,5 +16,5 @@
 {{- if and (not .url) (not .pageRef) }}{{ errorf "hero : un bouton n’a ni champ url ni champ pageRef" }}{{ end }}
 {{- if not .label }}{{ errorf "hero : un bouton n’a pas de champ label" }}{{ end -}}
 <a href="{{ $href }}">{{ .label }}</a>
-{{- /* Rien après le lien, pas même le saut de ligne final du fichier :
-     l'espacement entre les boutons appartient à la page qui les place. */ -}}
+{{- /* Nothing after the link, not even the file's trailing newline:
+     spacing between buttons belongs to the page that places them. */ -}}

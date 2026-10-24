@@ -1,10 +1,10 @@
-// Copie les polices IBM Plex (sous-ensemble latin) des paquets @fontsource
-// vers static/fonts/, avec leurs licences OFL : le thème est importé comme
-// module Hugo, sans npm install, donc les polices sont versionnées.
+// Copies the IBM Plex fonts (latin subset) from the @fontsource packages
+// to static/fonts/, with their OFL licenses: the theme is imported as a
+// Hugo module, without npm install, so the fonts are committed.
 import { copyFileSync, mkdirSync } from 'node:fs';
 
-// Seulement les graisses déclarées en @font-face dans assets/css/main.css :
-// ajouter une graisse ici quand une étape en a besoin, et la déclarer.
+// Only the weights declared with @font-face in assets/css/main.css:
+// add a weight here when a step needs it, and declare it there.
 const families = {
   'ibm-plex-mono': [400, 600, 700],
   'ibm-plex-sans': [400],

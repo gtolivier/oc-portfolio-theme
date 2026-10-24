@@ -1,7 +1,7 @@
 {
   "name": "oc-portfolio-theme",
   "version": "1.0.0",
-  "description": "Thème Hugo du portfolio d'Olivier Charvoz",
+  "description": "Hugo theme for Olivier Charvoz's portfolio",
   "scripts": {
     "test": "playwright test",
     "fonts": "node scripts/fonts.mjs"

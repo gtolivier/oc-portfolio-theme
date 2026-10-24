@@ -1,2 +1,2 @@
-// Point d'entrée JavaScript du thème.
+// The theme's JavaScript entry point.
 export {};

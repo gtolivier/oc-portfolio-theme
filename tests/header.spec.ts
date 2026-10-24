@@ -1,45 +1,45 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import { SITE_D_UNE_LANGUE, construireUnSite, servirUnSite, supprimerUnDossier } from './helpers/site-construit';
+import { SITE_WITH_A_SINGLE_LANGUAGE, buildSite, serveSite, removeDirectory } from './helpers/built-site';
 
-/* Le logo est le lien de l'en-tête nommé d'après le titre du site. */
-function logoDeLEnTete(page: Page): Locator {
+/* The logo is the header link named after the site title. */
+function headerLogo(page: Page): Locator {
   return page.locator('header').getByRole('link', { name: 'Exemple', exact: true });
 }
 
-/* Le sélecteur de langue est le groupe de l'en-tête nommé dans la langue de la page. */
-function selecteurDeLangue(page: Page, nom: string): Locator {
-  return page.locator('header').getByRole('group', { name: nom, exact: true });
+/* The language switcher is the header group named in the page language. */
+function languageSwitcher(page: Page, name: string): Locator {
+  return page.locator('header').getByRole('group', { name: name, exact: true });
 }
 
-test('le logo de l’en-tête affiche les initiales et mène à l’accueil', async ({ page }) => {
+test('the header logo displays the initials and leads to the home page', async ({ page }) => {
   await page.goto('/fr/');
-  const logo = logoDeLEnTete(page);
+  const logo = headerLogo(page);
   await expect(logo).toHaveText('| E ||| | X |||');
   await expect(logo).toHaveAttribute('href', '/fr/');
 });
 
-test('la navigation de l’en-tête liste les entrées du menu principal du site', async ({ page }) => {
+test('the header navigation lists the entries of the site main menu', async ({ page }) => {
   await page.goto('/fr/');
-  const liens = page.locator('header nav').getByRole('link');
-  await expect(liens).toHaveText(['Accueil', 'Projets', 'Contact']);
-  await expect(liens.nth(0)).toHaveAttribute('href', '/fr/');
-  await expect(liens.nth(1)).toHaveAttribute('href', '/fr/projets/');
-  await expect(liens.nth(2)).toHaveAttribute('href', '/fr/#contact');
+  const links = page.locator('header nav').getByRole('link');
+  await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
+  await expect(links.nth(0)).toHaveAttribute('href', '/fr/');
+  await expect(links.nth(1)).toHaveAttribute('href', '/fr/projets/');
+  await expect(links.nth(2)).toHaveAttribute('href', '/fr/#contact');
 });
 
-test('servi sous /portfolio/, le lien « Contact » de l’en-tête français mène à /portfolio/fr/#contact', async ({ page }) => {
+test('served under /portfolio/, the "Contact" link of the French header leads to /portfolio/fr/#contact', async ({ page }) => {
   await page.goto('http://localhost:1315/portfolio/fr/');
   const contact = page.locator('header nav').getByRole('link', { name: 'Contact', exact: true });
   await expect(contact).toHaveAttribute('href', '/portfolio/fr/#contact');
 });
 
-test('servi sous /portfolio/, le lien « Contact » de l’en-tête anglais mène à /portfolio/en/#contact', async ({ page }) => {
+test('served under /portfolio/, the "Contact" link of the English header leads to /portfolio/en/#contact', async ({ page }) => {
   await page.goto('http://localhost:1315/portfolio/en/');
   const contact = page.locator('header nav').getByRole('link', { name: 'Contact', exact: true });
   await expect(contact).toHaveAttribute('href', '/portfolio/en/#contact');
 });
 
-test('sur la page d’accueil, seul le lien « Accueil » de la navigation est marqué comme page courante', async ({ page }) => {
+test('on the home page, only the "Accueil" navigation link is marked as the current page', async ({ page }) => {
   await page.goto('/fr/');
   const nav = page.locator('header nav');
   await expect(nav.getByRole('link', { name: 'Accueil', exact: true })).toHaveAttribute('aria-current', 'page');
@@ -47,7 +47,7 @@ test('sur la page d’accueil, seul le lien « Accueil » de la navigation est m
   await expect(nav.getByRole('link', { name: 'Contact', exact: true })).not.toHaveAttribute('aria-current');
 });
 
-test('sur la page Projets, seul le lien « Projets » de la navigation est marqué comme page courante', async ({ page }) => {
+test('on the Projets page, only the "Projets" navigation link is marked as the current page', async ({ page }) => {
   await page.goto('/fr/projets/');
   const nav = page.locator('header nav');
   await expect(nav.getByRole('link', { name: 'Projets', exact: true })).toHaveAttribute('aria-current', 'page');
@@ -55,307 +55,307 @@ test('sur la page Projets, seul le lien « Projets » de la navigation est marqu
   await expect(nav.getByRole('link', { name: 'Contact', exact: true })).not.toHaveAttribute('aria-current');
 });
 
-test('le lien de la navigation marqué page courante est souligné d’un trait de couleur accent', async ({ page }) => {
+test('the navigation link marked as the current page is underlined with an accent-colored line', async ({ page }) => {
   await page.goto('/fr/');
-  const courant = page.locator('header nav').getByRole('link', { name: 'Accueil', exact: true });
-  await expect(courant).toHaveAttribute('aria-current', 'page');
-  await expect(courant).toHaveCSS('border-bottom-style', 'solid');
-  await expect(courant).toHaveCSS('border-bottom-color', 'rgb(42, 136, 141)');
-  await expect(courant).not.toHaveCSS('border-bottom-width', '0px');
+  const current = page.locator('header nav').getByRole('link', { name: 'Accueil', exact: true });
+  await expect(current).toHaveAttribute('aria-current', 'page');
+  await expect(current).toHaveCSS('border-bottom-style', 'solid');
+  await expect(current).toHaveCSS('border-bottom-color', 'rgb(42, 136, 141)');
+  await expect(current).not.toHaveCSS('border-bottom-width', '0px');
 });
 
-test('en anglais, la navigation de l’en-tête liste les entrées du menu principal anglais', async ({ page }) => {
+test('in English, the header navigation lists the entries of the English main menu', async ({ page }) => {
   await page.goto('/en/');
-  const liens = page.locator('header nav').getByRole('link');
-  await expect(liens).toHaveText(['Home', 'Projects', 'Contact']);
-  await expect(liens.nth(0)).toHaveAttribute('href', '/en/');
-  await expect(liens.nth(1)).toHaveAttribute('href', '/en/projects/');
-  await expect(liens.nth(2)).toHaveAttribute('href', '/en/#contact');
+  const links = page.locator('header nav').getByRole('link');
+  await expect(links).toHaveText(['Home', 'Projects', 'Contact']);
+  await expect(links.nth(0)).toHaveAttribute('href', '/en/');
+  await expect(links.nth(1)).toHaveAttribute('href', '/en/projects/');
+  await expect(links.nth(2)).toHaveAttribute('href', '/en/#contact');
 });
 
-test('en anglais, le logo de l’en-tête mène à l’accueil anglais', async ({ page }) => {
+test('in English, the header logo leads to the English home page', async ({ page }) => {
   await page.goto('/en/');
-  const logo = logoDeLEnTete(page);
+  const logo = headerLogo(page);
   await expect(logo).toHaveAttribute('href', '/en/');
 });
 
-test('sur l’accueil français, l’en-tête propose un lien « EN » vers l’accueil anglais', async ({ page }) => {
+test('on the French home page, the header offers an "EN" link to the English home page', async ({ page }) => {
   await page.goto('/fr/');
-  const lienEN = page.locator('header').getByRole('link', { name: 'EN', exact: true });
-  await expect(lienEN).toBeVisible();
-  await expect(lienEN).toHaveAttribute('href', '/en/');
+  const enLink = page.locator('header').getByRole('link', { name: 'EN', exact: true });
+  await expect(enLink).toBeVisible();
+  await expect(enLink).toHaveAttribute('href', '/en/');
 });
 
-test('sur la page Projets française, le lien « EN » de l’en-tête mène à la page Projets anglaise', async ({ page }) => {
+test('on the French Projets page, the header "EN" link leads to the English Projects page', async ({ page }) => {
   await page.goto('/fr/projets/');
-  const lienEN = page.locator('header').getByRole('link', { name: 'EN', exact: true });
-  await expect(lienEN).toBeVisible();
-  await expect(lienEN).toHaveAttribute('href', '/en/projects/');
+  const enLink = page.locator('header').getByRole('link', { name: 'EN', exact: true });
+  await expect(enLink).toBeVisible();
+  await expect(enLink).toHaveAttribute('href', '/en/projects/');
 });
 
-test('sur une page française sans traduction, le lien « EN » de l’en-tête mène à l’accueil anglais', async ({ page }) => {
+test('on a French page without a translation, the header "EN" link leads to the English home page', async ({ page }) => {
   await page.goto('/fr/page-longue/');
-  const lienEN = page.locator('header').getByRole('link', { name: 'EN', exact: true });
-  await expect(lienEN).toBeVisible();
-  await expect(lienEN).toHaveAttribute('href', '/en/');
-  await lienEN.click();
+  const enLink = page.locator('header').getByRole('link', { name: 'EN', exact: true });
+  await expect(enLink).toBeVisible();
+  await expect(enLink).toHaveAttribute('href', '/en/');
+  await enLink.click();
   await expect(page).toHaveURL('/en/');
 });
 
-test('sur une page française, le lien « EN » de l’en-tête annonce sa langue : hreflang="en" et lang="en"', async ({ page }) => {
+test('on a French page, the header "EN" link announces its language: hreflang="en" and lang="en"', async ({ page }) => {
   await page.goto('/fr/');
-  const lienEN = page.locator('header').getByRole('link', { name: 'EN', exact: true });
-  await expect(lienEN).toHaveAttribute('hreflang', 'en');
-  await expect(lienEN).toHaveAttribute('lang', 'en');
+  const enLink = page.locator('header').getByRole('link', { name: 'EN', exact: true });
+  await expect(enLink).toHaveAttribute('hreflang', 'en');
+  await expect(enLink).toHaveAttribute('lang', 'en');
 });
 
-test('sur la page Projets anglaise, le lien « FR » de l’en-tête mène à la page Projets française', async ({ page }) => {
+test('on the English Projects page, the header "FR" link leads to the French Projets page', async ({ page }) => {
   await page.goto('/en/projects/');
-  const lienFR = page.locator('header').getByRole('link', { name: 'FR', exact: true });
-  await expect(lienFR).toBeVisible();
-  await expect(lienFR).toHaveAttribute('href', '/fr/projets/');
+  const frLink = page.locator('header').getByRole('link', { name: 'FR', exact: true });
+  await expect(frLink).toBeVisible();
+  await expect(frLink).toHaveAttribute('href', '/fr/projets/');
 });
 
-test('sur une page française, l’en-tête affiche la langue courante « FR » à côté du lien « EN », sans lien, marquée comme courante', async ({ page }) => {
+test('on a French page, the header displays the current language "FR" next to the "EN" link, without a link, marked as current', async ({ page }) => {
   await page.goto('/fr/');
-  const entete = page.locator('header');
-  await expect(entete.getByRole('link', { name: 'EN', exact: true })).toBeVisible();
-  const langueCourante = entete.getByText('FR', { exact: true });
-  await expect(langueCourante).toBeVisible();
-  await expect(langueCourante).toHaveAttribute('aria-current');
-  await expect(entete.getByRole('link', { name: 'FR', exact: true })).toHaveCount(0);
+  const header = page.locator('header');
+  await expect(header.getByRole('link', { name: 'EN', exact: true })).toBeVisible();
+  const currentLanguage = header.getByText('FR', { exact: true });
+  await expect(currentLanguage).toBeVisible();
+  await expect(currentLanguage).toHaveAttribute('aria-current');
+  await expect(header.getByRole('link', { name: 'FR', exact: true })).toHaveCount(0);
 });
 
-test('sur une page française, le sélecteur de langue de l’en-tête est un groupe nommé « Langue »', async ({ page }) => {
+test('on a French page, the header language switcher is a group named "Langue"', async ({ page }) => {
   await page.goto('/fr/');
-  const groupe = selecteurDeLangue(page, 'Langue');
-  await expect(groupe).toBeVisible();
-  await expect(groupe.getByText('FR', { exact: true })).toHaveAttribute('aria-current');
-  await expect(groupe.getByRole('link', { name: 'EN', exact: true })).toHaveAttribute('href', '/en/');
+  const group = languageSwitcher(page, 'Langue');
+  await expect(group).toBeVisible();
+  await expect(group.getByText('FR', { exact: true })).toHaveAttribute('aria-current');
+  await expect(group.getByRole('link', { name: 'EN', exact: true })).toHaveAttribute('href', '/en/');
 });
 
-test('en anglais, le sélecteur de langue de l’en-tête est un groupe nommé « Language »', async ({ page }) => {
+test('in English, the header language switcher is a group named "Language"', async ({ page }) => {
   await page.goto('/en/');
-  const groupe = selecteurDeLangue(page, 'Language');
-  await expect(groupe).toBeVisible();
-  await expect(groupe.getByText('EN', { exact: true })).toHaveAttribute('aria-current');
-  await expect(groupe.getByRole('link', { name: 'FR', exact: true })).toHaveAttribute('href', '/fr/');
+  const group = languageSwitcher(page, 'Language');
+  await expect(group).toBeVisible();
+  await expect(group.getByText('EN', { exact: true })).toHaveAttribute('aria-current');
+  await expect(group.getByRole('link', { name: 'FR', exact: true })).toHaveAttribute('href', '/fr/');
 });
 
-test.describe('site d’une seule langue', () => {
-  let dossierDuSite: string;
+test.describe('single-language site', () => {
+  let siteDirectory: string;
   test.beforeAll(() => {
-    dossierDuSite = construireUnSite(SITE_D_UNE_LANGUE);
+    siteDirectory = buildSite(SITE_WITH_A_SINGLE_LANGUAGE);
   });
   test.afterAll(() => {
-    supprimerUnDossier(dossierDuSite);
+    removeDirectory(siteDirectory);
   });
 
-  test('sur un site d’une seule langue, l’en-tête n’affiche pas de sélecteur de langue', async ({ page, context }) => {
-    await servirUnSite(context, SITE_D_UNE_LANGUE, dossierDuSite);
-    await page.goto(`${SITE_D_UNE_LANGUE.origine}/fr/`);
-    /* L'en-tête est bien affiché, en français… */
+  test('on a single-language site, the header displays no language switcher', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
+    await page.goto(`${SITE_WITH_A_SINGLE_LANGUAGE.origin}/fr/`);
+    /* The header is displayed, in French… */
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
-    await expect(logoDeLEnTete(page)).toBeVisible();
-    /* …sans sélecteur de langue, ni la langue courante seule. */
-    await expect(selecteurDeLangue(page, 'Langue')).toHaveCount(0);
+    await expect(headerLogo(page)).toBeVisible();
+    /* …without a language switcher, nor the current language alone. */
+    await expect(languageSwitcher(page, 'Langue')).toHaveCount(0);
     await expect(page.locator('header').getByText('FR', { exact: true })).toHaveCount(0);
   });
 });
 
-test('dans le sélecteur de langue de l’en-tête, la langue courante est en texte encre sur fond papier', async ({ page }) => {
+test('in the header language switcher, the current language is ink text on a paper background', async ({ page }) => {
   await page.goto('/fr/');
-  const groupe = selecteurDeLangue(page, 'Langue');
-  const langueCourante = groupe.getByText('FR', { exact: true });
-  await expect(langueCourante).toHaveAttribute('aria-current');
-  await expect(langueCourante).toHaveCSS('color', 'rgb(1, 53, 73)');
-  await expect(langueCourante).toHaveCSS('background-color', 'rgb(227, 223, 204)');
+  const group = languageSwitcher(page, 'Langue');
+  const currentLanguage = group.getByText('FR', { exact: true });
+  await expect(currentLanguage).toHaveAttribute('aria-current');
+  await expect(currentLanguage).toHaveCSS('color', 'rgb(1, 53, 73)');
+  await expect(currentLanguage).toHaveCSS('background-color', 'rgb(227, 223, 204)');
 });
 
-test('dans le sélecteur de langue de l’en-tête, le lien vers l’autre langue est en crème à 70 % d’opacité, sur fond transparent', async ({ page }) => {
+test('in the header language switcher, the link to the other language is cream at 70% opacity, on a transparent background', async ({ page }) => {
   await page.goto('/fr/');
-  const groupe = selecteurDeLangue(page, 'Langue');
-  const autreLangue = groupe.getByRole('link', { name: 'EN', exact: true });
-  await expect(autreLangue).toBeVisible();
-  await expect(autreLangue).toHaveCSS('color', 'rgba(227, 223, 204, 0.7)');
-  await expect(autreLangue).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  const group = languageSwitcher(page, 'Langue');
+  const otherLanguage = group.getByRole('link', { name: 'EN', exact: true });
+  await expect(otherLanguage).toBeVisible();
+  await expect(otherLanguage).toHaveCSS('color', 'rgba(227, 223, 204, 0.7)');
+  await expect(otherLanguage).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
 });
 
-test('le sélecteur de langue de l’en-tête est entouré d’une bordure de 1 px crème à 35 % d’opacité', async ({ page }) => {
+test('the header language switcher is surrounded by a 1 px cream border at 35% opacity', async ({ page }) => {
   await page.goto('/fr/');
-  const groupe = selecteurDeLangue(page, 'Langue');
-  await expect(groupe).toBeVisible();
-  for (const cote of ['top', 'right', 'bottom', 'left']) {
-    await expect(groupe).toHaveCSS(`border-${cote}-style`, 'solid');
-    await expect(groupe).toHaveCSS(`border-${cote}-width`, '1px');
-    await expect(groupe).toHaveCSS(`border-${cote}-color`, 'rgba(227, 223, 204, 0.35)');
+  const group = languageSwitcher(page, 'Langue');
+  await expect(group).toBeVisible();
+  for (const side of ['top', 'right', 'bottom', 'left']) {
+    await expect(group).toHaveCSS(`border-${side}-style`, 'solid');
+    await expect(group).toHaveCSS(`border-${side}-width`, '1px');
+    await expect(group).toHaveCSS(`border-${side}-color`, 'rgba(227, 223, 204, 0.35)');
   }
 });
 
-test('la bordure du sélecteur de langue de l’en-tête entoure seulement ses entrées FR et EN, sans s’étendre sur toute la largeur de l’en-tête', async ({ page }) => {
+test('the border of the header language switcher surrounds only its FR and EN entries, without spanning the full width of the header', async ({ page }) => {
   await page.goto('/fr/');
-  const groupe = selecteurDeLangue(page, 'Langue');
-  const boiteGroupe = (await groupe.boundingBox())!;
-  const boiteFR = (await groupe.getByText('FR', { exact: true }).boundingBox())!;
-  const boiteEN = (await groupe.getByRole('link', { name: 'EN', exact: true }).boundingBox())!;
-  const gaucheEntrees = Math.min(boiteFR.x, boiteEN.x);
-  const droiteEntrees = Math.max(boiteFR.x + boiteFR.width, boiteEN.x + boiteEN.width);
-  /* La bordure entoure les deux entrées… */
-  expect(boiteGroupe.x).toBeLessThanOrEqual(gaucheEntrees);
-  expect(boiteGroupe.x + boiteGroupe.width).toBeGreaterThanOrEqual(droiteEntrees);
-  /* …au plus près : au-delà des entrées, seulement la bordure de 1 px de chaque côté et un léger écart. */
-  expect(boiteGroupe.width - (droiteEntrees - gaucheEntrees)).toBeLessThanOrEqual(10);
+  const group = languageSwitcher(page, 'Langue');
+  const groupBox = (await group.boundingBox())!;
+  const frBox = (await group.getByText('FR', { exact: true }).boundingBox())!;
+  const enBox = (await group.getByRole('link', { name: 'EN', exact: true }).boundingBox())!;
+  const entriesLeft = Math.min(frBox.x, enBox.x);
+  const entriesRight = Math.max(frBox.x + frBox.width, enBox.x + enBox.width);
+  /* The border surrounds both entries… */
+  expect(groupBox.x).toBeLessThanOrEqual(entriesLeft);
+  expect(groupBox.x + groupBox.width).toBeGreaterThanOrEqual(entriesRight);
+  /* …tightly: beyond the entries, only the 1 px border on each side and a small gap. */
+  expect(groupBox.width - (entriesRight - entriesLeft)).toBeLessThanOrEqual(10);
 });
 
-test('le sélecteur de langue de l’en-tête est en IBM Plex Mono 12 px, graisse 600', async ({ page }) => {
+test('the header language switcher is in IBM Plex Mono 12 px, weight 600', async ({ page }) => {
   await page.goto('/fr/');
-  const groupe = selecteurDeLangue(page, 'Langue');
-  const entrees = groupe.getByText('FR', { exact: true }).or(groupe.getByRole('link', { name: 'EN', exact: true }));
-  await expect(entrees).toHaveCount(2);
-  const styles = await entrees.evaluateAll((elements) =>
+  const group = languageSwitcher(page, 'Langue');
+  const entries = group.getByText('FR', { exact: true }).or(group.getByRole('link', { name: 'EN', exact: true }));
+  await expect(entries).toHaveCount(2);
+  const styles = await entries.evaluateAll((elements) =>
     elements.map((element) => {
       const style = getComputedStyle(element);
       return {
-        famille: style.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
-        taille: style.fontSize,
-        graisse: style.fontWeight,
+        family: style.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
+        size: style.fontSize,
+        weight: style.fontWeight,
       };
     }),
   );
-  const attendu = { famille: 'IBM Plex Mono', taille: '12px', graisse: '600' };
-  expect(styles).toEqual([attendu, attendu]);
+  const expected = { family: 'IBM Plex Mono', size: '12px', weight: '600' };
+  expect(styles).toEqual([expected, expected]);
 });
 
-test('dans le sélecteur de langue de l’en-tête, le lien vers l’autre langue offre une cible d’au moins 24 × 24 px (WCAG 2.5.8)', async ({ page }) => {
+test('in the header language switcher, the link to the other language offers a target of at least 24 × 24 px (WCAG 2.5.8)', async ({ page }) => {
   await page.goto('/fr/');
-  const autreLangue = selecteurDeLangue(page, 'Langue').getByRole('link', { name: 'EN', exact: true });
-  await expect(autreLangue).toBeVisible();
-  const boite = (await autreLangue.boundingBox())!;
-  expect.soft(boite.width, 'largeur de la cible').toBeGreaterThanOrEqual(24);
-  expect.soft(boite.height, 'hauteur de la cible').toBeGreaterThanOrEqual(24);
+  const otherLanguage = languageSwitcher(page, 'Langue').getByRole('link', { name: 'EN', exact: true });
+  await expect(otherLanguage).toBeVisible();
+  const box = (await otherLanguage.boundingBox())!;
+  expect.soft(box.width, 'target width').toBeGreaterThanOrEqual(24);
+  expect.soft(box.height, 'target height').toBeGreaterThanOrEqual(24);
 });
 
-test('dans le sélecteur de langue de l’en-tête, la langue courante a la même hauteur que le lien vers l’autre langue', async ({ page }) => {
+test('in the header language switcher, the current language has the same height as the link to the other language', async ({ page }) => {
   await page.goto('/fr/');
-  const groupe = selecteurDeLangue(page, 'Langue');
-  const langueCourante = groupe.getByText('FR', { exact: true });
-  const autreLangue = groupe.getByRole('link', { name: 'EN', exact: true });
-  await expect(langueCourante).toHaveAttribute('aria-current');
-  await expect(autreLangue).toBeVisible();
-  const boiteFR = (await langueCourante.boundingBox())!;
-  const boiteEN = (await autreLangue.boundingBox())!;
-  expect(boiteFR.height, 'hauteur de la langue courante').toBeCloseTo(boiteEN.height, 0);
+  const group = languageSwitcher(page, 'Langue');
+  const currentLanguage = group.getByText('FR', { exact: true });
+  const otherLanguage = group.getByRole('link', { name: 'EN', exact: true });
+  await expect(currentLanguage).toHaveAttribute('aria-current');
+  await expect(otherLanguage).toBeVisible();
+  const frBox = (await currentLanguage.boundingBox())!;
+  const enBox = (await otherLanguage.boundingBox())!;
+  expect(frBox.height, 'height of the current language').toBeCloseTo(enBox.height, 0);
 });
 
-test('sur ordinateur, un lien de la navigation survolé est souligné en couleur accent, le trait décalé sous le texte', async ({ page, hasTouch }) => {
-  test.skip(hasTouch, 'le survol à la souris n’existe pas sur un écran tactile');
+test('on desktop, a hovered navigation link is underlined in the accent color, the line offset below the text', async ({ page, hasTouch }) => {
+  test.skip(hasTouch, 'mouse hover does not exist on a touch screen');
   await page.goto('/fr/');
-  const lien = page.locator('header nav').getByRole('link', { name: 'Projets', exact: true });
-  await expect(lien).not.toHaveAttribute('aria-current');
-  await lien.hover();
-  await expect(lien).toHaveCSS('text-decoration-line', 'underline');
-  await expect(lien).toHaveCSS('text-decoration-color', 'rgb(42, 136, 141)');
-  await expect(lien).toHaveCSS('text-underline-offset', '5px');
+  const link = page.locator('header nav').getByRole('link', { name: 'Projets', exact: true });
+  await expect(link).not.toHaveAttribute('aria-current');
+  await link.hover();
+  await expect(link).toHaveCSS('text-decoration-line', 'underline');
+  await expect(link).toHaveCSS('text-decoration-color', 'rgb(42, 136, 141)');
+  await expect(link).toHaveCSS('text-underline-offset', '5px');
 });
 
-test('sur ordinateur, le lien de la page courante survolé garde un seul trait couleur accent (pas de soulignement en plus de sa bordure)', async ({ page, hasTouch }) => {
-  test.skip(hasTouch, 'le survol à la souris n’existe pas sur un écran tactile');
+test('on desktop, the hovered current page link keeps a single accent-colored line (no underline on top of its border)', async ({ page, hasTouch }) => {
+  test.skip(hasTouch, 'mouse hover does not exist on a touch screen');
   await page.goto('/fr/');
-  const courant = page.locator('header nav').getByRole('link', { name: 'Accueil', exact: true });
-  await expect(courant).toHaveAttribute('aria-current', 'page');
-  await courant.hover();
-  await expect(courant).toHaveCSS('border-bottom-style', 'solid');
-  await expect(courant).toHaveCSS('border-bottom-color', 'rgb(42, 136, 141)');
-  await expect(courant).toHaveCSS('border-bottom-width', '2px');
-  await expect(courant).toHaveCSS('text-decoration-line', 'none');
+  const current = page.locator('header nav').getByRole('link', { name: 'Accueil', exact: true });
+  await expect(current).toHaveAttribute('aria-current', 'page');
+  await current.hover();
+  await expect(current).toHaveCSS('border-bottom-style', 'solid');
+  await expect(current).toHaveCSS('border-bottom-color', 'rgb(42, 136, 141)');
+  await expect(current).toHaveCSS('border-bottom-width', '2px');
+  await expect(current).toHaveCSS('text-decoration-line', 'none');
 });
 
-test('après défilement d’une page longue, l’en-tête reste collé en haut de la fenêtre et visible', async ({ page }) => {
+test('after scrolling a long page, the header stays stuck to the top of the window and visible', async ({ page }) => {
   await page.goto('/fr/page-longue/');
-  const fenetre = page.viewportSize()!;
-  const hauteurPage = await page.evaluate(() => document.documentElement.scrollHeight);
-  expect(hauteurPage).toBeGreaterThan(fenetre.height * 2);
+  const viewport = page.viewportSize()!;
+  const pageHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+  expect(pageHeight).toBeGreaterThan(viewport.height * 2);
 
   await page.evaluate(() => window.scrollTo(0, window.innerHeight));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 
-  const entete = page.locator('header');
-  await expect(entete).toBeInViewport();
-  const boite = await entete.boundingBox();
-  expect(boite?.y).toBeCloseTo(0, 0);
+  const header = page.locator('header');
+  await expect(header).toBeInViewport();
+  const box = await header.boundingBox();
+  expect(box?.y).toBeCloseTo(0, 0);
 });
 
-test('l’en-tête collant reste au-dessus d’un contenu positionné qui défile sous lui : logo et liens restent cliquables', async ({ page }) => {
+test('the sticky header stays above positioned content that scrolls under it: logo and links stay clickable', async ({ page }) => {
   await page.goto('/fr/page-longue/');
-  const encart = page.getByText('Encart positionné', { exact: false });
-  await expect(encart).toHaveCount(1);
+  const insert = page.getByText('Encart positionné', { exact: false });
+  await expect(insert).toHaveCount(1);
 
-  /* Fait défiler la page jusqu'à placer le haut de l'encart en haut de la fenêtre, sous l'en-tête. */
-  await encart.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY));
+  /* Scrolls the page until the top of the insert is at the top of the window, under the header. */
+  await insert.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 
-  const liens = page.locator('header').getByRole('link');
-  await expect(liens).toHaveCount(5);
-  for (const lien of await liens.all()) {
-    const boite = (await lien.boundingBox())!;
-    const encartSousLeLien = await encart.evaluate(
+  const links = page.locator('header').getByRole('link');
+  await expect(links).toHaveCount(5);
+  for (const link of await links.all()) {
+    const box = (await link.boundingBox())!;
+    const insertUnderTheLink = await insert.evaluate(
       (el, { x, y }) => { const r = el.getBoundingClientRect(); return r.top <= y && y <= r.bottom && r.left <= x && x <= r.right; },
-      { x: boite.x + boite.width / 2, y: boite.y + boite.height / 2 },
+      { x: box.x + box.width / 2, y: box.y + box.height / 2 },
     );
-    expect(encartSousLeLien).toBe(true);
-    const atteintLeLien = await lien.evaluate(
-      (el, { x, y }) => { const touche = document.elementFromPoint(x, y); return touche !== null && el.contains(touche); },
-      { x: boite.x + boite.width / 2, y: boite.y + boite.height / 2 },
+    expect(insertUnderTheLink).toBe(true);
+    const reachesTheLink = await link.evaluate(
+      (el, { x, y }) => { const hit = document.elementFromPoint(x, y); return hit !== null && el.contains(hit); },
+      { x: box.x + box.width / 2, y: box.y + box.height / 2 },
     );
-    expect(atteintLeLien).toBe(true);
+    expect(reachesTheLink).toBe(true);
   }
 });
 
-test('à l’arrivée sur une ancre d’une page longue, l’élément ciblé n’est pas masqué par l’en-tête collant', async ({ page }) => {
+test('on arriving at an anchor of a long page, the targeted element is not hidden by the sticky header', async ({ page }) => {
   await page.goto('/fr/page-longue/#quatrième-chapitre');
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 
-  const cible = page.getByRole('heading', { name: 'Quatrième chapitre', level: 2 });
-  await expect(cible).toHaveAttribute('id', 'quatrième-chapitre');
-  await expect(cible).toBeInViewport();
+  const target = page.getByRole('heading', { name: 'Quatrième chapitre', level: 2 });
+  await expect(target).toHaveAttribute('id', 'quatrième-chapitre');
+  await expect(target).toBeInViewport();
 
-  const boiteEntete = (await page.locator('header').boundingBox())!;
-  const boiteCible = (await cible.boundingBox())!;
-  expect(boiteCible.y).toBeGreaterThanOrEqual(boiteEntete.y + boiteEntete.height);
+  const headerBox = (await page.locator('header').boundingBox())!;
+  const targetBox = (await target.boundingBox())!;
+  expect(targetBox.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height);
 });
 
-test('sur téléphone, l’en-tête tient dans la largeur de l’écran : pas de défilement horizontal, logo et liens entièrement visibles', async ({ page, isMobile }) => {
-  test.skip(!isMobile, 'comportement propre au téléphone');
+test('on a phone, the header fits within the screen width: no horizontal scrolling, logo and links fully visible', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'phone-specific behavior');
   await page.goto('/fr/');
-  const largeur = page.viewportSize()!.width;
+  const width = page.viewportSize()!.width;
 
-  const largeurPage = await page.evaluate(() => document.documentElement.scrollWidth);
-  expect(largeurPage).toBeLessThanOrEqual(largeur);
+  const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(pageWidth).toBeLessThanOrEqual(width);
 
-  const liens = page.locator('header').getByRole('link');
-  await expect(liens).toHaveCount(5);
-  for (const lien of await liens.all()) {
-    await expect(lien).toBeVisible();
-    const boite = (await lien.boundingBox())!;
-    expect(boite.x).toBeGreaterThanOrEqual(0);
-    expect(boite.x + boite.width).toBeLessThanOrEqual(largeur);
+  const links = page.locator('header').getByRole('link');
+  await expect(links).toHaveCount(5);
+  for (const link of await links.all()) {
+    await expect(link).toBeVisible();
+    const box = (await link.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
   }
 });
 
-test('le logo de l’en-tête est à 16 px du bord gauche de la fenêtre sur téléphone, à 48 px sur ordinateur', async ({ page, isMobile }) => {
+test('the header logo is 16 px from the left edge of the window on a phone, 48 px on desktop', async ({ page, isMobile }) => {
   await page.goto('/fr/');
-  const logo = logoDeLEnTete(page);
-  const boite = (await logo.boundingBox())!;
-  expect(boite.x).toBeCloseTo(isMobile ? 16 : 48, 0);
+  const logo = headerLogo(page);
+  const box = (await logo.boundingBox())!;
+  expect(box.x).toBeCloseTo(isMobile ? 16 : 48, 0);
 });
 
-test('les liens de l’en-tête sont de couleur papier et ne sont pas soulignés', async ({ page }) => {
+test('the header links are paper-colored and not underlined', async ({ page }) => {
   await page.goto('/fr/');
-  /* Le logo et les liens de la navigation, sans le lien de changement de langue. */
-  const liens = logoDeLEnTete(page).or(page.locator('header nav').getByRole('link'));
-  await expect(liens).toHaveCount(4);
-  for (const lien of await liens.all()) {
-    await expect(lien).toHaveCSS('color', 'rgb(227, 223, 204)');
-    await expect(lien).toHaveCSS('text-decoration-line', 'none');
+  /* The logo and the navigation links, without the language switch link. */
+  const links = headerLogo(page).or(page.locator('header nav').getByRole('link'));
+  await expect(links).toHaveCount(4);
+  for (const link of await links.all()) {
+    await expect(link).toHaveCSS('color', 'rgb(227, 223, 204)');
+    await expect(link).toHaveCSS('text-decoration-line', 'none');
   }
 });

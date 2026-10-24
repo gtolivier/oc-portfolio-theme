@@ -1,101 +1,104 @@
 # oc-portfolio-theme
 
-Thème Hugo (public) du portfolio d'Olivier Charvoz. Le contenu vit dans un
-dépôt séparé et privé, `oc-portfolio-site`, qui importe ce thème comme module
-Hugo (`github.com/gtolivier/oc-portfolio-theme`). Le design d'origine vient
-du projet Claude Design « Portfolio ».
+Public Hugo theme for Olivier Charvoz's portfolio. The content lives in a
+separate, private repository, `oc-portfolio-site`, which imports this theme
+as a Hugo module (`github.com/gtolivier/oc-portfolio-theme`). The original
+design comes from the Claude Design project "Portfolio".
 
-## Organisation
+## Layout
 
-- `layouts/`, `assets/`, `i18n/` : le thème.
-- `exampleSite/` : site de démonstration bilingue (FR par défaut, EN). Il sert
-  de terrain aux tests ; son contenu est fictif.
-- `tests/` : tests e2e Playwright, lancés contre `exampleSite`.
+- `layouts/`, `assets/`, `i18n/`: the theme.
+- `exampleSite/`: bilingual demo site (FR by default, EN). The tests run
+  against it; its content is fictional.
+- `tests/`: Playwright e2e tests, run against `exampleSite`.
 
-La roadmap (une conversation par fonctionnalité) vit dans le dépôt privé
-`oc-portfolio-site`, à côté de ce dépôt : `../site/ROADMAP.md`.
+The roadmap (one conversation per feature) lives in the private repository
+`oc-portfolio-site`, next to this one: `../site/ROADMAP.md`.
 
-## Commandes
+## Commands
 
-- `hugo server --source exampleSite` : site d'exemple en local.
-- `npm test` : tests Playwright (démarre Hugo tout seul, port 1314).
-- `npx playwright test --project=chromium` : un seul navigateur.
+- `hugo server --source exampleSite`: example site, locally.
+- `npm test`: Playwright tests (starts Hugo on its own, port 1314).
+- `npx playwright test --project=chromium`: a single browser.
 
-## Règles
+## Rules
 
-- **TDD obligatoire** : toute fonctionnalité passe par le skill `tdd:feature`
-  (branche dédiée, cycles red/green/refactor, pull request). Pas de code de
-  production sans test qui échoue d'abord.
-- **Tests e2e avec Playwright** : un test décrit un comportement visible par
-  le visiteur (texte, lien, navigation, rendu à une taille d'écran), pas un
-  détail d'implémentation. Seule exception : une erreur de contenu (front
-  matter mal renseigné) qui doit faire échouer la construction du site se
-  teste par l'échec de `hugo build` et son message, puisqu'aucune page n'en
-  résulte.
-- **Mobile first** : les styles de base visent le téléphone ; les écrans plus
-  larges sont enrichis via `@media (min-width: …)`. Les projets Playwright
-  `mobile-chrome` et `mobile-safari` vérifient chaque comportement sur
-  téléphone.
-- **Site statique** : pas de JavaScript indispensable à la lecture du contenu.
-  Les animations sont un enrichissement et respectent
-  `prefers-reduced-motion`.
-- **Outils déterministes** : passer par les CLI (`hugo`, `npm`, `npx`, `git`,
-  `gh`) plutôt que par une manipulation manuelle dès qu'ils couvrent
-  l'opération.
-- **Pull requests** : tout changement passe par une branche et une PR, même
-  une simple correction de documentation ; jamais de commit direct sur
-  `main` (une règle GitHub l'impose aussi). Ne fusionner qu'avec
-  l'accord explicite de l'utilisateur.
-- **Avant publication** : avant chaque push et toute autre publication sur
-  ce dépôt public (PR, issue, release, commentaire), relire tout ce qui
-  part : diff, messages de commit, nom de branche, titre et description de
-  la PR, revues et réponses que Claude publie. Rien qui soit un secret (clé,
-  mot de passe, jeton), une donnée personnelle (voir « Aucune donnée
-  personnelle »), une URL interne (déploiement, webhook) ou un détail
-  local : chemin sur la machine de l'utilisateur, version d'outil installée,
-  contenu ou emplacement de sa configuration et de ses fichiers
-  d'instructions privés, contenu du dépôt privé `oc-portfolio-site` hormis
-  l'intitulé de l'étape de la roadmap que livre la PR et les règles de
-  travail communes aux deux dépôts. Restent permis : les versions que le
-  dépôt fixe lui-même (CI, `package.json`), les chemins relatifs au dépôt
-  (comme `../site/ROADMAP.md`) et les lignes d'attribution des commits et
-  des PR. Si un tel détail apparaît dans le diff, un commit ou le nom de
-  branche, ne pas pousser et le signaler à l'utilisateur, qui décide de la
-  correction ; dans le titre, la description, une revue ou une réponse, le
-  retirer avant de publier, en reformulant les remarques de relecture sans
-  en supprimer aucune. S'il est déjà public (poussé, dans `main`, ou publié
-  par Claude ou par CodeRabbit, dont les revues se relisent dès leur
-  arrivée), le signaler aussitôt à l'utilisateur, qui décide de la suite. Le
-  dépôt du site a la même règle, adaptée à un dépôt privé : toute
-  modification de ce qui leur est commun se reporte dans l'autre.
-- **CodeRabbit** : sa politique pour les petits dépôts open source l'empêche
-  de relire les PR de lui-même (« Review skipped »). Le lancer en commentant
-  `@coderabbitai review` à l'ouverture de la PR. Si des commits ont suivi ce
-  premier passage de CodeRabbit, le relancer une fois de plus, après le tri
-  de la dernière relecture Claude que demande le skill et avant la demande
-  d'accord. Ses remarques se trient comme les autres : le skill dit si leurs
-  corrections appellent une relance Claude, et la demande d'accord liste
-  celles qu'aucune relecture Claude n'a couvertes. Si, après ce second
-  passage, arrive un commit autre qu'une correction de tri (« triage fix »,
-  défini par le skill ; une proposition approuvée n'en est jamais une), le
-  relancer une fois de plus avant de redemander l'accord. Ses remarques
-  arrivées avant la fusion sont triées avant de fusionner ; si l'une
-  entraîne une correction, redemander l'accord. S'il signale une limite
-  atteinte, ne pas l'attendre : le dire dans la demande d'accord. Si sa
-  relecture automatique se met à fonctionner, ne plus le lancer.
-- **Relecture Claude** : sur chaque PR, quand `/code-review` est
-  disponible, lancer `/code-review high <numéro>` (sans `--comment`).
-  Publier ses remarques, trier toutes celles de la PR (Claude, CodeRabbit,
-  utilisateur), relancer la relecture, demander l'accord et trier les
-  remarques tardives comme le décrit le skill `tdd:feature`, dans « Pull
-  request and reviews » à partir de « Collect the reviews », puis
-  « Approval » et « After approval » ; hors TDD, sauter ce qui suppose une
-  liste de comportements. Il faut sa version 0.9.0 ou plus (`claude plugin
-  list`) ; sinon, le mettre à jour avant la relecture.
-  - **Tri** : hors TDD, il corrige directement la documentation, la
-    configuration du dépôt (`.github/`, `.coderabbit.yaml`) et la
-    description de la PR ; toute autre remarque (gabarits, styles, `i18n/`,
-    `exampleSite/`, scripts, tests, configuration npm ou Playwright)
-    devient une proposition, à traiter dans une PR en TDD.
-- **Aucune donnée personnelle** dans ce dépôt public : le vrai contenu
-  (projets, parcours, coordonnées) va dans `oc-portfolio-site`.
+- **Language**: code is in English — identifiers, file and folder names,
+  components, CSS classes, test titles, code comments — and so is this
+  file, written for agents. Text meant for the user stays in French:
+  commit messages, PR titles and descriptions, review comments and
+  replies, and the roadmap, as do the build errors the templates raise
+  (`errorf`) for whoever fills in the content. Site content, `i18n/`
+  strings and the fictional content of `exampleSite/` and of the test
+  fixtures keep their language, and so do the names visitors see in an
+  address: content file names, which set the slug (`page-avec-alias.md`),
+  and the HTML ids used as anchors (`#contenu`). Renaming them would break
+  published links.
+- **TDD required**: every feature goes through the `tdd:feature` skill
+  (dedicated branch, red/green/refactor cycles, pull request). No production
+  code without a failing test first.
+- **Playwright e2e tests**: a test describes a behavior the visitor can see
+  (text, link, navigation, rendering at a screen size), not an
+  implementation detail. Only exception: a content error (badly filled
+  front matter) that must make the site build fail is tested through the
+  failure of `hugo build` and its message, since no page results from it.
+- **Mobile first**: base styles target phones; wider screens are enhanced
+  through `@media (min-width: …)`. The Playwright projects `mobile-chrome`
+  and `mobile-safari` check every behavior on a phone.
+- **Static site**: no JavaScript required to read the content. Animations
+  are an enhancement and respect `prefers-reduced-motion`.
+- **Deterministic tools**: go through the CLIs (`hugo`, `npm`, `npx`, `git`,
+  `gh`) rather than a manual edit whenever they cover the operation.
+- **Pull requests**: every change goes through a branch and a PR, even a
+  simple documentation fix; never a direct commit on `main` (a GitHub rule
+  enforces it too). Merge only with the user's explicit agreement.
+- **Before publishing**: before every push and any other publication on
+  this public repository (PR, issue, release, comment), reread everything
+  that goes out: diff, commit messages, branch name, PR title and
+  description, reviews and replies Claude posts. Nothing that is a secret
+  (key, password, token), personal data (see "No personal data"), an
+  internal URL (deployment, webhook) or a local detail: a path on the
+  user's machine, an installed tool version, the content or location of
+  their configuration and private instruction files, content of the
+  private repository `oc-portfolio-site` other than the title of the
+  roadmap step the PR delivers and the working rules shared by both
+  repositories. Still allowed: versions the repository pins itself (CI,
+  `package.json`), paths relative to the repository (such as
+  `../site/ROADMAP.md`) and the attribution lines of commits and PRs. If
+  such a detail shows up in the diff, a commit or the branch name, do not
+  push and tell the user, who decides how to fix it; in the title, the
+  description, a review or a reply, remove it before publishing, rewording
+  review findings without dropping any. If it is already public (pushed,
+  in `main`, or published by Claude or by CodeRabbit, whose reviews are
+  reread as soon as they arrive), tell the user at once, who decides what
+  comes next. The site repository has the same rule, adapted to a private
+  repository: any change to what they share is carried over to the other.
+- **CodeRabbit**: its policy for small open-source repositories keeps it
+  from reviewing PRs on its own ("Review skipped"). Start it by commenting
+  `@coderabbitai review` when the PR opens. If commits followed that first
+  CodeRabbit pass, start it once more, after the triage of the last Claude
+  review the skill calls for and before the approval request. Its findings
+  are triaged like the others: the skill says whether their fixes call for
+  a new Claude review, and the approval request lists those no Claude
+  review covered. If, after that second pass, a commit other than a triage
+  fix arrives ("triage fix", as the skill defines it; an approved proposal
+  never is one), start it once more before asking for approval again. Its
+  findings that arrive before the merge are triaged before merging; if one
+  leads to a fix, ask for approval again. If it reports a limit reached, do
+  not wait for it: say so in the approval request. If its automatic review
+  starts working, stop starting it.
+- **Claude review**: on every PR, when `/code-review` is available, run
+  `/code-review high <number>` (without `--comment`). Post its findings,
+  triage all those on the PR (Claude, CodeRabbit, user), rerun the review,
+  ask for approval and triage late findings as the `tdd:feature` skill
+  describes in "Pull request and reviews" from "Collect the reviews", then
+  "Approval" and "After approval"; outside TDD, skip what assumes a
+  behavior list. It needs version 0.9.0 or later (`claude plugin list`);
+  otherwise, update it before the review.
+  - **Triage**: outside TDD, it directly fixes the documentation, the
+    repository configuration (`.github/`, `.coderabbit.yaml`) and the PR
+    description; any other finding (templates, styles, `i18n/`,
+    `exampleSite/`, scripts, tests, npm or Playwright configuration)
+    becomes a proposal, to be handled in a TDD PR.
+- **No personal data** in this public repository: the real content
+  (projects, background, contact details) goes in `oc-portfolio-site`.

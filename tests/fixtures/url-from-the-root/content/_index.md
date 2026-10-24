@@ -5,9 +5,9 @@ title = 'Accueil'
 title = 'Horloger indépendant'
 tagline = ['Accueil fictif servi sous /portfolio/.']
 
-# Une url relative à la racine du site : elle désigne la page
-# exampleSite/content/page-longue.md, publiée à /fr/page-longue/ depuis la
-# racine du site.
+# A url relative to the site root: it points to the
+# exampleSite/content/page-longue.md page, published at /fr/page-longue/
+# from the site root.
 [[params.hero.actions]]
 label = 'Lire la page longue'
 url = '/fr/page-longue/'

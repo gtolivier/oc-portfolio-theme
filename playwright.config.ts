@@ -49,7 +49,7 @@ export default defineConfig({
       use: { ...devices['Desktop Safari'] },
     },
 
-    /* Mobile first : chaque comportement est aussi vérifié sur téléphone. */
+    /* Mobile first: every behavior is also checked on a phone. */
     {
       name: 'mobile-chrome',
       use: { ...devices['Pixel 7'] },
@@ -70,17 +70,17 @@ export default defineConfig({
     // },
   ],
 
-  /* Sert le site d'exemple du thème, en environnement production
-     pour tester le même rendu que celui qui sera déployé. */
+  /* Serves the theme's example site, in the production environment
+     to test the same output as the one that will be deployed. */
   webServer: [
     {
       command: 'hugo server --source exampleSite --environment production --port 1314 --disableLiveReload',
       url: 'http://localhost:1314',
       reuseExistingServer: !process.env.CI,
     },
-    /* Le même site servi sous un sous-chemin, comme un déploiement
-       dans un sous-dossier (baseURL /portfolio/). Rendu en mémoire pour
-       ne pas écraser sur disque les pages du serveur précédent. */
+    /* The same site served under a subpath, like a deployment in a
+       subfolder (baseURL /portfolio/). Rendered to memory so it does not
+       overwrite the previous server's pages on disk. */
     {
       command:
         'hugo server --source exampleSite --environment production --port 1315 --baseURL http://localhost:1315/portfolio/ --disableLiveReload --renderToMemory',

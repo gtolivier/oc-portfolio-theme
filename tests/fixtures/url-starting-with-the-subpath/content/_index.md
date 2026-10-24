@@ -5,9 +5,9 @@ title = 'Accueil'
 title = 'Horloger indépendant'
 tagline = ['Accueil fictif servi sous /portfolio/.']
 
-# Une url relative à la racine du site, dont le premier mot est aussi celui
-# du sous-chemin /portfolio/ sous lequel le site est servi : elle désigne la
-# page galerie.md, publiée à /portfolio/galerie/ depuis la racine du site.
+# A url relative to the site root, whose first word is also the one of the
+# /portfolio/ subpath the site is served under: it points to the galerie.md
+# page, published at /portfolio/galerie/ from the site root.
 [[params.hero.actions]]
 label = 'Voir la galerie'
 url = '/portfolio/galerie/'
