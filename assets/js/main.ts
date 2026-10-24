@@ -104,6 +104,8 @@ const FIELD_TICK_SPACING_PX = 8;
 
 const FIELD_TICK_WIDTH_PX = 1;
 
+const FIELD_MIN_ALPHA = 0.15;
+
 /* A decorative canvas covering the whole box, behind the content. */
 class TickField extends HTMLElement {
   connectedCallback(): void {
@@ -132,6 +134,7 @@ class TickField extends HTMLElement {
     context.fillStyle = getComputedStyle(this).color;
     const front = progress * canvas.width;
     for (let x = 0; x < front; x += FIELD_TICK_SPACING_PX) {
+      context.globalAlpha = FIELD_MIN_ALPHA + (1 - FIELD_MIN_ALPHA) * (x / canvas.width);
       context.fillRect(x, 0, FIELD_TICK_WIDTH_PX, canvas.height);
     }
   }
