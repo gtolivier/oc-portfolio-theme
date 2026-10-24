@@ -96,7 +96,9 @@ class ScrambleText extends HTMLElement {
 
 customElements.define('scramble-text', ScrambleText);
 
-const FIELD_DRAW_DELAY_MS = 1000;
+const FIELD_REVEAL_DELAY_MS = 50;
+
+const FIELD_REVEAL_DURATION_MS = 1100;
 
 const FIELD_TICK_SPACING_PX = 8;
 
@@ -108,16 +110,24 @@ class TickField extends HTMLElement {
     const canvas = document.createElement('canvas');
     canvas.setAttribute('aria-hidden', 'true');
     this.prepend(canvas);
-    setTimeout(() => this.draw(canvas), FIELD_DRAW_DELAY_MS);
+    const start = performance.now();
+    const step = (): void => {
+      const elapsedMs = performance.now() - start - FIELD_REVEAL_DELAY_MS;
+      const progress = Math.min(1, Math.max(0, elapsedMs / FIELD_REVEAL_DURATION_MS));
+      this.draw(canvas, progress);
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
   }
 
-  private draw(canvas: HTMLCanvasElement): void {
+  private draw(canvas: HTMLCanvasElement, progress: number): void {
     canvas.width = this.clientWidth;
     canvas.height = this.clientHeight;
     const context = canvas.getContext('2d');
     if (!context) return;
     context.fillStyle = getComputedStyle(this).color;
-    for (let x = 0; x < canvas.width; x += FIELD_TICK_SPACING_PX) {
+    const front = progress * canvas.width;
+    for (let x = 0; x < front; x +=FIELD_TICK_SPACING_PX) {
       context.fillRect(x, 0, FIELD_TICK_WIDTH_PX, canvas.height);
     }
   }
