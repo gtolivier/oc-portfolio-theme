@@ -1,7 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { CATALOG_SITE, buildSite, removeDirectory, serveSite } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
-import { countPixelsNotOfBackground, pixelsNotOfBackgroundPerColumn } from './helpers/pixels';
+import {
+  countPixelsNotOfBackground,
+  luminanceAboveBackgroundPerColumn,
+  pixelsNotOfBackgroundPerColumn,
+} from './helpers/pixels';
 
 test.describe('catalog: tick-field', () => {
   let siteDirectory: string;
@@ -161,5 +165,35 @@ test.describe('catalog: tick-field', () => {
       drawnPixelsOnTheRight,
       `pixels of the right part (${Math.round(RIGHT_PART_START)}–${Math.round(width)}px) of the tick-field that differ from its background`,
     ).toBe(0);
+  });
+
+  test('once revealed, a tick-field is brighter on the right than on the left: 2 s after load, its right quarter shows more than twice the brightness above the background of its left quarter', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await page.clock.runFor(2000);
+
+    const screenshot = await tickField.screenshot();
+    const { columns, scale } = await luminanceAboveBackgroundPerColumn(tickField, screenshot);
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const width = fieldBox!.width;
+
+    /* The left quarter and the right quarter of the width, each summed over its whole
+       height. A field drawn the same everywhere shows about as much on both sides; the field
+       must show more than twice as much on the right. */
+    const sum = (values: number[]): number => values.reduce((total, value) => total + value, 0);
+    const QUARTER = 0.25 * width;
+    const left = sum(columns.slice(0, Math.round(QUARTER * scale)));
+    const right = sum(columns.slice(Math.round((width - QUARTER) * scale)));
+    expect(
+      right,
+      `brightness above the background of the right quarter (${Math.round(width - QUARTER)}–${Math.round(width)}px), against ${Math.round(left)} for the left quarter (0–${Math.round(QUARTER)}px)`,
+    ).toBeGreaterThan(2 * left);
   });
 });
