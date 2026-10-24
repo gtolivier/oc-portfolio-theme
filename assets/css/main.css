@@ -248,5 +248,6 @@ scramble-text > * {
 scramble-text > :last-child {
   width: 0;
   min-width: 100%;
-  white-space: nowrap;
+  height: 0;
+  overflow-wrap: anywhere;
 }
