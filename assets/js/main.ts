@@ -106,14 +106,24 @@ const FIELD_TICK_WIDTH_PX = 1;
 
 const FIELD_MIN_ALPHA = 0.15;
 
+const FIELD_HOVER_RADIUS_PX = 40;
+
 /* A decorative canvas covering the whole box, behind the content. */
 class TickField extends HTMLElement {
   connectedCallback(): void {
     const canvas = document.createElement('canvas');
     canvas.setAttribute('aria-hidden', 'true');
     this.prepend(canvas);
+    this.addEventListener('pointermove', (event) => {
+      this.pointerX = event.clientX - this.getBoundingClientRect().left;
+      this.draw(canvas, this.progress);
+    });
     this.revealLeftToRight(canvas);
   }
+
+  private progress = 0;
+
+  private pointerX: number | undefined;
 
   private revealLeftToRight(canvas: HTMLCanvasElement): void {
     const start = performance.now();
@@ -127,6 +137,7 @@ class TickField extends HTMLElement {
   }
 
   private draw(canvas: HTMLCanvasElement, progress: number): void {
+    this.progress = progress;
     canvas.width = this.clientWidth;
     canvas.height = this.clientHeight;
     const context = canvas.getContext('2d');
@@ -134,7 +145,8 @@ class TickField extends HTMLElement {
     context.fillStyle = getComputedStyle(this).color;
     const front = progress * canvas.width;
     for (let x = 0; x < front; x += FIELD_TICK_SPACING_PX) {
-      context.globalAlpha = FIELD_MIN_ALPHA + (1 - FIELD_MIN_ALPHA) * (x / canvas.width);
+      const underPointer = this.pointerX !== undefined && Math.abs(x - this.pointerX) < FIELD_HOVER_RADIUS_PX;
+      context.globalAlpha = underPointer ? 1 : FIELD_MIN_ALPHA + (1 - FIELD_MIN_ALPHA) * (x / canvas.width);
       context.fillRect(x, 0, FIELD_TICK_WIDTH_PX, canvas.height);
     }
   }
