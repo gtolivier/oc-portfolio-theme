@@ -215,17 +215,35 @@ class TickField extends HTMLElement {
 
   private pointerY: number | undefined;
 
+  private onScreen = true;
+
+  private revealing = false;
+
   private revealLeftToRight(canvas: HTMLCanvasElement): void {
     const start = performance.now();
     const step = (): void => {
+      if (!this.onScreen) {
+        this.revealing = false;
+        return;
+      }
       const elapsedMs = performance.now() - start - FIELD_REVEAL_DELAY_MS;
       this.progress = reducedMotionQuery().matches
         ? 1
         : Math.min(1, Math.max(0, elapsedMs / FIELD_REVEAL_DURATION_MS));
       this.draw(canvas, this.progress);
       if (this.progress < 1) requestAnimationFrame(step);
+      else this.revealing = false;
     };
-    requestAnimationFrame(step);
+    const resume = (): void => {
+      if (this.revealing || this.progress >= 1) return;
+      this.revealing = true;
+      requestAnimationFrame(step);
+    };
+    new IntersectionObserver((entries) => {
+      this.onScreen = entries[entries.length - 1].isIntersecting;
+      if (this.onScreen) resume();
+    }).observe(this);
+    resume();
   }
 
   private draw(canvas: HTMLCanvasElement, progress: number): void {
