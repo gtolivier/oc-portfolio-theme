@@ -1,6 +1,0 @@
-# Configuration ajoutée à exampleSite/hugo.toml par les tests d'un hero
-# différent de celui du site d'exemple : l'auteur du site est remplacé, en
-# plus de l'accueil français, remplacé par content/_index.md.
-[params]
-  # Autrice fictive, distincte de celle du site d'exemple.
-  author = 'Camille Fictive'

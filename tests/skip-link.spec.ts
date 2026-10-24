@@ -1,56 +1,56 @@
 import { test, expect, type Locator } from '@playwright/test';
-import { toucheDeTabulation } from './helpers/clavier';
+import { tabKey } from './helpers/keyboard';
 
-/* Ce qu'un visiteur voyant perçoit : une boîte de taille réelle (plus d'un
-   pixel de côté) qui se trouve dans la fenêtre. */
-async function estVisibleALEcran(element: Locator): Promise<boolean> {
-  const boite = await element.boundingBox();
-  if (!boite || boite.width <= 1 || boite.height <= 1) return false;
-  const fenetre = element.page().viewportSize()!;
+/* What a sighted visitor perceives: a box of real size (more than one pixel
+   on each side) that lies within the viewport. */
+async function isVisibleOnScreen(element: Locator): Promise<boolean> {
+  const box = await element.boundingBox();
+  if (!box || box.width <= 1 || box.height <= 1) return false;
+  const viewport = element.page().viewportSize()!;
   return (
-    boite.x + boite.width > 0 &&
-    boite.y + boite.height > 0 &&
-    boite.x < fenetre.width &&
-    boite.y < fenetre.height
+    box.x + box.width > 0 &&
+    box.y + box.height > 0 &&
+    box.x < viewport.width &&
+    box.y < viewport.height
   );
 }
 
-test('sur une page française, la première tabulation focalise un lien « Aller au contenu » invisible jusque-là, qui apparaît à l’écran', async ({ page, browserName }) => {
+test('on a French page, the first Tab focuses a "Aller au contenu" link, invisible until then, which appears on screen', async ({ page, browserName }) => {
   await page.goto('/fr/');
-  const lien = page.getByRole('link', { name: 'Aller au contenu', exact: true });
-  await expect(lien).toBeAttached();
-  expect(await estVisibleALEcran(lien)).toBe(false);
+  const link = page.getByRole('link', { name: 'Aller au contenu', exact: true });
+  await expect(link).toBeAttached();
+  expect(await isVisibleOnScreen(link)).toBe(false);
 
-  await page.keyboard.press(toucheDeTabulation(browserName));
+  await page.keyboard.press(tabKey(browserName));
 
-  await expect(lien).toBeFocused();
-  await expect(lien).toBeInViewport();
-  await expect.poll(() => estVisibleALEcran(lien)).toBe(true);
+  await expect(link).toBeFocused();
+  await expect(link).toBeInViewport();
+  await expect.poll(() => isVisibleOnScreen(link)).toBe(true);
 });
 
-test('sur la page d’accueil anglaise, la première tabulation focalise un lien intitulé « Skip to content »', async ({ page, browserName }) => {
+test('on the English home page, the first Tab focuses a link labeled "Skip to content"', async ({ page, browserName }) => {
   await page.goto('/en/');
-  const lien = page.getByRole('link', { name: 'Skip to content', exact: true });
+  const link = page.getByRole('link', { name: 'Skip to content', exact: true });
 
-  await page.keyboard.press(toucheDeTabulation(browserName));
+  await page.keyboard.press(tabKey(browserName));
 
-  await expect(lien).toBeFocused();
+  await expect(link).toBeFocused();
 });
 
-test('activer « Aller au contenu » à la touche Entrée place le focus sur le contenu principal, et la tabulation suivante atteint le premier bouton d’action du hero, « Voir les projets »', async ({ page, browserName }) => {
+test('activating "Aller au contenu" with the Enter key moves focus to the main content, and the next Tab reaches the first hero action button, "Voir les projets"', async ({ page, browserName }) => {
   await page.goto('/fr/');
-  const lien = page.getByRole('link', { name: 'Aller au contenu', exact: true });
-  const tabulation = toucheDeTabulation(browserName);
+  const link = page.getByRole('link', { name: 'Aller au contenu', exact: true });
+  const tab = tabKey(browserName);
 
-  await page.keyboard.press(tabulation);
-  await expect(lien).toBeFocused();
+  await page.keyboard.press(tab);
+  await expect(link).toBeFocused();
   await page.keyboard.press('Enter');
 
-  const contenu = page.getByRole('main');
-  await expect(contenu).toBeFocused();
+  const content = page.getByRole('main');
+  await expect(content).toBeFocused();
 
-  await page.keyboard.press(tabulation);
-  /* Le hero, placé avant le texte d'accueil, commence par ses boutons d'action :
-     le premier est le lien « Voir les projets ». */
-  await expect(contenu.getByRole('link', { name: 'Voir les projets', exact: true })).toBeFocused();
+  await page.keyboard.press(tab);
+  /* The hero, placed before the home page text, starts with its action
+     buttons: the first one is the "Voir les projets" link. */
+  await expect(content.getByRole('link', { name: 'Voir les projets', exact: true })).toBeFocused();
 });

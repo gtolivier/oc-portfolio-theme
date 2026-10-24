@@ -1,0 +1,6 @@
+# Configuration added to exampleSite/hugo.toml by the tests of a hero
+# different from the example site's: the site's author is replaced, on top
+# of the French home page, replaced by content/_index.md.
+[params]
+  # Fictional author, distinct from the example site's.
+  author = 'Camille Fictive'

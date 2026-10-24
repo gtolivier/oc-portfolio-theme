@@ -1,765 +1,769 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import {
-  SITE_A_UN_AUTRE_HERO,
-  SITE_A_UN_BOUTON_A_URL_ET_PAGE_REF,
-  SITE_A_UN_BOUTON_SANS_DESTINATION,
-  SITE_A_UN_BOUTON_SANS_LIBELLE,
-  SITE_A_UN_HERO_AUX_MOTS_LONGS,
-  SITE_A_UN_HERO_SANS_AUTEUR,
-  SITE_A_UN_PAGE_REF_INTROUVABLE,
-  SITE_SANS_HERO,
-  SITE_SOUS_PORTFOLIO_A_UNE_URL_COMMENCANT_PAR_LE_SOUS_CHEMIN,
-  SITE_SOUS_PORTFOLIO_A_UNE_URL_DEPUIS_LA_RACINE,
-  construireUnSite,
-  servirUnSite,
-  supprimerUnDossier,
-  tenterDeConstruireUnSite,
-} from './helpers/site-construit';
-import { tabulerJusqua } from './helpers/clavier';
+  SITE_UNDER_PORTFOLIO_WITH_A_URL_FROM_THE_ROOT,
+  SITE_UNDER_PORTFOLIO_WITH_A_URL_STARTING_WITH_THE_SUBPATH,
+  SITE_WITHOUT_HERO,
+  SITE_WITH_ANOTHER_HERO,
+  SITE_WITH_A_BUTTON_WITHOUT_DESTINATION,
+  SITE_WITH_A_BUTTON_WITHOUT_LABEL,
+  SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF,
+  SITE_WITH_A_HERO_WITHOUT_AUTHOR,
+  SITE_WITH_A_HERO_WITH_LONG_WORDS,
+  SITE_WITH_A_PAGE_REF_NOT_FOUND,
+  buildSite,
+  removeDirectory,
+  serveSite,
+  tryToBuildSite,
+} from './helpers/built-site';
+import { tabUntilFocused } from './helpers/keyboard';
 
-/* Vérifie que chaque ligne de l'accroche est visible dans la zone, et que chacune commence
-   sous la précédente, dans l'ordre donné. */
-async function verifierLignesDansLOrdre(principal: Locator, lignes: string[]) {
-  for (const ligne of lignes) {
-    await expect(principal.getByText(ligne)).toBeVisible();
+/* Checks that each tagline line is visible in the area, and that each one starts below the
+   previous one, in the given order. */
+async function expectLinesInOrder(main: Locator, lines: string[]) {
+  for (const line of lines) {
+    await expect(main.getByText(line)).toBeVisible();
   }
-  /* Position à l'écran du début et de la fin de chaque ligne, quelle que soit la façon dont
-     le gabarit les sépare. Une ligne longue peut elle-même passer à la ligne sur téléphone :
-     on compare le début d'une ligne à la fin de la précédente. */
-  const positions = await principal.evaluate((racine, textes) => {
-    return textes.map((texte) => {
-      const parcours = document.createTreeWalker(racine, NodeFilter.SHOW_TEXT);
-      for (let noeud = parcours.nextNode(); noeud; noeud = parcours.nextNode()) {
-        const debut = (noeud.textContent ?? '').indexOf(texte);
-        if (debut === -1) continue;
-        const plage = document.createRange();
-        plage.setStart(noeud, debut);
-        plage.setEnd(noeud, debut + texte.length);
-        const boites = Array.from(plage.getClientRects()).filter((boite) => boite.height > 0);
-        const premiere = boites[0];
-        const derniere = boites[boites.length - 1];
-        return { haut: premiere.top, hautFin: derniere.top, hauteurFin: derniere.height };
+  /* On-screen position of the start and end of each line, however the template separates
+     them. A long line may itself wrap on a phone: the start of a line is compared to the end
+     of the previous one. */
+  const positions = await main.evaluate((root, texts) => {
+    return texts.map((text) => {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const start = (node.textContent ?? '').indexOf(text);
+        if (start === -1) continue;
+        const range = document.createRange();
+        range.setStart(node, start);
+        range.setEnd(node, start + text.length);
+        const boxes = Array.from(range.getClientRects()).filter((box) => box.height > 0);
+        const first = boxes[0];
+        const last = boxes[boxes.length - 1];
+        return { top: first.top, lastTop: last.top, lastHeight: last.height };
       }
       return null;
     });
-  }, lignes);
-  for (let i = 1; i < lignes.length; i++) {
-    const precedente = positions[i - 1];
-    const courante = positions[i];
-    expect(precedente, `ligne introuvable : ${lignes[i - 1]}`).not.toBeNull();
-    expect(courante, `ligne introuvable : ${lignes[i]}`).not.toBeNull();
-    expect(courante!.haut - precedente!.hautFin, `« ${lignes[i]} » commence sous « ${lignes[i - 1]} »`)
-      .toBeGreaterThanOrEqual(precedente!.hauteurFin / 2);
+  }, lines);
+  for (let i = 1; i < lines.length; i++) {
+    const previous = positions[i - 1];
+    const current = positions[i];
+    expect(previous, `ligne introuvable : ${lines[i - 1]}`).not.toBeNull();
+    expect(current, `ligne introuvable : ${lines[i]}`).not.toBeNull();
+    expect(current!.top - previous!.lastTop, `« ${lines[i]} » commence sous « ${lines[i - 1]} »`)
+      .toBeGreaterThanOrEqual(previous!.lastHeight / 2);
   }
 }
 
-/* Texte affiché à l'écran par un élément, dans l'ordre de rendu : ses nœuds texte et le
-   contenu généré de ses pseudo-éléments ::before et ::after (sans le texte alternatif d'un
-   `content: "…" / "…"`), éléments masqués exclus. Indépendant du balisage choisi. */
-async function texteAffiche(element: Locator): Promise<string> {
-  const texte = await element.evaluate((racine) => {
-    const genere = (el: Element, pseudo: '::before' | '::after') => {
-      const contenu = getComputedStyle(el, pseudo).content;
-      const chaines = contenu.split(/\s+\/\s+/)[0].match(/"(?:[^"\\]|\\.)*"/g) ?? [];
-      return chaines.map((chaine) => JSON.parse(chaine) as string).join('');
+/* Text an element displays on screen, in rendering order: its text nodes and the generated
+   content of its ::before and ::after pseudo-elements (without the alternative text of a
+   `content: "…" / "…"`), hidden elements excluded. Independent of the chosen markup. */
+async function displayedText(element: Locator): Promise<string> {
+  const text = await element.evaluate((root) => {
+    const generated = (el: Element, pseudo: '::before' | '::after') => {
+      const content = getComputedStyle(el, pseudo).content;
+      const strings = content.split(/\s+\/\s+/)[0].match(/"(?:[^"\\]|\\.)*"/g) ?? [];
+      return strings.map((string) => JSON.parse(string) as string).join('');
     };
-    const parcourir = (el: Element): string => {
+    const walk = (el: Element): string => {
       const style = getComputedStyle(el);
       if (style.display === 'none' || style.visibility === 'hidden') return '';
-      let resultat = genere(el, '::before');
-      for (const enfant of Array.from(el.childNodes)) {
-        if (enfant.nodeType === Node.TEXT_NODE) resultat += enfant.textContent ?? '';
-        else if (enfant.nodeType === Node.ELEMENT_NODE) resultat += parcourir(enfant as Element);
+      let result = generated(el, '::before');
+      for (const child of Array.from(el.childNodes)) {
+        if (child.nodeType === Node.TEXT_NODE) result += child.textContent ?? '';
+        else if (child.nodeType === Node.ELEMENT_NODE) result += walk(child as Element);
       }
-      return resultat + genere(el, '::after');
+      return result + generated(el, '::after');
     };
-    return parcourir(racine);
+    return walk(root);
   });
-  return texte.replace(/\s+/g, ' ').trim();
+  return text.replace(/\s+/g, ' ').trim();
 }
 
-/* Styles calculés qui décident de l'allure d'un texte : casse affichée, première police de la
-   pile, graisse et couleur. */
-async function styleDuTexte(element: Locator) {
+/* Computed styles that decide how a text looks: displayed case, first font of the stack,
+   weight and color. */
+async function textStyle(element: Locator) {
   return element.evaluate((el) => {
     const style = getComputedStyle(el);
     return {
-      casse: style.textTransform,
-      famille: style.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
-      graisse: style.fontWeight,
-      couleur: style.color,
+      textTransform: style.textTransform,
+      family: style.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
+      weight: style.fontWeight,
+      color: style.color,
     };
   });
 }
 
-/* Composantes d'une couleur calculée, quelle que soit la façon dont le navigateur la
-   sérialise (`rgb(…)`, `rgba(…)` ou `color(srgb …)`) : rouge, vert et bleu de 0 à 255
-   arrondis à l'unité, opacité de 0 à 1 arrondie au centième. */
-function composantesDeCouleur(couleur: string) {
-  const nombre = '([\\d.]+%?)';
-  const versUnite = (valeur: string) => (valeur.endsWith('%') ? parseFloat(valeur) / 100 : parseFloat(valeur));
-  const rgb = couleur.match(new RegExp(`^rgba?\\(\\s*${nombre}[\\s,]+${nombre}[\\s,]+${nombre}(?:\\s*[,/]\\s*${nombre})?\\s*\\)$`));
-  const srgb = couleur.match(new RegExp(`^color\\(srgb\\s+${nombre}\\s+${nombre}\\s+${nombre}(?:\\s*/\\s*${nombre})?\\s*\\)$`));
-  const correspondance = rgb ?? srgb;
-  if (!correspondance) throw new Error(`couleur non reconnue : ${couleur}`);
-  const echelle = rgb ? 1 : 255;
-  const [rouge, vert, bleu] = correspondance.slice(1, 4).map((valeur) =>
-    Math.round(valeur.endsWith('%') ? versUnite(valeur) * 255 : parseFloat(valeur) * echelle));
-  const opacite = correspondance[4] === undefined ? 1 : Math.round(versUnite(correspondance[4]) * 100) / 100;
-  return { rouge, vert, bleu, opacite };
+/* Components of a computed color, however the browser serializes it (`rgb(…)`, `rgba(…)` or
+   `color(srgb …)`): red, green and blue from 0 to 255 rounded to the unit, alpha from 0 to 1
+   rounded to the hundredth. */
+function colorComponents(color: string) {
+  const number = '([\\d.]+%?)';
+  const toUnit = (value: string) => (value.endsWith('%') ? parseFloat(value) / 100 : parseFloat(value));
+  const rgb = color.match(new RegExp(`^rgba?\\(\\s*${number}[\\s,]+${number}[\\s,]+${number}(?:\\s*[,/]\\s*${number})?\\s*\\)$`));
+  const srgb = color.match(new RegExp(`^color\\(srgb\\s+${number}\\s+${number}\\s+${number}(?:\\s*/\\s*${number})?\\s*\\)$`));
+  const match = rgb ?? srgb;
+  if (!match) throw new Error(`unrecognized color: ${color}`);
+  const scale = rgb ? 1 : 255;
+  const [red, green, blue] = match.slice(1, 4).map((value) =>
+    Math.round(value.endsWith('%') ? toUnit(value) * 255 : parseFloat(value) * scale));
+  const alpha = match[4] === undefined ? 1 : Math.round(toUnit(match[4]) * 100) / 100;
+  return { red, green, blue, alpha };
 }
 
-/* Styles calculés qui décident de l'allure d'un bouton : couleur du texte, fond,
-   soulignement, et bordure de chaque côté. Couleurs en composantes. */
-async function styleDuBouton(bouton: Locator) {
-  const { couleur, fond, soulignement, bordures } = await bouton.evaluate((lien) => {
-    const style = getComputedStyle(lien);
-    const cotes = ['top', 'right', 'bottom', 'left'] as const;
+/* Computed styles that decide how a button looks: text color, background, underline, and
+   border on each side. Colors as components. */
+async function buttonStyle(button: Locator) {
+  const { color, background, textDecoration, borders } = await button.evaluate((link) => {
+    const style = getComputedStyle(link);
+    const sides = ['top', 'right', 'bottom', 'left'] as const;
     return {
-      couleur: style.color,
-      fond: style.backgroundColor,
-      soulignement: style.textDecorationLine,
-      bordures: cotes.map((cote) => ({
-        cote,
-        epaisseur: style.getPropertyValue(`border-${cote}-width`),
-        trait: style.getPropertyValue(`border-${cote}-style`),
-        couleur: style.getPropertyValue(`border-${cote}-color`),
+      color: style.color,
+      background: style.backgroundColor,
+      textDecoration: style.textDecorationLine,
+      borders: sides.map((side) => ({
+        side,
+        width: style.getPropertyValue(`border-${side}-width`),
+        style: style.getPropertyValue(`border-${side}-style`),
+        color: style.getPropertyValue(`border-${side}-color`),
       })),
     };
   });
   return {
-    couleur: composantesDeCouleur(couleur),
-    fond: composantesDeCouleur(fond),
-    soulignement,
-    bordures: bordures.map((bordure) => ({ ...bordure, couleur: composantesDeCouleur(bordure.couleur) })),
+    color: colorComponents(color),
+    background: colorComponents(background),
+    textDecoration,
+    borders: borders.map((border) => ({ ...border, color: colorComponents(border.color) })),
   };
 }
 
-/* Couleur du texte d'un bouton et couleur de sa bordure de chaque côté, en composantes. */
-async function couleursDuTexteEtDesBordures(bouton: Locator) {
-  const { couleur, bordures } = await styleDuBouton(bouton);
+/* Text color of a button and color of its border on each side, as components. */
+async function textAndBorderColors(button: Locator) {
+  const { color, borders } = await buttonStyle(button);
   return {
-    couleur,
-    bordures: bordures.map(({ cote, couleur: couleurDuCote }) => ({ cote, couleur: couleurDuCote })),
+    color,
+    borders: borders.map(({ side, color: sideColor }) => ({ side, color: sideColor })),
   };
 }
 
-/* Étendue horizontale affichée d'un élément, en px depuis le bord gauche de la fenêtre : la
-   boîte de l'élément et celle de son contenu (un texte trop long peut déborder de sa boîte
-   sans l'élargir). */
-async function etendueAffichee(element: Locator): Promise<{ gauche: number; droite: number }> {
+/* Displayed horizontal extent of an element, in px from the left edge of the window: the box
+   of the element and that of its content (a text that is too long can overflow its box
+   without widening it). */
+async function displayedExtent(element: Locator): Promise<{ left: number; right: number }> {
   return element.evaluate((el) => {
-    const plage = document.createRange();
-    plage.selectNodeContents(el);
-    const boites = [el.getBoundingClientRect(), plage.getBoundingClientRect()];
-    return { gauche: Math.min(...boites.map((b) => b.left)), droite: Math.max(...boites.map((b) => b.right)) };
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const boxes = [el.getBoundingClientRect(), range.getBoundingClientRect()];
+    return { left: Math.min(...boxes.map((b) => b.left)), right: Math.max(...boxes.map((b) => b.right)) };
   });
 }
 
-/* Le hero précède le texte d'accueil : ses boutons d'action sont, dans l'ordre, les premiers
-   liens du contenu principal. On les cherche là, et non dans toute la page, parce que l'en-tête
-   a ses propres liens, dont un « Contact ». */
-function premierBoutonDuHero(page: Page): Locator {
+/* The hero comes before the home page text: its action buttons are, in order, the first
+   links of the main content. They are looked up there, and not in the whole page, because
+   the header has its own links, including a "Contact" one. */
+function firstHeroButton(page: Page): Locator {
   return page.getByRole('main').getByRole('link').first();
 }
 
-function secondBoutonDuHero(page: Page): Locator {
+function secondHeroButton(page: Page): Locator {
   return page.getByRole('main').getByRole('link').nth(1);
 }
 
-function titrePrincipalDuContenu(page: Page): Locator {
+function mainContentHeading(page: Page): Locator {
   return page.getByRole('main').getByRole('heading', { level: 1 });
 }
 
-test('sur l’accueil français, le titre principal commence par le nom de l’auteur du site', async ({ page }) => {
+test('on the French home page, the main heading starts with the site author name', async ({ page }) => {
   await page.goto('/fr/');
-  const titrePrincipal = titrePrincipalDuContenu(page);
-  /* Le texte du DOM, tel qu'écrit dans params.author : l'affichage en majuscules relève du CSS. */
-  await expect(titrePrincipal).toHaveText(/^\s*Jean Exemple/);
+  const mainHeading = mainContentHeading(page);
+  /* The DOM text, as written in params.author: the uppercase display is up to CSS. */
+  await expect(mainHeading).toHaveText(/^\s*Jean Exemple/);
 });
 
-test('sur l’accueil français, le titre principal affiche, à la ligne sous le nom de l’auteur, son titre professionnel', async ({ page }) => {
+test('on the French home page, the main heading displays, on a new line below the author name, their professional title', async ({ page }) => {
   await page.goto('/fr/');
-  const titrePrincipal = titrePrincipalDuContenu(page);
-  /* Le titre vient du front matter de exampleSite/content/_index.md, bloc [params.hero], clé title.
-     Texte du DOM, tel qu'écrit dans le front matter : l'affichage en majuscules relève du CSS. */
-  await expect(titrePrincipal).toHaveText(/^\s*Jean Exemple\s*Horloger indépendant\s*$/);
-  /* À la ligne : le titre professionnel commence au moins une demi-ligne plus bas que le nom. */
-  const titreProfessionnel = titrePrincipal.getByText('Horloger indépendant', { exact: true });
-  await expect(titreProfessionnel).toBeVisible();
-  const boiteTitrePrincipal = await titrePrincipal.boundingBox();
-  const boiteTitreProfessionnel = await titreProfessionnel.boundingBox();
-  expect(boiteTitreProfessionnel!.y - boiteTitrePrincipal!.y).toBeGreaterThanOrEqual(boiteTitreProfessionnel!.height / 2);
+  const mainHeading = mainContentHeading(page);
+  /* The title comes from the front matter of exampleSite/content/_index.md, [params.hero]
+     block, title key. DOM text, as written in the front matter: the uppercase display is up
+     to CSS. */
+  await expect(mainHeading).toHaveText(/^\s*Jean Exemple\s*Horloger indépendant\s*$/);
+  /* On a new line: the professional title starts at least half a line below the name. */
+  const professionalTitle = mainHeading.getByText('Horloger indépendant', { exact: true });
+  await expect(professionalTitle).toBeVisible();
+  const mainHeadingBox = await mainHeading.boundingBox();
+  const professionalTitleBox = await professionalTitle.boundingBox();
+  expect(professionalTitleBox!.y - mainHeadingBox!.y).toBeGreaterThanOrEqual(professionalTitleBox!.height / 2);
 });
 
-test('sur l’accueil français, le nom de l’auteur s’affiche en majuscules, en IBM Plex Mono grasse (700), couleur papier, plus grand que le titre professionnel qui le suit', async ({ page }) => {
+test('on the French home page, the author name is displayed in uppercase, in IBM Plex Mono bold (700), paper color, larger than the professional title that follows it', async ({ page }) => {
   await page.goto('/fr/');
-  const titrePrincipal = titrePrincipalDuContenu(page);
-  await expect(titrePrincipal).toHaveText(/^\s*Jean Exemple/);
-  const titreProfessionnel = titrePrincipal.getByText('Horloger indépendant', { exact: true });
-  await expect(titreProfessionnel).toBeVisible();
-  /* Le nom est un nœud texte direct du h1 : il prend les styles calculés du h1. Référence de
-     design : nom en clamp(44px, 6.4vw, 100px), titre en clamp(22px, 3vw, 46px). */
-  const styleDuNom = await styleDuTexte(titrePrincipal);
-  expect(styleDuNom).toEqual({
-    casse: 'uppercase',
-    famille: 'IBM Plex Mono',
-    graisse: '700',
-    couleur: 'rgb(227, 223, 204)',
+  const mainHeading = mainContentHeading(page);
+  await expect(mainHeading).toHaveText(/^\s*Jean Exemple/);
+  const professionalTitle = mainHeading.getByText('Horloger indépendant', { exact: true });
+  await expect(professionalTitle).toBeVisible();
+  /* The name is a direct text node of the h1: it takes the computed styles of the h1. Design
+     reference: name in clamp(44px, 6.4vw, 100px), title in clamp(22px, 3vw, 46px). */
+  const nameStyle = await textStyle(mainHeading);
+  expect(nameStyle).toEqual({
+    textTransform: 'uppercase',
+    family: 'IBM Plex Mono',
+    weight: '700',
+    color: 'rgb(227, 223, 204)',
   });
-  const tailleDuNom = await titrePrincipal.evaluate((h1) => parseFloat(getComputedStyle(h1).fontSize));
-  const tailleDuTitre = await titreProfessionnel.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
-  expect(tailleDuNom, 'le nom est plus grand que le titre professionnel').toBeGreaterThan(tailleDuTitre);
+  const nameSize = await mainHeading.evaluate((h1) => parseFloat(getComputedStyle(h1).fontSize));
+  const titleSize = await professionalTitle.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  expect(nameSize, 'le nom est plus grand que le titre professionnel').toBeGreaterThan(titleSize);
 });
 
-test('sur l’accueil français, le titre professionnel qui suit le nom de l’auteur s’affiche en majuscules, en IBM Plex Mono demi-grasse (600), couleur accent', async ({ page }) => {
+test('on the French home page, the professional title that follows the author name is displayed in uppercase, in IBM Plex Mono semibold (600), accent color', async ({ page }) => {
   await page.goto('/fr/');
-  const titrePrincipal = titrePrincipalDuContenu(page);
-  /* Le titre est un élément à part dans le h1 : ce sont ses propres styles calculés qui
-     décident de son allure. Référence de design : accent #2A888D. */
-  const titreProfessionnel = titrePrincipal.getByText('Horloger indépendant', { exact: true });
-  await expect(titreProfessionnel).toBeVisible();
-  expect(await styleDuTexte(titreProfessionnel)).toEqual({
-    casse: 'uppercase',
-    famille: 'IBM Plex Mono',
-    graisse: '600',
-    couleur: 'rgb(42, 136, 141)',
+  const mainHeading = mainContentHeading(page);
+  /* The title is a separate element in the h1: its own computed styles decide how it looks.
+     Design reference: accent #2A888D. */
+  const professionalTitle = mainHeading.getByText('Horloger indépendant', { exact: true });
+  await expect(professionalTitle).toBeVisible();
+  expect(await textStyle(professionalTitle)).toEqual({
+    textTransform: 'uppercase',
+    family: 'IBM Plex Mono',
+    weight: '600',
+    color: 'rgb(42, 136, 141)',
   });
 });
 
-test('sur l’accueil français, le hero affiche l’accroche, une ligne par entrée : les trois lignes, dans l’ordre, chacune sous la précédente', async ({ page }) => {
+test('on the French home page, the hero displays the tagline, one line per entry: the three lines, in order, each below the previous one', async ({ page }) => {
   await page.goto('/fr/');
-  const principal = page.getByRole('main');
-  /* L'accroche vient du front matter de exampleSite/content/_index.md, bloc [params.hero],
-     clé tagline (une liste de chaînes, une par ligne). */
-  const lignes = [
+  const main = page.getByRole('main');
+  /* The tagline comes from the front matter of exampleSite/content/_index.md, [params.hero]
+     block, tagline key (a list of strings, one per line). */
+  const lines = [
     'Montres mécaniques sur mesure — 20 ans d’atelier.',
     'Conception, réparation et entretien',
     'de pendules et de montres anciennes.',
   ];
-  await verifierLignesDansLOrdre(principal, lignes);
+  await expectLinesInOrder(main, lines);
 });
 
-test('sur l’accueil français, le hero affiche la stack sur une ligne, entrées séparées par « · »', async ({ page }) => {
+test('on the French home page, the hero displays the stack on one line, entries separated by "·"', async ({ page }) => {
   await page.goto('/fr/');
-  const principal = page.getByRole('main');
-  /* La stack vient du front matter de exampleSite/content/_index.md, bloc [params.hero],
-     clé stack (une liste de chaînes : 'Laiton', 'Acier', 'Rubis', 'Émail'). Elles s'affichent
-     d'un seul tenant, séparées par un point médian entouré d'espaces. */
-  await expect(principal.getByText('Laiton · Acier · Rubis · Émail', { exact: true })).toBeVisible();
+  const main = page.getByRole('main');
+  /* The stack comes from the front matter of exampleSite/content/_index.md, [params.hero]
+     block, stack key (a list of strings: 'Laiton', 'Acier', 'Rubis', 'Émail'). They are
+     displayed in one piece, separated by a middle dot surrounded by spaces. */
+  await expect(main.getByText('Laiton · Acier · Rubis · Émail', { exact: true })).toBeVisible();
 });
 
-test('sur l’accueil français, l’accroche du hero s’affiche en IBM Plex Sans, couleur papier à 88 % d’opacité, et la stack en IBM Plex Mono, couleur accent', async ({ page }) => {
+test('on the French home page, the hero tagline is displayed in IBM Plex Sans, paper color at 88% opacity, and the stack in IBM Plex Mono, accent color', async ({ page }) => {
   await page.goto('/fr/');
-  const principal = page.getByRole('main');
-  /* Référence de design : papier #E3DFCC à 88 % d'opacité pour l'accroche, accent #2A888D
-     pour la stack. */
-  const lignes = [
+  const main = page.getByRole('main');
+  /* Design reference: paper #E3DFCC at 88% opacity for the tagline, accent #2A888D for the
+     stack. */
+  const lines = [
     'Montres mécaniques sur mesure — 20 ans d’atelier.',
     'Conception, réparation et entretien',
     'de pendules et de montres anciennes.',
   ];
-  for (const ligne of lignes) {
-    const element = principal.getByText(ligne);
+  for (const line of lines) {
+    const element = main.getByText(line);
     await expect(element).toBeVisible();
-    const { famille, couleur } = await styleDuTexte(element);
-    expect({ famille, couleur: composantesDeCouleur(couleur) }, `style de « ${ligne} »`).toEqual({
-      famille: 'IBM Plex Sans',
-      couleur: { rouge: 227, vert: 223, bleu: 204, opacite: 0.88 },
+    const { family, color } = await textStyle(element);
+    expect({ family, color: colorComponents(color) }, `style de « ${line} »`).toEqual({
+      family: 'IBM Plex Sans',
+      color: { red: 227, green: 223, blue: 204, alpha: 0.88 },
     });
   }
-  const stack = principal.getByText('Laiton · Acier · Rubis · Émail', { exact: true });
+  const stack = main.getByText('Laiton · Acier · Rubis · Émail', { exact: true });
   await expect(stack).toBeVisible();
-  const { famille, couleur } = await styleDuTexte(stack);
-  expect({ famille, couleur: composantesDeCouleur(couleur) }, 'style de la stack').toEqual({
-    famille: 'IBM Plex Mono',
-    couleur: { rouge: 42, vert: 136, bleu: 141, opacite: 1 },
+  const { family, color } = await textStyle(stack);
+  expect({ family, color: colorComponents(color) }, 'style de la stack').toEqual({
+    family: 'IBM Plex Mono',
+    color: { red: 42, green: 136, blue: 141, alpha: 1 },
   });
 });
 
-test('sur l’accueil français, le premier bouton du hero, « Voir les projets », mène à la page Projets française', async ({ page }) => {
+test('on the French home page, the first hero button, "Voir les projets", leads to the French Projets page', async ({ page }) => {
   await page.goto('/fr/');
-  /* Les boutons viennent du front matter de exampleSite/content/_index.md, blocs
-     [[params.hero.actions]] ; le premier a pageRef = '/projets'. */
-  const premierBouton = premierBoutonDuHero(page);
-  await expect(premierBouton).toHaveText('Voir les projets');
-  await expect(premierBouton).toHaveAttribute('href', '/fr/projets/');
-  await premierBouton.click();
+  /* The buttons come from the front matter of exampleSite/content/_index.md,
+     [[params.hero.actions]] blocks; the first one has pageRef = '/projets'. */
+  const firstButton = firstHeroButton(page);
+  await expect(firstButton).toHaveText('Voir les projets');
+  await expect(firstButton).toHaveAttribute('href', '/fr/projets/');
+  await firstButton.click();
   await expect(page).toHaveURL('/fr/projets/');
 });
 
-test('sur l’accueil français, le premier bouton du hero affiche une flèche « → » après « Voir les projets », que les lecteurs d’écran ne lisent pas', async ({ page }) => {
+test('on the French home page, the first hero button displays an arrow "→" after "Voir les projets", which screen readers do not read', async ({ page }) => {
   await page.goto('/fr/');
-  /* À l'écran, la flèche suit le libellé ; le nom accessible du lien reste le seul libellé. */
-  const premierBouton = premierBoutonDuHero(page);
-  await expect(premierBouton).toHaveAccessibleName('Voir les projets');
-  expect(await texteAffiche(premierBouton)).toMatch(/^Voir les projets ?→$/);
+  /* On screen, the arrow follows the label; the accessible name of the link stays the label
+     alone. */
+  const firstButton = firstHeroButton(page);
+  await expect(firstButton).toHaveAccessibleName('Voir les projets');
+  expect(await displayedText(firstButton)).toMatch(/^Voir les projets ?→$/);
 });
 
-test('sur l’accueil français, le premier bouton du hero, « Voir les projets », est plein : texte encre sur fond papier, en IBM Plex Mono demi-grasse (600), non souligné', async ({ page }) => {
+test('on the French home page, the first hero button, "Voir les projets", is filled: ink text on a paper background, in IBM Plex Mono semibold (600), not underlined', async ({ page }) => {
   await page.goto('/fr/');
-  /* Référence de design : encre #013549, papier #E3DFCC. */
-  const premierBouton = premierBoutonDuHero(page);
-  await expect(premierBouton).toHaveText(/^\s*Voir les projets/);
-  const { famille, graisse } = await styleDuTexte(premierBouton);
-  const { couleur, fond, soulignement } = await styleDuBouton(premierBouton);
-  expect({ famille, graisse, couleur, fond, soulignement }, 'style du premier bouton').toEqual({
-    famille: 'IBM Plex Mono',
-    graisse: '600',
-    couleur: { rouge: 1, vert: 53, bleu: 73, opacite: 1 },
-    fond: { rouge: 227, vert: 223, bleu: 204, opacite: 1 },
-    soulignement: 'none',
+  /* Design reference: ink #013549, paper #E3DFCC. */
+  const firstButton = firstHeroButton(page);
+  await expect(firstButton).toHaveText(/^\s*Voir les projets/);
+  const { family, weight } = await textStyle(firstButton);
+  const { color, background, textDecoration } = await buttonStyle(firstButton);
+  expect({ family, weight, color, background, textDecoration }, 'style du premier bouton').toEqual({
+    family: 'IBM Plex Mono',
+    weight: '600',
+    color: { red: 1, green: 53, blue: 73, alpha: 1 },
+    background: { red: 227, green: 223, blue: 204, alpha: 1 },
+    textDecoration: 'none',
   });
 });
 
-test('sur l’accueil français, le second bouton du hero, placé après « Voir les projets », est « Contact » et mène à #contact', async ({ page }) => {
+test('on the French home page, the second hero button, placed after "Voir les projets", is "Contact" and leads to #contact', async ({ page }) => {
   await page.goto('/fr/');
-  /* Les boutons viennent du front matter de exampleSite/content/_index.md, blocs
-     [[params.hero.actions]] ; le second a url = '#contact'. */
-  await expect(premierBoutonDuHero(page)).toHaveText('Voir les projets');
-  const secondBouton = secondBoutonDuHero(page);
-  await expect(secondBouton).toHaveText('Contact');
-  await expect(secondBouton).toHaveAttribute('href', '#contact');
+  /* The buttons come from the front matter of exampleSite/content/_index.md,
+     [[params.hero.actions]] blocks; the second one has url = '#contact'. */
+  await expect(firstHeroButton(page)).toHaveText('Voir les projets');
+  const secondButton = secondHeroButton(page);
+  await expect(secondButton).toHaveText('Contact');
+  await expect(secondButton).toHaveAttribute('href', '#contact');
 });
 
-test('sur l’accueil français, le second bouton du hero, « Contact », est en contour : texte papier, bordure pleine de 1 px papier à 50 % d’opacité sur les quatre côtés, fond transparent, non souligné', async ({ page }) => {
+test('on the French home page, the second hero button, "Contact", is outlined: paper text, solid 1 px paper border at 50% opacity on all four sides, transparent background, not underlined', async ({ page }) => {
   await page.goto('/fr/');
-  /* Référence de design : papier #E3DFCC, bordure 1px solid à 50 % d'opacité. */
-  await expect(premierBoutonDuHero(page)).toHaveText(/^\s*Voir les projets/);
-  const secondBouton = secondBoutonDuHero(page);
-  await expect(secondBouton).toHaveText('Contact');
-  const { couleur, fond, soulignement, bordures } = await styleDuBouton(secondBouton);
-  expect({ couleur, opaciteDuFond: fond.opacite, soulignement, bordures }, 'style du second bouton').toEqual({
-    couleur: { rouge: 227, vert: 223, bleu: 204, opacite: 1 },
-    opaciteDuFond: 0,
-    soulignement: 'none',
-    bordures: (['top', 'right', 'bottom', 'left'] as const).map((cote) => ({
-      cote,
-      epaisseur: '1px',
-      trait: 'solid',
-      couleur: { rouge: 227, vert: 223, bleu: 204, opacite: 0.5 },
+  /* Design reference: paper #E3DFCC, 1px solid border at 50% opacity. */
+  await expect(firstHeroButton(page)).toHaveText(/^\s*Voir les projets/);
+  const secondButton = secondHeroButton(page);
+  await expect(secondButton).toHaveText('Contact');
+  const { color, background, textDecoration, borders } = await buttonStyle(secondButton);
+  expect({ color, backgroundAlpha: background.alpha, textDecoration, borders }, 'style du second bouton').toEqual({
+    color: { red: 227, green: 223, blue: 204, alpha: 1 },
+    backgroundAlpha: 0,
+    textDecoration: 'none',
+    borders: (['top', 'right', 'bottom', 'left'] as const).map((side) => ({
+      side,
+      width: '1px',
+      style: 'solid',
+      color: { red: 227, green: 223, blue: 204, alpha: 0.5 },
     })),
   });
 });
 
-test('sur ordinateur, le second bouton du hero, « Contact », survolé passe en couleur accent : texte et bordure sur les quatre côtés', async ({ page, hasTouch }) => {
-  test.skip(hasTouch, 'le survol à la souris n’existe pas sur un écran tactile');
+test('on desktop, the hovered second hero button, "Contact", turns accent-colored: text and border on all four sides', async ({ page, hasTouch }) => {
+  test.skip(hasTouch, 'mouse hover does not exist on a touch screen');
   await page.goto('/fr/');
-  /* Référence de design : au survol, texte et bordure en accent #2A888D, opaques. On attend
-     que les couleurs se stabilisent, au cas où une transition accompagne le survol. */
-  await expect(premierBoutonDuHero(page)).toHaveText(/^\s*Voir les projets/);
-  const secondBouton = secondBoutonDuHero(page);
-  await expect(secondBouton).toHaveText('Contact');
-  await secondBouton.hover();
-  const accent = { rouge: 42, vert: 136, bleu: 141, opacite: 1 };
-  await expect.poll(() => couleursDuTexteEtDesBordures(secondBouton), {
+  /* Design reference: on hover, text and border in accent #2A888D, opaque. The colors are
+     waited on to settle, in case a transition comes with the hover. */
+  await expect(firstHeroButton(page)).toHaveText(/^\s*Voir les projets/);
+  const secondButton = secondHeroButton(page);
+  await expect(secondButton).toHaveText('Contact');
+  await secondButton.hover();
+  const accent = { red: 42, green: 136, blue: 141, alpha: 1 };
+  await expect.poll(() => textAndBorderColors(secondButton), {
     message: 'style du second bouton survolé',
   }).toEqual({
-    couleur: accent,
-    bordures: (['top', 'right', 'bottom', 'left'] as const).map((cote) => ({ cote, couleur: accent })),
+    color: accent,
+    borders: (['top', 'right', 'bottom', 'left'] as const).map((side) => ({ side, color: accent })),
   });
 });
 
-test('sur téléphone comme sur ordinateur, le second bouton du hero, « Contact », atteint au clavier passe en couleur accent : texte et bordure sur les quatre côtés', async ({ page, browserName }) => {
+test('on phone as on desktop, the second hero button, "Contact", reached by keyboard turns accent-colored: text and border on all four sides', async ({ page, browserName }) => {
   await page.goto('/fr/');
-  /* Référence de design : au focus clavier, comme au survol, texte et bordure en accent
-     #2A888D, opaques. Le focus vient de la touche Tab, comme pour un visiteur au clavier. On
-     attend que les couleurs se stabilisent, au cas où une transition accompagne le focus. */
-  await expect(premierBoutonDuHero(page)).toHaveText(/^\s*Voir les projets/);
-  const secondBouton = secondBoutonDuHero(page);
-  await expect(secondBouton).toHaveText('Contact');
-  await tabulerJusqua(secondBouton, browserName);
-  await expect(secondBouton).toBeFocused();
-  const accent = { rouge: 42, vert: 136, bleu: 141, opacite: 1 };
-  await expect.poll(() => couleursDuTexteEtDesBordures(secondBouton), {
+  /* Design reference: on keyboard focus, as on hover, text and border in accent #2A888D,
+     opaque. Focus comes from the Tab key, as for a keyboard visitor. The colors are waited on
+     to settle, in case a transition comes with the focus. */
+  await expect(firstHeroButton(page)).toHaveText(/^\s*Voir les projets/);
+  const secondButton = secondHeroButton(page);
+  await expect(secondButton).toHaveText('Contact');
+  await tabUntilFocused(secondButton, browserName);
+  await expect(secondButton).toBeFocused();
+  const accent = { red: 42, green: 136, blue: 141, alpha: 1 };
+  await expect.poll(() => textAndBorderColors(secondButton), {
     message: 'style du second bouton atteint au clavier',
   }).toEqual({
-    couleur: accent,
-    bordures: (['top', 'right', 'bottom', 'left'] as const).map((cote) => ({ cote, couleur: accent })),
+    color: accent,
+    borders: (['top', 'right', 'bottom', 'left'] as const).map((side) => ({ side, color: accent })),
   });
 });
 
-test('sur l’accueil français, le hero occupe au moins toute la hauteur de la fenêtre sous l’en-tête : il commence juste sous l’en-tête et finit au bas de la fenêtre, ou plus bas', async ({ page }) => {
+test('on the French home page, the hero fills at least the full window height below the header: it starts right below the header and ends at the bottom of the window, or lower', async ({ page }) => {
   await page.goto('/fr/');
-  /* Le hero est la région du contenu principal nommée par son titre principal (une section
-     étiquetée par le h1) : elle regroupe le titre, l'accroche, la stack et les boutons. */
+  /* The hero is the main content region named by its main heading (a section labeled by the
+     h1): it groups the heading, the tagline, the stack and the buttons. */
   const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
   await expect(hero.getByRole('heading', { level: 1 })).toBeVisible();
   await expect(hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.')).toBeVisible();
   await expect(hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true })).toBeVisible();
   await expect(hero.getByRole('link', { name: 'Voir les projets' })).toBeVisible();
   await expect(hero.getByRole('link', { name: 'Contact' })).toBeVisible();
-  /* Référence de design : hauteur minimale « 100vh moins la hauteur de l'en-tête ». Page en
-     haut de défilement : le haut du hero touche le bas de l'en-tête, son bas atteint au moins
-     le bas de la fenêtre. */
-  const hauteurFenetre = page.viewportSize()!.height;
-  const boiteEntete = (await page.locator('header').boundingBox())!;
-  const boiteHero = (await hero.boundingBox())!;
-  const basEntete = boiteEntete.y + boiteEntete.height;
-  expect(Math.abs(boiteHero.y - basEntete), 'le haut du hero est juste sous l’en-tête').toBeLessThanOrEqual(1);
-  expect(boiteHero.y + boiteHero.height, 'le bas du hero est au bas de la fenêtre, ou plus bas')
-    .toBeGreaterThanOrEqual(hauteurFenetre - 1);
+  /* Design reference: minimum height "100vh minus the header height". Page scrolled to the
+     top: the top of the hero touches the bottom of the header, its bottom reaches at least
+     the bottom of the window. */
+  const viewportHeight = page.viewportSize()!.height;
+  const headerBox = (await page.locator('header').boundingBox())!;
+  const heroBox = (await hero.boundingBox())!;
+  const headerBottom = headerBox.y + headerBox.height;
+  expect(Math.abs(heroBox.y - headerBottom), 'le haut du hero est juste sous l’en-tête').toBeLessThanOrEqual(1);
+  expect(heroBox.y + heroBox.height, 'le bas du hero est au bas de la fenêtre, ou plus bas')
+    .toBeGreaterThanOrEqual(viewportHeight - 1);
 });
 
-test('le contenu du hero est aligné sur le logo de l’en-tête : à 16 px du bord gauche sur téléphone, à 48 px sur ordinateur', async ({ page, isMobile }) => {
+test('the hero content is aligned with the header logo: 16 px from the left edge on a phone, 48 px on desktop', async ({ page, isMobile }) => {
   await page.goto('/fr/');
-  /* Référence de design : 16 px de marge latérale sur téléphone, 48 px sur ordinateur, comme
-     l'en-tête. Le logo est le lien de l'en-tête nommé d'après le titre du site. */
+  /* Design reference: 16 px side margin on a phone, 48 px on desktop, like the header. The
+     logo is the header link named after the site title. */
   const logo = page.locator('header').getByRole('link', { name: 'Exemple', exact: true });
   await expect(logo).toBeVisible();
-  const bordGaucheAttendu = isMobile ? 16 : 48;
-  expect((await logo.boundingBox())!.x, 'bord gauche du logo').toBeCloseTo(bordGaucheAttendu, 0);
-  /* Les éléments du hero : nom et titre professionnel dans le h1, accroche, stack et premier
-     bouton. */
-  const principal = page.getByRole('main');
-  const titrePrincipal = titrePrincipalDuContenu(page);
+  const expectedLeftEdge = isMobile ? 16 : 48;
+  expect((await logo.boundingBox())!.x, 'bord gauche du logo').toBeCloseTo(expectedLeftEdge, 0);
+  /* The hero elements: name and professional title in the h1, tagline, stack and first
+     button. */
+  const main = page.getByRole('main');
+  const mainHeading = mainContentHeading(page);
   const elements = {
-    'nom de l’auteur (h1)': titrePrincipal,
-    'titre professionnel': titrePrincipal.getByText('Horloger indépendant', { exact: true }),
-    'accroche': principal.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
-    'stack': principal.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
-    'premier bouton': premierBoutonDuHero(page),
+    'nom de l’auteur (h1)': mainHeading,
+    'titre professionnel': mainHeading.getByText('Horloger indépendant', { exact: true }),
+    'accroche': main.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
+    'stack': main.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
+    'premier bouton': firstHeroButton(page),
   };
   await expect(elements['premier bouton']).toHaveText(/^\s*Voir les projets/);
-  for (const [nom, element] of Object.entries(elements)) {
-    await expect(element, nom).toBeVisible();
-    const boite = (await element.boundingBox())!;
-    expect.soft(boite.x, `bord gauche : ${nom}`).toBeCloseTo(bordGaucheAttendu, 0);
+  for (const [name, element] of Object.entries(elements)) {
+    await expect(element, name).toBeVisible();
+    const box = (await element.boundingBox())!;
+    expect.soft(box.x, `bord gauche : ${name}`).toBeCloseTo(expectedLeftEdge, 0);
   }
 });
 
-test('sur téléphone, le hero tient dans la largeur de l’écran : pas de défilement horizontal, nom, titre, accroche, stack et boutons entièrement visibles', async ({ page, isMobile }) => {
-  test.skip(!isMobile, 'comportement propre au téléphone');
+test('on a phone, the hero fits within the screen width: no horizontal scrolling, name, title, tagline, stack and buttons fully visible', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'phone-specific behavior');
   await page.goto('/fr/');
-  const largeur = page.viewportSize()!.width;
+  const width = page.viewportSize()!.width;
 
-  const largeurPage = await page.evaluate(() => document.documentElement.scrollWidth);
-  expect(largeurPage, 'pas de défilement horizontal').toBeLessThanOrEqual(largeur);
+  const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(pageWidth, 'pas de défilement horizontal').toBeLessThanOrEqual(width);
 
-  /* Les éléments du hero : nom et titre professionnel dans le h1, les trois lignes de
-     l'accroche, la stack et les deux boutons. */
-  const principal = page.getByRole('main');
-  const titrePrincipal = titrePrincipalDuContenu(page);
+  /* The hero elements: name and professional title in the h1, the three tagline lines, the
+     stack and the two buttons. */
+  const main = page.getByRole('main');
+  const mainHeading = mainContentHeading(page);
   const elements = {
-    'nom de l’auteur (h1)': titrePrincipal,
-    'titre professionnel': titrePrincipal.getByText('Horloger indépendant', { exact: true }),
-    'accroche, ligne 1': principal.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
-    'accroche, ligne 2': principal.getByText('Conception, réparation et entretien'),
-    'accroche, ligne 3': principal.getByText('de pendules et de montres anciennes.'),
-    'stack': principal.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
-    'premier bouton': premierBoutonDuHero(page),
-    'second bouton': secondBoutonDuHero(page),
+    'nom de l’auteur (h1)': mainHeading,
+    'titre professionnel': mainHeading.getByText('Horloger indépendant', { exact: true }),
+    'accroche, ligne 1': main.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
+    'accroche, ligne 2': main.getByText('Conception, réparation et entretien'),
+    'accroche, ligne 3': main.getByText('de pendules et de montres anciennes.'),
+    'stack': main.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
+    'premier bouton': firstHeroButton(page),
+    'second bouton': secondHeroButton(page),
   };
   await expect(elements['premier bouton']).toHaveText(/^\s*Voir les projets/);
   await expect(elements['second bouton']).toHaveText('Contact');
-  for (const [nom, element] of Object.entries(elements)) {
-    await expect(element, nom).toBeVisible();
-    const { gauche, droite } = await etendueAffichee(element);
-    expect.soft(gauche, `bord gauche dans la fenêtre : ${nom}`).toBeGreaterThanOrEqual(0);
-    expect.soft(droite, `bord droit dans la fenêtre : ${nom}`).toBeLessThanOrEqual(largeur);
+  for (const [name, element] of Object.entries(elements)) {
+    await expect(element, name).toBeVisible();
+    const { left, right } = await displayedExtent(element);
+    expect.soft(left, `bord gauche dans la fenêtre : ${name}`).toBeGreaterThanOrEqual(0);
+    expect.soft(right, `bord droit dans la fenêtre : ${name}`).toBeLessThanOrEqual(width);
   }
 });
 
-test('sur téléphone comme sur ordinateur, chaque bouton du hero offre une cible d’au moins 24 × 24 px (WCAG 2.5.8)', async ({ page }) => {
+test('on phone as on desktop, each hero button offers a target of at least 24 × 24 px (WCAG 2.5.8)', async ({ page }) => {
   await page.goto('/fr/');
-  const boutons = {
-    'premier bouton, « Voir les projets »': premierBoutonDuHero(page),
-    'second bouton, « Contact »': secondBoutonDuHero(page),
+  const buttons = {
+    'premier bouton, « Voir les projets »': firstHeroButton(page),
+    'second bouton, « Contact »': secondHeroButton(page),
   };
-  await expect(boutons['premier bouton, « Voir les projets »']).toHaveText(/^\s*Voir les projets/);
-  await expect(boutons['second bouton, « Contact »']).toHaveText('Contact');
-  for (const [nom, bouton] of Object.entries(boutons)) {
-    await expect(bouton, nom).toBeVisible();
-    const boite = (await bouton.boundingBox())!;
-    expect.soft(boite.width, `largeur de la cible : ${nom}`).toBeGreaterThanOrEqual(24);
-    expect.soft(boite.height, `hauteur de la cible : ${nom}`).toBeGreaterThanOrEqual(24);
+  await expect(buttons['premier bouton, « Voir les projets »']).toHaveText(/^\s*Voir les projets/);
+  await expect(buttons['second bouton, « Contact »']).toHaveText('Contact');
+  for (const [name, button] of Object.entries(buttons)) {
+    await expect(button, name).toBeVisible();
+    const box = (await button.boundingBox())!;
+    expect.soft(box.width, `largeur de la cible : ${name}`).toBeGreaterThanOrEqual(24);
+    expect.soft(box.height, `hauteur de la cible : ${name}`).toBeGreaterThanOrEqual(24);
   }
 });
 
-test('servi sous /portfolio/, le premier bouton du hero de l’accueil français, « Voir les projets », mène à /portfolio/fr/projets/', async ({ page }) => {
+test('served under /portfolio/, the first hero button of the French home page, "Voir les projets", leads to /portfolio/fr/projets/', async ({ page }) => {
   await page.goto('http://localhost:1315/portfolio/fr/');
-  const premierBouton = premierBoutonDuHero(page);
-  await expect(premierBouton).toHaveText('Voir les projets');
-  await expect(premierBouton).toHaveAttribute('href', '/portfolio/fr/projets/');
-  await premierBouton.click();
+  const firstButton = firstHeroButton(page);
+  await expect(firstButton).toHaveText('Voir les projets');
+  await expect(firstButton).toHaveAttribute('href', '/portfolio/fr/projets/');
+  await firstButton.click();
   await expect(page).toHaveURL('http://localhost:1315/portfolio/fr/projets/');
 });
 
-test('servi sous /portfolio/, le second bouton du hero de l’accueil français, déclaré par l’ancre « #contact », mène toujours à « #contact », sans préfixe', async ({ page }) => {
+test('served under /portfolio/, the second hero button of the French home page, declared by the anchor "#contact", still leads to "#contact", without a prefix', async ({ page }) => {
   await page.goto('http://localhost:1315/portfolio/fr/');
-  /* Le second bouton de exampleSite/content/_index.md déclare url = '#contact' : une ancre de
-     la page courante, que le chemin de publication du site ne doit pas préfixer. */
-  await expect(premierBoutonDuHero(page)).toHaveText('Voir les projets');
-  const secondBouton = secondBoutonDuHero(page);
-  await expect(secondBouton).toHaveText('Contact');
-  await expect(secondBouton).toHaveAttribute('href', '#contact');
+  /* The second button of exampleSite/content/_index.md declares url = '#contact': an anchor
+     of the current page, which the site publication path must not prefix. */
+  await expect(firstHeroButton(page)).toHaveText('Voir les projets');
+  const secondButton = secondHeroButton(page);
+  await expect(secondButton).toHaveText('Contact');
+  await expect(secondButton).toHaveAttribute('href', '#contact');
 });
 
-test('sur l’accueil anglais, le titre sous le nom de l’auteur est le titre professionnel anglais', async ({ page }) => {
+test('on the English home page, the title below the author name is the English professional title', async ({ page }) => {
   await page.goto('/en/');
-  const titrePrincipal = titrePrincipalDuContenu(page);
-  /* Le titre vient du front matter de exampleSite/content/_index.en.md, bloc [params.hero], clé title.
-     Texte du DOM, tel qu'écrit dans le front matter : l'affichage en majuscules relève du CSS. */
-  await expect(titrePrincipal.getByText('Independent clockmaker', { exact: true })).toBeVisible();
+  const mainHeading = mainContentHeading(page);
+  /* The title comes from the front matter of exampleSite/content/_index.en.md, [params.hero]
+     block, title key. DOM text, as written in the front matter: the uppercase display is up
+     to CSS. */
+  await expect(mainHeading.getByText('Independent clockmaker', { exact: true })).toBeVisible();
 });
 
-test('sur l’accueil anglais, le hero affiche les trois lignes de l’accroche anglaise, dans l’ordre, chacune sous la précédente', async ({ page }) => {
+test('on the English home page, the hero displays the three lines of the English tagline, in order, each below the previous one', async ({ page }) => {
   await page.goto('/en/');
-  const principal = page.getByRole('main');
-  /* L'accroche vient du front matter de exampleSite/content/_index.en.md, bloc [params.hero],
-     clé tagline (une liste de chaînes, une par ligne). */
-  const lignes = [
+  const main = page.getByRole('main');
+  /* The tagline comes from the front matter of exampleSite/content/_index.en.md,
+     [params.hero] block, tagline key (a list of strings, one per line). */
+  const lines = [
     'Custom mechanical watches — 20 years at the bench.',
     'Design, repair and servicing',
     'of antique clocks and watches.',
   ];
-  await verifierLignesDansLOrdre(principal, lignes);
+  await expectLinesInOrder(main, lines);
 });
 
-test('sur l’accueil anglais, le hero affiche la stack anglaise, entrées séparées par « · »', async ({ page }) => {
+test('on the English home page, the hero displays the English stack, entries separated by "·"', async ({ page }) => {
   await page.goto('/en/');
-  const principal = page.getByRole('main');
-  /* La stack vient du front matter de exampleSite/content/_index.en.md, bloc [params.hero],
-     clé stack (une liste de chaînes : 'Brass', 'Steel', 'Ruby', 'Enamel'). Elles s'affichent
-     d'un seul tenant, séparées par un point médian entouré d'espaces. */
-  await expect(principal.getByText('Brass · Steel · Ruby · Enamel', { exact: true })).toBeVisible();
+  const main = page.getByRole('main');
+  /* The stack comes from the front matter of exampleSite/content/_index.en.md, [params.hero]
+     block, stack key (a list of strings: 'Brass', 'Steel', 'Ruby', 'Enamel'). They are
+     displayed in one piece, separated by a middle dot surrounded by spaces. */
+  await expect(main.getByText('Brass · Steel · Ruby · Enamel', { exact: true })).toBeVisible();
 });
 
-test('sur l’accueil anglais, le premier bouton du hero, « View projects », mène à la page Projets anglaise', async ({ page }) => {
+test('on the English home page, the first hero button, "View projects", leads to the English Projects page', async ({ page }) => {
   await page.goto('/en/');
-  /* La page Projets anglaise a pour slug 'projects' (exampleSite/content/projets/_index.en.md). */
-  const premierBouton = premierBoutonDuHero(page);
-  await expect(premierBouton).toHaveText('View projects');
-  await expect(premierBouton).toHaveAttribute('href', '/en/projects/');
-  await premierBouton.click();
+  /* The English Projects page has the slug 'projects' (exampleSite/content/projets/_index.en.md). */
+  const firstButton = firstHeroButton(page);
+  await expect(firstButton).toHaveText('View projects');
+  await expect(firstButton).toHaveAttribute('href', '/en/projects/');
+  await firstButton.click();
   await expect(page).toHaveURL('/en/projects/');
 });
 
-test.describe('accueil sans hero', () => {
-  let dossierDuSite: string;
+test.describe('home page without a hero', () => {
+  let siteDirectory: string;
   test.beforeAll(() => {
-    dossierDuSite = construireUnSite(SITE_SANS_HERO);
+    siteDirectory = buildSite(SITE_WITHOUT_HERO);
   });
   test.afterAll(() => {
-    supprimerUnDossier(dossierDuSite);
+    removeDirectory(siteDirectory);
   });
 
-  test('un accueil dont le front matter n’a pas de bloc [params.hero] n’affiche ni titre principal, ni accroche, ni boutons d’action : seulement l’en-tête et son contenu', async ({ page, context }) => {
-    await servirUnSite(context, SITE_SANS_HERO, dossierDuSite);
-    await page.goto(`${SITE_SANS_HERO.origine}/fr/`);
-    /* L'en-tête est affiché normalement. */
+  test('a home page whose front matter has no [params.hero] block displays no main heading, no tagline and no action buttons: only the header and its content', async ({ page, context }) => {
+    await serveSite(context, SITE_WITHOUT_HERO, siteDirectory);
+    await page.goto(`${SITE_WITHOUT_HERO.origin}/fr/`);
+    /* The header is displayed as usual. */
     await expect(page.locator('header').getByRole('link', { name: 'Exemple', exact: true })).toBeVisible();
-    /* Le contenu de l'accueil (tests/fixtures/sans-hero/content/_index.md) est affiché… */
-    const principal = page.getByRole('main');
-    const texteDeLAccueil = 'Accueil fictif sans hero : seul ce texte occupe le corps de la page.';
-    await expect(principal.getByText(texteDeLAccueil)).toBeVisible();
-    /* …sans hero : ni titre principal (h1, pas même le nom de l'auteur), ni accroche, ni
-       boutons d'action. Le contenu principal n'affiche que le texte de l'accueil. */
+    /* The home page content (tests/fixtures/without-hero/content/_index.md) is displayed… */
+    const main = page.getByRole('main');
+    const homePageText = 'Accueil fictif sans hero : seul ce texte occupe le corps de la page.';
+    await expect(main.getByText(homePageText)).toBeVisible();
+    /* …without a hero: no main heading (h1, not even the author name), no tagline, no action
+       buttons. The main content displays only the home page text. */
     await expect(page.getByRole('heading', { level: 1 })).toHaveCount(0);
-    await expect(principal.getByText('Jean Exemple')).toHaveCount(0);
-    await expect(principal.getByRole('link')).toHaveCount(0);
-    await expect(principal).toHaveText(texteDeLAccueil);
+    await expect(main.getByText('Jean Exemple')).toHaveCount(0);
+    await expect(main.getByRole('link')).toHaveCount(0);
+    await expect(main).toHaveText(homePageText);
   });
 });
 
-test.describe('accueil d’un autre site, au hero différent', () => {
-  let dossierDuSite: string;
+test.describe('home page of another site, with a different hero', () => {
+  let siteDirectory: string;
   test.beforeAll(() => {
-    dossierDuSite = construireUnSite(SITE_A_UN_AUTRE_HERO);
+    siteDirectory = buildSite(SITE_WITH_ANOTHER_HERO);
   });
   test.afterAll(() => {
-    supprimerUnDossier(dossierDuSite);
+    removeDirectory(siteDirectory);
   });
 
-  test('le titre principal affiche le nom de l’autrice de ce site, puis le titre de son hero, et non ceux du site d’exemple', async ({ page, context }) => {
-    await servirUnSite(context, SITE_A_UN_AUTRE_HERO, dossierDuSite);
-    await page.goto(`${SITE_A_UN_AUTRE_HERO.origine}/fr/`);
-    const titrePrincipal = titrePrincipalDuContenu(page);
-    /* L'autrice vient de params.author (tests/fixtures/autre-hero/hugo.toml), le titre du
-       bloc [params.hero], clé title, de tests/fixtures/autre-hero/content/_index.md.
-       Texte du DOM, tel qu'écrit dans la configuration : l'affichage en majuscules relève du CSS. */
-    await expect(titrePrincipal).toHaveText(/^\s*Camille Fictive\s*Relieuse d’art\s*$/);
+  test('the main heading displays the name of this site’s author, then the title of its hero, and not those of the example site', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_ANOTHER_HERO, siteDirectory);
+    await page.goto(`${SITE_WITH_ANOTHER_HERO.origin}/fr/`);
+    const mainHeading = mainContentHeading(page);
+    /* The author comes from params.author (tests/fixtures/other-hero/hugo.toml), the title
+       from the [params.hero] block, title key, of tests/fixtures/other-hero/content/_index.md.
+       DOM text, as written in the configuration: the uppercase display is up to CSS. */
+    await expect(mainHeading).toHaveText(/^\s*Camille Fictive\s*Relieuse d’art\s*$/);
   });
 
-  test('le hero affiche le seul bouton déclaré par ce site, « Écrire à Camille », vers son adresse mailto:, et non les boutons du site d’exemple', async ({ page, context }) => {
-    await servirUnSite(context, SITE_A_UN_AUTRE_HERO, dossierDuSite);
-    await page.goto(`${SITE_A_UN_AUTRE_HERO.origine}/fr/`);
-    /* Le bouton vient de tests/fixtures/autre-hero/content/_index.md, unique bloc
-       [[params.hero.actions]], avec une url externe. Le texte de cet accueil n'a aucun lien :
-       le seul lien du contenu principal est ce bouton (l'en-tête a ses propres liens). */
-    const principal = page.getByRole('main');
-    const liens = principal.getByRole('link');
-    await expect(liens).toHaveCount(1);
-    await expect(liens.first()).toHaveText('Écrire à Camille');
-    await expect(liens.first()).toHaveAttribute('href', 'mailto:camille@example.org');
-    await expect(principal.getByRole('link', { name: 'Voir les projets' })).toHaveCount(0);
-    await expect(principal.getByRole('link', { name: 'Contact' })).toHaveCount(0);
+  test('the hero displays the only button declared by this site, "Écrire à Camille", to its mailto: address, and not the buttons of the example site', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_ANOTHER_HERO, siteDirectory);
+    await page.goto(`${SITE_WITH_ANOTHER_HERO.origin}/fr/`);
+    /* The button comes from tests/fixtures/other-hero/content/_index.md, single
+       [[params.hero.actions]] block, with an external url. The text of this home page has no
+       link: the only link of the main content is this button (the header has its own links). */
+    const main = page.getByRole('main');
+    const links = main.getByRole('link');
+    await expect(links).toHaveCount(1);
+    await expect(links.first()).toHaveText('Écrire à Camille');
+    await expect(links.first()).toHaveAttribute('href', 'mailto:camille@example.org');
+    await expect(main.getByRole('link', { name: 'Voir les projets' })).toHaveCount(0);
+    await expect(main.getByRole('link', { name: 'Contact' })).toHaveCount(0);
   });
 });
 
-test.describe('accueil d’un site au hero aux mots longs, sur un téléphone de 320 px de large', () => {
-  /* 320 px : la plus petite largeur de téléphone courante (WCAG 1.4.10, refusion). */
+test.describe('home page of a site whose hero has long words, on a 320 px wide phone', () => {
+  /* 320 px: the smallest common phone width (WCAG 1.4.10, reflow). */
   test.use({ viewport: { width: 320, height: 640 } });
-  /* Seuls les projets mobile-chrome et mobile-safari émulent un téléphone (fenêtre
-     d'affichage mobile, écran tactile, agent utilisateur de téléphone) : sur les projets
-     d'ordinateur, une fenêtre de 320 px ne serait qu'un navigateur de bureau rétréci.
-     La condition lit l'option isMobile du projet plutôt que la fixture isMobile, propre à
-     chaque test : sans fixture de test, Playwright l'évalue avant le beforeAll, et les
-     projets d'ordinateur ne construisent pas le site pour rien. */
-  test.skip(() => !test.info().project.use.isMobile, 'comportement propre au téléphone');
-  let dossierDuSite: string;
+  /* Only the mobile-chrome and mobile-safari projects emulate a phone (mobile viewport, touch
+     screen, phone user agent): on the desktop projects, a 320 px window would only be a
+     shrunken desktop browser. The condition reads the project's isMobile option rather than
+     the isMobile fixture, which belongs to each test: without a test fixture, Playwright
+     evaluates it before the beforeAll, and the desktop projects do not build the site for
+     nothing. */
+  test.skip(() => !test.info().project.use.isMobile, 'phone-specific behavior');
+  let siteDirectory: string;
   test.beforeAll(() => {
-    dossierDuSite = construireUnSite(SITE_A_UN_HERO_AUX_MOTS_LONGS);
+    siteDirectory = buildSite(SITE_WITH_A_HERO_WITH_LONG_WORDS);
   });
-  /* Le test.skip ci-dessus saute le beforeAll, mais pas l'afterAll : sur ordinateur, aucun
-     site n'a été construit. */
+  /* The test.skip above skips the beforeAll, but not the afterAll: on desktop, no site was
+     built. */
   test.afterAll(() => {
-    if (dossierDuSite) supprimerUnDossier(dossierDuSite);
+    if (siteDirectory) removeDirectory(siteDirectory);
   });
 
-  test('sur un téléphone de 320 px de large, un hero dont le nom de l’auteur et le titre contiennent chacun un mot de 12 caractères ou plus tient dans la largeur : pas de défilement horizontal, h1 entièrement visible', async ({ page, context }) => {
-    await servirUnSite(context, SITE_A_UN_HERO_AUX_MOTS_LONGS, dossierDuSite);
-    await page.goto(`${SITE_A_UN_HERO_AUX_MOTS_LONGS.origine}/fr/`);
-    const largeur = page.viewportSize()!.width;
-    expect(largeur, 'largeur de la fenêtre').toBe(320);
+  test('on a 320 px wide phone, a hero whose author name and title each contain a word of 12 characters or more fits within the width: no horizontal scrolling, h1 fully visible', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_HERO_WITH_LONG_WORDS, siteDirectory);
+    await page.goto(`${SITE_WITH_A_HERO_WITH_LONG_WORDS.origin}/fr/`);
+    const width = page.viewportSize()!.width;
+    expect(width, 'largeur de la fenêtre').toBe(320);
 
-    /* L'autrice vient de params.author (tests/fixtures/hero-mots-longs/hugo.toml), le titre
-       du bloc [params.hero], clé title, de tests/fixtures/hero-mots-longs/content/_index.md.
-       « Vanderkerckhove-Fictive » et « Horlogère-restauratrice » ont plus de 12 caractères. */
-    const titrePrincipal = titrePrincipalDuContenu(page);
-    await expect(titrePrincipal).toHaveText(/^\s*Apolline Vanderkerckhove-Fictive\s*Horlogère-restauratrice\s*$/);
+    /* The author comes from params.author (tests/fixtures/hero-with-long-words/hugo.toml), the
+       title from the [params.hero] block, title key, of
+       tests/fixtures/hero-with-long-words/content/_index.md. "Vanderkerckhove-Fictive" and
+       "Horlogère-restauratrice" have more than 12 characters. */
+    const mainHeading = mainContentHeading(page);
+    await expect(mainHeading).toHaveText(/^\s*Apolline Vanderkerckhove-Fictive\s*Horlogère-restauratrice\s*$/);
 
-    const largeurPage = await page.evaluate(() => document.documentElement.scrollWidth);
-    expect.soft(largeurPage, 'pas de défilement horizontal').toBeLessThanOrEqual(largeur);
+    const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect.soft(pageWidth, 'pas de défilement horizontal').toBeLessThanOrEqual(width);
 
     const elements = {
-      'nom de l’auteur (h1)': titrePrincipal,
-      'titre professionnel': titrePrincipal.getByText('Horlogère-restauratrice', { exact: true }),
+      'nom de l’auteur (h1)': mainHeading,
+      'titre professionnel': mainHeading.getByText('Horlogère-restauratrice', { exact: true }),
     };
-    for (const [nom, element] of Object.entries(elements)) {
-      await expect(element, nom).toBeVisible();
-      const { gauche, droite } = await etendueAffichee(element);
-      expect.soft(gauche, `bord gauche dans la fenêtre : ${nom}`).toBeGreaterThanOrEqual(0);
-      expect.soft(droite, `bord droit dans la fenêtre : ${nom}`).toBeLessThanOrEqual(largeur);
+    for (const [name, element] of Object.entries(elements)) {
+      await expect(element, name).toBeVisible();
+      const { left, right } = await displayedExtent(element);
+      expect.soft(left, `bord gauche dans la fenêtre : ${name}`).toBeGreaterThanOrEqual(0);
+      expect.soft(right, `bord droit dans la fenêtre : ${name}`).toBeLessThanOrEqual(width);
     }
   });
 });
 
-test.describe('accueil d’un site servi sous /portfolio/, au bouton déclaré par une url depuis la racine du site', () => {
-  let dossierDuSite: string;
+test.describe('home page of a site served under /portfolio/, with a button declared by a url from the site root', () => {
+  let siteDirectory: string;
   test.beforeAll(() => {
-    dossierDuSite = construireUnSite(SITE_SOUS_PORTFOLIO_A_UNE_URL_DEPUIS_LA_RACINE);
+    siteDirectory = buildSite(SITE_UNDER_PORTFOLIO_WITH_A_URL_FROM_THE_ROOT);
   });
   test.afterAll(() => {
-    supprimerUnDossier(dossierDuSite);
+    removeDirectory(siteDirectory);
   });
 
-  test('servi sous /portfolio/, un bouton du hero déclaré par url = « /fr/page-longue/ », relative à la racine du site, mène à /portfolio/fr/page-longue/', async ({ page, context }) => {
-    const site = SITE_SOUS_PORTFOLIO_A_UNE_URL_DEPUIS_LA_RACINE;
-    await servirUnSite(context, site, dossierDuSite);
-    await page.goto(`${site.origine}/portfolio/fr/`);
-    /* L'unique bouton de tests/fixtures/url-depuis-la-racine/content/_index.md déclare
-       url = '/fr/page-longue/' : la page exampleSite/content/page-longue.md, depuis la racine
-       du site. Servi sous /portfolio/, ce site la publie à /portfolio/fr/page-longue/. */
-    const bouton = premierBoutonDuHero(page);
-    await expect(bouton).toHaveText('Lire la page longue');
-    await expect(bouton).toHaveAttribute('href', '/portfolio/fr/page-longue/');
-    await bouton.click();
-    await expect(page).toHaveURL(`${site.origine}/portfolio/fr/page-longue/`);
+  test('served under /portfolio/, a hero button declared by url = "/fr/page-longue/", relative to the site root, leads to /portfolio/fr/page-longue/', async ({ page, context }) => {
+    const site = SITE_UNDER_PORTFOLIO_WITH_A_URL_FROM_THE_ROOT;
+    await serveSite(context, site, siteDirectory);
+    await page.goto(`${site.origin}/portfolio/fr/`);
+    /* The single button of tests/fixtures/url-from-the-root/content/_index.md declares
+       url = '/fr/page-longue/': the page exampleSite/content/page-longue.md, from the site
+       root. Served under /portfolio/, this site publishes it at /portfolio/fr/page-longue/. */
+    const button = firstHeroButton(page);
+    await expect(button).toHaveText('Lire la page longue');
+    await expect(button).toHaveAttribute('href', '/portfolio/fr/page-longue/');
+    await button.click();
+    await expect(page).toHaveURL(`${site.origin}/portfolio/fr/page-longue/`);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Page longue');
   });
 });
 
-test.describe('accueil d’un site servi sous /portfolio/, au bouton déclaré par une url depuis la racine du site qui commence par le même mot que le sous-chemin', () => {
-  let dossierDuSite: string;
+test.describe('home page of a site served under /portfolio/, with a button declared by a url from the site root that starts with the same word as the subpath', () => {
+  let siteDirectory: string;
   test.beforeAll(() => {
-    dossierDuSite = construireUnSite(SITE_SOUS_PORTFOLIO_A_UNE_URL_COMMENCANT_PAR_LE_SOUS_CHEMIN);
+    siteDirectory = buildSite(SITE_UNDER_PORTFOLIO_WITH_A_URL_STARTING_WITH_THE_SUBPATH);
   });
   test.afterAll(() => {
-    supprimerUnDossier(dossierDuSite);
+    removeDirectory(siteDirectory);
   });
 
-  test('servi sous /portfolio/, un bouton du hero déclaré par url = « /portfolio/galerie/ », relative à la racine du site et commençant par le même mot que le sous-chemin, reçoit tout de même le préfixe : il mène à /portfolio/portfolio/galerie/', async ({ page, context }) => {
-    const site = SITE_SOUS_PORTFOLIO_A_UNE_URL_COMMENCANT_PAR_LE_SOUS_CHEMIN;
-    await servirUnSite(context, site, dossierDuSite);
-    await page.goto(`${site.origine}/portfolio/fr/`);
-    /* L'unique bouton de tests/fixtures/url-commencant-par-le-sous-chemin/content/_index.md
-       déclare url = '/portfolio/galerie/' : la page galerie.md de la même fixture, publiée à
-       /portfolio/galerie/ depuis la racine du site. Servi sous /portfolio/, ce site la publie
-       à /portfolio/portfolio/galerie/. */
-    const bouton = premierBoutonDuHero(page);
-    await expect(bouton).toHaveText('Voir la galerie');
-    await expect(bouton).toHaveAttribute('href', '/portfolio/portfolio/galerie/');
-    await bouton.click();
-    await expect(page).toHaveURL(`${site.origine}/portfolio/portfolio/galerie/`);
+  test('served under /portfolio/, a hero button declared by url = "/portfolio/galerie/", relative to the site root and starting with the same word as the subpath, still gets the prefix: it leads to /portfolio/portfolio/galerie/', async ({ page, context }) => {
+    const site = SITE_UNDER_PORTFOLIO_WITH_A_URL_STARTING_WITH_THE_SUBPATH;
+    await serveSite(context, site, siteDirectory);
+    await page.goto(`${site.origin}/portfolio/fr/`);
+    /* The single button of tests/fixtures/url-starting-with-the-subpath/content/_index.md
+       declares url = '/portfolio/galerie/': the galerie.md page of the same fixture, published
+       at /portfolio/galerie/ from the site root. Served under /portfolio/, this site publishes
+       it at /portfolio/portfolio/galerie/. */
+    const button = firstHeroButton(page);
+    await expect(button).toHaveText('Voir la galerie');
+    await expect(button).toHaveAttribute('href', '/portfolio/portfolio/galerie/');
+    await button.click();
+    await expect(page).toHaveURL(`${site.origin}/portfolio/portfolio/galerie/`);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Galerie');
   });
 });
 
-/* Ces tests ne lancent que hugo build, sans navigateur : les lancer dans chaque projet
-   Playwright referait la même construction cinq fois. */
-const PROJET_DES_TESTS_DE_CONSTRUCTION = 'chromium';
+/* These tests only run hugo build, without a browser: running them in every Playwright
+   project would repeat the same build five times. */
+const BUILD_TESTS_PROJECT = 'chromium';
 
-test.describe('erreurs de contenu du hero : échec de la construction', () => {
+test.describe('hero content errors: build failure', () => {
   test.skip(
-    () => test.info().project.name !== PROJET_DES_TESTS_DE_CONSTRUCTION,
-    `construction sans navigateur, identique dans chaque projet : lancée dans ${PROJET_DES_TESTS_DE_CONSTRUCTION} seulement`,
+    () => test.info().project.name !== BUILD_TESTS_PROJECT,
+    `build without a browser, identical in every project: run in ${BUILD_TESTS_PROJECT} only`,
   );
 
-  test('un accueil dont un bouton du hero déclare un pageRef vers une page qui n’existe pas fait échouer la construction du site avec le seul message qui cite ce pageRef, sans le message « ni champ url ni champ pageRef »', () => {
-    /* Le premier bouton de tests/fixtures/page-ref-introuvable/content/_index.md déclare
-       pageRef = '/page-fictive-introuvable', que le site ne contient pas. Plutôt qu'un bouton
-       sans destination, la personne qui construit le site doit obtenir un échec qui nomme ce
-       pageRef. Lui reprocher en plus de n'avoir ni url ni pageRef l'égarerait : seul ce
-       message doit apparaître, quelle que soit la phrase choisie pour l'autre. */
-    const construction = tenterDeConstruireUnSite(SITE_A_UN_PAGE_REF_INTROUVABLE);
-    expect(construction.reussie, 'la construction du site devrait échouer').toBe(false);
-    expect(construction.erreurs).toContain('/page-fictive-introuvable');
-    expect(construction.erreurs).not.toMatch(/\bni\s+(?:de\s+)?(?:champ\s+)?url\b/i);
+  test('a home page where a hero button declares a pageRef to a page that does not exist makes the site build fail with only the message that cites this pageRef, without the "neither url field nor pageRef field" message', () => {
+    /* The first button of tests/fixtures/page-ref-not-found/content/_index.md declares
+       pageRef = '/page-fictive-introuvable', which the site does not contain. Rather than a
+       button without a destination, the person building the site must get a failure that
+       names this pageRef. Also blaming them for having neither url nor pageRef would mislead
+       them: only this message must appear, whatever wording is chosen for the other one. */
+    const build = tryToBuildSite(SITE_WITH_A_PAGE_REF_NOT_FOUND);
+    expect(build.succeeded, 'la construction du site devrait échouer').toBe(false);
+    expect(build.errors).toContain('/page-fictive-introuvable');
+    expect(build.errors).not.toMatch(/\bni\s+(?:de\s+)?(?:champ\s+)?url\b/i);
   });
 
-  test('un accueil dont un bouton du hero n’a pas de label fait échouer la construction du site, avec un message d’erreur qui cite le champ label manquant', () => {
-    /* Le second bouton de tests/fixtures/bouton-sans-libelle/content/_index.md a une
-       url = '#contact' valide mais pas de label. Plutôt qu'un lien vide, la personne qui
-       construit le site doit obtenir un échec dont le message nomme le champ label du front
-       matter, quelle que soit la phrase choisie. */
-    const construction = tenterDeConstruireUnSite(SITE_A_UN_BOUTON_SANS_LIBELLE);
-    expect(construction.reussie, 'la construction du site devrait échouer').toBe(false);
-    expect(construction.erreurs).toMatch(/\blabel\b/);
+  test('a home page where a hero button has no label makes the site build fail, with an error message that cites the missing label field', () => {
+    /* The second button of tests/fixtures/button-without-label/content/_index.md has a valid
+       url = '#contact' but no label. Rather than an empty link, the person building the site
+       must get a failure whose message names the label field of the front matter, whatever
+       wording is chosen. */
+    const build = tryToBuildSite(SITE_WITH_A_BUTTON_WITHOUT_LABEL);
+    expect(build.succeeded, 'la construction du site devrait échouer').toBe(false);
+    expect(build.errors).toMatch(/\blabel\b/);
   });
 
-  test('un accueil dont un bouton du hero n’a ni url ni pageRef fait échouer la construction du site, avec un message d’erreur qui cite ces deux champs', () => {
-    /* Le second bouton de tests/fixtures/bouton-sans-destination/content/_index.md a un label
-       mais ni url ni pageRef. Plutôt qu'un lien qui ne mène nulle part, la personne qui
-       construit le site doit obtenir un échec dont le message nomme les champs url et pageRef
-       du front matter, quelle que soit la phrase choisie. */
-    const construction = tenterDeConstruireUnSite(SITE_A_UN_BOUTON_SANS_DESTINATION);
-    expect(construction.reussie, 'la construction du site devrait échouer').toBe(false);
-    expect(construction.erreurs).toMatch(/\burl\b/);
-    expect(construction.erreurs).toMatch(/\bpageRef\b/);
+  test('a home page where a hero button has neither url nor pageRef makes the site build fail, with an error message that cites both fields', () => {
+    /* The second button of tests/fixtures/button-without-destination/content/_index.md has a
+       label but neither url nor pageRef. Rather than a link that leads nowhere, the person
+       building the site must get a failure whose message names the url and pageRef fields of
+       the front matter, whatever wording is chosen. */
+    const build = tryToBuildSite(SITE_WITH_A_BUTTON_WITHOUT_DESTINATION);
+    expect(build.succeeded, 'la construction du site devrait échouer').toBe(false);
+    expect(build.errors).toMatch(/\burl\b/);
+    expect(build.errors).toMatch(/\bpageRef\b/);
   });
 
-  test('un accueil dont un bouton du hero déclare à la fois une url et un pageRef fait échouer la construction du site, avec un message d’erreur qui cite ces deux champs, et non le message « ni champ url ni champ pageRef »', () => {
-    /* Le second bouton de tests/fixtures/bouton-url-et-page-ref/content/_index.md a un label
-       et déclare à la fois url = '#contact' et pageRef = '/projets', deux destinations
-       valides. Plutôt qu'un lien dont l'une des deux destinations serait ignorée sans
-       prévenir, la personne qui construit le site doit obtenir un échec dont le message nomme
-       les champs url et pageRef du front matter, quelle que soit la phrase choisie ; lui
-       reprocher de n'avoir ni l'un ni l'autre l'égarerait. */
-    const construction = tenterDeConstruireUnSite(SITE_A_UN_BOUTON_A_URL_ET_PAGE_REF);
-    expect(construction.reussie, 'la construction du site devrait échouer').toBe(false);
-    expect(construction.erreurs).toMatch(/\burl\b/);
-    expect(construction.erreurs).toMatch(/\bpageRef\b/);
-    expect(construction.erreurs).not.toMatch(/\bni\s+(?:de\s+)?(?:champ\s+)?url\b/i);
+  test('a home page where a hero button declares both a url and a pageRef makes the site build fail, with an error message that cites both fields, and not the "neither url field nor pageRef field" message', () => {
+    /* The second button of tests/fixtures/button-with-url-and-page-ref/content/_index.md has a
+       label and declares both url = '#contact' and pageRef = '/projets', two valid
+       destinations. Rather than a link where one of the two destinations would be silently
+       ignored, the person building the site must get a failure whose message names the url
+       and pageRef fields of the front matter, whatever wording is chosen; blaming them for
+       having neither would mislead them. */
+    const build = tryToBuildSite(SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF);
+    expect(build.succeeded, 'la construction du site devrait échouer').toBe(false);
+    expect(build.errors).toMatch(/\burl\b/);
+    expect(build.errors).toMatch(/\bpageRef\b/);
+    expect(build.errors).not.toMatch(/\bni\s+(?:de\s+)?(?:champ\s+)?url\b/i);
   });
 
-  test('un site dont l’accueil déclare un hero sans que params.author soit renseigné fait échouer la construction du site, avec un message d’erreur qui cite le champ author', () => {
-    /* tests/fixtures/hero-sans-auteur/hugo.toml vide le params.author du site d'exemple, et
-       son accueil déclare un hero complet. Plutôt qu'un titre de hero sans nom, la personne
-       qui construit le site doit obtenir un échec dont le message nomme le paramètre author
-       de la configuration, quelle que soit la phrase choisie. */
-    const construction = tenterDeConstruireUnSite(SITE_A_UN_HERO_SANS_AUTEUR);
-    expect(construction.reussie, 'la construction du site devrait échouer').toBe(false);
-    expect(construction.erreurs).toMatch(/\bauthor\b/);
+  test('a site whose home page declares a hero without params.author being set makes the site build fail, with an error message that cites the author field', () => {
+    /* tests/fixtures/hero-without-author/hugo.toml empties the example site's params.author,
+       and its home page declares a complete hero. Rather than a hero heading without a name,
+       the person building the site must get a failure whose message names the author
+       parameter of the configuration, whatever wording is chosen. */
+    const build = tryToBuildSite(SITE_WITH_A_HERO_WITHOUT_AUTHOR);
+    expect(build.succeeded, 'la construction du site devrait échouer').toBe(false);
+    expect(build.errors).toMatch(/\bauthor\b/);
   });
 });

@@ -1,0 +1,5 @@
+# Configuration added to exampleSite/hugo.toml by the test of a hero without
+# an author: a configuration file cannot remove the example site's
+# params.author, so it empties it.
+[params]
+  author = ''
