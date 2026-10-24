@@ -270,3 +270,11 @@ tick-field > canvas {
   width: 100%;
   height: 100%;
 }
+
+/* A veil darkens its parent's centre and fades out towards the edges. */
+.veil {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(closest-side, rgb(1 53 73 / 0.9), transparent);
+  pointer-events: none;
+}
