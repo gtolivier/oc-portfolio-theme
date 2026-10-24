@@ -88,4 +88,39 @@ test.describe('catalog: scramble-text', () => {
     await page.clock.runFor(1500);
     expect(await textOnScreen(scrambleText)).toBe('Échappement');
   });
+
+  test('a scramble-text decodes left to right: midway, its first letters are in clear and its last ones still scrambled', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it, step by step, to watch the decoding as it goes. */
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.clock.install({ time: new Date('2026-01-01T09:00:00') });
+    await page.clock.pauseAt(new Date('2026-01-01T09:00:00'));
+    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text/`);
+    /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text.md),
+       whose text is "Échappement": 11 letters. */
+    const scrambleText = page.getByRole('main').locator('scramble-text');
+    await expect(scrambleText).toHaveCount(1);
+    const letters = Array.from('Échappement');
+    /* From load until the text is in clear (1.5 s), every 25 ms: what is shown is always a
+       run of the first letters in clear, followed by signs in place of the remaining ones. */
+    const clearCounts: number[] = [];
+    for (let elapsed = 0; elapsed <= 1500; elapsed += 25) {
+      if (elapsed > 0) await page.clock.runFor(25);
+      const shown = Array.from(await textOnScreen(scrambleText));
+      let clear = 0;
+      while (clear < letters.length && shown[clear] === letters[clear]) clear += 1;
+      const rest = shown.slice(clear);
+      expect(shown, `at ${elapsed} ms, "${shown.join('')}" shows one character per letter`).toHaveLength(letters.length);
+      for (const character of rest) {
+        expect(SIGNS, `at ${elapsed} ms, "${character}", after the first ${clear} letters in clear of "${shown.join('')}", is one of the signs`).toContain(character);
+      }
+      clearCounts.push(clear);
+    }
+    /* Midway, the text is neither fully scrambled nor fully in clear. */
+    expect(
+      clearCounts.some((clear) => clear > 0 && clear < letters.length),
+      `at some moment, the first letters are in clear and the last ones still scrambled (letters in clear, every 25 ms: ${clearCounts.join(', ')})`,
+    ).toBe(true);
+  });
 });
