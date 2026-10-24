@@ -1,0 +1,67 @@
+name: Gitleaks
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: gitleaks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  scan:
+    name: gitleaks
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: '8.30.1'
+      # Empreinte de gitleaks_8.30.1_linux_x64.tar.gz, d'après le fichier
+      # checksums.txt de la release.
+      GITLEAKS_SHA256: '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb'
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        persist-credentials: false
+    - name: Install gitleaks
+      run: |
+        archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+        curl -sSfL -o "$RUNNER_TEMP/$archive" \
+          "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$archive"
+        echo "$GITLEAKS_SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
+        tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
+    # Deux configs : les secrets (règles par défaut de gitleaks), puis les
+    # chemins locaux, à part pour échapper aux exceptions de chemins par défaut.
+    # Sur une PR : ses seuls commits et le nom de sa branche. Sur main et au
+    # lancement manuel : tout l'historique, commits de fusion compris (-m) et
+    # branches de PR supprimées comprises (refs/pull/*), et le nom de toutes
+    # les références. Un résultat connu et accepté se déclare par son
+    # empreinte (Fingerprint) dans .gitleaksignore, à la racine du dépôt.
+    - name: Scan
+      env:
+        EVENT: ${{ github.event_name }}
+        PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        PR_BRANCH: ${{ github.head_ref }}
+      run: |
+        if [ "$EVENT" = pull_request ]; then
+          revs="origin/main..$PR_HEAD"
+          refs="$PR_BRANCH"
+        else
+          git fetch --quiet origin '+refs/pull/*/head:refs/remotes/pull/*'
+          revs="--all"
+          refs="$(git for-each-ref --format='%(refname:short)')"
+        fi
+        status=0
+        for config in .github/gitleaks/*.toml; do
+          echo "::group::$config"
+          "$RUNNER_TEMP/gitleaks" git --config "$config" --redact --verbose \
+            --no-banner --log-opts="-m $revs" . || status=1
+          # Messages de commit et noms de branche, que « gitleaks git » ne lit pas.
+          { git log --format=%B $revs; printf '%s\n' "$refs"; } |
+            "$RUNNER_TEMP/gitleaks" stdin --config "$config" --redact \
+              --verbose --no-banner || status=1
+          echo "::endgroup::"
+        done
+        exit $status

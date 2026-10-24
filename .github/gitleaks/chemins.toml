@@ -1,0 +1,8 @@
+# Chemins absolus d'un dossier personnel (macOS, Linux, Windows), d'après la
+# règle « Avant publication » d'AGENTS.md. Sans [extend] : les exceptions par
+# défaut de gitleaks (go.mod, package-lock.json, SVG, /home/…) ne s'appliquent
+# pas à cette règle.
+[[rules]]
+id = "chemin-local"
+description = "Chemin absolu d'un dossier personnel"
+regex = '''(?:/Users/|/home/|(?i:[a-z]:\\{1,2}users\\{1,2}))[\p{L}\p{N}._-]+'''
