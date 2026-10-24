@@ -4,7 +4,8 @@
   "description": "Hugo theme for Olivier Charvoz's portfolio",
   "scripts": {
     "test": "playwright test",
-    "fonts": "node scripts/fonts.mjs"
+    "fonts": "node scripts/fonts.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",
@@ -13,7 +14,8 @@
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/ibm-plex-sans": "^5.3.0",
     "@playwright/test": "^1.64.1",
-    "@types/node": "^26.6.5"
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
   },
   "private": true
 }

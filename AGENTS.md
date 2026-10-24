@@ -20,6 +20,9 @@ The roadmap (one conversation per feature) lives in the private repository
 - `hugo server --source exampleSite`: example site, locally.
 - `npm test`: Playwright tests (starts Hugo on its own, port 1314).
 - `npx playwright test --project=chromium`: a single browser.
+- `npm run typecheck`: TypeScript type check (theme script in
+  `assets/js/`, tests, Playwright configuration). Hugo compiles the script
+  with `js.Build`.
 
 ## Rules
 

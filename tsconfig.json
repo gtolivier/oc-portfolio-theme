@@ -1,0 +1,24 @@
+{
+  // Visit https://aka.ms/tsconfig to read more about this file
+  // Type checking only: Hugo (js.Build) compiles the theme script,
+  // Playwright the tests.
+  "include": ["assets/js", "tests", "playwright.config.ts"],
+  "compilerOptions": {
+    "noEmit": true,
+
+    // Environment Settings
+    // See also https://aka.ms/tsconfig/module
+    "module": "preserve",
+    "target": "esnext",
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "types": ["node"],
+
+    // Recommended Options
+    "strict": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+  }
+}

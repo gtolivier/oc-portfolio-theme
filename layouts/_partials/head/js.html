@@ -1,4 +1,4 @@
-{{- with resources.Get "js/main.js" }}
+{{- with resources.Get "js/main.ts" }}
   {{- $opts := dict
     "minify" (cond hugo.IsDevelopment false true)
     "sourceMap" (cond hugo.IsDevelopment "linked" "none")
