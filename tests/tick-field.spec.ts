@@ -494,4 +494,93 @@ test.describe('catalog: tick-field', () => {
       `change in brightness above the background of the 30px square at the click point (${Math.round(point.x)}, ${Math.round(point.y)})px, 300 ms after the click (${Math.round(centreBefore)} before → ${Math.round(centreAfter)})`,
     ).toBeLessThanOrEqual(0.1 * centreBefore);
   });
+
+  test('the ripple spreads: once revealed, 600 ms after the click, a zone to the left of the click point, about 168px from it, is brighter than just before the click, while the zones to its right and left about 84px from it, which the ring lit 300 ms after the click, are back to what they showed before it', async ({ page, context, hasTouch }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await tickField.scrollIntoViewIfNeeded();
+    /* Fully revealed. */
+    await page.clock.runFor(2000);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    /* The ring grows about 0.28px per ms: 300 ms after the click it is about 84px from the
+       click point, 600 ms after it about 168px. Each zone straddles one of these radii, 20px
+       deep across it and 40px long along it, to the right or left of the click point. All of
+       them are far enough from the click point for the ring alone to light them, not the glow
+       of a pointer hovering the click point. */
+    const NEAR_RADIUS = 84;
+    const FAR_RADIUS = 168;
+    const DEPTH = 20;
+    const LENGTH = 40;
+    /* At mid-height, 20px short of putting the far zone against the left edge: the field is
+       320px high, too low for a ring 168px from the click point above and below it, and on a
+       phone a far zone to the right would sit in the bright right edge, where ticks are close
+       to full brightness already. The far zone lies in the dim left part on every screen. */
+    const point = { x: FAR_RADIUS + DEPTH / 2 + 20, y: fieldBox!.height / 2 };
+    const onScreen = { x: fieldBox!.x + point.x, y: fieldBox!.y + point.y };
+    const across = (side: 'right' | 'left', radius: number) => ({
+      name: `${side}, ${radius}px`,
+      rectangle: {
+        x: point.x + (side === 'right' ? radius : -radius) - DEPTH / 2,
+        y: point.y - LENGTH / 2,
+        width: DEPTH,
+        height: LENGTH,
+      },
+    });
+    const farZones = [across('left', FAR_RADIUS)];
+    const nearZones = [across('right', NEAR_RADIUS), across('left', NEAR_RADIUS)];
+    const zones = [...farZones, ...nearZones];
+    for (const zone of zones) {
+      expect(
+        zone.rectangle.x >= 0 && zone.rectangle.x + zone.rectangle.width <= fieldBox!.width,
+        `the zone ${zone.name} from the click point lies inside the ${Math.round(fieldBox!.width)}px-wide tick-field`,
+      ).toBe(true);
+    }
+
+    const brightness = async (): Promise<number[]> => {
+      const screenshot = await tickField.screenshot();
+      return Promise.all(zones.map((zone) => luminanceAboveBackgroundInRectangle(tickField, screenshot, zone.rectangle)));
+    };
+    const describe = (zone: (typeof zones)[number], before: number, after: number): string =>
+      `${zone.name} (${Math.round(zone.rectangle.x)}, ${Math.round(zone.rectangle.y)})px: ${Math.round(before)} → ${Math.round(after)}`;
+
+    /* With a fine pointer, a click first brings the pointer over the click point, which lights
+       the ticks under it: the pointer hovers it already before the click, so that both
+       measures show the same hover and differ by the ripple alone. */
+    if (!hasTouch) await page.mouse.move(onScreen.x, onScreen.y);
+    await page.clock.runFor(300);
+    const before = await brightness();
+
+    if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
+    else await page.mouse.click(onScreen.x, onScreen.y);
+    await page.clock.runFor(600);
+    const after = await brightness();
+
+    /* The ring, now farther: more than 1.25 times what the zone showed before the click. */
+    const dimFarZones = farZones
+      .map((zone, index) => ({ zone, before: before[index], after: after[index] }))
+      .filter(({ before, after }) => !(after > 1.25 * before))
+      .map(({ zone, before, after }) => describe(zone, before, after));
+    expect(
+      dimFarZones,
+      `zones about ${FAR_RADIUS}px to the left of the click point at (${Math.round(point.x)}, ${Math.round(point.y)})px that do not show more than 1.25 times the brightness above the background they showed before the click, 600 ms after it`,
+    ).toEqual([]);
+
+    /* Where the ring was 300 ms after the click: what they showed before it, within 10%. */
+    const stillLitNearZones = nearZones
+      .map((zone, index) => ({ zone, before: before[farZones.length + index], after: after[farZones.length + index] }))
+      .filter(({ before, after }) => Math.abs(after - before) > 0.1 * before)
+      .map(({ zone, before, after }) => describe(zone, before, after));
+    expect(
+      stillLitNearZones,
+      `zones about ${NEAR_RADIUS}px to the right and left of the click point at (${Math.round(point.x)}, ${Math.round(point.y)})px whose brightness above the background, 600 ms after the click, differs by more than 10% from what they showed before it`,
+    ).toEqual([]);
+  });
 });
