@@ -27,9 +27,10 @@ The roadmap (one conversation per feature) lives in the private repository
   components, CSS classes, test titles, code comments — and so is this
   file, written for agents. Text meant for the user stays in French:
   commit messages, PR titles and descriptions, review comments and
-  replies, and the roadmap. Site content, `i18n/` strings and the
-  fictional content of `exampleSite/` and of the test fixtures keep their
-  language.
+  replies, and the roadmap, as do the build errors the templates raise
+  (`errorf`) for whoever fills in the content. Site content, `i18n/`
+  strings and the fictional content of `exampleSite/` and of the test
+  fixtures keep their language.
 - **TDD required**: every feature goes through the `tdd:feature` skill
   (dedicated branch, red/green/refactor cycles, pull request). No production
   code without a failing test first.
