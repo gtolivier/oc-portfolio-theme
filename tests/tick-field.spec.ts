@@ -648,4 +648,97 @@ test.describe('catalog: tick-field', () => {
       `bands of the ${Math.round(width)}px-wide tick-field whose brightness above the background, 2 s after the click at (${Math.round(point.x)}, ${Math.round(point.y)})px, differs by more than 5% from what they showed just before it`,
     ).toEqual([]);
   });
+
+  test('a click (a tap on mobile) outside a tick-field starts no ripple: once revealed, 300 ms after a click just below its bottom edge, the zones of the field about 84px from the click point are what they showed just before the click', async ({ page, context, hasTouch }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background, followed by a paragraph. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await tickField.scrollIntoViewIfNeeded();
+    /* Fully revealed. */
+    await page.clock.runFor(2000);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const viewport = page.viewportSize();
+    expect(viewport, 'the page has a viewport').not.toBeNull();
+    /* A point of the page 6px below the bottom edge of the field, at the middle of its width:
+       outside the field, close enough to it for a ring centred there to reach into it. */
+    const GAP = 6;
+    const point = { x: fieldBox!.width / 2, y: fieldBox!.height + GAP };
+    const onScreen = { x: fieldBox!.x + point.x, y: fieldBox!.y + point.y };
+    expect(onScreen.y, 'the click point is in the viewport').toBeLessThan(viewport!.height);
+    const outsideTheField = await tickField.evaluate(
+      (element, { x, y }) => {
+        const hit = document.elementFromPoint(x, y);
+        return hit !== null && !element.contains(hit) && hit.closest('a, button, input, select, textarea, summary') === null;
+      },
+      onScreen,
+    );
+    expect(outsideTheField, 'the element under the click point is outside the tick-field and does nothing on a click').toBe(true);
+
+    /* A ring started there would be about 84px from the click point 300 ms after the click
+       (about 0.28px per ms). Three zones of the field straddle that circle: one straight above
+       the click point, 20px deep across it and 40px long along it, and two 30px squares up and
+       to its left and right, at 45°. All of them are far enough from the click point for the
+       ring alone to change them, not the glow of a pointer hovering the click point. */
+    const RADIUS = 84;
+    const DEPTH = 20;
+    const LENGTH = 40;
+    const HALF_SIDE = 15;
+    const diagonal = RADIUS / Math.SQRT2;
+    const zones = [
+      { name: 'above', rectangle: { x: point.x - LENGTH / 2, y: point.y - RADIUS - DEPTH / 2, width: LENGTH, height: DEPTH } },
+      {
+        name: 'up and to the left',
+        rectangle: { x: point.x - diagonal - HALF_SIDE, y: point.y - diagonal - HALF_SIDE, width: 2 * HALF_SIDE, height: 2 * HALF_SIDE },
+      },
+      {
+        name: 'up and to the right',
+        rectangle: { x: point.x + diagonal - HALF_SIDE, y: point.y - diagonal - HALF_SIDE, width: 2 * HALF_SIDE, height: 2 * HALF_SIDE },
+      },
+    ];
+    for (const zone of zones) {
+      expect(
+        zone.rectangle.x >= 0 &&
+          zone.rectangle.x + zone.rectangle.width <= fieldBox!.width &&
+          zone.rectangle.y >= 0 &&
+          zone.rectangle.y + zone.rectangle.height <= fieldBox!.height,
+        `the zone ${zone.name} of the click point lies inside the tick-field`,
+      ).toBe(true);
+    }
+
+    const brightness = async (): Promise<number[]> => {
+      const screenshot = await tickField.screenshot();
+      return Promise.all(zones.map((zone) => luminanceAboveBackgroundInRectangle(tickField, screenshot, zone.rectangle)));
+    };
+
+    /* With a fine pointer, a click first brings the pointer over the click point: the pointer
+       is there already before the click, so that both measures differ by the click alone. */
+    if (!hasTouch) await page.mouse.move(onScreen.x, onScreen.y);
+    await page.clock.runFor(300);
+    const before = await brightness();
+
+    if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
+    else await page.mouse.click(onScreen.x, onScreen.y);
+    await page.clock.runFor(300);
+    const after = await brightness();
+
+    /* What each zone showed before the click, within 10%. */
+    const changedZones = zones
+      .map((zone, index) => ({ zone, before: before[index], after: after[index] }))
+      .filter(({ before, after }) => Math.abs(after - before) > 0.1 * before)
+      .map(
+        ({ zone, before, after }) =>
+          `${zone.name} (${Math.round(zone.rectangle.x)}, ${Math.round(zone.rectangle.y)})px: ${Math.round(before)} → ${Math.round(after)}`,
+      );
+    expect(
+      changedZones,
+      `zones of the tick-field about ${RADIUS}px from the click point ${GAP}px below its bottom edge, at (${Math.round(point.x)}, ${Math.round(point.y)})px, whose brightness above the background, 300 ms after the click, differs by more than 10% from what they showed just before it`,
+    ).toEqual([]);
+  });
 });
