@@ -115,7 +115,9 @@ class TickField extends HTMLElement {
     canvas.setAttribute('aria-hidden', 'true');
     this.prepend(canvas);
     this.addEventListener('pointermove', (event) => {
-      this.pointerX = event.clientX - this.getBoundingClientRect().left;
+      const box = this.getBoundingClientRect();
+      this.pointerX = event.clientX - box.left;
+      this.pointerY = event.clientY - box.top;
       this.draw(canvas, this.progress);
     });
     this.revealLeftToRight(canvas);
@@ -124,6 +126,8 @@ class TickField extends HTMLElement {
   private progress = 0;
 
   private pointerX: number | undefined;
+
+  private pointerY: number | undefined;
 
   private revealLeftToRight(canvas: HTMLCanvasElement): void {
     const start = performance.now();
@@ -146,13 +150,15 @@ class TickField extends HTMLElement {
     for (let x = 0; x < front; x += FIELD_TICK_SPACING_PX) {
       context.globalAlpha = this.tickAlpha(x, canvas.width);
       context.fillRect(x, 0, FIELD_TICK_WIDTH_PX, canvas.height);
+      if (this.pointerX !== undefined && this.pointerY !== undefined && Math.abs(x - this.pointerX) < FIELD_HOVER_RADIUS_PX) {
+        context.globalAlpha = 1;
+        context.fillRect(x, this.pointerY - FIELD_HOVER_RADIUS_PX, FIELD_TICK_WIDTH_PX, 2 * FIELD_HOVER_RADIUS_PX);
+      }
     }
   }
 
-  /* Brighter from left to right; at full brightness under the pointer. */
+  /* Brighter from left to right. */
   private tickAlpha(x: number, width: number): number {
-    const isUnderPointer = this.pointerX !== undefined && Math.abs(x - this.pointerX) < FIELD_HOVER_RADIUS_PX;
-    if (isUnderPointer) return 1;
     return FIELD_MIN_ALPHA + (1 - FIELD_MIN_ALPHA) * (x / width);
   }
 }
