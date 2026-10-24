@@ -150,11 +150,15 @@ class TickField extends HTMLElement {
     for (let x = 0; x < front; x += FIELD_TICK_SPACING_PX) {
       context.globalAlpha = this.tickAlpha(x, canvas.width);
       context.fillRect(x, 0, FIELD_TICK_WIDTH_PX, canvas.height);
-      if (this.pointerX !== undefined && this.pointerY !== undefined && Math.abs(x - this.pointerX) < FIELD_HOVER_RADIUS_PX) {
-        context.globalAlpha = 1;
-        context.fillRect(x, this.pointerY - FIELD_HOVER_RADIUS_PX, FIELD_TICK_WIDTH_PX, 2 * FIELD_HOVER_RADIUS_PX);
-      }
+      this.drawPointerTrail(context, x);
     }
+  }
+
+  private drawPointerTrail(context: CanvasRenderingContext2D, x: number): void {
+    if (this.pointerX === undefined || this.pointerY === undefined) return;
+    if (Math.abs(x - this.pointerX) >= FIELD_HOVER_RADIUS_PX) return;
+    context.globalAlpha = 1;
+    context.fillRect(x, this.pointerY - FIELD_HOVER_RADIUS_PX, FIELD_TICK_WIDTH_PX, 2 * FIELD_HOVER_RADIUS_PX);
   }
 
   /* Brighter from left to right. */
