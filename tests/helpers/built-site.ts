@@ -70,11 +70,16 @@ export const SITE_WITH_ANOTHER_HERO = testSite('other-hero');
    exist. */
 export const SITE_WITH_A_PAGE_REF_NOT_FOUND = testSite('page-ref-not-found');
 
+/* The fixture folders of the build-failure sites below avoid the words
+   label, author and url: a folder name shows up in temporary paths, hence
+   possibly in Hugo's error output, which the error-message assertions must
+   not match instead of the real message. */
+
 /* The example site's French home page has a hero whose every button has a
    label: this site replaces that home page with the one of
-   tests/fixtures/button-without-label/content, whose second button has a
+   tests/fixtures/unlabeled-button/content, whose second button has a
    valid url = '#contact' but no label. */
-export const SITE_WITH_A_BUTTON_WITHOUT_LABEL = testSite('button-without-label');
+export const SITE_WITH_A_BUTTON_WITHOUT_LABEL = testSite('unlabeled-button');
 
 /* The example site's French home page has a hero whose every button has a
    destination: this site replaces that home page with the one of
@@ -112,17 +117,17 @@ export const SITE_WITH_A_HERO_WITH_LONG_WORDS = testSite('hero-with-long-words')
 
 /* The example site's author is "Jean Exemple", whom the hero title
    displays: this site empties params.author (see
-   tests/fixtures/hero-without-author/hugo.toml) and replaces the French
-   home page with the one of tests/fixtures/hero-without-author/content,
+   tests/fixtures/authorless-hero/hugo.toml) and replaces the French
+   home page with the one of tests/fixtures/authorless-hero/content,
    with a complete hero. */
-export const SITE_WITH_A_HERO_WITHOUT_AUTHOR = testSite('hero-without-author');
+export const SITE_WITH_A_HERO_WITHOUT_AUTHOR = testSite('authorless-hero');
 
 /* The example site's French home page has a hero whose every button has a
    single destination: this site replaces that home page with the one of
-   tests/fixtures/button-with-url-and-page-ref/content, whose second button
+   tests/fixtures/button-with-two-destinations/content, whose second button
    has a label and declares both url = '#contact' and pageRef = '/projets',
    two valid destinations. */
-export const SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF = testSite('button-with-url-and-page-ref');
+export const SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF = testSite('button-with-two-destinations');
 
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that

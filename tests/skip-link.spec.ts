@@ -15,7 +15,7 @@ async function isVisibleOnScreen(element: Locator): Promise<boolean> {
   );
 }
 
-test('on a French page, the first Tab focuses a "Aller au contenu" link, invisible until then, which appears on screen', async ({ page, browserName }) => {
+test('on a French page, the first Tab focuses an "Aller au contenu" link, invisible until then, which appears on screen', async ({ page, browserName }) => {
   await page.goto('/fr/');
   const link = page.getByRole('link', { name: 'Aller au contenu', exact: true });
   await expect(link).toBeAttached();

@@ -723,7 +723,7 @@ test.describe('hero content errors: build failure', () => {
   });
 
   test('a home page where a hero button has no label makes the site build fail, with an error message that cites the missing label field', () => {
-    /* The second button of tests/fixtures/button-without-label/content/_index.md has a valid
+    /* The second button of tests/fixtures/unlabeled-button/content/_index.md has a valid
        url = '#contact' but no label. Rather than an empty link, the person building the site
        must get a failure whose message names the label field of the front matter, whatever
        wording is chosen. */
@@ -744,7 +744,7 @@ test.describe('hero content errors: build failure', () => {
   });
 
   test('a home page where a hero button declares both a url and a pageRef makes the site build fail, with an error message that cites both fields, and not the "ni champ url ni champ pageRef" message', () => {
-    /* The second button of tests/fixtures/button-with-url-and-page-ref/content/_index.md has a
+    /* The second button of tests/fixtures/button-with-two-destinations/content/_index.md has a
        label and declares both url = '#contact' and pageRef = '/projets', two valid
        destinations. Rather than a link where one of the two destinations would be silently
        ignored, the person building the site must get a failure whose message names the url
@@ -758,7 +758,7 @@ test.describe('hero content errors: build failure', () => {
   });
 
   test('a site whose home page declares a hero without params.author being set makes the site build fail, with an error message that cites the author field', () => {
-    /* tests/fixtures/hero-without-author/hugo.toml empties the example site's params.author,
+    /* tests/fixtures/authorless-hero/hugo.toml empties the example site's params.author,
        and its home page declares a complete hero. Rather than a hero heading without a name,
        the person building the site must get a failure whose message names the author
        parameter of the configuration, whatever wording is chosen. */

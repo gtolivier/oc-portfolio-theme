@@ -4,9 +4,9 @@ import { SITE_WITH_ALIASES, buildSite, serveSite, removeDirectory } from './help
 /* Playwright's locale option sets a single language: the full list of
    preferred languages is defined before the page scripts run. */
 async function setPreferredLanguages(page: Page, languages: string[]): Promise<void> {
-  await page.addInitScript((languages) => {
-    Object.defineProperty(Navigator.prototype, 'languages', { get: () => languages, configurable: true });
-    Object.defineProperty(Navigator.prototype, 'language', { get: () => languages[0], configurable: true });
+  await page.addInitScript((preferred) => {
+    Object.defineProperty(Navigator.prototype, 'languages', { get: () => preferred, configurable: true });
+    Object.defineProperty(Navigator.prototype, 'language', { get: () => preferred[0], configurable: true });
   }, languages);
 }
 
