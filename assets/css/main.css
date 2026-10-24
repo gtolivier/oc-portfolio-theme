@@ -233,3 +233,20 @@ h1 {
   color: var(--color-ink);
   background-color: var(--color-paper);
 }
+
+/* The invisible final text and the visible decoding text share one grid cell,
+   so the box keeps the size of the final text. */
+scramble-text {
+  display: inline-grid;
+}
+
+scramble-text > * {
+  grid-area: 1 / 1;
+}
+
+/* The decoding text never widens the box beyond the final text. */
+scramble-text > :last-child {
+  width: 0;
+  min-width: 100%;
+  white-space: nowrap;
+}

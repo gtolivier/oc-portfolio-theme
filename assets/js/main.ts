@@ -37,8 +37,17 @@ class ScrambleText extends HTMLElement {
     this.decode(text);
   }
 
+  private shown = document.createElement('span');
+
+  /* The final text stays in the box, invisible, so the box keeps its size while
+     the visible text changes. */
   private decode(text: string): void {
-    this.textContent = scramble(text);
+    const sizer = document.createElement('span');
+    sizer.setAttribute('aria-hidden', 'true');
+    sizer.style.visibility = 'hidden';
+    sizer.textContent = text;
+    this.replaceChildren(sizer, this.shown);
+    this.shown.textContent = scramble(text);
     const delayMs = Number(this.getAttribute('delay')) || 0;
     setTimeout(() => this.revealLeftToRight(text), delayMs);
   }
@@ -51,10 +60,10 @@ class ScrambleText extends HTMLElement {
       tick += 1;
       if (tick >= totalTicks) {
         clearInterval(timer);
-        this.textContent = text;
+        this.shown.textContent = text;
         return;
       }
-      this.textContent = scramble(text, Math.floor((tick / totalTicks) * letterCount));
+      this.shown.textContent = scramble(text, Math.floor((tick / totalTicks) * letterCount));
     }, TICK_MS);
   }
 }
