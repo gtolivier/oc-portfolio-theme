@@ -387,4 +387,19 @@ test.describe('catalog: scramble-text', () => {
     }
     expect(shown, 'the sentence ends in clear').toBe(sentence);
   });
+
+  test('under prefers-reduced-motion: reduce, a scramble-text shows its text in clear from load', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* The visitor asks for reduced motion, and time stands still from before the page
+       loads: no animation frame runs and no timer with a delay fires, the page stays as it
+       is right after load. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text/`);
+    /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text.md),
+       whose text is "Échappement". */
+    const scrambleText = page.getByRole('main').locator('scramble-text');
+    await expect(scrambleText).toHaveCount(1);
+    expect(await textOnScreen(scrambleText)).toBe('Échappement');
+  });
 });
