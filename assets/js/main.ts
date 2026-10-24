@@ -125,6 +125,7 @@ class TickField extends HTMLElement {
     canvas.setAttribute('aria-hidden', 'true');
     this.prepend(canvas);
     this.addEventListener('pointermove', (event) => {
+      if (reducedMotionQuery().matches) return;
       const { x, y } = this.localPoint(event);
       this.pointerX = x;
       this.pointerY = y;
@@ -138,7 +139,7 @@ class TickField extends HTMLElement {
       this.pressedInside = this.isInside(event);
     });
     this.addEventListener('click', (event) => {
-      if (!this.pressedInside) return;
+      if (!this.pressedInside || reducedMotionQuery().matches) return;
       const { x, y } = this.localPoint(event);
       this.startRipple(canvas, x, y);
     });
