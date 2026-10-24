@@ -30,7 +30,10 @@ The roadmap (one conversation per feature) lives in the private repository
   replies, and the roadmap, as do the build errors the templates raise
   (`errorf`) for whoever fills in the content. Site content, `i18n/`
   strings and the fictional content of `exampleSite/` and of the test
-  fixtures keep their language.
+  fixtures keep their language, and so do the names visitors see in an
+  address: content file names, which set the slug (`page-avec-alias.md`),
+  and the HTML ids used as anchors (`#contenu`). Renaming them would break
+  published links.
 - **TDD required**: every feature goes through the `tdd:feature` skill
   (dedicated branch, red/green/refactor cycles, pull request). No production
   code without a failing test first.
