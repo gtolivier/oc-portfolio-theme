@@ -253,12 +253,16 @@ scramble-text > :last-child {
   overflow-wrap: anywhere;
 }
 
+/* isolation gives tick-field its own stacking context, so the canvas's
+   negative z-index puts it behind the content but not behind the element's
+   own background. */
 tick-field {
   position: relative;
   isolation: isolate;
 }
 
-/* The canvas covers the whole box, behind the content. */
+/* A canvas is a replaced element: inset alone does not stretch it, so its
+   size is set explicitly. */
 tick-field > canvas {
   position: absolute;
   inset: 0;
