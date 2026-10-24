@@ -129,6 +129,13 @@ export const SITE_WITH_A_HERO_WITHOUT_AUTHOR = testSite('authorless-hero');
    two valid destinations. */
 export const SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF = testSite('button-with-two-destinations');
 
+/* The component catalog: the example site, plus the pages of
+   tests/fixtures/catalog/content, each of which places one component of the
+   theme on its own, as raw HTML (allowed by tests/fixtures/catalog/hugo.toml).
+   /fr/scramble-text/ holds a single <scramble-text> whose text is
+   "Échappement". */
+export const CATALOG_SITE = testSite('catalog');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

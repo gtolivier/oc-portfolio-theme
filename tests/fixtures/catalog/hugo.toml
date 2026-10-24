@@ -1,0 +1,6 @@
+# Configuration added to exampleSite/hugo.toml by the component catalog:
+# its pages in content/ place each component of the theme on its own, as
+# raw HTML in their Markdown, which this file allows whatever the example
+# site's own setting.
+[markup.goldmark.renderer]
+  unsafe = true
