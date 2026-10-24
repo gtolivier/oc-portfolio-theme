@@ -20,15 +20,20 @@ function scramble(text: string, clearCount = 0): string {
     .join('');
 }
 
-/* Right after load, every letter of the text is replaced by a sign. The text
-   stays available to assistive technologies through aria-label. */
+/* Right after load, every letter of the text is replaced by a sign, then the
+   text decodes left to right. The text stays available to assistive
+   technologies through aria-label. */
 class ScrambleText extends HTMLElement {
   connectedCallback(): void {
     const text = this.textContent ?? '';
     this.setAttribute('role', 'text');
     this.setAttribute('aria-label', text);
+    this.decode(text);
+  }
+
+  private decode(text: string): void {
     this.textContent = scramble(text);
-    const length = Array.from(text).length;
+    const letterCount = Array.from(text).length;
     const totalTicks = CLEAR_DELAY_MS / TICK_MS;
     let tick = 0;
     const timer = setInterval(() => {
@@ -38,7 +43,7 @@ class ScrambleText extends HTMLElement {
         this.textContent = text;
         return;
       }
-      this.textContent = scramble(text, Math.floor((tick / totalTicks) * length));
+      this.textContent = scramble(text, Math.floor((tick / totalTicks) * letterCount));
     }, TICK_MS);
   }
 }
