@@ -5,6 +5,7 @@ import {
   type Channels,
   channelsOfColour,
   colourAddedOverBackgroundInRectangle,
+  countDrawnStrokes,
   countPixelsNotOfBackground,
   luminanceAboveBackgroundInRectangle,
   luminanceAboveBackgroundPerColumn,
@@ -119,6 +120,64 @@ test.describe('catalog: tick-field', () => {
       }
     }
     expect(emptyBands, `bands of the ${Math.round(width)}px-wide tick-field with no drawn pixel`).toEqual([]);
+  });
+
+  test('once revealed, after the window is widened, a tick-field is drawn up to its new right edge with ticks as close together as before: 100 ms after the resize, every vertical band of it shows as many ticks as the same width showed before the resize, not the fewer, wider ticks of the old field stretched', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, as wide as the page, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    /* Revealed: the reveal sweeps the width in about 1.1 s. */
+    await page.clock.runFor(2000);
+
+    /* Before the resize: how close together the ticks are, as the number of separate drawn
+       strokes per CSS pixel of the field's width. */
+    const boxBefore = await tickField.boundingBox();
+    expect(boxBefore, 'the tick-field has a box on screen').not.toBeNull();
+    const widthBefore = boxBefore!.width;
+    const before = await pixelsNotOfBackgroundPerColumn(tickField, await tickField.screenshot());
+    const ticksBefore = countDrawnStrokes(before.columns, 0, before.columns.length);
+    expect(ticksBefore, `ticks the ${Math.round(widthBefore)}px-wide tick-field shows before the resize`).toBeGreaterThan(0);
+    const ticksPerPixel = ticksBefore / widthBefore;
+
+    /* The visitor widens the window to twice its width; time then moves by about six
+       animation frames. */
+    const viewport = page.viewportSize();
+    expect(viewport, 'the page has a viewport size').not.toBeNull();
+    await page.setViewportSize({ width: 2 * viewport!.width, height: viewport!.height });
+    await page.clock.runFor(100);
+
+    const boxAfter = await tickField.boundingBox();
+    expect(boxAfter, 'the tick-field still has a box on screen').not.toBeNull();
+    const width = boxAfter!.width;
+    expect(width, `width of the tick-field, ${Math.round(widthBefore)}px before the window was widened`).toBeGreaterThan(1.5 * widthBefore);
+    const { columns, scale } = await pixelsNotOfBackgroundPerColumn(tickField, await tickField.screenshot());
+
+    /* The new width split into adjacent vertical bands, at least 80px wide each: the first
+       starts at the left edge, the last ends at the new right edge. Each must show as many
+       ticks as its width held before the resize, within 1.5: a band with no tick shows 0, and
+       the old field stretched to twice its width shows about half as many. */
+    const MIN_BAND_WIDTH = 80;
+    const bandCount = Math.max(1, Math.floor(width / MIN_BAND_WIDTH));
+    const bandWidth = width / bandCount;
+    const expectedTicks = ticksPerPixel * bandWidth;
+    const offBands: string[] = [];
+    for (let band = 0; band < bandCount; band++) {
+      const fromColumn = Math.round(band * bandWidth * scale);
+      const toColumn = Math.round((band + 1) * bandWidth * scale);
+      const ticks = countDrawnStrokes(columns, fromColumn, toColumn);
+      if (Math.abs(ticks - expectedTicks) > 1.5) {
+        offBands.push(`${Math.round(band * bandWidth)}–${Math.round((band + 1) * bandWidth)}px: ${ticks} ticks`);
+      }
+    }
+    expect(
+      offBands,
+      `bands of the tick-field, widened from ${Math.round(widthBefore)}px to ${Math.round(width)}px, whose tick count is not the ${expectedTicks.toFixed(1)} their width held before the resize`,
+    ).toEqual([]);
   });
 
   test('under prefers-reduced-motion: reduce, a tick-field is drawn across its whole width from load: right after load, every vertical band of it, from the left edge to the right edge, shows pixels that differ from its background', async ({ page, context }) => {

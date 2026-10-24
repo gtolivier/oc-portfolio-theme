@@ -73,6 +73,21 @@ export async function pixelsNotOfBackgroundPerColumn(
   return { columns: notOfBackground, scale };
 }
 
+/* Number of separate vertical strokes drawn between two columns of a screenshot (from
+   `fromColumn` included to `toColumn` excluded), given the drawn pixels of each column, as
+   pixelsNotOfBackgroundPerColumn counts them: a stroke is a run of adjacent columns that each
+   show at least one drawn pixel, and strokes are separated by at least one column that shows
+   none. A stroke cut by `fromColumn` counts as one. */
+export function countDrawnStrokes(columns: number[], fromColumn: number, toColumn: number): number {
+  let strokes = 0;
+  for (let column = Math.max(0, fromColumn); column < Math.min(columns.length, toColumn); column++) {
+    const drawn = columns[column] > 0;
+    const previousDrawn = column > fromColumn && columns[column - 1] > 0;
+    if (drawn && !previousDrawn) strokes += 1;
+  }
+  return strokes;
+}
+
 /* How much brighter than the element's background the screenshot of an element is: for each
    column of the screenshot, from left to right, the sum over its pixels of their luma above
    the background's (pixels within a rounding error of the background, or darker, count as
