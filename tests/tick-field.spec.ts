@@ -352,4 +352,71 @@ test.describe('catalog: tick-field', () => {
     expect(after, message).toBeLessThan(MAX_DEGREES);
     expect(after, message).toBeLessThan(before / 2);
   });
+
+  test('with a fine pointer, the trail fades: once revealed, 150 ms after the pointer leaves the tick-field the zone it hovered is still brighter than before the hover, and 4 s after it is back to the brightness it showed before the hover', async ({ page, context, hasTouch }) => {
+    test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await tickField.scrollIntoViewIfNeeded();
+    /* Fully revealed. */
+    await page.clock.runFor(2000);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const viewport = page.viewportSize();
+    expect(viewport, 'the page has a viewport').not.toBeNull();
+    /* A point in the left half, where the ticks are dim, at mid-height; the zone is the 40px
+       square centred on it. */
+    const point = { x: 0.2 * fieldBox!.width, y: fieldBox!.height / 2 };
+    const HALF_SIDE = 20;
+    const zone = { x: point.x - HALF_SIDE, y: point.y - HALF_SIDE, width: 2 * HALF_SIDE, height: 2 * HALF_SIDE };
+    /* A point of the page 40px below the tick-field, or above it if the viewport ends first:
+       outside the tick-field, in the same column. */
+    const MARGIN = 40;
+    const outside = {
+      x: fieldBox!.x + point.x,
+      y:
+        fieldBox!.y + fieldBox!.height + MARGIN < viewport!.height
+          ? fieldBox!.y + fieldBox!.height + MARGIN
+          : fieldBox!.y - MARGIN,
+    };
+    expect(
+      outside.y < fieldBox!.y || outside.y > fieldBox!.y + fieldBox!.height,
+      'the point the pointer leaves for is outside the tick-field',
+    ).toBe(true);
+    expect(outside.y, 'the point the pointer leaves for is in the viewport').toBeGreaterThanOrEqual(0);
+
+    const brightness = async (): Promise<number> =>
+      luminanceAboveBackgroundInRectangle(tickField, await tickField.screenshot(), zone);
+
+    const before = await brightness();
+
+    await page.mouse.move(fieldBox!.x + point.x, fieldBox!.y + point.y);
+    /* A few animation frames. */
+    await page.clock.runFor(100);
+    const lit = await brightness();
+
+    await page.mouse.move(outside.x, outside.y);
+    /* Shortly after the pointer leaves: still more than half of what the hover added. */
+    await page.clock.runFor(150);
+    const shortlyAfter = await brightness();
+    expect(
+      shortlyAfter,
+      `brightness above the background of the 40px square at (${Math.round(point.x)}, ${Math.round(point.y)})px 150 ms after the pointer left, against ${Math.round(before)} before the hover and ${Math.round(lit)} under the pointer`,
+    ).toBeGreaterThan(before + 0.5 * (lit - before));
+
+    /* A few seconds later: back to what it showed before the hover, within 10%. */
+    await page.clock.runFor(4000);
+    const later = await brightness();
+    expect(
+      Math.abs(later - before),
+      `change in brightness above the background of the 40px square at (${Math.round(point.x)}, ${Math.round(point.y)})px 4 s after the pointer left (${Math.round(before)} before the hover → ${Math.round(later)}; ${Math.round(lit)} under the pointer)`,
+    ).toBeLessThanOrEqual(0.1 * before);
+  });
 });
