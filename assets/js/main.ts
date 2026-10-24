@@ -61,14 +61,23 @@ class ScrambleText extends HTMLElement {
     }
     this.shown.textContent = scramble(text);
     const delayMs = Number(this.getAttribute('delay')) || 0;
-    setTimeout(() => this.revealLeftToRight(text), delayMs);
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const startTimer = setTimeout(() => this.revealLeftToRight(text), delayMs);
+    query.addEventListener('change', () => {
+      if (!query.matches) return;
+      clearTimeout(startTimer);
+      clearInterval(this.tickTimer);
+      this.shown.textContent = text;
+    });
   }
+
+  private tickTimer: ReturnType<typeof setInterval> | undefined;
 
   private revealLeftToRight(text: string): void {
     const letterCount = Array.from(text).length;
     const totalTicks = decodeDurationMs(letterCount) / TICK_MS;
     let tick = 0;
-    const timer = setInterval(() => {
+    const timer = (this.tickTimer = setInterval(() => {
       tick += 1;
       if (tick >= totalTicks) {
         clearInterval(timer);
@@ -76,7 +85,7 @@ class ScrambleText extends HTMLElement {
         return;
       }
       this.shown.textContent = scramble(text, Math.floor((tick / totalTicks) * letterCount));
-    }, TICK_MS);
+    }, TICK_MS));
   }
 }
 
