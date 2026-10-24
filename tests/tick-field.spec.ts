@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 import { CATALOG_SITE, buildSite, removeDirectory, serveSite } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
 import {
+  type Channels,
+  channelsOfColour,
+  colourAddedOverBackgroundInRectangle,
   countPixelsNotOfBackground,
   luminanceAboveBackgroundInRectangle,
   luminanceAboveBackgroundPerColumn,
@@ -290,5 +293,63 @@ test.describe('catalog: tick-field', () => {
       changedZones,
       `40px squares far from the pointer at (${Math.round(point.x)}, ${Math.round(point.y)})px whose brightness above the background changed with the hover`,
     ).toEqual([]);
+  });
+
+  test('with a fine pointer, hovered ticks turn to the accent colour, even where the field is bright: once revealed, the colour the zone around the pointer adds over the background, in the bright right part, takes the hue of the accent', async ({ page, context, hasTouch }) => {
+    test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await tickField.scrollIntoViewIfNeeded();
+    /* Fully revealed. */
+    await page.clock.runFor(2000);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    /* A point in the right part, where the ticks are bright, at mid-height; the zone is the
+       40px square centred on it. */
+    const point = { x: 0.85 * fieldBox!.width, y: fieldBox!.height / 2 };
+    const HALF_SIDE = 20;
+    const zone = { x: point.x - HALF_SIDE, y: point.y - HALF_SIDE, width: 2 * HALF_SIDE, height: 2 * HALF_SIDE };
+
+    /* The hue of a colour drawn over the background, whatever its opacity: the direction of
+       what it adds over the background. The accent (the theme's --color-accent) adds
+       (accent − background); the angle between that and what the zone adds says how far the
+       zone's hue is from the accent's, 0° when only the accent is drawn there. */
+    const background = await channelsOfColour(tickField, await tickField.evaluate((el) => getComputedStyle(el).backgroundColor));
+    const accent = await channelsOfColour(
+      tickField,
+      await tickField.evaluate((el) => getComputedStyle(el).getPropertyValue('--color-accent').trim()),
+    );
+    const accentAdds = [accent.red - background.red, accent.green - background.green, accent.blue - background.blue];
+    const degreesFromAccentHue = (added: Channels): number => {
+      const vector = [added.red, added.green, added.blue];
+      const dot = vector.reduce((sum, value, index) => sum + value * accentAdds[index], 0);
+      const norm = (values: number[]) => Math.hypot(...values);
+      return (Math.acos(Math.min(1, dot / (norm(vector) * norm(accentAdds)))) * 180) / Math.PI;
+    };
+
+    const before = degreesFromAccentHue(
+      await colourAddedOverBackgroundInRectangle(tickField, await tickField.screenshot(), zone),
+    );
+
+    await page.mouse.move(fieldBox!.x + point.x, fieldBox!.y + point.y);
+    /* A few animation frames. */
+    await page.clock.runFor(100);
+    const after = degreesFromAccentHue(
+      await colourAddedOverBackgroundInRectangle(tickField, await tickField.screenshot(), zone),
+    );
+
+    /* Pulled toward the accent: within a few degrees of its hue, and at most half as far from
+       it as before the hover. */
+    const MAX_DEGREES = 8;
+    const message = `angle between the hue the 40px square around the pointer at (${Math.round(point.x)}, ${Math.round(point.y)})px adds over the background and the accent's, after the hover, against ${before.toFixed(1)}° before`;
+    expect(after, message).toBeLessThan(MAX_DEGREES);
+    expect(after, message).toBeLessThan(before / 2);
   });
 });

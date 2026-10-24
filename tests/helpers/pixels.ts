@@ -98,6 +98,70 @@ export async function luminanceAboveBackgroundInRectangle(
   return luminanceAboveBackground.reduce((sum, value) => sum + value, 0);
 }
 
+/* Red, green and blue channels (0–255). */
+export type Channels = { red: number; green: number; blue: number };
+
+/* The channels of a CSS colour as the page draws it, read through the same colour handling as
+   the screenshots. */
+export async function channelsOfColour(element: Locator, colour: string): Promise<Channels> {
+  return element.evaluate((_, cssColour) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    const context = canvas.getContext('2d', { willReadFrequently: true })!;
+    context.fillStyle = cssColour;
+    context.fillRect(0, 0, 1, 1);
+    const [red, green, blue] = context.getImageData(0, 0, 1, 1).data;
+    return { red, green, blue };
+  }, colour);
+}
+
+/* The colour the screenshot of an element adds on top of the element's background inside a
+   rectangle of it (CSS pixels, relative to the element's box): over the pixels that differ
+   from the background by more than a rounding error on a channel, the sum, channel by channel,
+   of the pixel minus the background. A colour drawn over the background with any opacity, or
+   blurred into it, adds a multiple of (colour − background): the direction of the sum tells
+   which colour was drawn, whatever its opacity. */
+export async function colourAddedOverBackgroundInRectangle(
+  element: Locator,
+  screenshot: Buffer,
+  rectangle: Rectangle,
+): Promise<Channels> {
+  return element.evaluate(
+    async (el, [base64, zone]) => {
+      const TOLERANCE = 2;
+      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const scale = image.width / el.getBoundingClientRect().width;
+      const fromColumn = Math.max(0, Math.round(zone.x * scale));
+      const toColumn = Math.min(image.width, Math.round((zone.x + zone.width) * scale));
+      const fromRow = Math.max(0, Math.round(zone.y * scale));
+      const toRow = Math.min(image.height, Math.round((zone.y + zone.height) * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true })!;
+      context.fillStyle = getComputedStyle(el).backgroundColor;
+      context.fillRect(0, 0, 1, 1);
+      const background = context.getImageData(0, 0, 1, 1).data;
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      const added = [0, 0, 0];
+      for (let row = fromRow; row < toRow; row++) {
+        for (let column = fromColumn; column < toColumn; column++) {
+          const i = 4 * (row * image.width + column);
+          const differs = [0, 1, 2].some((channel) => Math.abs(pixels[i + channel] - background[channel]) > TOLERANCE);
+          if (!differs) continue;
+          for (let channel = 0; channel < 3; channel++) added[channel] += pixels[i + channel] - background[channel];
+        }
+      }
+      return { red: added[0], green: added[1], blue: added[2] };
+    },
+    [screenshot.toString('base64'), rectangle] as const,
+  );
+}
+
 /* Number of pixels of the screenshot of an element that differ from the element's background
    colour by more than a rounding error on a channel. */
 export async function countPixelsNotOfBackground(element: Locator, screenshot: Buffer): Promise<number> {
