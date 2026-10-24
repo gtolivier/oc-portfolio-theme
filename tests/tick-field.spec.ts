@@ -857,4 +857,83 @@ test.describe('catalog: tick-field', () => {
       `bands of the ${Math.round(width)}px-wide tick-field whose brightness above the background, under reduced motion, 2 s after load${hasTouch ? '' : `, a hover at (${Math.round(hovered.x)}, ${Math.round(hovered.y)})px`} and 300 ms after a ${hasTouch ? 'tap' : 'click'} at (${Math.round(clicked.x)}, ${Math.round(clicked.y)})px, differs by more than 2% from what they showed right after load`,
     ).toEqual([]);
   });
+
+  test('if the visitor turns on reduced motion during the reveal, a tick-field is drawn across its whole width at once, then stays still: two animation frames after the switch, every vertical band of it shows drawn pixels, and 300 ms after a click (a tap on mobile) at its centre, every band shows the brightness it showed right after the switch', async ({ page, context, hasTouch }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it to the middle of the reveal. */
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await tickField.scrollIntoViewIfNeeded();
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const width = fieldBox!.width;
+
+    /* Midway through the reveal, which sweeps the width in about 1.1 s: its right part, the
+       last 40% of the width, still only shows the background. */
+    await page.clock.runFor(500);
+    const RIGHT_PART_START = 0.6 * width;
+    const midway = await pixelsNotOfBackgroundPerColumn(tickField, await tickField.screenshot());
+    expect(
+      midway.columns.slice(Math.round(RIGHT_PART_START * midway.scale)).reduce((sum, count) => sum + count, 0),
+      `500 ms after load, pixels of the right part (${Math.round(RIGHT_PART_START)}–${Math.round(width)}px) of the tick-field that differ from its background`,
+    ).toBe(0);
+
+    /* The visitor then asks for reduced motion. Time moves by two animation frames, far less
+       than the 600 ms of reveal left, then stands still again. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.clock.runFor(32);
+
+    /* The width split into adjacent vertical bands, at least 40px wide each and as high as the
+       field: the first starts at the left edge, the last ends at the right edge. */
+    const MIN_BAND_WIDTH = 40;
+    const bandCount = Math.max(1, Math.floor(width / MIN_BAND_WIDTH));
+    const bandWidth = width / bandCount;
+    const bands = Array.from({ length: bandCount }, (_, band) => ({
+      x: band * bandWidth,
+      y: 0,
+      width: bandWidth,
+      height: fieldBox!.height,
+    }));
+    const describeBand = (band: (typeof bands)[number]): string =>
+      `${Math.round(band.x)}–${Math.round(band.x + band.width)}px`;
+
+    /* Drawn at once: every band shows drawn pixels, the right part included. */
+    const afterSwitch = await tickField.screenshot();
+    const { columns, scale } = await pixelsNotOfBackgroundPerColumn(tickField, afterSwitch);
+    const emptyBands = bands
+      .filter((band) => !columns.slice(Math.round(band.x * scale), Math.round((band.x + band.width) * scale)).some((count) => count > 0))
+      .map(describeBand);
+    expect(
+      emptyBands,
+      `bands of the ${Math.round(width)}px-wide tick-field with no drawn pixel, two animation frames after reduced motion was turned on midway through the reveal`,
+    ).toEqual([]);
+
+    /* Then still: a click (a tap on mobile) at the centre of the field, with room all around it
+       for a ring, which would be about 84px from it 300 ms after the click. */
+    const brightness = async (screenshot: Buffer): Promise<number[]> =>
+      Promise.all(bands.map((band) => luminanceAboveBackgroundInRectangle(tickField, screenshot, band)));
+    const rightAfterSwitch = await brightness(afterSwitch);
+    const clicked = { x: width / 2, y: fieldBox!.height / 2 };
+    if (hasTouch) await page.touchscreen.tap(fieldBox!.x + clicked.x, fieldBox!.y + clicked.y);
+    else await page.mouse.click(fieldBox!.x + clicked.x, fieldBox!.y + clicked.y);
+    await page.clock.runFor(300);
+    const afterwards = await brightness(await tickField.screenshot());
+
+    /* What each band showed right after the switch, within 2%. */
+    const changedBands = bands
+      .map((band, index) => ({ band, before: rightAfterSwitch[index], after: afterwards[index] }))
+      .filter(({ before, after }) => Math.abs(after - before) > 0.02 * before)
+      .map(({ band, before, after }) => `${describeBand(band)}: ${Math.round(before)} → ${Math.round(after)}`);
+    expect(
+      changedBands,
+      `bands of the ${Math.round(width)}px-wide tick-field whose brightness above the background, 300 ms after a ${hasTouch ? 'tap' : 'click'} at (${Math.round(clicked.x)}, ${Math.round(clicked.y)})px, differs by more than 2% from what they showed right after reduced motion was turned on`,
+    ).toEqual([]);
+  });
 });
