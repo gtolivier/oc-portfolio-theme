@@ -112,6 +112,12 @@ const FIELD_HOVER_TICK_WIDTH_PX = 2;
 
 const FIELD_TRAIL_FADE_MS = 1000;
 
+const FIELD_RIPPLE_SPEED_PX_PER_MS = 0.28;
+
+const FIELD_RIPPLE_DURATION_MS = 1000;
+
+const FIELD_RIPPLE_LINE_WIDTH_PX = 4;
+
 /* A decorative canvas covering the whole box, behind the content. */
 class TickField extends HTMLElement {
   connectedCallback(): void {
@@ -126,10 +132,41 @@ class TickField extends HTMLElement {
       this.draw(canvas, this.progress);
     });
     this.addEventListener('pointerleave', () => this.fadeTrail(canvas));
+    this.addEventListener('click', (event) => {
+      const box = this.getBoundingClientRect();
+      this.startRipple(canvas, event.clientX - box.left, event.clientY - box.top);
+    });
     this.revealLeftToRight(canvas);
   }
 
   private leftAt: number | undefined;
+
+  private ripple: { x: number; y: number; start: number } | undefined;
+
+  private startRipple(canvas: HTMLCanvasElement, x: number, y: number): void {
+    this.ripple = { x, y, start: performance.now() };
+    const step = (): void => {
+      if (this.rippleAge() >= FIELD_RIPPLE_DURATION_MS) this.ripple = undefined;
+      else requestAnimationFrame(step);
+      this.draw(canvas, this.progress);
+    };
+    requestAnimationFrame(step);
+  }
+
+  private rippleAge(): number {
+    return this.ripple ? performance.now() - this.ripple.start : 0;
+  }
+
+  private drawRipple(context: CanvasRenderingContext2D): void {
+    if (!this.ripple) return;
+    const age = this.rippleAge();
+    context.globalAlpha = Math.max(0, 1 - age / FIELD_RIPPLE_DURATION_MS);
+    context.strokeStyle = getComputedStyle(this).getPropertyValue('--color-accent').trim();
+    context.lineWidth = FIELD_RIPPLE_LINE_WIDTH_PX;
+    context.beginPath();
+    context.arc(this.ripple.x, this.ripple.y, age * FIELD_RIPPLE_SPEED_PX_PER_MS, 0, 2 * Math.PI);
+    context.stroke();
+  }
 
   private fadeTrail(canvas: HTMLCanvasElement): void {
     this.leftAt = performance.now();
@@ -181,6 +218,7 @@ class TickField extends HTMLElement {
       context.fillRect(x, 0, FIELD_TICK_WIDTH_PX, canvas.height);
       this.drawPointerTrail(context, x);
     }
+    this.drawRipple(context);
   }
 
   private drawPointerTrail(context: CanvasRenderingContext2D, x: number): void {
