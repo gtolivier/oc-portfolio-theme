@@ -96,12 +96,28 @@ class ScrambleText extends HTMLElement {
 
 customElements.define('scramble-text', ScrambleText);
 
+const FIELD_DRAW_DELAY_MS = 1000;
+
+const FIELD_TICK_SPACING_PX = 8;
+
 /* A decorative canvas covering the whole box, behind the content. */
 class TickField extends HTMLElement {
   connectedCallback(): void {
     const canvas = document.createElement('canvas');
     canvas.setAttribute('aria-hidden', 'true');
     this.prepend(canvas);
+    setTimeout(() => this.draw(canvas), FIELD_DRAW_DELAY_MS);
+  }
+
+  private draw(canvas: HTMLCanvasElement): void {
+    canvas.width = this.clientWidth;
+    canvas.height = this.clientHeight;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    context.fillStyle = getComputedStyle(this).color;
+    for (let x = 0; x < canvas.width; x += FIELD_TICK_SPACING_PX) {
+      context.fillRect(x, 0, 1, canvas.height);
+    }
   }
 }
 
