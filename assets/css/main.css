@@ -252,3 +252,17 @@ scramble-text > :last-child {
   height: 0;
   overflow-wrap: anywhere;
 }
+
+tick-field {
+  position: relative;
+  isolation: isolate;
+}
+
+/* The canvas covers the whole box, behind the content. */
+tick-field > canvas {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+}

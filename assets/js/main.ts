@@ -95,3 +95,14 @@ class ScrambleText extends HTMLElement {
 }
 
 customElements.define('scramble-text', ScrambleText);
+
+/* A decorative canvas covering the whole box, behind the content. */
+class TickField extends HTMLElement {
+  connectedCallback(): void {
+    const canvas = document.createElement('canvas');
+    canvas.setAttribute('aria-hidden', 'true');
+    this.prepend(canvas);
+  }
+}
+
+customElements.define('tick-field', TickField);
