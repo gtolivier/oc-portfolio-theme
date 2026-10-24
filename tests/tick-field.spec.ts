@@ -232,4 +232,63 @@ test.describe('catalog: tick-field', () => {
       `brightness above the background of the 40px square around the pointer at (${Math.round(point.x)}, ${Math.round(point.y)})px, against ${Math.round(before)} before the hover`,
     ).toBeGreaterThan(1.5 * before);
   });
+
+  test('with a fine pointer, the trail stays local: once revealed, a zone far below the pointer, in the same columns, and a zone far to its side, at the same height, keep the brightness they showed before the hover', async ({ page, context, hasTouch }) => {
+    test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await tickField.scrollIntoViewIfNeeded();
+    /* Fully revealed. */
+    await page.clock.runFor(2000);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    /* A point in the left half, near the top. Each zone is a 40px square: one at the same x
+       near the bottom, one at the same height 160px to the right. Both are well over 100px
+       from the pointer, far outside the glow around it. */
+    const point = { x: 0.2 * fieldBox!.width, y: 40 };
+    const HALF_SIDE = 20;
+    const square = (centre: { x: number; y: number }) => ({
+      x: centre.x - HALF_SIDE,
+      y: centre.y - HALF_SIDE,
+      width: 2 * HALF_SIDE,
+      height: 2 * HALF_SIDE,
+    });
+    const zones = [
+      { name: 'below the pointer', rectangle: square({ x: point.x, y: fieldBox!.height - 40 }) },
+      { name: 'to the side of the pointer', rectangle: square({ x: point.x + 160, y: point.y }) },
+    ];
+
+    const screenshotBefore = await tickField.screenshot();
+    const before = await Promise.all(
+      zones.map((zone) => luminanceAboveBackgroundInRectangle(tickField, screenshotBefore, zone.rectangle)),
+    );
+
+    await page.mouse.move(fieldBox!.x + point.x, fieldBox!.y + point.y);
+    /* A few animation frames. */
+    await page.clock.runFor(100);
+    const screenshotAfter = await tickField.screenshot();
+    const after = await Promise.all(
+      zones.map((zone) => luminanceAboveBackgroundInRectangle(tickField, screenshotAfter, zone.rectangle)),
+    );
+
+    /* Unchanged, within 10% of the brightness before the hover. */
+    const changedZones = zones
+      .map((zone, index) => ({ zone, before: before[index], after: after[index] }))
+      .filter(({ before, after }) => Math.abs(after - before) > 0.1 * before)
+      .map(
+        ({ zone, before, after }) =>
+          `${zone.name} (${Math.round(zone.rectangle.x)}, ${Math.round(zone.rectangle.y)})px: ${Math.round(before)} → ${Math.round(after)}`,
+      );
+    expect(
+      changedZones,
+      `40px squares far from the pointer at (${Math.round(point.x)}, ${Math.round(point.y)})px whose brightness above the background changed with the hover`,
+    ).toEqual([]);
+  });
 });
