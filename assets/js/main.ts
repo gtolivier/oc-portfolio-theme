@@ -51,6 +51,10 @@ class ScrambleText extends HTMLElement {
 
   private decode(text: string): void {
     this.replaceChildren(invisibleSizer(text), this.shown);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      this.shown.textContent = text;
+      return;
+    }
     this.shown.textContent = scramble(text);
     const delayMs = Number(this.getAttribute('delay')) || 0;
     setTimeout(() => this.revealLeftToRight(text), delayMs);
