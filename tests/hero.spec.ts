@@ -46,9 +46,9 @@ async function expectLinesInOrder(main: Locator, lines: string[]) {
   for (let i = 1; i < lines.length; i++) {
     const previous = positions[i - 1];
     const current = positions[i];
-    expect(previous, `ligne introuvable : ${lines[i - 1]}`).not.toBeNull();
-    expect(current, `ligne introuvable : ${lines[i]}`).not.toBeNull();
-    expect(current!.top - previous!.lastTop, `« ${lines[i]} » commence sous « ${lines[i - 1]} »`)
+    expect(previous, `line not found: ${lines[i - 1]}`).not.toBeNull();
+    expect(current, `line not found: ${lines[i]}`).not.toBeNull();
+    expect(current!.top - previous!.lastTop, `« ${lines[i]} » starts below « ${lines[i - 1]} »`)
       .toBeGreaterThanOrEqual(previous!.lastHeight / 2);
   }
 }
@@ -210,7 +210,7 @@ test('on the French home page, the author name is displayed in uppercase, in IBM
   });
   const nameSize = await mainHeading.evaluate((h1) => parseFloat(getComputedStyle(h1).fontSize));
   const titleSize = await professionalTitle.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
-  expect(nameSize, 'le nom est plus grand que le titre professionnel').toBeGreaterThan(titleSize);
+  expect(nameSize, 'the name is larger than the professional title').toBeGreaterThan(titleSize);
 });
 
 test('on the French home page, the professional title that follows the author name is displayed in uppercase, in IBM Plex Mono semibold (600), accent color', async ({ page }) => {
@@ -264,7 +264,7 @@ test('on the French home page, the hero tagline is displayed in IBM Plex Sans, p
     const element = main.getByText(line);
     await expect(element).toBeVisible();
     const { family, color } = await textStyle(element);
-    expect({ family, color: colorComponents(color) }, `style de « ${line} »`).toEqual({
+    expect({ family, color: colorComponents(color) }, `style of « ${line} »`).toEqual({
       family: 'IBM Plex Sans',
       color: { red: 227, green: 223, blue: 204, alpha: 0.88 },
     });
@@ -272,7 +272,7 @@ test('on the French home page, the hero tagline is displayed in IBM Plex Sans, p
   const stack = main.getByText('Laiton · Acier · Rubis · Émail', { exact: true });
   await expect(stack).toBeVisible();
   const { family, color } = await textStyle(stack);
-  expect({ family, color: colorComponents(color) }, 'style de la stack').toEqual({
+  expect({ family, color: colorComponents(color) }, 'style of the stack').toEqual({
     family: 'IBM Plex Mono',
     color: { red: 42, green: 136, blue: 141, alpha: 1 },
   });
@@ -305,7 +305,7 @@ test('on the French home page, the first hero button, "Voir les projets", is fil
   await expect(firstButton).toHaveText(/^\s*Voir les projets/);
   const { family, weight } = await textStyle(firstButton);
   const { color, background, textDecoration } = await buttonStyle(firstButton);
-  expect({ family, weight, color, background, textDecoration }, 'style du premier bouton').toEqual({
+  expect({ family, weight, color, background, textDecoration }, 'style of the first button').toEqual({
     family: 'IBM Plex Mono',
     weight: '600',
     color: { red: 1, green: 53, blue: 73, alpha: 1 },
@@ -331,7 +331,7 @@ test('on the French home page, the second hero button, "Contact", is outlined: p
   const secondButton = secondHeroButton(page);
   await expect(secondButton).toHaveText('Contact');
   const { color, background, textDecoration, borders } = await buttonStyle(secondButton);
-  expect({ color, backgroundAlpha: background.alpha, textDecoration, borders }, 'style du second bouton').toEqual({
+  expect({ color, backgroundAlpha: background.alpha, textDecoration, borders }, 'style of the second button').toEqual({
     color: { red: 227, green: 223, blue: 204, alpha: 1 },
     backgroundAlpha: 0,
     textDecoration: 'none',
@@ -355,7 +355,7 @@ test('on desktop, the hovered second hero button, "Contact", turns accent-colore
   await secondButton.hover();
   const accent = { red: 42, green: 136, blue: 141, alpha: 1 };
   await expect.poll(() => textAndBorderColors(secondButton), {
-    message: 'style du second bouton survolé',
+    message: 'style of the hovered second button',
   }).toEqual({
     color: accent,
     borders: (['top', 'right', 'bottom', 'left'] as const).map((side) => ({ side, color: accent })),
@@ -374,7 +374,7 @@ test('on phone as on desktop, the second hero button, "Contact", reached by keyb
   await expect(secondButton).toBeFocused();
   const accent = { red: 42, green: 136, blue: 141, alpha: 1 };
   await expect.poll(() => textAndBorderColors(secondButton), {
-    message: 'style du second bouton atteint au clavier',
+    message: 'style of the second button reached by keyboard',
   }).toEqual({
     color: accent,
     borders: (['top', 'right', 'bottom', 'left'] as const).map((side) => ({ side, color: accent })),
@@ -398,8 +398,8 @@ test('on the French home page, the hero fills at least the full window height be
   const headerBox = (await page.locator('header').boundingBox())!;
   const heroBox = (await hero.boundingBox())!;
   const headerBottom = headerBox.y + headerBox.height;
-  expect(Math.abs(heroBox.y - headerBottom), 'le haut du hero est juste sous l’en-tête').toBeLessThanOrEqual(1);
-  expect(heroBox.y + heroBox.height, 'le bas du hero est au bas de la fenêtre, ou plus bas')
+  expect(Math.abs(heroBox.y - headerBottom), 'the top of the hero is right below the header').toBeLessThanOrEqual(1);
+  expect(heroBox.y + heroBox.height, 'the bottom of the hero is at the bottom of the window, or lower')
     .toBeGreaterThanOrEqual(viewportHeight - 1);
 });
 
@@ -410,23 +410,23 @@ test('the hero content is aligned with the header logo: 16 px from the left edge
   const logo = page.locator('header').getByRole('link', { name: 'Exemple', exact: true });
   await expect(logo).toBeVisible();
   const expectedLeftEdge = isMobile ? 16 : 48;
-  expect((await logo.boundingBox())!.x, 'bord gauche du logo').toBeCloseTo(expectedLeftEdge, 0);
+  expect((await logo.boundingBox())!.x, 'left edge of the logo').toBeCloseTo(expectedLeftEdge, 0);
   /* The hero elements: name and professional title in the h1, tagline, stack and first
      button. */
   const main = page.getByRole('main');
   const mainHeading = mainContentHeading(page);
   const elements = {
-    'nom de l’auteur (h1)': mainHeading,
-    'titre professionnel': mainHeading.getByText('Horloger indépendant', { exact: true }),
-    'accroche': main.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
+    'author name (h1)': mainHeading,
+    'professional title': mainHeading.getByText('Horloger indépendant', { exact: true }),
+    'tagline': main.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
     'stack': main.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
-    'premier bouton': firstHeroButton(page),
+    'first button': firstHeroButton(page),
   };
-  await expect(elements['premier bouton']).toHaveText(/^\s*Voir les projets/);
+  await expect(elements['first button']).toHaveText(/^\s*Voir les projets/);
   for (const [name, element] of Object.entries(elements)) {
     await expect(element, name).toBeVisible();
     const box = (await element.boundingBox())!;
-    expect.soft(box.x, `bord gauche : ${name}`).toBeCloseTo(expectedLeftEdge, 0);
+    expect.soft(box.x, `left edge: ${name}`).toBeCloseTo(expectedLeftEdge, 0);
   }
 });
 
@@ -436,45 +436,45 @@ test('on a phone, the hero fits within the screen width: no horizontal scrolling
   const width = page.viewportSize()!.width;
 
   const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-  expect(pageWidth, 'pas de défilement horizontal').toBeLessThanOrEqual(width);
+  expect(pageWidth, 'no horizontal scrolling').toBeLessThanOrEqual(width);
 
   /* The hero elements: name and professional title in the h1, the three tagline lines, the
      stack and the two buttons. */
   const main = page.getByRole('main');
   const mainHeading = mainContentHeading(page);
   const elements = {
-    'nom de l’auteur (h1)': mainHeading,
-    'titre professionnel': mainHeading.getByText('Horloger indépendant', { exact: true }),
-    'accroche, ligne 1': main.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
-    'accroche, ligne 2': main.getByText('Conception, réparation et entretien'),
-    'accroche, ligne 3': main.getByText('de pendules et de montres anciennes.'),
+    'author name (h1)': mainHeading,
+    'professional title': mainHeading.getByText('Horloger indépendant', { exact: true }),
+    'tagline, line 1': main.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
+    'tagline, line 2': main.getByText('Conception, réparation et entretien'),
+    'tagline, line 3': main.getByText('de pendules et de montres anciennes.'),
     'stack': main.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
-    'premier bouton': firstHeroButton(page),
-    'second bouton': secondHeroButton(page),
+    'first button': firstHeroButton(page),
+    'second button': secondHeroButton(page),
   };
-  await expect(elements['premier bouton']).toHaveText(/^\s*Voir les projets/);
-  await expect(elements['second bouton']).toHaveText('Contact');
+  await expect(elements['first button']).toHaveText(/^\s*Voir les projets/);
+  await expect(elements['second button']).toHaveText('Contact');
   for (const [name, element] of Object.entries(elements)) {
     await expect(element, name).toBeVisible();
     const { left, right } = await displayedExtent(element);
-    expect.soft(left, `bord gauche dans la fenêtre : ${name}`).toBeGreaterThanOrEqual(0);
-    expect.soft(right, `bord droit dans la fenêtre : ${name}`).toBeLessThanOrEqual(width);
+    expect.soft(left, `left edge within the window: ${name}`).toBeGreaterThanOrEqual(0);
+    expect.soft(right, `right edge within the window: ${name}`).toBeLessThanOrEqual(width);
   }
 });
 
 test('on phone as on desktop, each hero button offers a target of at least 24 × 24 px (WCAG 2.5.8)', async ({ page }) => {
   await page.goto('/fr/');
   const buttons = {
-    'premier bouton, « Voir les projets »': firstHeroButton(page),
-    'second bouton, « Contact »': secondHeroButton(page),
+    'first button, « Voir les projets »': firstHeroButton(page),
+    'second button, « Contact »': secondHeroButton(page),
   };
-  await expect(buttons['premier bouton, « Voir les projets »']).toHaveText(/^\s*Voir les projets/);
-  await expect(buttons['second bouton, « Contact »']).toHaveText('Contact');
+  await expect(buttons['first button, « Voir les projets »']).toHaveText(/^\s*Voir les projets/);
+  await expect(buttons['second button, « Contact »']).toHaveText('Contact');
   for (const [name, button] of Object.entries(buttons)) {
     await expect(button, name).toBeVisible();
     const box = (await button.boundingBox())!;
-    expect.soft(box.width, `largeur de la cible : ${name}`).toBeGreaterThanOrEqual(24);
-    expect.soft(box.height, `hauteur de la cible : ${name}`).toBeGreaterThanOrEqual(24);
+    expect.soft(box.width, `target width: ${name}`).toBeGreaterThanOrEqual(24);
+    expect.soft(box.height, `target height: ${name}`).toBeGreaterThanOrEqual(24);
   }
 });
 
@@ -624,7 +624,7 @@ test.describe('home page of a site whose hero has long words, on a 320 px wide p
     await serveSite(context, SITE_WITH_A_HERO_WITH_LONG_WORDS, siteDirectory);
     await page.goto(`${SITE_WITH_A_HERO_WITH_LONG_WORDS.origin}/fr/`);
     const width = page.viewportSize()!.width;
-    expect(width, 'largeur de la fenêtre').toBe(320);
+    expect(width, 'window width').toBe(320);
 
     /* The author comes from params.author (tests/fixtures/hero-with-long-words/hugo.toml), the
        title from the [params.hero] block, title key, of
@@ -634,17 +634,17 @@ test.describe('home page of a site whose hero has long words, on a 320 px wide p
     await expect(mainHeading).toHaveText(/^\s*Apolline Vanderkerckhove-Fictive\s*Horlogère-restauratrice\s*$/);
 
     const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-    expect.soft(pageWidth, 'pas de défilement horizontal').toBeLessThanOrEqual(width);
+    expect.soft(pageWidth, 'no horizontal scrolling').toBeLessThanOrEqual(width);
 
     const elements = {
-      'nom de l’auteur (h1)': mainHeading,
-      'titre professionnel': mainHeading.getByText('Horlogère-restauratrice', { exact: true }),
+      'author name (h1)': mainHeading,
+      'professional title': mainHeading.getByText('Horlogère-restauratrice', { exact: true }),
     };
     for (const [name, element] of Object.entries(elements)) {
       await expect(element, name).toBeVisible();
       const { left, right } = await displayedExtent(element);
-      expect.soft(left, `bord gauche dans la fenêtre : ${name}`).toBeGreaterThanOrEqual(0);
-      expect.soft(right, `bord droit dans la fenêtre : ${name}`).toBeLessThanOrEqual(width);
+      expect.soft(left, `left edge within the window: ${name}`).toBeGreaterThanOrEqual(0);
+      expect.soft(right, `right edge within the window: ${name}`).toBeLessThanOrEqual(width);
     }
   });
 });
@@ -717,7 +717,7 @@ test.describe('hero content errors: build failure', () => {
        names this pageRef. Also blaming them for having neither url nor pageRef would mislead
        them: only this message must appear, whatever wording is chosen for the other one. */
     const build = tryToBuildSite(SITE_WITH_A_PAGE_REF_NOT_FOUND);
-    expect(build.succeeded, 'la construction du site devrait échouer').toBe(false);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors).toContain('/page-fictive-introuvable');
     expect(build.errors).not.toMatch(/\bni\s+(?:de\s+)?(?:champ\s+)?url\b/i);
   });
@@ -728,7 +728,7 @@ test.describe('hero content errors: build failure', () => {
        must get a failure whose message names the label field of the front matter, whatever
        wording is chosen. */
     const build = tryToBuildSite(SITE_WITH_A_BUTTON_WITHOUT_LABEL);
-    expect(build.succeeded, 'la construction du site devrait échouer').toBe(false);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors).toMatch(/\blabel\b/);
   });
 
@@ -738,7 +738,7 @@ test.describe('hero content errors: build failure', () => {
        building the site must get a failure whose message names the url and pageRef fields of
        the front matter, whatever wording is chosen. */
     const build = tryToBuildSite(SITE_WITH_A_BUTTON_WITHOUT_DESTINATION);
-    expect(build.succeeded, 'la construction du site devrait échouer').toBe(false);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors).toMatch(/\burl\b/);
     expect(build.errors).toMatch(/\bpageRef\b/);
   });
@@ -751,7 +751,7 @@ test.describe('hero content errors: build failure', () => {
        and pageRef fields of the front matter, whatever wording is chosen; blaming them for
        having neither would mislead them. */
     const build = tryToBuildSite(SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF);
-    expect(build.succeeded, 'la construction du site devrait échouer').toBe(false);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors).toMatch(/\burl\b/);
     expect(build.errors).toMatch(/\bpageRef\b/);
     expect(build.errors).not.toMatch(/\bni\s+(?:de\s+)?(?:champ\s+)?url\b/i);
@@ -763,7 +763,7 @@ test.describe('hero content errors: build failure', () => {
        the person building the site must get a failure whose message names the author
        parameter of the configuration, whatever wording is chosen. */
     const build = tryToBuildSite(SITE_WITH_A_HERO_WITHOUT_AUTHOR);
-    expect(build.succeeded, 'la construction du site devrait échouer').toBe(false);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors).toMatch(/\bauthor\b/);
   });
 });

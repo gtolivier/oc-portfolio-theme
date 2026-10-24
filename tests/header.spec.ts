@@ -231,8 +231,8 @@ test('in the header language switcher, the link to the other language offers a t
   const otherLanguage = languageSwitcher(page, 'Langue').getByRole('link', { name: 'EN', exact: true });
   await expect(otherLanguage).toBeVisible();
   const box = (await otherLanguage.boundingBox())!;
-  expect.soft(box.width, 'largeur de la cible').toBeGreaterThanOrEqual(24);
-  expect.soft(box.height, 'hauteur de la cible').toBeGreaterThanOrEqual(24);
+  expect.soft(box.width, 'target width').toBeGreaterThanOrEqual(24);
+  expect.soft(box.height, 'target height').toBeGreaterThanOrEqual(24);
 });
 
 test('in the header language switcher, the current language has the same height as the link to the other language', async ({ page }) => {
@@ -244,7 +244,7 @@ test('in the header language switcher, the current language has the same height 
   await expect(otherLanguage).toBeVisible();
   const frBox = (await currentLanguage.boundingBox())!;
   const enBox = (await otherLanguage.boundingBox())!;
-  expect(frBox.height, 'hauteur de la langue courante').toBeCloseTo(enBox.height, 0);
+  expect(frBox.height, 'height of the current language').toBeCloseTo(enBox.height, 0);
 });
 
 test('on desktop, a hovered navigation link is underlined in the accent color, the line offset below the text', async ({ page, hasTouch }) => {
