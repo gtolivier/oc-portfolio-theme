@@ -16,6 +16,10 @@ function isWhitespace(character: string): boolean {
   return /\s/.test(character);
 }
 
+function decodeDurationMs(letterCount: number): number {
+  return Math.max(MIN_DURATION_MS, letterCount * DURATION_PER_LETTER_MS);
+}
+
 function scramble(text: string, clearCount = 0): string {
   return Array.from(text)
     .map((character, index) => (index < clearCount || isWhitespace(character) ? character : randomSign()))
@@ -36,7 +40,7 @@ class ScrambleText extends HTMLElement {
   private decode(text: string): void {
     this.textContent = scramble(text);
     const letterCount = Array.from(text).length;
-    const totalTicks = Math.max(MIN_DURATION_MS, letterCount * DURATION_PER_LETTER_MS) / TICK_MS;
+    const totalTicks = decodeDurationMs(letterCount) / TICK_MS;
     let tick = 0;
     const timer = setInterval(() => {
       tick += 1;
