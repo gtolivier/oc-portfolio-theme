@@ -108,6 +108,8 @@ const FIELD_MIN_ALPHA = 0.15;
 
 const FIELD_HOVER_RADIUS_PX = 40;
 
+const FIELD_HOVER_TICK_WIDTH_PX = 2;
+
 /* A decorative canvas covering the whole box, behind the content. */
 class TickField extends HTMLElement {
   connectedCallback(): void {
@@ -157,8 +159,11 @@ class TickField extends HTMLElement {
   private drawPointerTrail(context: CanvasRenderingContext2D, x: number): void {
     if (this.pointerX === undefined || this.pointerY === undefined) return;
     if (Math.abs(x - this.pointerX) >= FIELD_HOVER_RADIUS_PX) return;
+    const tickColor = context.fillStyle;
     context.globalAlpha = 1;
-    context.fillRect(x, this.pointerY - FIELD_HOVER_RADIUS_PX, FIELD_TICK_WIDTH_PX, 2 * FIELD_HOVER_RADIUS_PX);
+    context.fillStyle = getComputedStyle(this).getPropertyValue('--color-accent').trim();
+    context.fillRect(x, this.pointerY - FIELD_HOVER_RADIUS_PX, FIELD_HOVER_TICK_WIDTH_PX, 2 * FIELD_HOVER_RADIUS_PX);
+    context.fillStyle = tickColor;
   }
 
   /* Brighter from left to right. */
