@@ -124,6 +124,34 @@ test.describe('catalog: scramble-text', () => {
     ).toBe(true);
   });
 
+  test('with a delay, a scramble-text stays fully scrambled until the delay is over, then decodes and ends in clear', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it, step by step, to watch the text during the delay and after it. */
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.clock.install({ time: new Date('2026-01-01T09:00:00') });
+    await page.clock.pauseAt(new Date('2026-01-01T09:00:00'));
+    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-delay/`);
+    /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text-delay.md),
+       whose text is "Échappement" (11 letters) and whose delay is 1000 ms. */
+    const scrambleText = page.getByRole('main').locator('scramble-text');
+    await expect(scrambleText).toHaveCount(1);
+    const word = 'Échappement';
+    /* From load until the delay is over, every 25 ms: every letter is replaced by a sign. */
+    for (let elapsed = 0; elapsed < 1000; elapsed += 25) {
+      if (elapsed > 0) await page.clock.runFor(25);
+      const shown = await textOnScreen(scrambleText);
+      expect(Array.from(shown), `at ${elapsed} ms, "${shown}" shows one sign per letter of "${word}"`).toHaveLength(word.length);
+      for (const character of Array.from(shown)) {
+        expect(SIGNS, `at ${elapsed} ms, during the delay, "${character}", shown in "${shown}", is one of the signs`).toContain(character);
+      }
+    }
+    /* Once the delay is over, the text decodes as it would without one: 1.5 s later, it
+       is in clear. */
+    await page.clock.runFor(25 + 1500);
+    expect(await textOnScreen(scrambleText)).toBe(word);
+  });
+
   test('a scramble-text takes longer to decode the longer its text: when a short one is in clear, a long one on the same page is still partly scrambled', async ({ page, context }) => {
     await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Animations are allowed, and time stands still from before the page loads, until the
