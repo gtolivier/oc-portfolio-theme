@@ -135,7 +135,7 @@ class TickField extends HTMLElement {
     this.leftAt = performance.now();
     const step = (): void => {
       if (this.leftAt === undefined) return;
-      if (performance.now() - this.leftAt >= FIELD_TRAIL_FADE_MS) {
+      if (this.trailAlpha() === 0) {
         this.pointerX = undefined;
         this.pointerY = undefined;
         this.leftAt = undefined;
