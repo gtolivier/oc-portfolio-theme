@@ -144,6 +144,7 @@ class TickField extends HTMLElement {
       this.startRipple(canvas, x, y);
     });
     this.revealLeftToRight(canvas);
+    new ResizeObserver(() => this.draw(canvas, this.progress)).observe(this);
   }
 
   private localPoint(event: MouseEvent): { x: number; y: number } {
