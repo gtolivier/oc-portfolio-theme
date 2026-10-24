@@ -1,6 +1,6 @@
 # Configuration added to exampleSite/hugo.toml by the test of a hero with
-# long words: the site's author is replaced, on top of the French home page,
-# replaced by content/_index.md.
+# long words: this file replaces the site's author (params.author), and the
+# fixture's content/_index.md replaces the French home page.
 [params]
   # Fictional author whose compound last name forms a word of more than 12
   # characters: "Vanderkerckhove-Fictive".
