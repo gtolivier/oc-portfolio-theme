@@ -995,4 +995,102 @@ test.describe('catalog: tick-field', () => {
       `bands of the ${Math.round(width)}px-wide tick-field whose brightness above the background, 300 ms after a ${hasTouch ? 'tap' : 'click'} at (${Math.round(clicked.x)}, ${Math.round(clicked.y)})px, differs by more than 2% from what they showed right after reduced motion was turned on`,
     ).toEqual([]);
   });
+
+  test('a tick-field scrolled out of view during its reveal stops animating, and resumes once back: while it is off screen, the page requests no animation frame, and 2 s after it is back on screen, every vertical band of it, from the left edge to the right edge, shows drawn pixels', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    /* Every animation frame the page requests, counted from load: requestAnimationFrame
+       wrapped after the fake clock replaced it, so that the count follows the clock. */
+    await context.addInitScript(() => {
+      const counted = window as unknown as { frameRequests: number };
+      counted.frameRequests = 0;
+      const request = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (callback: FrameRequestCallback): number => {
+        counted.frameRequests += 1;
+        return request(callback);
+      };
+    });
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-long-texte/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-long-texte.md),
+       320px high, with no content and a solid background, followed by a long text. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await tickField.scrollIntoViewIfNeeded();
+
+    const frameRequests = (): Promise<number> =>
+      page.evaluate(() => (window as unknown as { frameRequests: number }).frameRequests);
+    /* Resolves once the browser has laid out the page at its current scroll position and
+       reports the tick-field on screen (or off screen). */
+    const reportedOnScreen = (onScreen: boolean): Promise<void> =>
+      tickField.evaluate(
+        (element, wanted) =>
+          new Promise<void>((resolve) => {
+            const observer = new IntersectionObserver((entries) => {
+              if (entries.some((entry) => entry.isIntersecting === wanted)) {
+                observer.disconnect();
+                resolve();
+              }
+            });
+            observer.observe(element);
+          }),
+        onScreen,
+      );
+
+    /* On screen, early in the reveal, which sweeps the width in about 1.1 s: the field is
+       animating, and the count sees its frames. */
+    await reportedOnScreen(true);
+    const atLoad = await frameRequests();
+    await page.clock.runFor(300);
+    expect(
+      (await frameRequests()) - atLoad,
+      'animation frames the page requests during the first 300 ms of the reveal, the tick-field on screen',
+    ).toBeGreaterThan(0);
+
+    /* The visitor scrolls down to the end of the long text: the tick-field leaves the screen,
+       its reveal still under way. */
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const boxOffScreen = await tickField.evaluate((element) => element.getBoundingClientRect().bottom);
+    expect(boxOffScreen, 'bottom edge of the tick-field, relative to the top of the viewport, once scrolled down').toBeLessThanOrEqual(0);
+    await reportedOnScreen(false);
+    /* A few animation frames for the field to notice, then 500 ms, well before the reveal,
+       started about 400 ms earlier, would have reached the right edge. */
+    await page.clock.runFor(100);
+    const offScreenFrom = await frameRequests();
+    await page.clock.runFor(500);
+    expect(
+      (await frameRequests()) - offScreenFrom,
+      'animation frames the page requests during 500 ms with the tick-field off screen, its reveal unfinished',
+    ).toBe(0);
+
+    /* The visitor scrolls back up to the tick-field; time then moves by 2 s, more than the
+       whole reveal. */
+    await tickField.scrollIntoViewIfNeeded();
+    await reportedOnScreen(true);
+    await page.clock.runFor(2000);
+
+    const { columns, scale } = await pixelsNotOfBackgroundPerColumn(tickField, await tickField.screenshot());
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const width = fieldBox!.width;
+
+    /* The width split into adjacent vertical bands, at least 40px wide each: the first starts
+       at the left edge, the last ends at the right edge. Every band must show drawn pixels:
+       the reveal went on to the right edge. */
+    const MIN_BAND_WIDTH = 40;
+    const bandCount = Math.max(1, Math.floor(width / MIN_BAND_WIDTH));
+    const bandWidth = width / bandCount;
+    const emptyBands: string[] = [];
+    for (let band = 0; band < bandCount; band++) {
+      const fromColumn = Math.round(band * bandWidth * scale);
+      const toColumn = Math.round((band + 1) * bandWidth * scale);
+      if (!columns.slice(fromColumn, toColumn).some((count) => count > 0)) {
+        emptyBands.push(`${Math.round(band * bandWidth)}–${Math.round((band + 1) * bandWidth)}px`);
+      }
+    }
+    expect(
+      emptyBands,
+      `bands of the ${Math.round(width)}px-wide tick-field with no drawn pixel, 2 s after it was scrolled back on screen`,
+    ).toEqual([]);
+  });
 });
