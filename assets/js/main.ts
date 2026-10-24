@@ -26,6 +26,16 @@ function scramble(text: string, clearCount = 0): string {
     .join('');
 }
 
+/* The final text stays in the box, invisible, so the box keeps its size while
+   the visible text changes. */
+function invisibleSizer(text: string): HTMLSpanElement {
+  const sizer = document.createElement('span');
+  sizer.setAttribute('aria-hidden', 'true');
+  sizer.style.visibility = 'hidden';
+  sizer.textContent = text;
+  return sizer;
+}
+
 /* Right after load, every letter of the text is replaced by a sign, then the
    text decodes left to right. The text stays available to assistive
    technologies through aria-label. */
@@ -39,14 +49,8 @@ class ScrambleText extends HTMLElement {
 
   private shown = document.createElement('span');
 
-  /* The final text stays in the box, invisible, so the box keeps its size while
-     the visible text changes. */
   private decode(text: string): void {
-    const sizer = document.createElement('span');
-    sizer.setAttribute('aria-hidden', 'true');
-    sizer.style.visibility = 'hidden';
-    sizer.textContent = text;
-    this.replaceChildren(sizer, this.shown);
+    this.replaceChildren(invisibleSizer(text), this.shown);
     this.shown.textContent = scramble(text);
     const delayMs = Number(this.getAttribute('delay')) || 0;
     setTimeout(() => this.revealLeftToRight(text), delayMs);
