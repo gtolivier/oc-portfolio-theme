@@ -110,6 +110,8 @@ const FIELD_HOVER_RADIUS_PX = 40;
 
 const FIELD_HOVER_TICK_WIDTH_PX = 2;
 
+const FIELD_TRAIL_FADE_MS = 1000;
+
 /* A decorative canvas covering the whole box, behind the content. */
 class TickField extends HTMLElement {
   connectedCallback(): void {
@@ -120,9 +122,34 @@ class TickField extends HTMLElement {
       const box = this.getBoundingClientRect();
       this.pointerX = event.clientX - box.left;
       this.pointerY = event.clientY - box.top;
+      this.leftAt = undefined;
       this.draw(canvas, this.progress);
     });
+    this.addEventListener('pointerleave', () => this.fadeTrail(canvas));
     this.revealLeftToRight(canvas);
+  }
+
+  private leftAt: number | undefined;
+
+  private fadeTrail(canvas: HTMLCanvasElement): void {
+    this.leftAt = performance.now();
+    const step = (): void => {
+      if (this.leftAt === undefined) return;
+      if (performance.now() - this.leftAt >= FIELD_TRAIL_FADE_MS) {
+        this.pointerX = undefined;
+        this.pointerY = undefined;
+        this.leftAt = undefined;
+      } else {
+        requestAnimationFrame(step);
+      }
+      this.draw(canvas, this.progress);
+    };
+    requestAnimationFrame(step);
+  }
+
+  private trailAlpha(): number {
+    if (this.leftAt === undefined) return 1;
+    return Math.max(0, 1 - (performance.now() - this.leftAt) / FIELD_TRAIL_FADE_MS);
   }
 
   private progress = 0;
@@ -160,7 +187,7 @@ class TickField extends HTMLElement {
     if (this.pointerX === undefined || this.pointerY === undefined) return;
     if (Math.abs(x - this.pointerX) >= FIELD_HOVER_RADIUS_PX) return;
     const tickColor = context.fillStyle;
-    context.globalAlpha = 1;
+    context.globalAlpha = this.trailAlpha();
     context.fillStyle = getComputedStyle(this).getPropertyValue('--color-accent').trim();
     context.fillRect(x, this.pointerY - FIELD_HOVER_RADIUS_PX, FIELD_HOVER_TICK_WIDTH_PX, 2 * FIELD_HOVER_RADIUS_PX);
     context.fillStyle = tickColor;
