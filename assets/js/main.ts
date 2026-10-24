@@ -110,6 +110,10 @@ class TickField extends HTMLElement {
     const canvas = document.createElement('canvas');
     canvas.setAttribute('aria-hidden', 'true');
     this.prepend(canvas);
+    this.revealLeftToRight(canvas);
+  }
+
+  private revealLeftToRight(canvas: HTMLCanvasElement): void {
     const start = performance.now();
     const step = (): void => {
       const elapsedMs = performance.now() - start - FIELD_REVEAL_DELAY_MS;
@@ -127,7 +131,7 @@ class TickField extends HTMLElement {
     if (!context) return;
     context.fillStyle = getComputedStyle(this).color;
     const front = progress * canvas.width;
-    for (let x = 0; x < front; x +=FIELD_TICK_SPACING_PX) {
+    for (let x = 0; x < front; x += FIELD_TICK_SPACING_PX) {
       context.fillRect(x, 0, FIELD_TICK_WIDTH_PX, canvas.height);
     }
   }
