@@ -16,8 +16,8 @@ function isWhitespace(character: string): boolean {
   return /\s/.test(character);
 }
 
-function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function reducedMotionQuery(): MediaQueryList {
+  return window.matchMedia('(prefers-reduced-motion: reduce)');
 }
 
 function decodeDurationMs(letterCount: number): number {
@@ -55,37 +55,42 @@ class ScrambleText extends HTMLElement {
 
   private decode(text: string): void {
     this.replaceChildren(invisibleSizer(text), this.shown);
-    if (prefersReducedMotion()) {
+    const reducedMotion = reducedMotionQuery();
+    if (reducedMotion.matches) {
       this.shown.textContent = text;
       return;
     }
     this.shown.textContent = scramble(text);
     const delayMs = Number(this.getAttribute('delay')) || 0;
-    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const startTimer = setTimeout(() => this.revealLeftToRight(text), delayMs);
-    query.addEventListener('change', () => {
-      if (!query.matches) return;
-      clearTimeout(startTimer);
-      clearInterval(this.tickTimer);
-      this.shown.textContent = text;
+    this.startTimer = setTimeout(() => this.revealLeftToRight(text), delayMs);
+    reducedMotion.addEventListener('change', () => {
+      if (reducedMotion.matches) this.showInClearAtOnce(text);
     });
   }
 
+  private startTimer: ReturnType<typeof setTimeout> | undefined;
+
   private tickTimer: ReturnType<typeof setInterval> | undefined;
+
+  private showInClearAtOnce(text: string): void {
+    clearTimeout(this.startTimer);
+    clearInterval(this.tickTimer);
+    this.shown.textContent = text;
+  }
 
   private revealLeftToRight(text: string): void {
     const letterCount = Array.from(text).length;
     const totalTicks = decodeDurationMs(letterCount) / TICK_MS;
     let tick = 0;
-    const timer = (this.tickTimer = setInterval(() => {
+    this.tickTimer = setInterval(() => {
       tick += 1;
       if (tick >= totalTicks) {
-        clearInterval(timer);
+        clearInterval(this.tickTimer);
         this.shown.textContent = text;
         return;
       }
       this.shown.textContent = scramble(text, Math.floor((tick / totalTicks) * letterCount));
-    }, TICK_MS));
+    }, TICK_MS);
   }
 }
 
