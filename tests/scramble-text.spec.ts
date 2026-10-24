@@ -72,4 +72,20 @@ test.describe('catalog: scramble-text', () => {
       expect(SIGNS, `"${character}", shown in "${shown}", is one of the signs`).toContain(character);
     }
   });
+
+  test('1.5 s after load, a short scramble-text shows its text in clear', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it: animation frames and timers then run as they would in 1.5 s. */
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.clock.install({ time: new Date('2026-01-01T09:00:00') });
+    await page.clock.pauseAt(new Date('2026-01-01T09:00:00'));
+    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text/`);
+    /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text.md),
+       whose text is a single short word: "Échappement". */
+    const scrambleText = page.getByRole('main').locator('scramble-text');
+    await expect(scrambleText).toHaveCount(1);
+    await page.clock.runFor(1500);
+    expect(await textOnScreen(scrambleText)).toBe('Échappement');
+  });
 });
