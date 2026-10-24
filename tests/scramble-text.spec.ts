@@ -402,4 +402,37 @@ test.describe('catalog: scramble-text', () => {
     await expect(scrambleText).toHaveCount(1);
     expect(await textOnScreen(scrambleText)).toBe('Échappement');
   });
+
+  test('if the visitor turns on reduced motion while a scramble-text decodes, its text is in clear at once', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it to the middle of the decoding. */
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text/`);
+    /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text.md),
+       whose text is "Échappement": in clear 1.5 s after load. */
+    const scrambleText = page.getByRole('main').locator('scramble-text');
+    await expect(scrambleText).toHaveCount(1);
+    const word = 'Échappement';
+    /* Halfway through the decoding, 750 ms after load, some letters are still scrambled. */
+    await page.clock.runFor(750);
+    const midway = await textOnScreen(scrambleText);
+    expect(Array.from(midway), `at 750 ms, "${midway}" shows one character per letter of "${word}"`).toHaveLength(word.length);
+    expect(
+      Array.from(midway).some((character) => SIGNS.includes(character)),
+      `at 750 ms, "${midway}" still shows signs in place of some letters`,
+    ).toBe(true);
+    /* The visitor then asks for reduced motion. Time moves by a single 25 ms step, far less
+       than the 750 ms of decoding left, then stands still again: the text is in clear
+       without waiting for the decoding to end. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.clock.runFor(25);
+    await expect
+      .poll(() => textOnScreen(scrambleText), {
+        message: 'once reduced motion is on, the text is in clear without the decoding going on',
+        timeout: 2000,
+      })
+      .toBe(word);
+  });
 });
