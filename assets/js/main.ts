@@ -125,18 +125,23 @@ class TickField extends HTMLElement {
     canvas.setAttribute('aria-hidden', 'true');
     this.prepend(canvas);
     this.addEventListener('pointermove', (event) => {
-      const box = this.getBoundingClientRect();
-      this.pointerX = event.clientX - box.left;
-      this.pointerY = event.clientY - box.top;
+      const { x, y } = this.localPoint(event);
+      this.pointerX = x;
+      this.pointerY = y;
       this.leftAt = undefined;
       this.draw(canvas, this.progress);
     });
     this.addEventListener('pointerleave', () => this.fadeTrail(canvas));
     this.addEventListener('click', (event) => {
-      const box = this.getBoundingClientRect();
-      this.startRipple(canvas, event.clientX - box.left, event.clientY - box.top);
+      const { x, y } = this.localPoint(event);
+      this.startRipple(canvas, x, y);
     });
     this.revealLeftToRight(canvas);
+  }
+
+  private localPoint(event: MouseEvent): { x: number; y: number } {
+    const box = this.getBoundingClientRect();
+    return { x: event.clientX - box.left, y: event.clientY - box.top };
   }
 
   private leftAt: number | undefined;
@@ -161,7 +166,7 @@ class TickField extends HTMLElement {
     if (!this.ripple) return;
     const age = this.rippleAge();
     context.globalAlpha = Math.max(0, 1 - age / FIELD_RIPPLE_DURATION_MS);
-    context.strokeStyle = getComputedStyle(this).getPropertyValue('--color-accent').trim();
+    context.strokeStyle = this.accentColor();
     context.lineWidth = FIELD_RIPPLE_LINE_WIDTH_PX;
     context.beginPath();
     context.arc(this.ripple.x, this.ripple.y, age * FIELD_RIPPLE_SPEED_PX_PER_MS, 0, 2 * Math.PI);
@@ -226,9 +231,13 @@ class TickField extends HTMLElement {
     if (Math.abs(x - this.pointerX) >= FIELD_HOVER_RADIUS_PX) return;
     const tickColor = context.fillStyle;
     context.globalAlpha = this.trailAlpha();
-    context.fillStyle = getComputedStyle(this).getPropertyValue('--color-accent').trim();
+    context.fillStyle = this.accentColor();
     context.fillRect(x, this.pointerY - FIELD_HOVER_RADIUS_PX, FIELD_HOVER_TICK_WIDTH_PX, 2 * FIELD_HOVER_RADIUS_PX);
     context.fillStyle = tickColor;
+  }
+
+  private accentColor(): string {
+    return getComputedStyle(this).getPropertyValue('--color-accent').trim();
   }
 
   /* Brighter from left to right. */
