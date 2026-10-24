@@ -2,6 +2,8 @@
 
 const SIGNS = ['|', '/', '\\', '<', '>', '[', ']', '{', '}', '=', '+', '#', '·'];
 
+const CLEAR_DELAY_MS = 1500;
+
 function randomSign(): string {
   return SIGNS[Math.floor(Math.random() * SIGNS.length)];
 }
@@ -24,6 +26,9 @@ class ScrambleText extends HTMLElement {
     this.setAttribute('role', 'text');
     this.setAttribute('aria-label', text);
     this.textContent = scramble(text);
+    setTimeout(() => {
+      this.textContent = text;
+    }, CLEAR_DELAY_MS);
   }
 }
 
