@@ -583,4 +583,69 @@ test.describe('catalog: tick-field', () => {
       `zones about ${NEAR_RADIUS}px to the right and left of the click point at (${Math.round(point.x)}, ${Math.round(point.y)})px whose brightness above the background, 600 ms after the click, differs by more than 10% from what they showed before it`,
     ).toEqual([]);
   });
+
+  test('the ripple fades: once revealed, 2 s after the click, every vertical band of the tick-field, from the left edge to the right edge, is back to the brightness it showed just before the click', async ({ page, context, hasTouch }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await tickField.scrollIntoViewIfNeeded();
+    /* Fully revealed. */
+    await page.clock.runFor(2000);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const width = fieldBox!.width;
+    /* The centre of the field: whatever the ripple left, on any side of the click point, lies
+       inside the field. */
+    const point = { x: width / 2, y: fieldBox!.height / 2 };
+    const onScreen = { x: fieldBox!.x + point.x, y: fieldBox!.y + point.y };
+
+    /* The width split into adjacent vertical bands, at least 40px wide each and as high as the
+       field: the first starts at the left edge, the last ends at the right edge. Together they
+       cover the whole field, every place the ring crossed and every place it would still be
+       on, about 560px from the click point, had it not faded. */
+    const MIN_BAND_WIDTH = 40;
+    const bandCount = Math.max(1, Math.floor(width / MIN_BAND_WIDTH));
+    const bandWidth = width / bandCount;
+    const bands = Array.from({ length: bandCount }, (_, band) => ({
+      x: band * bandWidth,
+      y: 0,
+      width: bandWidth,
+      height: fieldBox!.height,
+    }));
+    const brightness = async (): Promise<number[]> => {
+      const screenshot = await tickField.screenshot();
+      return Promise.all(bands.map((band) => luminanceAboveBackgroundInRectangle(tickField, screenshot, band)));
+    };
+
+    /* With a fine pointer, a click first brings the pointer over the click point, which lights
+       the ticks under it: the pointer hovers it already before the click, so that both
+       measures show the same hover and differ by the ripple alone. */
+    if (!hasTouch) await page.mouse.move(onScreen.x, onScreen.y);
+    await page.clock.runFor(300);
+    const before = await brightness();
+
+    if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
+    else await page.mouse.click(onScreen.x, onScreen.y);
+    await page.clock.runFor(2000);
+    const after = await brightness();
+
+    /* Back to what each band showed before the click, within 5%. */
+    const changedBands = bands
+      .map((band, index) => ({ band, before: before[index], after: after[index] }))
+      .filter(({ before, after }) => Math.abs(after - before) > 0.05 * before)
+      .map(
+        ({ band, before, after }) =>
+          `${Math.round(band.x)}–${Math.round(band.x + band.width)}px: ${Math.round(before)} → ${Math.round(after)}`,
+      );
+    expect(
+      changedBands,
+      `bands of the ${Math.round(width)}px-wide tick-field whose brightness above the background, 2 s after the click at (${Math.round(point.x)}, ${Math.round(point.y)})px, differs by more than 5% from what they showed just before it`,
+    ).toEqual([]);
+  });
 });
