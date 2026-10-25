@@ -11,6 +11,7 @@ import {
   countPixelsNotOfBackground,
   drawnStrokesInRectangle,
   heightsOfDrawnRunsInRectangle,
+  horizontalBandsWithoutDrawnPixels,
   luminanceAboveBackgroundInRectangle,
   luminanceAboveBackgroundPerColumn,
   pixelsNotOfBackgroundPerColumn,
@@ -932,6 +933,79 @@ test.describe('catalog: tick-field', () => {
       Math.abs(centreAfter - centreBefore),
       `change in brightness above the background of the 30px square at the click point (${Math.round(point.x)}, ${Math.round(point.y)})px, 300 ms after the click (${Math.round(centreBefore)} before → ${Math.round(centreAfter)})`,
     ).toBeLessThanOrEqual(0.1 * centreBefore);
+  });
+
+  test('the ripple lights the ticks themselves: once revealed, 300 ms after the click, a zone the ring crosses about 84px to the left of the click point is brighter than just before the click, yet still shows, between its rows of ticks, as many horizontal bands at least 4px high with no drawn pixel as it did before the click', async ({ page, context, hasTouch }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await tickField.scrollIntoViewIfNeeded();
+    /* Fully revealed. */
+    await page.clock.runFor(2000);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    /* The ring grows about 0.28px per ms: 300 ms after the click, it is about 84px from the
+       click point. The zone straddles it to the left of the click point, 20px deep across it
+       and 64px long along it, so that it holds several rows of ticks and the gaps between
+       them, which the ring runs across. The click point is at mid-height, 20px short of
+       putting the zone against the left edge: the zone lies in the dim left part on every
+       screen, where the ticks are short and the gaps between rows wide. It is far enough from
+       the click point for the ring alone to light it, not the glow of a pointer hovering the
+       click point. */
+    const RADIUS = 84;
+    const DEPTH = 20;
+    const LENGTH = 64;
+    const point = { x: RADIUS + DEPTH / 2 + 20, y: fieldBox!.height / 2 };
+    const onScreen = { x: fieldBox!.x + point.x, y: fieldBox!.y + point.y };
+    const zone = { x: point.x - RADIUS - DEPTH / 2, y: point.y - LENGTH / 2, width: DEPTH, height: LENGTH };
+    const describeZone = `(${Math.round(zone.x)}–${Math.round(zone.x + zone.width)}px, ${Math.round(zone.y)}–${Math.round(zone.y + zone.height)}px)`;
+
+    /* The zone's brightness above the background, and its horizontal bands at least 4px high
+       with no drawn pixel between two rows of drawn pixels: the empty gaps between its rows of
+       ticks. */
+    const MIN_BAND_HEIGHT = 4;
+    const measure = async (): Promise<{ brightness: number; emptyBands: string[] }> => {
+      const screenshot = await tickField.screenshot();
+      const { rows, scale } = await pixelsNotOfBackgroundPerRow(tickField, screenshot, zone);
+      return {
+        brightness: await luminanceAboveBackgroundInRectangle(tickField, screenshot, zone),
+        emptyBands: horizontalBandsWithoutDrawnPixels(rows, scale, MIN_BAND_HEIGHT),
+      };
+    };
+
+    /* With a fine pointer, a click first brings the pointer over the click point, which lights
+       the ticks under it: the pointer hovers it already before the click, so that both
+       measures show the same hover and differ by the ripple alone. */
+    if (!hasTouch) await page.mouse.move(onScreen.x, onScreen.y);
+    await page.clock.runFor(300);
+    const before = await measure();
+    expect(
+      before.emptyBands.length,
+      `empty horizontal bands at least ${MIN_BAND_HEIGHT}px high between rows of ticks in the zone ${describeZone}, before the click`,
+    ).toBeGreaterThanOrEqual(2);
+
+    if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
+    else await page.mouse.click(onScreen.x, onScreen.y);
+    await page.clock.runFor(300);
+    const after = await measure();
+
+    /* The ring is there: the zone shows more than 1.25 times the brightness it showed before
+       the click. */
+    expect(
+      after.brightness,
+      `brightness above the background of the zone ${describeZone}, about ${RADIUS}px to the left of the click point at (${Math.round(point.x)}, ${Math.round(point.y)})px, 300 ms after the click, against ${Math.round(before.brightness)} just before it`,
+    ).toBeGreaterThan(1.25 * before.brightness);
+    /* Yet it lights the ticks alone: the gaps between their rows stay empty. */
+    expect(
+      after.emptyBands.length,
+      `empty horizontal bands at least ${MIN_BAND_HEIGHT}px high between rows of ticks in the zone ${describeZone}, which the ring crosses 300 ms after the click (after: ${after.emptyBands.join(', ') || 'none'}; before: ${before.emptyBands.join(', ')})`,
+    ).toBe(before.emptyBands.length);
   });
 
   test('the ripple spreads: once revealed, 600 ms after the click, a zone to the left of the click point, about 168px from it, is brighter than just before the click, while the zones to its right and left about 84px from it, which the ring lit 300 ms after the click, are back to what they showed before it', async ({ page, context, hasTouch }) => {

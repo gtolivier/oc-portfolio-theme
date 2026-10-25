@@ -80,14 +80,38 @@ export async function pixelsNotOfBackgroundPerColumn(
 
 /* Where the pixels of the screenshot of an element differ from the element's background
    colour by more than a rounding error on a channel: for each row of the screenshot, from top
-   to bottom, the number of such pixels. `scale` is the number of screenshot rows (and
-   columns) per CSS pixel of the element's size. */
+   to bottom, the number of such pixels. With a `rectangle` (CSS pixels, relative to the
+   element's box), only the pixels inside it count; the rows outside it count 0. `scale` is the
+   number of screenshot rows (and columns) per CSS pixel of the element's size. */
 export async function pixelsNotOfBackgroundPerRow(
   element: Locator,
   screenshot: Buffer,
+  rectangle?: Rectangle,
 ): Promise<{ rows: number[]; scale: number }> {
-  const { notOfBackgroundPerRow, scale } = await columnsOverBackground(element, screenshot);
+  const { notOfBackgroundPerRow, scale } = await columnsOverBackground(element, screenshot, rectangle);
   return { rows: notOfBackgroundPerRow, scale };
+}
+
+/* The horizontal bands, at least `minBandHeight` CSS pixels high each, that show no drawn pixel
+   between two rows of drawn pixels: given, for each row of a screenshot, a count of drawn
+   pixels (as pixelsNotOfBackgroundPerRow counts them) and `scale`, the number of screenshot
+   rows per CSS pixel, each run of adjacent rows without any, with rows that show some both
+   above and below it, is described by its extent ("132.0–144.0px"), from top to bottom. */
+export function horizontalBandsWithoutDrawnPixels(rows: number[], scale: number, minBandHeight = 4): string[] {
+  const firstDrawn = rows.findIndex((count) => count > 0);
+  const lastDrawn = rows.findLastIndex((count) => count > 0);
+  const bands: string[] = [];
+  let bandStart = -1;
+  for (let row = firstDrawn + 1; firstDrawn >= 0 && row <= lastDrawn; row++) {
+    if (rows[row] === 0 && bandStart < 0) bandStart = row;
+    if (rows[row] > 0 && bandStart >= 0) {
+      if ((row - bandStart) / scale >= minBandHeight) {
+        bands.push(`${(bandStart / scale).toFixed(1)}–${(row / scale).toFixed(1)}px`);
+      }
+      bandStart = -1;
+    }
+  }
+  return bands;
 }
 
 /* Number of separate vertical strokes drawn between two columns of a screenshot (from
