@@ -1554,6 +1554,78 @@ test.describe('catalog: tick-field', () => {
     ).toEqual([]);
   });
 
+  test('ripples add up: once revealed, 300 ms after a first click (a tap on mobile), a second click elsewhere in the tick-field leaves the first ripple running alongside the new one: 300 ms after the second click, a zone to the left of the first click point, about 168px from it, and a zone above the second click point, about 84px from it, are both brighter than just before the first click', async ({ page, context, hasTouch }) => {
+    const tickField = await openEmptyTickField(page, context);
+    await tickField.scrollIntoViewIfNeeded();
+    /* Fully revealed. */
+    await page.clock.runFor(2000);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    /* The ring grows about 0.28px per ms: 600 ms after the first click its ring is about 168px
+       from the first click point, and 300 ms after the second click that ring is about 84px from
+       the second click point. Each zone straddles its ring, 20px deep across it and 40px long
+       along it. */
+    const FIRST_RADIUS = 168;
+    const SECOND_RADIUS = 84;
+    const DEPTH = 20;
+    const LENGTH = 40;
+    /* The first click point is at mid-height, 20px short of putting its zone against the left
+       edge, in the dim left part on every screen. The second one is 120px to its right, inside
+       a phone's field too: its zone, above it, lies about 290px from the first zone, which the
+       second ring cannot reach, and both zones are far enough from both click points for the
+       rings alone to light them, not the glow of a pointer hovering a click point. */
+    const first = { x: FIRST_RADIUS + DEPTH / 2 + 20, y: fieldBox!.height / 2 };
+    const second = { x: first.x + 120, y: first.y };
+    const onScreen = (point: { x: number; y: number }) => ({ x: fieldBox!.x + point.x, y: fieldBox!.y + point.y });
+    const zones = [
+      {
+        name: `about ${FIRST_RADIUS}px to the left of the first click point (${Math.round(first.x)}, ${Math.round(first.y)})px`,
+        rectangle: { x: first.x - FIRST_RADIUS - DEPTH / 2, y: first.y - LENGTH / 2, width: DEPTH, height: LENGTH },
+      },
+      {
+        name: `about ${SECOND_RADIUS}px above the second click point (${Math.round(second.x)}, ${Math.round(second.y)})px`,
+        rectangle: { x: second.x - LENGTH / 2, y: second.y - SECOND_RADIUS - DEPTH / 2, width: LENGTH, height: DEPTH },
+      },
+    ];
+    expect(
+      second.x + LENGTH / 2 <= fieldBox!.width,
+      `the second click point and its zone lie inside the ${Math.round(fieldBox!.width)}px-wide tick-field`,
+    ).toBe(true);
+
+    const brightness = async (): Promise<number[]> => {
+      const screenshot = await tickField.screenshot();
+      return Promise.all(zones.map((zone) => luminanceAboveBackgroundInRectangle(tickField, screenshot, zone.rectangle)));
+    };
+    const click = async (point: { x: number; y: number }): Promise<void> => {
+      const { x, y } = onScreen(point);
+      if (hasTouch) await page.touchscreen.tap(x, y);
+      else await page.mouse.click(x, y);
+    };
+
+    /* With a fine pointer, a click first brings the pointer over the click point, which lights
+       the ticks under it: the pointer hovers the first click point already before the click. */
+    if (!hasTouch) await page.mouse.move(onScreen(first).x, onScreen(first).y);
+    await page.clock.runFor(300);
+    const before = await brightness();
+
+    await click(first);
+    await page.clock.runFor(300);
+    await click(second);
+    await page.clock.runFor(300);
+    const after = await brightness();
+
+    /* Both rings: more than 1.25 times what each zone showed before the first click. */
+    const dimZones = zones
+      .map((zone, index) => ({ zone, before: before[index], after: after[index] }))
+      .filter(({ before, after }) => !(after > 1.25 * before))
+      .map(({ zone, before, after }) => `${zone.name}: ${Math.round(before)} → ${Math.round(after)}`);
+    expect(
+      dimZones,
+      'zones that do not show more than 1.25 times the brightness above the background they showed before the first click, 600 ms after it and 300 ms after the second click',
+    ).toEqual([]);
+  });
+
   test('the ripple lasts more than a second: once revealed, 1.2 s after the click, a zone down and to the left of the click point, at 45°, about 336px from it, is brighter than just before the click', async ({ page, context, hasTouch }) => {
     const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
