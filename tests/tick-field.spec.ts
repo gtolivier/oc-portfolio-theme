@@ -13,6 +13,7 @@ import {
   heightsOfDrawnRunsInRectangle,
   horizontalBandsWithoutDrawnPixels,
   luminanceAboveBackgroundInRectangle,
+  luminanceAboveBackgroundInRectangles,
   luminanceAboveBackgroundPerColumn,
   pixelsNotOfBackgroundPerColumn,
   pixelsNotOfBackgroundPerRow,
@@ -1211,6 +1212,124 @@ test.describe('catalog: tick-field', () => {
       after,
       `brightness above the background of the 30px square at (${Math.round(zone.x)}, ${Math.round(zone.y)})px, about ${RADIUS}px down and to the left of the click point at (${Math.round(point.x)}, ${Math.round(point.y)})px, 1.2 s after the click, against ${Math.round(before)} just before it`,
     ).toBeGreaterThan(1.25 * before);
+  });
+
+  test('the ripple is strongest at the middle of its ring and fades towards its edges, and is gone 1.7 s after the click: once revealed, 300 ms after the click, the ticks at the middle of the ring, about 84px from the click point, gain more than 1.5 times as much brightness as those 12 to 22px inside it, and as those 12 to 22px outside it, which still gain some; 1.7 s after the click, every vertical band of the tick-field is back to the brightness it showed just before the click', async ({ page, context, hasTouch }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await tickField.scrollIntoViewIfNeeded();
+    /* Fully revealed. */
+    await page.clock.runFor(2000);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const width = fieldBox!.width;
+    const height = fieldBox!.height;
+    /* The ring grows about 0.28px per ms: 300 ms after the click, its middle is about 84px
+       from the click point. The ticks measured lie to the left of the click point, within 22px
+       of that circle on either side; the click point is at mid-height, 20px short of putting
+       the farthest of them against the left edge: they lie in the dim left part on every
+       screen, where the ripple's light shows plainly over the ticks' own. All of them are more
+       than 60px from the click point, far enough for the ring alone to light them, not the
+       glow of a pointer hovering the click point. */
+    const RADIUS = 84;
+    const MIDDLE = 7;
+    const EDGE_FROM = 12;
+    const EDGE_TO = 22;
+    const point = { x: RADIUS + EDGE_TO + 20, y: height / 2 };
+    const onScreen = { x: fieldBox!.x + point.x, y: fieldBox!.y + point.y };
+
+    /* With a fine pointer, a click first brings the pointer over the click point, which lights
+       the ticks under it: the pointer hovers it already before the click, so that the measures
+       show the same hover and differ by the ripple alone. */
+    if (!hasTouch) await page.mouse.move(onScreen.x, onScreen.y);
+    await page.clock.runFor(300);
+    const beforeScreenshot = await tickField.screenshot();
+
+    /* The ticks to the left of the click point, as drawn just before the click, sorted by how
+       far their centre lies from the middle of the ring: at its middle, within 7px of it, or
+       12 to 22px inside or outside it. Each tick is measured in its box widened by 2px on
+       either side and 5px above and below, so that its light counts even if the ripple draws
+       it a little wider or taller; the boxes of two ticks never overlap. */
+    const ticks = await drawnStrokesInRectangle(tickField, beforeScreenshot, { x: 0, y: 0, width: point.x, height });
+    const groups = [
+      { name: 'at the middle of the ring', offsets: [-MIDDLE, MIDDLE] },
+      { name: `${EDGE_FROM} to ${EDGE_TO}px inside the ring`, offsets: [-EDGE_TO, -EDGE_FROM] },
+      { name: `${EDGE_FROM} to ${EDGE_TO}px outside the ring`, offsets: [EDGE_FROM, EDGE_TO] },
+    ].map((group) => ({
+      ...group,
+      boxes: ticks
+        .filter((tick) => {
+          const offset = Math.hypot(tick.x + tick.width / 2 - point.x, tick.y + tick.height / 2 - point.y) - RADIUS;
+          return offset >= group.offsets[0] && offset <= group.offsets[1];
+        })
+        .map((tick) => ({ x: tick.x - 2, y: tick.y - 5, width: tick.width + 4, height: tick.height + 10 })),
+    }));
+    for (const group of groups) {
+      expect(group.boxes.length, `ticks ${group.name}, to the left of the click point`).toBeGreaterThanOrEqual(4);
+    }
+    const allBoxes = groups.flatMap((group) => group.boxes);
+    const beforeTicks = await luminanceAboveBackgroundInRectangles(tickField, beforeScreenshot, allBoxes);
+
+    /* The width split into adjacent vertical bands, at least 40px wide each and as high as the
+       field: together they cover every place the ring crossed. */
+    const MIN_BAND_WIDTH = 40;
+    const bandCount = Math.max(1, Math.floor(width / MIN_BAND_WIDTH));
+    const bandWidth = width / bandCount;
+    const bands = Array.from({ length: bandCount }, (_, band) => ({ x: band * bandWidth, y: 0, width: bandWidth, height }));
+    const beforeBands = await luminanceAboveBackgroundInRectangles(tickField, beforeScreenshot, bands);
+
+    if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
+    else await page.mouse.click(onScreen.x, onScreen.y);
+    await page.clock.runFor(300);
+    const afterTicks = await luminanceAboveBackgroundInRectangles(tickField, await tickField.screenshot(), allBoxes);
+
+    /* The mean brightness the ticks of each group gained over what they showed before the
+       click. */
+    let index = 0;
+    const gains = groups.map((group) => {
+      let gained = 0;
+      for (let tick = 0; tick < group.boxes.length; tick++, index++) gained += afterTicks[index] - beforeTicks[index];
+      return gained / group.boxes.length;
+    });
+    const [middleGain, ...edgeGains] = gains;
+    const describeGains = groups.map((group, i) => `${group.name}: ${Math.round(gains[i])}`).join('; ');
+    /* Strongest at the middle of the ring: more than 1.5 times what each edge gained. */
+    for (const [i, edgeGain] of edgeGains.entries()) {
+      expect(
+        middleGain,
+        `mean brightness gained by the ticks at the middle of the ring, about ${RADIUS}px from the click point at (${Math.round(point.x)}, ${Math.round(point.y)})px, 300 ms after the click, against those ${groups[i + 1].name} (${describeGains})`,
+      ).toBeGreaterThan(1.5 * edgeGain);
+    }
+    /* Fading towards the edges, not cut off: the edges still gain more than a tenth of what the
+       middle gained. */
+    for (const [i, edgeGain] of edgeGains.entries()) {
+      expect(
+        edgeGain,
+        `mean brightness gained by the ticks ${groups[i + 1].name}, 300 ms after the click at (${Math.round(point.x)}, ${Math.round(point.y)})px (${describeGains})`,
+      ).toBeGreaterThan(0.1 * middleGain);
+    }
+
+    /* 1.7 s after the click: every band back to what it showed before the click, within 5%. */
+    await page.clock.runFor(1400);
+    const afterBands = await luminanceAboveBackgroundInRectangles(tickField, await tickField.screenshot(), bands);
+    const changedBands = bands
+      .map((band, i) => ({ band, before: beforeBands[i], after: afterBands[i] }))
+      .filter(({ before, after }) => Math.abs(after - before) > 0.05 * before)
+      .map(
+        ({ band, before, after }) =>
+          `${Math.round(band.x)}–${Math.round(band.x + band.width)}px: ${Math.round(before)} → ${Math.round(after)}`,
+      );
+    expect(
+      changedBands,
+      `bands of the ${Math.round(width)}px-wide tick-field whose brightness above the background, 1.7 s after the click at (${Math.round(point.x)}, ${Math.round(point.y)})px, differs by more than 5% from what they showed just before it`,
+    ).toEqual([]);
   });
 
   test('the ripple fades: once revealed, 2 s after the click, every vertical band of the tick-field, from the left edge to the right edge, is back to the brightness it showed just before the click', async ({ page, context, hasTouch }) => {

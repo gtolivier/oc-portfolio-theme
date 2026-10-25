@@ -156,6 +156,55 @@ export async function luminanceAboveBackgroundInRectangle(
   return luminanceAboveBackground.reduce((sum, value) => sum + value, 0);
 }
 
+/* How much brighter than the element's background the screenshot of an element is inside each
+   of several rectangles of it (CSS pixels, relative to the element's box), in the same order:
+   for each rectangle, the sum over its pixels of their luma above the background's, as
+   luminanceAboveBackgroundInRectangle counts it. The screenshot is decoded once for all of
+   them. */
+export async function luminanceAboveBackgroundInRectangles(
+  element: Locator,
+  screenshot: Buffer,
+  rectangles: Rectangle[],
+): Promise<number[]> {
+  return element.evaluate(
+    async (el, [base64, zones]) => {
+      const TOLERANCE = 2;
+      const luma = (data: Uint8ClampedArray, i: number): number =>
+        0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const scale = image.width / el.getBoundingClientRect().width;
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true })!;
+      context.fillStyle = getComputedStyle(el).backgroundColor;
+      context.fillRect(0, 0, 1, 1);
+      const background = context.getImageData(0, 0, 1, 1).data;
+      const backgroundLuma = luma(background, 0);
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      return zones.map((zone) => {
+        const fromColumn = Math.max(0, Math.round(zone.x * scale));
+        const toColumn = Math.min(image.width, Math.round((zone.x + zone.width) * scale));
+        const fromRow = Math.max(0, Math.round(zone.y * scale));
+        const toRow = Math.min(image.height, Math.round((zone.y + zone.height) * scale));
+        let sum = 0;
+        for (let row = fromRow; row < toRow; row++) {
+          for (let column = fromColumn; column < toColumn; column++) {
+            const i = 4 * (row * image.width + column);
+            if (![0, 1, 2].some((channel) => Math.abs(pixels[i + channel] - background[channel]) > TOLERANCE)) continue;
+            sum += Math.max(0, luma(pixels, i) - backgroundLuma);
+          }
+        }
+        return sum;
+      });
+    },
+    [screenshot.toString('base64'), rectangles] as const,
+  );
+}
+
 /* Red, green and blue channels (0–255). */
 export type Channels = { red: number; green: number; blue: number };
 
