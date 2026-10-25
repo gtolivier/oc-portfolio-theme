@@ -395,9 +395,21 @@ class TickField extends HTMLElement {
 
   private drawLighting(drawing: FieldDrawing, x: number, y: number, tickHeight: number): void {
     const tickColor = drawing.context.fillStyle;
-    this.drawLitTick(drawing, x, y, tickHeight, this.hoverLighting(x, y, tickHeight));
-    this.drawLitTick(drawing, x, y, tickHeight, this.rippleLighting(x, y, tickHeight));
+    const hover = this.hoverLighting(x, y, tickHeight);
+    const ripple = this.rippleLighting(x, y, tickHeight);
+    /* The grown ends take the tick's own colour first, so the light over them reads as over the middle. */
+    const growth = this.growthAtEachEnd(Math.max(hover, ripple));
+    if (growth > 0) {
+      drawing.context.fillRect(x, y - growth, FIELD_TICK_WIDTH_PX, growth);
+      drawing.context.fillRect(x, y + tickHeight, FIELD_TICK_WIDTH_PX, growth);
+    }
+    this.drawLitTick(drawing, x, y, tickHeight, hover);
+    this.drawLitTick(drawing, x, y, tickHeight, ripple);
     drawing.context.fillStyle = tickColor;
+  }
+
+  private growthAtEachEnd(lighting: number): number {
+    return Math.round((FIELD_LIT_TICK_GROWTH_PX / 2) * Math.min(1, lighting));
   }
 
   private drawLitTick(drawing: FieldDrawing, x: number, y: number, tickHeight: number, lighting: number): void {
@@ -405,7 +417,7 @@ class TickField extends HTMLElement {
     const { context } = drawing;
     context.globalAlpha = lighting;
     context.fillStyle = drawing.litColor;
-    const growthAtEachEnd = Math.round((FIELD_LIT_TICK_GROWTH_PX / 2) * Math.min(1, lighting));
+    const growthAtEachEnd = this.growthAtEachEnd(lighting);
     context.fillRect(x, y - growthAtEachEnd, FIELD_TICK_WIDTH_PX, tickHeight + 2 * growthAtEachEnd);
   }
 
