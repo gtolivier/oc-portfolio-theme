@@ -177,6 +177,77 @@ export async function colourAddedOverBackgroundInRectangle(
   );
 }
 
+/* Where two screenshots of the same element, taken at different times, differ by more than a
+   rounding error on a channel: for each column of the screenshots, from left to right, the
+   number of such pixels inside a rectangle of the element (CSS pixels, relative to its box).
+   For an element without a background colour of its own, whose background is whatever shows
+   through it. `scale` is the number of screenshot columns per CSS pixel of the element's
+   width. */
+export async function pixelsChangedPerColumnInRectangle(
+  element: Locator,
+  before: Buffer,
+  after: Buffer,
+  rectangle: Rectangle,
+): Promise<{ columns: number[]; scale: number }> {
+  return element.evaluate(
+    async (el, [beforeBase64, afterBase64, zone]) => {
+      const TOLERANCE = 2;
+      const decode = async (base64: string): Promise<{ pixels: Uint8ClampedArray; width: number; height: number }> => {
+        const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+        const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext('2d', { willReadFrequently: true })!;
+        context.drawImage(image, 0, 0);
+        return { pixels: context.getImageData(0, 0, image.width, image.height).data, width: image.width, height: image.height };
+      };
+      const first = await decode(beforeBase64);
+      const second = await decode(afterBase64);
+      const width = Math.min(first.width, second.width);
+      const height = Math.min(first.height, second.height);
+      const scale = first.width / el.getBoundingClientRect().width;
+      const fromColumn = Math.max(0, Math.round(zone.x * scale));
+      const toColumn = Math.min(width, Math.round((zone.x + zone.width) * scale));
+      const fromRow = Math.max(0, Math.round(zone.y * scale));
+      const toRow = Math.min(height, Math.round((zone.y + zone.height) * scale));
+      const columns = new Array<number>(width).fill(0);
+      for (let row = fromRow; row < toRow; row++) {
+        for (let column = fromColumn; column < toColumn; column++) {
+          const i = 4 * (row * first.width + column);
+          const j = 4 * (row * second.width + column);
+          if ([0, 1, 2].some((channel) => Math.abs(first.pixels[i + channel] - second.pixels[j + channel]) > TOLERANCE)) {
+            columns[column] += 1;
+          }
+        }
+      }
+      return { columns, scale };
+    },
+    [before.toString('base64'), after.toString('base64'), rectangle] as const,
+  );
+}
+
+/* The vertical bands, at least `minBandWidth` CSS pixels wide each, into which a width of
+   `width` CSS pixels splits from its left edge to its right edge, that show no drawn pixel:
+   given, for each column of a screenshot, a count of drawn pixels (as
+   pixelsNotOfBackgroundPerColumn or pixelsChangedPerColumnInRectangle count them) and `scale`,
+   the number of screenshot columns per CSS pixel, each band without any is described by its
+   extent ("0–40px"). An empty list means the drawing reaches both edges and leaves no gap in
+   between. */
+export function bandsWithoutDrawnPixels(columns: number[], scale: number, width: number, minBandWidth = 40): string[] {
+  const bandCount = Math.max(1, Math.floor(width / minBandWidth));
+  const bandWidth = width / bandCount;
+  const emptyBands: string[] = [];
+  for (let band = 0; band < bandCount; band++) {
+    const fromColumn = Math.round(band * bandWidth * scale);
+    const toColumn = Math.round((band + 1) * bandWidth * scale);
+    if (!columns.slice(fromColumn, toColumn).some((count) => count > 0)) {
+      emptyBands.push(`${Math.round(band * bandWidth)}–${Math.round((band + 1) * bandWidth)}px`);
+    }
+  }
+  return emptyBands;
+}
+
 /* Number of pixels of the screenshot of an element that differ from the element's background
    colour by more than a rounding error on a channel. */
 export async function countPixelsNotOfBackground(element: Locator, screenshot: Buffer): Promise<number> {

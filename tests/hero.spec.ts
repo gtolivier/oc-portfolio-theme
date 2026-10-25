@@ -18,6 +18,7 @@ import {
 } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { tabUntilFocused } from './helpers/keyboard';
+import { bandsWithoutDrawnPixels, pixelsChangedPerColumnInRectangle } from './helpers/pixels';
 import { SIGNS, textOnScreen } from './helpers/text-on-screen';
 
 /* Checks that each tagline line is visible in the area, and that each one starts below the
@@ -528,6 +529,66 @@ test('on phone as on desktop, each hero button offers a target of at least 24 ×
     const box = (await button.boundingBox())!;
     expect.soft(box.width, `target width: ${name}`).toBeGreaterThanOrEqual(24);
     expect.soft(box.height, `target height: ${name}`).toBeGreaterThanOrEqual(24);
+  }
+});
+
+test('on phone as on desktop, the hero is a tick field drawn across its whole width, behind its text: 2 s after load, every vertical band of the empty strip below its buttons, from the left edge to the right edge, shows pixels that changed since right after load, and at the middle of the heading, the tagline, the stack and each button, the element under the pointer is that element, so a click lands on the button', async ({ page }) => {
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  /* The hero is the main content region named by its main heading. */
+  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  await expect(hero).toBeVisible();
+  const elements = {
+    'heading': hero.getByRole('heading', { level: 1 }),
+    'tagline': hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
+    'stack': hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
+    'first button, "Voir les projets"': hero.getByRole('link', { name: 'Voir les projets' }),
+    'second button, "Contact"': hero.getByRole('link', { name: 'Contact' }),
+  };
+  for (const [name, element] of Object.entries(elements)) await expect(element, name).toBeVisible();
+
+  /* Right after load: the first animation frame has run, before the field starts its reveal.
+     Then 2 s, long after the reveal, which sweeps the width in about 1.1 s, has reached the
+     right edge. */
+  await page.clock.runFor(16);
+  const rightAfterLoad = await hero.screenshot();
+  await page.clock.runFor(2000 - 16);
+  const twoSecondsLater = await hero.screenshot();
+
+  /* The strip of the hero below its buttons, the last of its content, down to its bottom
+     edge, across its whole width: no text shows there, and the heading's decoding does not
+     reach it, so a pixel that changed there shows the field. */
+  const heroBox = (await hero.boundingBox())!;
+  const buttonsBottom = Math.max(
+    ...(await Promise.all(
+      [elements['first button, "Voir les projets"'], elements['second button, "Contact"']].map(async (button) => {
+        const box = (await button.boundingBox())!;
+        return box.y + box.height;
+      }),
+    )),
+  );
+  const strip = { x: 0, y: buttonsBottom - heroBox.y + 4, width: heroBox.width, height: heroBox.y + heroBox.height - buttonsBottom - 4 };
+  expect(strip.height, 'height of the empty strip of the hero below its buttons').toBeGreaterThanOrEqual(16);
+  const { columns, scale } = await pixelsChangedPerColumnInRectangle(hero, rightAfterLoad, twoSecondsLater, strip);
+  expect(
+    bandsWithoutDrawnPixels(columns, scale, heroBox.width),
+    `bands of the ${Math.round(heroBox.width)}px-wide hero, in the strip below its buttons, with no pixel changed since right after load`,
+  ).toEqual([]);
+
+  /* Behind the text: at the middle of the first line box of each element (rather than of its
+     bounding box, so that the point stays on it even if it wraps), the element under the
+     pointer is that element or one of its descendants, not the field drawn over the hero. */
+  for (const [name, element] of Object.entries(elements)) {
+    const isUnderThePointer = await element.evaluate((el) => {
+      const firstLineBox = el.getClientRects()[0];
+      if (!firstLineBox) return false;
+      const hit = document.elementFromPoint(
+        firstLineBox.left + firstLineBox.width / 2,
+        firstLineBox.top + firstLineBox.height / 2,
+      );
+      return hit !== null && el.contains(hit);
+    });
+    expect.soft(isUnderThePointer, `at the middle of the ${name}, the element under the pointer is the ${name}`).toBe(true);
   }
 });
 
