@@ -239,6 +239,68 @@ test('on the French home page, the professional title that follows the author na
   });
 });
 
+test('on phone as on desktop, the hero heading follows the design’s spacing: name with a line height of 1.02, professional title with a line height of 1.3, both letter-spaced by -0.64 px within 0.02 px, and the title line starting 36 px below the name line from 768 px wide, 24 px on a phone, within 1.5 px', async ({ page, isMobile }) => {
+  /* Design reference: letter-spacing -0.02em set on the h1 itself, whose font size is the
+     browser default for an h1 (2em of 16 px = 32 px): both lines inherit -0.64 px. Name
+     line-height 1.02; title line-height 1.3 and margin-top 36px (24px on a phone). Desktop
+     projects are checked at a wide window and at 768 px wide, where the desktop spacing
+     starts; phone projects at their own size. */
+  const viewports = isMobile ? [page.viewportSize()!] : [{ width: 1280, height: 900 }, { width: 768, height: 1024 }];
+  const expectedGap = isMobile ? 24 : 36;
+  for (const viewport of viewports) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await page.setViewportSize(viewport);
+    await page.goto('/fr/');
+    await page.evaluate(() => document.fonts.ready);
+    const mainHeading = mainContentHeading(page);
+    /* Both lines in clear: the decoding is over. */
+    await expect(mainHeading).toHaveText(/^\s*Jean Exemple\s*Horloger indépendant\s*$/);
+
+    /* For each line: computed size, line height and letter spacing of the element holding its
+       text, and the top and bottom of its line boxes. A text's client rects cover its glyphs'
+       content area (or its line box); the line box extends it by half the leading on each
+       side, centred on it. */
+    const lines = await mainHeading.evaluate((root, texts) => texts.map((text) => {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const start = (node.textContent ?? '').indexOf(text);
+        if (start === -1) continue;
+        const style = getComputedStyle(node.parentElement!);
+        const fontSize = parseFloat(style.fontSize);
+        const lineHeight = parseFloat(style.lineHeight);
+        const range = document.createRange();
+        range.setStart(node, start);
+        range.setEnd(node, start + text.length);
+        const rects = Array.from(range.getClientRects()).filter((rect) => rect.width > 0);
+        const first = rects[0];
+        const last = rects[rects.length - 1];
+        return {
+          fontSize,
+          rawLineHeight: style.lineHeight,
+          lineHeight,
+          rawLetterSpacing: style.letterSpacing,
+          letterSpacing: parseFloat(style.letterSpacing),
+          lineTop: first.top - (lineHeight - first.height) / 2,
+          lineBottom: last.bottom + (lineHeight - last.height) / 2,
+        };
+      }
+      return null;
+    }), ['Jean Exemple', 'Horloger indépendant']);
+    const [name, title] = lines;
+    expect(name, `at ${size}, author name found`).not.toBeNull();
+    expect(title, `at ${size}, professional title found`).not.toBeNull();
+
+    expect.soft(name!.lineHeight / name!.fontSize, `at ${size}, name line height (${name!.rawLineHeight} for ${name!.fontSize}px)`).toBeCloseTo(1.02, 2);
+    expect.soft(title!.lineHeight / title!.fontSize, `at ${size}, title line height (${title!.rawLineHeight} for ${title!.fontSize}px)`).toBeCloseTo(1.3, 2);
+    /* Distance to -0.64 px; NaN while the letter spacing is `normal`. */
+    expect.soft(Math.abs(name!.letterSpacing + 0.64), `at ${size}, name letter spacing (${name!.rawLetterSpacing}) differs from -0.64px by`).toBeLessThanOrEqual(0.02);
+    expect.soft(Math.abs(title!.letterSpacing + 0.64), `at ${size}, title letter spacing (${title!.rawLetterSpacing}) differs from -0.64px by`).toBeLessThanOrEqual(0.02);
+    const gap = title!.lineTop - name!.lineBottom;
+    expect.soft(gap, `at ${size}, space between the bottom of the name line and the top of the title line`).toBeGreaterThanOrEqual(expectedGap - 1.5);
+    expect.soft(gap, `at ${size}, space between the bottom of the name line and the top of the title line`).toBeLessThanOrEqual(expectedGap + 1.5);
+  }
+});
+
 test('on the French home page, the hero heading decodes: right after load, its author name and professional title are scrambled, and 4 s later both are in clear', async ({ page }) => {
   /* Animations are allowed, and time stands still from before the page loads, until the
      test advances it: animation frames and timers then run as they would in 4 s. */
