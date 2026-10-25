@@ -272,18 +272,20 @@ tick-field > canvas {
   height: 100%;
 }
 
-/* A veil darkens its parent's centre and fades out towards the edges. */
+/* A veil darkens its parent's centre and fades out towards the edges. A
+   variant moves or reshapes it through --veil-shape, keeping its density. */
 .veil {
+  --veil-shape: closest-side;
   position: absolute;
   inset: 0;
-  background: radial-gradient(closest-side, rgb(var(--color-ink-channels) / 0.9), transparent);
+  background: radial-gradient(var(--veil-shape), rgb(var(--color-ink-channels) / 0.9), transparent);
   /* Behind the content, above the canvas that precedes it. */
   z-index: -1;
   pointer-events: none;
 }
 
-/* In the hero, the veil is densest at 38 % of the width and 55 % of the height
-   and fades out towards the edges. */
+/* In the hero, the veil's densest point follows the design rather than the
+   hero's centre. */
 .hero .veil {
-  background: radial-gradient(ellipse 45% 60% at 38% 55%, rgb(var(--color-ink-channels) / 0.9), transparent);
+  --veil-shape: ellipse 45% 60% at 38% 55%;
 }
