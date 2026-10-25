@@ -202,6 +202,26 @@ test.describe('catalog: scramble-text', () => {
     expect(await textOnScreen(scrambleTexts.nth(1))).toBe(long);
   });
 
+  test('with a short duration (0.6 s), a long scramble-text is in clear 0.6 s after it starts decoding: a sentence of over 90 letters is in clear 1 s after load', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it: animation frames and timers then run as they would in 1 s. */
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-duration/`);
+    /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text-duration.md),
+       a long sentence (over 90 letters) without a delay, whose duration is 600 ms: it starts
+       decoding at load. Without a duration, it would still be decoding until 2 s after load. */
+    const scrambleText = page.getByRole('main').locator('scramble-text');
+    await expect(scrambleText).toHaveCount(1);
+    const long = 'Un texte brouillé se décode de gauche à droite, une lettre après une autre, puis finit par se montrer entièrement en clair'.replace(/\s+/g, '');
+    expect(Array.from(long).length, 'the sentence has over 90 letters').toBeGreaterThan(90);
+    /* 1 s after load, safely past the 0.6 s duration and well before the 2 s it takes
+       without one, the whole sentence is in clear. */
+    await page.clock.runFor(1000);
+    expect(await textOnScreen(scrambleText)).toBe(long);
+  });
+
   test('while a scramble-text decodes, the accessible name of the heading that contains it is its final text', async ({ page, context }) => {
     await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Animations are allowed, and time stands still from before the page loads, until the
