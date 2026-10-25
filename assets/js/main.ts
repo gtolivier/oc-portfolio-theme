@@ -201,6 +201,9 @@ class TickField extends HTMLElement {
       if (reducedMotionQuery().matches) return;
       const { x, y } = this.localPoint(event);
       this.hovering = true;
+      /* The point the pointer leaves starts fading from now, however long it rested there. */
+      const previous = this.trail[this.trail.length - 1];
+      if (previous) previous.at = performance.now();
       this.trail.push({ x, y, at: performance.now() });
       this.fadeTrail(canvas);
     });
