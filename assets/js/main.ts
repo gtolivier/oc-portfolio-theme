@@ -206,7 +206,7 @@ class TickField extends HTMLElement {
   private rippleLighting(x: number, y: number, tickHeight: number): number {
     if (!this.ripple) return 0;
     const age = this.rippleAge();
-    const distance = Math.hypot(x + FIELD_TICK_WIDTH_PX / 2 - this.ripple.x, y + tickHeight / 2 - this.ripple.y);
+    const distance = this.distanceFromTick(x, y, tickHeight, this.ripple);
     const offset = distance - age * FIELD_RIPPLE_SPEED_PX_PER_MS;
     if (Math.abs(offset) > FIELD_RIPPLE_RING_HALF_WIDTH_PX) return 0;
     const spread = offset < 0 ? FIELD_RIPPLE_INNER_FALLOFF_PX : FIELD_RIPPLE_OUTER_FALLOFF_PX;
@@ -307,12 +307,12 @@ class TickField extends HTMLElement {
     for (let y = 0; y < height; y += FIELD_ROW_SPACING_PX) {
       context.globalAlpha = columnAlpha * this.rowAlphaFactor(y);
       context.fillRect(x, y, FIELD_TICK_WIDTH_PX, tickHeight);
-      this.drawRippleOnTick(context, x, y, tickHeight);
+      this.drawLighting(context, x, y, tickHeight);
     }
     context.globalAlpha = columnAlpha;
   }
 
-  private drawRippleOnTick(context: CanvasRenderingContext2D, x: number, y: number, tickHeight: number): void {
+  private drawLighting(context: CanvasRenderingContext2D, x: number, y: number, tickHeight: number): void {
     const tickColor = context.fillStyle;
     this.drawLitTick(context, x, y, tickHeight, this.hoverLighting(x, y, tickHeight), this.accentColor());
     this.drawLitTick(context, x, y, tickHeight, this.rippleLighting(x, y, tickHeight), this.rippleColor());
@@ -352,11 +352,16 @@ class TickField extends HTMLElement {
   private hoverLighting(x: number, y: number, tickHeight: number): number {
     let lighting = 0;
     for (const point of this.trail) {
-      const distance = Math.hypot(x + FIELD_TICK_WIDTH_PX / 2 - point.x, y + tickHeight / 2 - point.y);
+      const distance = this.distanceFromTick(x, y, tickHeight, point);
       if (distance >= FIELD_HOVER_RADIUS_PX) continue;
       lighting = Math.max(lighting, this.pointAlpha(point) * (1 - distance / FIELD_HOVER_RADIUS_PX));
     }
     return lighting;
+  }
+
+  /* Measured from the tick's centre. */
+  private distanceFromTick(x: number, y: number, tickHeight: number, point: { x: number; y: number }): number {
+    return Math.hypot(x + FIELD_TICK_WIDTH_PX / 2 - point.x, y + tickHeight / 2 - point.y);
   }
 
   /* Green on the left, cream from the right. */
