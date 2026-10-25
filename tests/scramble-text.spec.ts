@@ -379,7 +379,7 @@ test.describe('catalog: scramble-text', () => {
     }
   });
 
-  test('while a scramble-text decodes, the box it takes on screen keeps the width and height of its final text', async ({ page, context }) => {
+  test('while a scramble-text decodes, it stays as wide as its final text, and the line that holds it as high as once in clear', async ({ page, context }) => {
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it, step by step, to watch the decoding as it goes. */
     await openCatalogPage(page, context, 'scramble-text', 'no-preference');
@@ -388,17 +388,21 @@ test.describe('catalog: scramble-text', () => {
       await document.fonts.ready;
     });
     /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text.md),
-       whose text is "Échappement". */
+       whose text is "Échappement", alone on the line of its paragraph. */
     const scrambleText = page.getByRole('main').locator('scramble-text');
     await expect(scrambleText).toHaveCount(1);
-    const size = () =>
-      scrambleText.evaluate((element) => {
-        const box = element.getBoundingClientRect();
-        return { width: box.width, height: box.height };
-      });
-    /* From load until the text is in clear (1.5 s), every 25 ms: the size of the box,
-       along with what is shown at that moment. */
-    const sizes: { elapsed: number; shown: string; width: number; height: number }[] = [];
+    const paragraph = page.getByRole('main').locator('p', { has: page.locator('scramble-text') });
+    await expect(paragraph).toHaveCount(1);
+    /* The width of the scramble-text itself, and the height of the paragraph that holds
+       it: what the visitor sees of the line, whatever the box of the element alone, whose
+       height depends on the font's metrics and on how it is laid out. */
+    const size = async () => ({
+      width: await scrambleText.evaluate((element) => element.getBoundingClientRect().width),
+      lineHeight: await paragraph.evaluate((element) => element.getBoundingClientRect().height),
+    });
+    /* From load until the text is in clear (1.5 s), every 25 ms: those sizes, along with
+       what is shown at that moment. */
+    const sizes: { elapsed: number; shown: string; width: number; lineHeight: number }[] = [];
     for (let elapsed = 0; elapsed < 1500; elapsed += 25) {
       if (elapsed > 0) await page.clock.runFor(25);
       sizes.push({ elapsed, shown: await textOnScreen(scrambleText), ...(await size()) });
@@ -406,16 +410,17 @@ test.describe('catalog: scramble-text', () => {
     await page.clock.runFor(25);
     expect(await textOnScreen(scrambleText)).toBe('Échappement');
     const final = await size();
-    /* At every moment of the decoding, the box is as wide and as high as once the text is
-       in clear, to within half a pixel: the layout around it does not move. */
-    for (const { elapsed, shown, width, height } of sizes) {
+    /* At every moment of the decoding, the scramble-text is as wide, and its line as high,
+       as once the text is in clear, to within half a pixel: the layout around it does not
+       move. */
+    for (const { elapsed, shown, width, lineHeight } of sizes) {
       expect(
         Math.abs(width - final.width),
-        `at ${elapsed} ms, while "${shown}" is shown, the box is ${width}px wide, the final text ${final.width}px`,
+        `at ${elapsed} ms, while "${shown}" is shown, the scramble-text is ${width}px wide, the final text ${final.width}px`,
       ).toBeLessThanOrEqual(0.5);
       expect(
-        Math.abs(height - final.height),
-        `at ${elapsed} ms, while "${shown}" is shown, the box is ${height}px high, the final text ${final.height}px`,
+        Math.abs(lineHeight - final.lineHeight),
+        `at ${elapsed} ms, while "${shown}" is shown, the line that holds it is ${lineHeight}px high, ${final.lineHeight}px once in clear`,
       ).toBeLessThanOrEqual(0.5);
     }
   });
