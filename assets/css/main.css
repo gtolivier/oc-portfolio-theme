@@ -287,5 +287,5 @@ tick-field > canvas {
 /* In the hero, the veil's densest point follows the design rather than the
    hero's centre. */
 .hero .veil {
-  --veil-shape: ellipse 45% 60% at 38% 55%;
+  --veil-shape: ellipse 70% 60% at 38% 55%;
 }
