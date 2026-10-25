@@ -315,7 +315,7 @@ class TickField extends HTMLElement {
   private drawLighting(context: CanvasRenderingContext2D, x: number, y: number, tickHeight: number): void {
     const tickColor = context.fillStyle;
     this.drawLitTick(context, x, y, tickHeight, this.hoverLighting(x, y, tickHeight), this.accentColor());
-    this.drawLitTick(context, x, y, tickHeight, this.rippleLighting(x, y, tickHeight), this.rippleColor());
+    this.drawLitTick(context, x, y, tickHeight, this.rippleLighting(x, y, tickHeight), this.accentColor());
     context.fillStyle = tickColor;
   }
 
@@ -332,10 +332,6 @@ class TickField extends HTMLElement {
     context.fillStyle = color;
     const growth = Math.round(FIELD_LIT_TICK_GROWTH_PX * lighting);
     context.fillRect(x, y - growth, FIELD_TICK_WIDTH_PX, tickHeight + 2 * growth);
-  }
-
-  private rippleColor(): string {
-    return this.accentColor();
   }
 
   /* Brighter at the top. */
