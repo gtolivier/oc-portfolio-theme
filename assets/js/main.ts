@@ -113,6 +113,10 @@ const FIELD_TICK_HEIGHT_COLUMN_SHARE = 0.7;
 
 const FIELD_ROW_SPACING_PX = 22;
 
+const FIELD_MIN_SIDE_MARGIN_PX = 24;
+
+const FIELD_MIN_VERTICAL_MARGIN_PX = 18;
+
 const FIELD_MIN_ALPHA = 0.15;
 
 const FIELD_TOP_FADE_PX = 96;
@@ -299,16 +303,43 @@ class TickField extends HTMLElement {
     context.scale(scale, scale);
     context.fillStyle = this.tickGradient(context, width);
     const front = progress * width;
-    for (let x = 0; x < front; x += FIELD_TICK_SPACING_PX) {
+    const layout = this.layout(width, height);
+    for (let column = 0; column < layout.columns; column += 1) {
+      const x = layout.left + column * FIELD_TICK_SPACING_PX;
+      if (x >= front) break;
       context.globalAlpha = this.tickAlpha(x, width);
-      this.drawTickColumn(context, x, width, height);
+      this.drawTickColumn(context, x, layout.columns > 1 ? column / (layout.columns - 1) : 0, layout);
     }
   }
 
-  private drawTickColumn(context: CanvasRenderingContext2D, x: number, width: number, height: number): void {
+  /* The grid of ticks, centred in the box: as many columns and rows as leave the minimum margins. */
+  private layout(width: number, height: number): { columns: number; rows: number; left: number; top: number } {
+    const columns = Math.max(
+      1,
+      Math.floor((width - 2 * FIELD_MIN_SIDE_MARGIN_PX - FIELD_TICK_WIDTH_PX) / FIELD_TICK_SPACING_PX) + 1,
+    );
+    const span = (columns - 1) * FIELD_TICK_SPACING_PX + FIELD_TICK_WIDTH_PX;
+    /* On whole pixels, so the strokes stay crisp. */
+    const left = Math.round((width - span) / 2);
+    let rows = Math.max(1, Math.floor((height - 2 * FIELD_MIN_VERTICAL_MARGIN_PX) / FIELD_ROW_SPACING_PX) + 1);
+    for (;; rows -= 1) {
+      /* The tallest tick of the last row is the one in the last column. */
+      const bottom = (rows - 1) * FIELD_ROW_SPACING_PX + this.tickHeight(1, 1);
+      const top = Math.round((height - bottom) / 2);
+      if (top >= FIELD_MIN_VERTICAL_MARGIN_PX || rows <= 1) return { columns, rows, left, top };
+    }
+  }
+
+  private drawTickColumn(
+    context: CanvasRenderingContext2D,
+    x: number,
+    columnShare: number,
+    layout: { rows: number; top: number },
+  ): void {
     const columnAlpha = context.globalAlpha;
-    for (let y = 0; y < height; y += FIELD_ROW_SPACING_PX) {
-      const tickHeight = this.tickHeight(x, y, width, height);
+    for (let row = 0; row < layout.rows; row += 1) {
+      const y = layout.top + row * FIELD_ROW_SPACING_PX;
+      const tickHeight = this.tickHeight(columnShare, layout.rows > 1 ? row / (layout.rows - 1) : 0);
       context.globalAlpha = columnAlpha * this.rowAlphaFactor(y);
       context.fillRect(x, y, FIELD_TICK_WIDTH_PX, tickHeight);
       this.drawLighting(context, x, y, tickHeight);
@@ -344,9 +375,8 @@ class TickField extends HTMLElement {
   }
 
   /* Taller from left to right, and taller at the top. */
-  private tickHeight(x: number, y: number, width: number, height: number): number {
-    const growth =
-      FIELD_TICK_HEIGHT_COLUMN_SHARE * (x / width) + (1 - FIELD_TICK_HEIGHT_COLUMN_SHARE) * (1 - y / height);
+  private tickHeight(columnShare: number, rowShare: number): number {
+    const growth = FIELD_TICK_HEIGHT_COLUMN_SHARE * columnShare + (1 - FIELD_TICK_HEIGHT_COLUMN_SHARE) * (1 - rowShare);
     return Math.round(FIELD_TICK_MIN_HEIGHT_PX + (FIELD_TICK_MAX_HEIGHT_PX - FIELD_TICK_MIN_HEIGHT_PX) * growth);
   }
 
