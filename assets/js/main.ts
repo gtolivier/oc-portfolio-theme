@@ -61,7 +61,7 @@ class ScrambleText extends HTMLElement {
     const delayMs = Number(this.getAttribute('delay')) || 0;
     this.startTimer = setTimeout(() => this.revealLeftToRight(text), delayMs);
     reducedMotion.addEventListener('change', () => {
-      if (reducedMotion.matches) this.showInClearAtOnce(text);
+      if (reducedMotion.matches) this.showInClear(text);
     });
   }
 
@@ -69,7 +69,7 @@ class ScrambleText extends HTMLElement {
 
   private tickTimer: ReturnType<typeof setInterval> | undefined;
 
-  private showInClearAtOnce(text: string): void {
+  private showInClear(text: string): void {
     clearTimeout(this.startTimer);
     clearInterval(this.tickTimer);
     this.textContent = text;
@@ -82,8 +82,7 @@ class ScrambleText extends HTMLElement {
     this.tickTimer = setInterval(() => {
       tick += 1;
       if (tick >= totalTicks) {
-        clearInterval(this.tickTimer);
-        this.textContent = text;
+        this.showInClear(text);
         return;
       }
       this.shown.textContent = scramble(text, Math.floor((tick / totalTicks) * letterCount));
