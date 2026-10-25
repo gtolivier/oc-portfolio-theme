@@ -165,6 +165,12 @@ function gridShare(index: number, count: number): number {
   return count > 1 ? index / (count - 1) : 0;
 }
 
+/* From 0 as the reveal front reaches a tick, widthShare of the way across, to 1 once it has faded in. */
+function fadeInAlpha(widthShare: number, progress: number): number {
+  const sinceFrontPassedMs = (progress - widthShare) * FIELD_REVEAL_DURATION_MS;
+  return Math.min(1, sinceFrontPassedMs / FIELD_TICK_FADE_IN_MS);
+}
+
 /* A decorative canvas covering the whole box, behind the content. */
 class TickField extends HTMLElement {
   connectedCallback(): void {
@@ -324,8 +330,7 @@ class TickField extends HTMLElement {
     for (let column = 0; column < layout.columns; column += 1) {
       const x = layout.left + column * FIELD_TICK_SPACING_PX;
       if (x >= front) break;
-      const fadeIn = Math.min(1, ((progress - x / width) * FIELD_REVEAL_DURATION_MS) / FIELD_TICK_FADE_IN_MS);
-      context.globalAlpha = this.tickAlpha(x, width) * fadeIn;
+      context.globalAlpha = this.tickAlpha(x, width) * fadeInAlpha(x / width, progress);
       this.drawTickColumn(context, x, gridShare(column, layout.columns), layout);
     }
   }
