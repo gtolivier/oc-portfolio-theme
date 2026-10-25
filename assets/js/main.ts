@@ -260,12 +260,16 @@ class TickField extends HTMLElement {
     const front = progress * canvas.width;
     for (let x = 0; x < front; x += FIELD_TICK_SPACING_PX) {
       context.globalAlpha = this.tickAlpha(x, canvas.width);
-      for (let y = 0; y < canvas.height; y += FIELD_ROW_SPACING_PX) {
-        context.fillRect(x, y, FIELD_TICK_WIDTH_PX, FIELD_TICK_HEIGHT_PX);
-      }
+      this.drawTickColumn(context, x, canvas.height);
       this.drawPointerTrail(context, x);
     }
     this.drawRipple(context);
+  }
+
+  private drawTickColumn(context: CanvasRenderingContext2D, x: number, height: number): void {
+    for (let y = 0; y < height; y += FIELD_ROW_SPACING_PX) {
+      context.fillRect(x, y, FIELD_TICK_WIDTH_PX, FIELD_TICK_HEIGHT_PX);
+    }
   }
 
   private drawPointerTrail(context: CanvasRenderingContext2D, x: number): void {
