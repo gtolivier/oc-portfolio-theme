@@ -5,7 +5,8 @@
     <h1 id="hero-heading"><scramble-text>{{ site.Params.author }}</scramble-text>
       {{- with .title }}
       {{- /* The title starts decoding when the name is done (see decodeDurationMs in main.ts). */}}
-      {{- $nameDecodeMs := int (math.Min 2000 (math.Max 1500 (mul (strings.RuneCount site.Params.author) 100))) }}
+      {{- $timing := resources.Get "js/scramble-text-timing.json" | transform.Unmarshal }}
+      {{- $nameDecodeMs := int (math.Min $timing.maxDurationMs (math.Max $timing.minDurationMs (mul (strings.RuneCount site.Params.author) $timing.durationPerLetterMs))) }}
       <span class="hero-title"><scramble-text delay="{{ $nameDecodeMs }}">{{ . }}</scramble-text></span>
       {{- end }}
     </h1>

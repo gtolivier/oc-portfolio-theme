@@ -12,3 +12,5 @@ public/
 resources/_gen/
 .hugo_build.lock
 hugo_stats.json
+# Written by js.Build into the built site's assets/ once the script imports a module
+/exampleSite/assets/jsconfig.json
