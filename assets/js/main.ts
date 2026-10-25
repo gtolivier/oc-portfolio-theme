@@ -329,9 +329,10 @@ class TickField extends HTMLElement {
     return this.ripples.map((ripple) => ({ x: ripple.x, y: ripple.y, age: now - ripple.start }));
   }
 
-  /* A tick is lit when a ring passes over it; rings add up. */
+  /* A tick is lit when a ring passes over it; rings add up, but no further than full lighting. */
   private rippleLighting(agedRipples: AgedRipple[], x: number, y: number, tickHeight: number): number {
-    return agedRipples.reduce((sum, ripple) => sum + this.singleRippleLighting(ripple, x, y, tickHeight), 0);
+    const sum = agedRipples.reduce((total, ripple) => total + this.singleRippleLighting(ripple, x, y, tickHeight), 0);
+    return Math.min(1, sum);
   }
 
   private singleRippleLighting(ripple: AgedRipple, x: number, y: number, tickHeight: number): number {
@@ -456,14 +457,13 @@ class TickField extends HTMLElement {
   }
 
   private growthAtEachEnd(lighting: number): number {
-    return Math.round((FIELD_LIT_TICK_GROWTH_PX / 2) * Math.min(1, lighting));
+    return Math.round((FIELD_LIT_TICK_GROWTH_PX / 2) * lighting);
   }
 
   private drawLitTick(drawing: FieldDrawing, x: number, y: number, tickHeight: number, lighting: number): void {
     if (lighting <= 0) return;
     const { context } = drawing;
-    /* The canvas ignores an alpha above 1: summed rings are capped here. */
-    context.globalAlpha = Math.min(1, lighting);
+    context.globalAlpha = lighting;
     context.fillStyle = drawing.litColor;
     const growthAtEachEnd = this.growthAtEachEnd(lighting);
     context.fillRect(x, y - growthAtEachEnd, FIELD_TICK_WIDTH_PX, tickHeight + 2 * growthAtEachEnd);
