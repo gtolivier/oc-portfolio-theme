@@ -10,16 +10,19 @@ export type Rectangle = { x: number; y: number; width: number; height: number };
    - `luminanceAboveBackground`: the sum, over the pixels of the column, of how much brighter
      each pixel is than the background (luma, Rec. 709 weights, 0–255; darker pixels count
      as 0).
-   With a `rectangle`, only the pixels inside it count. `scale` is the number of screenshot
-   columns per CSS pixel of the element's width. Decoded in the page, so that the background
-   colour is read through the same colour handling as the screenshot. */
+   With a `rectangle`, only the pixels inside it count. With a `background` (a CSS colour), it
+   stands for the element's background colour: for an element without one of its own, the
+   colour that shows through it. `scale` is the number of screenshot columns per CSS pixel of
+   the element's width. Decoded in the page, so that the background colour is read through the
+   same colour handling as the screenshot. */
 async function columnsOverBackground(
   element: Locator,
   screenshot: Buffer,
   rectangle?: Rectangle,
+  background?: string,
 ): Promise<{ notOfBackground: number[]; luminanceAboveBackground: number[]; scale: number }> {
   return element.evaluate(
-    async (el, [base64, zone]) => {
+    async (el, [base64, zone, backgroundColour]) => {
       const TOLERANCE = 2;
       const luma = (data: Uint8ClampedArray, i: number): number =>
         0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
@@ -34,7 +37,7 @@ async function columnsOverBackground(
       canvas.width = image.width;
       canvas.height = image.height;
       const context = canvas.getContext('2d', { willReadFrequently: true })!;
-      context.fillStyle = getComputedStyle(el).backgroundColor;
+      context.fillStyle = backgroundColour ?? getComputedStyle(el).backgroundColor;
       context.fillRect(0, 0, 1, 1);
       const background = context.getImageData(0, 0, 1, 1).data;
       const backgroundLuma = luma(background, 0);
@@ -57,7 +60,7 @@ async function columnsOverBackground(
       }
       return { notOfBackground, luminanceAboveBackground, scale };
     },
-    [screenshot.toString('base64'), rectangle ?? null] as const,
+    [screenshot.toString('base64'), rectangle ?? null, background ?? null] as const,
   );
 }
 
@@ -103,13 +106,15 @@ export async function luminanceAboveBackgroundPerColumn(
 /* How much brighter than the element's background the screenshot of an element is inside a
    rectangle of it (CSS pixels, relative to the element's box): the sum over the pixels of the
    rectangle of their luma above the background's, as luminanceAboveBackgroundPerColumn
-   counts it. */
+   counts it. For an element without a background colour of its own, `background` (a CSS
+   colour) is the colour that shows through it. */
 export async function luminanceAboveBackgroundInRectangle(
   element: Locator,
   screenshot: Buffer,
   rectangle: Rectangle,
+  background?: string,
 ): Promise<number> {
-  const { luminanceAboveBackground } = await columnsOverBackground(element, screenshot, rectangle);
+  const { luminanceAboveBackground } = await columnsOverBackground(element, screenshot, rectangle, background);
   return luminanceAboveBackground.reduce((sum, value) => sum + value, 0);
 }
 

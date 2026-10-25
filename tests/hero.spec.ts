@@ -18,7 +18,13 @@ import {
 } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { tabUntilFocused } from './helpers/keyboard';
-import { bandsWithoutDrawnPixels, meanLuminanceGainedInRectangle, pixelsChangedPerColumnInRectangle } from './helpers/pixels';
+import {
+  type Rectangle,
+  bandsWithoutDrawnPixels,
+  luminanceAboveBackgroundInRectangle,
+  meanLuminanceGainedInRectangle,
+  pixelsChangedPerColumnInRectangle,
+} from './helpers/pixels';
 import { SIGNS, textOnScreen } from './helpers/text-on-screen';
 
 /* Checks that each tagline line is visible in the area, and that each one starts below the
@@ -677,6 +683,72 @@ test('on phone as on desktop, a click (a tap on mobile) on the hero’s tagline 
     centreGain,
     `mean luma gained by the pixels of the 30px square at the click point on the tagline (${Math.round(point.x)}, ${Math.round(point.y)})px, 300 ms after the click`,
   ).toBeLessThanOrEqual(0.5);
+});
+
+test('on phone as on desktop, the hero’s veil darkens its text zone: with the field still (reduced motion), the field behind the start of the text, at the middle of its height, shows at most 0.8 times the brightness it shows in the same columns in the hero’s bottom-left corner', async ({ page }) => {
+  /* The visitor asks for reduced motion: the field is drawn once, complete, and stays still.
+     Time stands still from before the page loads, until the test advances it. */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  /* The hero is the main content region named by its main heading. */
+  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  await expect(hero).toBeVisible();
+  const elements = {
+    'heading': hero.getByRole('heading', { level: 1 }),
+    'tagline': hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
+    'stack': hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
+    'first button, "Voir les projets"': hero.getByRole('link', { name: 'Voir les projets' }),
+    'second button, "Contact"': hero.getByRole('link', { name: 'Contact' }),
+  };
+  for (const [name, element] of Object.entries(elements)) await expect(element, name).toBeVisible();
+  /* A few animation frames: the field is drawn. */
+  await page.clock.runFor(100);
+
+  /* The text zone: from the top of the heading to the bottom of the buttons, the last of the
+     hero's content. */
+  const heroBox = (await hero.boundingBox())!;
+  const headingBox = (await elements.heading.boundingBox())!;
+  const buttonsBottom = Math.max(
+    ...(await Promise.all(
+      [elements['first button, "Voir les projets"'], elements['second button, "Contact"']].map(async (button) => {
+        const box = (await button.boundingBox())!;
+        return box.y + box.height;
+      }),
+    )),
+  );
+  const textTop = headingBox.y - heroBox.y;
+  const textBottom = buttonsBottom - heroBox.y;
+  const textLeft = headingBox.x - heroBox.x;
+
+  /* The field's ticks are vertical strokes across its whole height, each as bright from top
+     to bottom, brighter from left to right: two zones in the same columns hold the same
+     ticks, and only the veil can make one darker than the other. Two 32px squares, in the
+     columns where the text starts: one at the middle of the text zone's height, the other in
+     the hero's bottom-left corner, below the text, 8px above its bottom edge, where the field
+     is scaled to the screen's pixels as it is elsewhere. */
+  const SIDE = 32;
+  const atText: Rectangle = { x: textLeft, y: (textTop + textBottom) / 2 - SIDE / 2, width: SIDE, height: SIDE };
+  const inCorner: Rectangle = { x: textLeft, y: heroBox.height - 8 - SIDE, width: SIDE, height: SIDE };
+  expect(inCorner.y, 'top of the bottom-left corner square, below the text zone').toBeGreaterThanOrEqual(textBottom);
+
+  /* Only the field is measured, not the glyphs or the buttons: the text is hidden from the
+     screenshot, without moving anything. The hero has no background colour of its own: the
+     page's shows through it. */
+  for (const element of Object.values(elements)) {
+    await element.evaluate((el) => {
+      (el as HTMLElement).style.visibility = 'hidden';
+    });
+  }
+  const pageBackground = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const shot = await hero.screenshot();
+  const brightnessAtText = await luminanceAboveBackgroundInRectangle(hero, shot, atText, pageBackground);
+  const brightnessInCorner = await luminanceAboveBackgroundInRectangle(hero, shot, inCorner, pageBackground);
+  expect(brightnessInCorner, 'brightness above the background in the hero’s bottom-left corner: ticks are drawn there').toBeGreaterThan(0);
+  expect(
+    brightnessAtText,
+    `brightness above the background of the field behind the start of the text, at (${Math.round(atText.x)}, ${Math.round(atText.y)})px, at most 0.8 times that in the same columns in the bottom-left corner of the ${Math.round(heroBox.width)} × ${Math.round(heroBox.height)}px hero, ${Math.round(brightnessInCorner)}`,
+  ).toBeLessThanOrEqual(0.8 * brightnessInCorner);
 });
 
 test('served under /portfolio/, the first hero button of the French home page, "Voir les projets", leads to /portfolio/fr/projets/', async ({ page }) => {
