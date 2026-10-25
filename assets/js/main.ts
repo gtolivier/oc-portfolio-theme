@@ -100,6 +100,12 @@ const FIELD_REVEAL_DELAY_MS = 50;
 
 const FIELD_REVEAL_DURATION_MS = 1100;
 
+/* How long a tick takes to fade in once the reveal front has passed it. */
+const FIELD_TICK_FADE_IN_MS = 350;
+
+/* The progress at which the front has crossed the width and the last tick has faded in. */
+const FIELD_REVEALED_PROGRESS = 1 + FIELD_TICK_FADE_IN_MS / FIELD_REVEAL_DURATION_MS;
+
 const FIELD_TICK_SPACING_PX = 16;
 
 const FIELD_TICK_WIDTH_PX = 1.6;
@@ -280,14 +286,14 @@ class TickField extends HTMLElement {
       }
       const elapsedMs = performance.now() - start - FIELD_REVEAL_DELAY_MS;
       this.progress = reducedMotionQuery().matches
-        ? 1
-        : Math.min(1, Math.max(0, elapsedMs / FIELD_REVEAL_DURATION_MS));
+        ? FIELD_REVEALED_PROGRESS
+        : Math.min(FIELD_REVEALED_PROGRESS, Math.max(0, elapsedMs / FIELD_REVEAL_DURATION_MS));
       this.draw(canvas, this.progress);
-      if (this.progress < 1) requestAnimationFrame(step);
+      if (this.progress < FIELD_REVEALED_PROGRESS) requestAnimationFrame(step);
       else this.revealing = false;
     };
     const resume = (): void => {
-      if (this.revealing || this.progress >= 1) return;
+      if (this.revealing || this.progress >= FIELD_REVEALED_PROGRESS) return;
       this.revealing = true;
       requestAnimationFrame(step);
     };
@@ -318,7 +324,8 @@ class TickField extends HTMLElement {
     for (let column = 0; column < layout.columns; column += 1) {
       const x = layout.left + column * FIELD_TICK_SPACING_PX;
       if (x >= front) break;
-      context.globalAlpha = this.tickAlpha(x, width);
+      const fadeIn = Math.min(1, ((progress - x / width) * FIELD_REVEAL_DURATION_MS) / FIELD_TICK_FADE_IN_MS);
+      context.globalAlpha = this.tickAlpha(x, width) * fadeIn;
       this.drawTickColumn(context, x, gridShare(column, layout.columns), layout);
     }
   }
