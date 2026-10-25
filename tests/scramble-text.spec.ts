@@ -222,6 +222,35 @@ test.describe('catalog: scramble-text', () => {
     expect(await textOnScreen(scrambleText)).toBe(long);
   });
 
+  test('with a long duration (3 s), a short scramble-text is still partly scrambled 2 s after it starts decoding, and in clear 3 s after', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it: animation frames and timers then run as they would in 2 s, then 3 s. */
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-long-duration/`);
+    /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text-long-duration.md),
+       a single short word, "Échappement" (11 letters), without a delay, whose duration is
+       3000 ms: it starts decoding at load. Without a duration, it would be in clear 1.5 s
+       after load. */
+    const scrambleText = page.getByRole('main').locator('scramble-text');
+    await expect(scrambleText).toHaveCount(1);
+    const word = 'Échappement';
+    /* 2 s after load, past the 1.5 s it takes without a duration and well before the 3 s
+       duration, some of its letters are still replaced by signs. */
+    await page.clock.runFor(2000);
+    const shown = Array.from(await textOnScreen(scrambleText));
+    const letters = Array.from(word);
+    expect(shown, `at 2 s, "${shown.join('')}" shows one character per letter of "${word}"`).toHaveLength(letters.length);
+    expect(
+      shown.some((character, index) => character !== letters[index] && SIGNS.includes(character)),
+      `at 2 s, "${shown.join('')}" still shows signs in place of some of its letters`,
+    ).toBe(true);
+    /* 3 s after load, once the duration is over, the word is in clear. */
+    await page.clock.runFor(1000);
+    expect(await textOnScreen(scrambleText)).toBe(word);
+  });
+
   test('while a scramble-text decodes, the accessible name of the heading that contains it is its final text', async ({ page, context }) => {
     await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Animations are allowed, and time stands still from before the page loads, until the
