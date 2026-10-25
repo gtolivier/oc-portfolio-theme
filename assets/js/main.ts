@@ -405,8 +405,8 @@ class TickField extends HTMLElement {
     const { context } = drawing;
     context.globalAlpha = lighting;
     context.fillStyle = drawing.litColor;
-    const growth = Math.round((FIELD_LIT_TICK_GROWTH_PX / 2) * Math.min(1, lighting));
-    context.fillRect(x, y - growth, FIELD_TICK_WIDTH_PX, tickHeight + 2 * growth);
+    const growthAtEachEnd = Math.round((FIELD_LIT_TICK_GROWTH_PX / 2) * Math.min(1, lighting));
+    context.fillRect(x, y - growthAtEachEnd, FIELD_TICK_WIDTH_PX, tickHeight + 2 * growthAtEachEnd);
   }
 
   /* Brighter at the top, dimming down the whole height. */
