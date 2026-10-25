@@ -302,6 +302,57 @@ export async function colourAddedOverBackgroundInRectangle(
   );
 }
 
+/* How much of its own colour an element's canvas shows over the element's background at each of
+   several points of the element (CSS pixels, relative to its box), in the same order: its
+   opacity there, as the screenshot shows it. The canvas, the element's only one, holds at each of
+   its pixels a colour, whatever its opacity; at a point the canvas covers with that colour, the
+   screenshot pixel shows background + opacity × (colour − background), channel by channel. The
+   opacity is the projection of (screenshot pixel − background) on (colour − background), over
+   the length of the latter, squared: it does not depend on which colour the canvas holds there.
+   `colour` is that colour; NaN for the opacity where it is the background's own. The colours are
+   read through the same colour handling as the screenshot. */
+export async function canvasOpacityOverBackgroundAt(
+  element: Locator,
+  screenshot: Buffer,
+  points: { x: number; y: number }[],
+): Promise<{ opacity: number; colour: Channels }[]> {
+  return element.evaluate(
+    async (el, [base64, spots]) => {
+      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const box = el.getBoundingClientRect();
+      const scale = image.width / box.width;
+      const decoder = document.createElement('canvas');
+      decoder.width = image.width;
+      decoder.height = image.height;
+      const context = decoder.getContext('2d', { willReadFrequently: true })!;
+      context.fillStyle = getComputedStyle(el).backgroundColor;
+      context.fillRect(0, 0, 1, 1);
+      const background = context.getImageData(0, 0, 1, 1).data;
+      context.clearRect(0, 0, decoder.width, decoder.height);
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, decoder.width, decoder.height).data;
+      const canvas = el.querySelector('canvas')!;
+      const canvasBox = canvas.getBoundingClientRect();
+      const canvasScale = canvas.width / canvasBox.width;
+      const drawn = canvas.getContext('2d')!;
+      return spots.map((spot) => {
+        const column = Math.min(image.width - 1, Math.max(0, Math.floor(spot.x * scale)));
+        const row = Math.min(image.height - 1, Math.max(0, Math.floor(spot.y * scale)));
+        const i = 4 * (row * image.width + column);
+        const canvasColumn = Math.floor((spot.x + box.left - canvasBox.left) * canvasScale);
+        const canvasRow = Math.floor((spot.y + box.top - canvasBox.top) * canvasScale);
+        const [red, green, blue] = drawn.getImageData(canvasColumn, canvasRow, 1, 1).data;
+        const way = [red - background[0], green - background[1], blue - background[2]];
+        const length = way.reduce((sum, value) => sum + value * value, 0);
+        const along = [0, 1, 2].reduce((sum, channel) => sum + (pixels[i + channel] - background[channel]) * way[channel], 0);
+        return { opacity: length === 0 ? NaN : along / length, colour: { red, green, blue } };
+      });
+    },
+    [screenshot.toString('base64'), points] as const,
+  );
+}
+
 /* In the screenshot of an element, inside each of several rectangles of it (CSS pixels,
    relative to the element's box), in the same order: the pixel closest to a CSS colour, by
    distance between their red, green and blue channels, among the pixels that differ from the
