@@ -269,6 +269,61 @@ export async function colourAddedOverBackgroundInRectangle(
   );
 }
 
+/* In the screenshot of an element, inside each of several rectangles of it (CSS pixels,
+   relative to the element's box), in the same order: the pixel closest to a CSS colour, by
+   distance between their red, green and blue channels, among the pixels that differ from the
+   element's background colour by more than a rounding error on a channel; null when no pixel
+   of the rectangle does. The colour is read through the same colour handling as the
+   screenshot. */
+export async function drawnPixelsClosestToColourInRectangles(
+  element: Locator,
+  screenshot: Buffer,
+  rectangles: Rectangle[],
+  colour: string,
+): Promise<(Channels | null)[]> {
+  return element.evaluate(
+    async (el, [base64, zones, cssColour]) => {
+      const TOLERANCE = 2;
+      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const scale = image.width / el.getBoundingClientRect().width;
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true })!;
+      context.fillStyle = getComputedStyle(el).backgroundColor;
+      context.fillRect(0, 0, 1, 1);
+      const background = context.getImageData(0, 0, 1, 1).data;
+      context.fillStyle = cssColour;
+      context.fillRect(0, 0, 1, 1);
+      const target = context.getImageData(0, 0, 1, 1).data;
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      return zones.map((zone) => {
+        const fromColumn = Math.max(0, Math.round(zone.x * scale));
+        const toColumn = Math.min(image.width, Math.round((zone.x + zone.width) * scale));
+        const fromRow = Math.max(0, Math.round(zone.y * scale));
+        const toRow = Math.min(image.height, Math.round((zone.y + zone.height) * scale));
+        let closest: { red: number; green: number; blue: number } | null = null;
+        let closestDistance = Infinity;
+        for (let row = fromRow; row < toRow; row++) {
+          for (let column = fromColumn; column < toColumn; column++) {
+            const i = 4 * (row * image.width + column);
+            if (![0, 1, 2].some((channel) => Math.abs(pixels[i + channel] - background[channel]) > TOLERANCE)) continue;
+            const distance = Math.hypot(pixels[i] - target[0], pixels[i + 1] - target[1], pixels[i + 2] - target[2]);
+            if (distance >= closestDistance) continue;
+            closestDistance = distance;
+            closest = { red: pixels[i], green: pixels[i + 1], blue: pixels[i + 2] };
+          }
+        }
+        return closest;
+      });
+    },
+    [screenshot.toString('base64'), rectangles, colour] as const,
+  );
+}
+
 /* Where two screenshots of the same element, taken at different times, differ by more than a
    rounding error on a channel: for each column of the screenshots, from left to right, the
    number of such pixels inside a rectangle of the element (CSS pixels, relative to its box).
