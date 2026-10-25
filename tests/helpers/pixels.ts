@@ -421,6 +421,87 @@ export async function brightestLuminanceAboveBackgroundPerColumnInRectangle(
   );
 }
 
+/* The separate strokes drawn inside a rectangle of an element (CSS pixels, relative to its
+   box): in the element's screenshot, each group of pixels that differ from the element's
+   background colour by more than a rounding error on a channel and touch one another (sides or
+   corners), as the box around it, in CSS pixels relative to the element's box. Groups that
+   touch an edge of the rectangle, which it may cut, are left out. */
+export async function drawnStrokesInRectangle(
+  element: Locator,
+  screenshot: Buffer,
+  rectangle: Rectangle,
+): Promise<Rectangle[]> {
+  return element.evaluate(
+    async (el, [base64, zone]) => {
+      const TOLERANCE = 2;
+      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const scale = image.width / el.getBoundingClientRect().width;
+      const fromColumn = Math.max(0, Math.round(zone.x * scale));
+      const toColumn = Math.min(image.width, Math.round((zone.x + zone.width) * scale));
+      const fromRow = Math.max(0, Math.round(zone.y * scale));
+      const toRow = Math.min(image.height, Math.round((zone.y + zone.height) * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true })!;
+      context.fillStyle = getComputedStyle(el).backgroundColor;
+      context.fillRect(0, 0, 1, 1);
+      const background = context.getImageData(0, 0, 1, 1).data;
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      const inside = (column: number, row: number): boolean =>
+        column >= fromColumn && column < toColumn && row >= fromRow && row < toRow;
+      const drawn = (column: number, row: number): boolean => {
+        const i = 4 * (row * image.width + column);
+        return [0, 1, 2].some((channel) => Math.abs(pixels[i + channel] - background[channel]) > TOLERANCE);
+      };
+      const seen = new Set<number>();
+      const strokes: { x: number; y: number; width: number; height: number }[] = [];
+      for (let row = fromRow; row < toRow; row++) {
+        for (let column = fromColumn; column < toColumn; column++) {
+          const key = row * image.width + column;
+          if (seen.has(key) || !drawn(column, row)) continue;
+          seen.add(key);
+          let left = column;
+          let right = column;
+          let top = row;
+          let bottom = row;
+          const pending = [[column, row]];
+          while (pending.length > 0) {
+            const [c, r] = pending.pop()!;
+            left = Math.min(left, c);
+            right = Math.max(right, c);
+            top = Math.min(top, r);
+            bottom = Math.max(bottom, r);
+            for (let dr = -1; dr <= 1; dr++) {
+              for (let dc = -1; dc <= 1; dc++) {
+                const nc = c + dc;
+                const nr = r + dr;
+                const neighbourKey = nr * image.width + nc;
+                if (!inside(nc, nr) || seen.has(neighbourKey) || !drawn(nc, nr)) continue;
+                seen.add(neighbourKey);
+                pending.push([nc, nr]);
+              }
+            }
+          }
+          const touchesEdge = left === fromColumn || right === toColumn - 1 || top === fromRow || bottom === toRow - 1;
+          if (touchesEdge) continue;
+          strokes.push({
+            x: left / scale,
+            y: top / scale,
+            width: (right + 1 - left) / scale,
+            height: (bottom + 1 - top) / scale,
+          });
+        }
+      }
+      return strokes;
+    },
+    [screenshot.toString('base64'), rectangle] as const,
+  );
+}
+
 /* Number of pixels of the screenshot of an element that differ from the element's background
    colour by more than a rounding error on a channel. */
 export async function countPixelsNotOfBackground(element: Locator, screenshot: Buffer): Promise<number> {

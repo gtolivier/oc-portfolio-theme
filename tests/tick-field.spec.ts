@@ -3,11 +3,13 @@ import { CATALOG_SITE, buildSite, removeDirectory, serveSite } from './helpers/b
 import { stopClockBeforeLoad } from './helpers/clock';
 import {
   type Channels,
+  type Rectangle,
   brightestLuminanceAboveBackgroundPerColumnInRectangle,
   channelsOfColour,
   colourAddedOverBackgroundInRectangle,
   countDrawnStrokes,
   countPixelsNotOfBackground,
+  drawnStrokesInRectangle,
   heightsOfDrawnRunsInRectangle,
   luminanceAboveBackgroundInRectangle,
   luminanceAboveBackgroundPerColumn,
@@ -590,6 +592,88 @@ test.describe('catalog: tick-field', () => {
       changedZones,
       `40px squares far from the pointer at (${Math.round(point.x)}, ${Math.round(point.y)})px whose brightness above the background changed with the hover`,
     ).toEqual([]);
+  });
+
+  test('with a fine pointer, hovering lights a disc around the pointer: once revealed, a tick 48px straight above the pointer and the same tick 48px up and to the right of it, at 45°, gain alike over the brightness they showed before the hover, within 25%', async ({ page, context, hasTouch }) => {
+    test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background, followed by a paragraph. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await tickField.scrollIntoViewIfNeeded();
+    /* Fully revealed. */
+    await page.clock.runFor(2000);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const viewport = page.viewportSize();
+    expect(viewport, 'the page has a viewport').not.toBeNull();
+
+    /* One tick, in the dim left part, a little above mid-height: the drawn stroke nearest to
+       that point. Measuring the same tick for both pointer positions leaves out the field's
+       own gradients and how its rows and columns fall. */
+    const target = { x: 0.2 * fieldBox!.width, y: fieldBox!.height / 2 - 24 };
+    const search = { x: target.x - 16, y: target.y - 20, width: 32, height: 40 };
+    const strokes = await drawnStrokesInRectangle(tickField, await tickField.screenshot(), search);
+    expect(strokes.length, `ticks drawn whole around (${Math.round(target.x)}, ${Math.round(target.y)})px`).toBeGreaterThan(0);
+    const centreOf = (stroke: Rectangle) => ({ x: stroke.x + stroke.width / 2, y: stroke.y + stroke.height / 2 });
+    const distanceToTarget = (stroke: Rectangle) => Math.hypot(centreOf(stroke).x - target.x, centreOf(stroke).y - target.y);
+    const tick = strokes.reduce((nearest, stroke) => (distanceToTarget(stroke) < distanceToTarget(nearest) ? stroke : nearest));
+    const tickCentre = centreOf(tick);
+    /* The tick with a few pixels around it, room for it to grow when lit, short of its
+       neighbours. */
+    const zone = { x: tick.x - 3, y: tick.y - 4, width: tick.width + 6, height: tick.height + 8 };
+
+    /* 48px from the tick, well inside a 60px glow: the pointer straight below it, then down and
+       to the left of it, at 45°, so that the tick lies straight above the pointer, then up and
+       to the right of it. A lit square, rather than a disc, lights one and not the other. */
+    const DISTANCE = 48;
+    const diagonal = DISTANCE / Math.SQRT2;
+    const pointerPositions = [
+      { name: 'straight above the pointer', x: tickCentre.x, y: tickCentre.y + DISTANCE },
+      { name: 'up and to the right of the pointer, at 45°', x: tickCentre.x - diagonal, y: tickCentre.y + diagonal },
+    ];
+    /* A point of the page 40px below the tick-field, or above it if the viewport ends first:
+       outside the tick-field, where the pointer goes between the two hovers. */
+    const MARGIN = 40;
+    const outside = {
+      x: fieldBox!.x + tickCentre.x,
+      y:
+        fieldBox!.y + fieldBox!.height + MARGIN < viewport!.height
+          ? fieldBox!.y + fieldBox!.height + MARGIN
+          : fieldBox!.y - MARGIN,
+    };
+    expect(outside.y, 'the point the pointer leaves for is in the viewport').toBeGreaterThanOrEqual(0);
+
+    const brightness = async (): Promise<number> =>
+      luminanceAboveBackgroundInRectangle(tickField, await tickField.screenshot(), zone);
+
+    /* For each pointer position: the tick's brightness with the pointer outside the field, its
+       trail long faded, then after a few animation frames of hover. */
+    const gains: { name: string; before: number; after: number }[] = [];
+    for (const position of pointerPositions) {
+      await page.mouse.move(outside.x, outside.y);
+      await page.clock.runFor(4000);
+      const before = await brightness();
+      await page.mouse.move(fieldBox!.x + position.x, fieldBox!.y + position.y);
+      await page.clock.runFor(100);
+      const after = await brightness();
+      gains.push({ name: position.name, before, after });
+    }
+
+    const describe = gains
+      .map(({ name, before, after }) => `${name}: ${Math.round(before)} → ${Math.round(after)}`)
+      .join('; ');
+    const [above, diagonally] = gains.map(({ before, after }) => after - before);
+    const message = `gain in brightness above the background of the tick at (${Math.round(tickCentre.x)}, ${Math.round(tickCentre.y)})px, ${DISTANCE}px from the pointer (${describe})`;
+    expect(Math.min(above, diagonally), message).toBeGreaterThan(0.75 * Math.max(above, diagonally));
+    for (const { name, before, after } of gains) {
+      expect(after, `${message}; ${name}, against 1.2 times before the hover`).toBeGreaterThan(1.2 * before);
+    }
   });
 
   test('with a fine pointer, hovered ticks turn to the accent colour, even where the field is bright: once revealed, the colour the zone around the pointer adds over the background, in the bright right part, takes the hue of the accent', async ({ page, context, hasTouch }) => {
