@@ -328,6 +328,77 @@ test.describe('catalog: tick-field', () => {
     ).toEqual({ tickSpacing: expect.closeTo(16, 0), rowSpacing: expect.closeTo(22, 0) });
   });
 
+  test('once revealed, a tick-field is centred in its box: at several sizes, the empty margin on its left equals the one on its right, and the one at its top equals the one at its bottom, within a pixel; the side margins are at least 24px, the top and bottom ones at least 18px', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
+       to light or lengthen a tick. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await page.clock.runFor(16);
+
+    /* Sizes that leave different room around a field of ticks 16px apart in rows 22px apart,
+       so that a field set at a fixed distance from the top left corner shows unequal margins
+       in at least one of them. All fit in a phone's width. */
+    const SIZES = [
+      { width: 280, height: 320 },
+      { width: 287, height: 331 },
+      { width: 297, height: 343 },
+    ];
+    /* The text above the field can leave it at a fraction of a pixel from the top of the page,
+       which would shift its screenshot by up to a pixel against its box: the field is moved,
+       without changing the layout around it, onto whole CSS pixels. */
+    await tickField.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      const left = box.left + window.scrollX;
+      const top = box.top + window.scrollY;
+      element.style.left = `${Math.round(left) - left}px`;
+      element.style.top = `${Math.round(top) - top}px`;
+    });
+    const problems: string[] = [];
+    const measured: string[] = [];
+    for (const size of SIZES) {
+      await tickField.evaluate((element, { width, height }) => {
+        element.style.width = `${width}px`;
+        element.style.height = `${height}px`;
+      }, size);
+      await page.clock.runFor(100);
+      const box = await tickField.boundingBox();
+      expect(box, 'the tick-field has a box on screen').not.toBeNull();
+      expect({ width: box!.width, height: box!.height }, 'size of the tick-field, in CSS pixels').toEqual({
+        width: expect.closeTo(size.width, 0),
+        height: expect.closeTo(size.height, 0),
+      });
+
+      /* The empty margins, in CSS pixels: from each edge of the box to the nearest column (or
+         row) of the screenshot that shows a drawn pixel. */
+      const screenshot = await tickField.screenshot();
+      const { columns, scale } = await pixelsNotOfBackgroundPerColumn(tickField, screenshot);
+      const { rows } = await pixelsNotOfBackgroundPerRow(tickField, screenshot);
+      const firstColumn = columns.findIndex((count) => count > 0);
+      const firstRow = rows.findIndex((count) => count > 0);
+      expect(firstColumn, `drawn pixels in the ${size.width}×${size.height}px tick-field`).toBeGreaterThanOrEqual(0);
+      const margins = {
+        left: firstColumn / scale,
+        right: (columns.length - 1 - columns.findLastIndex((count) => count > 0)) / scale,
+        top: firstRow / scale,
+        bottom: (rows.length - 1 - rows.findLastIndex((count) => count > 0)) / scale,
+      };
+      const describe = `${size.width}×${size.height}px: left ${margins.left.toFixed(2)}, right ${margins.right.toFixed(2)}, top ${margins.top.toFixed(2)}, bottom ${margins.bottom.toFixed(2)}`;
+      measured.push(describe);
+      if (Math.abs(margins.left - margins.right) > 1) problems.push(`${describe}: left and right margins differ by more than 1px`);
+      if (Math.abs(margins.top - margins.bottom) > 1) problems.push(`${describe}: top and bottom margins differ by more than 1px`);
+      if (Math.min(margins.left, margins.right) < 24) problems.push(`${describe}: a side margin is under 24px`);
+      if (Math.min(margins.top, margins.bottom) < 18) problems.push(`${describe}: a top or bottom margin is under 18px`);
+    }
+    expect(problems, `empty margins around the drawn ticks, in CSS pixels (${measured.join('; ')})`).toEqual([]);
+  });
+
   test('a tick-field reveals from left to right: 500 ms after load, every vertical band of its left part shows drawn pixels, while its right part still only shows its background', async ({ page, context }) => {
     await serveSite(context, CATALOG_SITE, siteDirectory);
     await stopClockBeforeLoad(page);
