@@ -129,6 +129,9 @@ const FIELD_RIPPLE_DURATION_MS = 1000;
 
 const FIELD_RIPPLE_LINE_WIDTH_PX = 4;
 
+/* Where the pointer passed, and since when it lingers there. */
+type TrailPoint = { x: number; y: number; at: number };
+
 /* A decorative canvas covering the whole box, behind the content. */
 class TickField extends HTMLElement {
   connectedCallback(): void {
@@ -208,22 +211,30 @@ class TickField extends HTMLElement {
     const step = (): void => {
       this.trail = this.trail.filter((point) => this.pointAlpha(point) > 0);
       this.draw(canvas, this.progress);
-      if (this.trail.length > 1 || (this.trail.length === 1 && !this.hovering)) requestAnimationFrame(step);
+      if (this.hasFadingPoint()) requestAnimationFrame(step);
       else this.fading = false;
     };
     requestAnimationFrame(step);
   }
 
-  private trail: { x: number; y: number; at: number }[] = [];
+  private trail: TrailPoint[] = [];
 
   private hovering = false;
 
   private fading = false;
 
   /* The point under the pointer stays fully lit; the others fade with age. */
-  private pointAlpha(point: { at: number }): number {
-    if (this.hovering && point === this.trail[this.trail.length - 1]) return 1;
+  private pointAlpha(point: TrailPoint): number {
+    if (this.isUnderPointer(point)) return 1;
     return Math.max(0, 1 - (performance.now() - point.at) / FIELD_TRAIL_FADE_MS);
+  }
+
+  private isUnderPointer(point: TrailPoint): boolean {
+    return this.hovering && point === this.trail[this.trail.length - 1];
+  }
+
+  private hasFadingPoint(): boolean {
+    return this.trail.some((point) => !this.isUnderPointer(point));
   }
 
   private progress = 0;
