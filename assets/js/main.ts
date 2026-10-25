@@ -102,11 +102,11 @@ const FIELD_REVEAL_DURATION_MS = 1100;
 
 const FIELD_TICK_SPACING_PX = 16;
 
-const FIELD_TICK_WIDTH_PX = 2;
+const FIELD_TICK_WIDTH_PX = 1.6;
 
-const FIELD_TICK_MIN_HEIGHT_PX = 4;
+const FIELD_TICK_MIN_HEIGHT_PX = 5;
 
-const FIELD_TICK_MAX_HEIGHT_PX = 10;
+const FIELD_TICK_MAX_HEIGHT_PX = 13;
 
 const FIELD_ROW_SPACING_PX = 22;
 
@@ -298,13 +298,14 @@ class TickField extends HTMLElement {
     const front = progress * width;
     for (let x = 0; x < front; x += FIELD_TICK_SPACING_PX) {
       context.globalAlpha = this.tickAlpha(x, width);
-      this.drawTickColumn(context, x, height, this.tickHeight(x, width));
+      this.drawTickColumn(context, x, width, height);
     }
   }
 
-  private drawTickColumn(context: CanvasRenderingContext2D, x: number, height: number, tickHeight: number): void {
+  private drawTickColumn(context: CanvasRenderingContext2D, x: number, width: number, height: number): void {
     const columnAlpha = context.globalAlpha;
     for (let y = 0; y < height; y += FIELD_ROW_SPACING_PX) {
+      const tickHeight = this.tickHeight(x, y, width, height);
       context.globalAlpha = columnAlpha * this.rowAlphaFactor(y);
       context.fillRect(x, y, FIELD_TICK_WIDTH_PX, tickHeight);
       this.drawLighting(context, x, y, tickHeight);
@@ -339,9 +340,10 @@ class TickField extends HTMLElement {
     return 1 - FIELD_TOP_FADE_DIMMING * Math.min(1, y / FIELD_TOP_FADE_PX);
   }
 
-  /* Taller from left to right. */
-  private tickHeight(x: number, width: number): number {
-    return Math.round(FIELD_TICK_MIN_HEIGHT_PX + (FIELD_TICK_MAX_HEIGHT_PX - FIELD_TICK_MIN_HEIGHT_PX) * (x / width));
+  /* Taller from left to right, and taller at the top. */
+  private tickHeight(x: number, y: number, width: number, height: number): number {
+    const growth = 0.7 * (x / width) + 0.3 * (1 - y / height);
+    return Math.round(FIELD_TICK_MIN_HEIGHT_PX + (FIELD_TICK_MAX_HEIGHT_PX - FIELD_TICK_MIN_HEIGHT_PX) * growth);
   }
 
   /* A tick is lit near where the pointer passed. */
