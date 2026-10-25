@@ -1076,6 +1076,88 @@ test.describe('catalog: tick-field', () => {
     }
   });
 
+  test('with a fine pointer, the light falls off with distance: once revealed, a tick 15px from the pointer gains more than twice the brightness over what it showed before the hover that the same tick gains 45px from the pointer, near the edge of the 60px disc, where it still gains', async ({ page, context, hasTouch }) => {
+    test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background, followed by a paragraph. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await tickField.scrollIntoViewIfNeeded();
+    /* Fully revealed. */
+    await page.clock.runFor(2000);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const viewport = page.viewportSize();
+    expect(viewport, 'the page has a viewport').not.toBeNull();
+
+    /* One tick, in the dim left part, at mid-height: the drawn stroke nearest to that point.
+       Measuring the same tick for both pointer positions leaves out the field's own gradients
+       and how its rows and columns fall. */
+    const target = { x: 0.3 * fieldBox!.width, y: fieldBox!.height / 2 };
+    const search = { x: target.x - 16, y: target.y - 20, width: 32, height: 40 };
+    const strokes = await drawnStrokesInRectangle(tickField, await tickField.screenshot(), search);
+    expect(strokes.length, `ticks drawn whole around (${Math.round(target.x)}, ${Math.round(target.y)})px`).toBeGreaterThan(0);
+    const centreOf = (stroke: Rectangle) => ({ x: stroke.x + stroke.width / 2, y: stroke.y + stroke.height / 2 });
+    const distanceToTarget = (stroke: Rectangle) => Math.hypot(centreOf(stroke).x - target.x, centreOf(stroke).y - target.y);
+    const tick = strokes.reduce((nearest, stroke) => (distanceToTarget(stroke) < distanceToTarget(nearest) ? stroke : nearest));
+    const tickCentre = centreOf(tick);
+    /* The tick with a few pixels around it, room for it to grow when lit, short of its
+       neighbours. */
+    const zone = { x: tick.x - 3, y: tick.y - 4, width: tick.width + 6, height: tick.height + 8 };
+
+    /* The pointer at the tick's height, to its left: close to it, then near the edge of the
+       60px disc it lights. Level with the tick, so that the rows above and below, which grow
+       when lit, stay out of the zone. */
+    const pointerPositions = [
+      { name: '15px from the pointer', x: tickCentre.x - 15, y: tickCentre.y },
+      { name: '45px from the pointer', x: tickCentre.x - 45, y: tickCentre.y },
+    ];
+    /* A point of the page 40px below the tick-field, or above it if the viewport ends first:
+       outside the tick-field, where the pointer goes between the two hovers. */
+    const MARGIN = 40;
+    const outside = {
+      x: fieldBox!.x + tickCentre.x,
+      y:
+        fieldBox!.y + fieldBox!.height + MARGIN < viewport!.height
+          ? fieldBox!.y + fieldBox!.height + MARGIN
+          : fieldBox!.y - MARGIN,
+    };
+    expect(outside.y, 'the point the pointer leaves for is in the viewport').toBeGreaterThanOrEqual(0);
+
+    const brightness = async (): Promise<number> =>
+      luminanceAboveBackgroundInRectangle(tickField, await tickField.screenshot(), zone);
+
+    /* For each pointer position: the tick's brightness with the pointer outside the field, its
+       trail long faded, then after a few animation frames of hover. */
+    const gains: { name: string; before: number; after: number }[] = [];
+    for (const position of pointerPositions) {
+      await page.mouse.move(outside.x, outside.y);
+      await page.clock.runFor(4000);
+      const before = await brightness();
+      await page.mouse.move(fieldBox!.x + position.x, fieldBox!.y + position.y);
+      await page.clock.runFor(100);
+      const after = await brightness();
+      gains.push({ name: position.name, before, after });
+    }
+
+    const describe = gains
+      .map(({ name, before, after }) => `${name}: ${Math.round(before)} → ${Math.round(after)}`)
+      .join('; ');
+    const [close, nearTheEdge] = gains;
+    const message = `brightness above the background of the tick at (${Math.round(tickCentre.x)}, ${Math.round(tickCentre.y)})px (${describe})`;
+    expect(nearTheEdge.after, `${message}; 45px from the pointer, against 1.2 times before the hover`).toBeGreaterThan(
+      1.2 * nearTheEdge.before,
+    );
+    expect(close.after - close.before, `${message}; gain 15px from the pointer, against twice the gain 45px from it`).toBeGreaterThan(
+      2 * (nearTheEdge.after - nearTheEdge.before),
+    );
+  });
+
   test('with a fine pointer, hovered ticks turn to the accent colour, even where the field is bright: once revealed, the colour the zone around the pointer adds over the background, in the bright right part, takes the hue of the accent', async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
     await serveSite(context, CATALOG_SITE, siteDirectory);
