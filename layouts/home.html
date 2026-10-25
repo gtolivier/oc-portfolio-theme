@@ -4,8 +4,7 @@
   <tick-field class="hero" role="region" aria-labelledby="hero-heading">
     {{- /* The hero decodes faster than the default pace. The name and the title start decoding together. */}}
     {{- $heroLetterMs := 40 }}
-    {{- $nameDecodeMs := mul (strings.RuneCount site.Params.author) $heroLetterMs }}
-    <h1 id="hero-heading"><scramble-text duration="{{ $nameDecodeMs }}">{{ site.Params.author }}</scramble-text>
+    <h1 id="hero-heading"><scramble-text duration="{{ mul (strings.RuneCount site.Params.author) $heroLetterMs }}">{{ site.Params.author }}</scramble-text>
       {{- with .title }}
       <span class="hero-title"><scramble-text duration="{{ mul (strings.RuneCount .) $heroLetterMs }}">{{ . }}</scramble-text></span>
       {{- end }}

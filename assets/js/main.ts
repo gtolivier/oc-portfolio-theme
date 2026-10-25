@@ -124,9 +124,9 @@ const FIELD_MIN_SIDE_MARGIN_PX = 24;
 
 const FIELD_MIN_VERTICAL_MARGIN_PX = 18;
 
-const FIELD_MIN_ALPHA = 0.06;
+const FIELD_RESTING_MIN_ALPHA = 0.06;
 
-const FIELD_MAX_ALPHA = 0.61;
+const FIELD_RESTING_MAX_ALPHA = 0.61;
 
 /* How much of a tick's place along the diagonal its horizontal place sets; the vertical one sets the rest. */
 const FIELD_PLACE_HORIZONTAL_SHARE = 0.75;
@@ -175,7 +175,7 @@ type FieldLayout = { columns: number; rows: number; left: number; top: number };
 /* The theme's colours the field paints with. */
 type FieldColors = { green: string; accent: string; cream: string };
 
-/* What every tick of one drawing of the field shares; the height is the box's, in CSS pixels. */
+/* What every tick of one drawing of the field shares; the width and height are the box's, in CSS pixels. */
 type FieldDrawing = {
   context: CanvasRenderingContext2D;
   layout: FieldLayout;
@@ -386,8 +386,7 @@ class TickField extends HTMLElement {
     for (let column = 0; column < drawing.layout.columns; column += 1) {
       const x = drawing.layout.left + column * FIELD_TICK_SPACING_PX;
       if (x >= front) break;
-      context.globalAlpha = fadeInAlpha(x / width, this.progress);
-      this.drawTickColumn(drawing, x, gridShare(column, drawing.layout.columns));
+      this.drawTickColumn(drawing, x, gridShare(column, drawing.layout.columns), fadeInAlpha(x / width, this.progress));
     }
   }
 
@@ -415,17 +414,15 @@ class TickField extends HTMLElement {
     }
   }
 
-  private drawTickColumn(drawing: FieldDrawing, x: number, columnShare: number): void {
+  private drawTickColumn(drawing: FieldDrawing, x: number, columnShare: number, fadeIn: number): void {
     const { context, layout } = drawing;
-    const columnAlpha = context.globalAlpha;
     for (let row = 0; row < layout.rows; row += 1) {
       const y = layout.top + row * FIELD_ROW_SPACING_PX;
       const tickHeight = this.tickHeight(columnShare, gridShare(row, layout.rows));
-      context.globalAlpha = columnAlpha * this.restingAlpha(x, y, drawing.width, drawing.height);
+      context.globalAlpha = fadeIn * this.restingAlpha(x, y, drawing.width, drawing.height);
       context.fillRect(x, y, FIELD_TICK_WIDTH_PX, tickHeight);
       this.drawLighting(drawing, x, y, tickHeight);
     }
-    context.globalAlpha = columnAlpha;
   }
 
   private drawLighting(drawing: FieldDrawing, x: number, y: number, tickHeight: number): void {
@@ -463,7 +460,9 @@ class TickField extends HTMLElement {
   private restingAlpha(x: number, y: number, width: number, height: number): number {
     const horizontal = FIELD_PLACE_HORIZONTAL_SHARE * (x / width);
     const vertical = (1 - FIELD_PLACE_HORIZONTAL_SHARE) * (1 - y / height);
-    return FIELD_MIN_ALPHA + (FIELD_MAX_ALPHA - FIELD_MIN_ALPHA) * easeInOut(horizontal + vertical);
+    return (
+      FIELD_RESTING_MIN_ALPHA + (FIELD_RESTING_MAX_ALPHA - FIELD_RESTING_MIN_ALPHA) * easeInOut(horizontal + vertical)
+    );
   }
 
   /* Taller from left to right, and taller at the top. */
