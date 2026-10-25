@@ -7,6 +7,7 @@ import {
   bandsWithoutDrawnPixels,
   brightestLuminanceAboveBackgroundPerColumnInRectangle,
   channelsOfColour,
+  channelsOfPixelsAt,
   colourAddedOverBackgroundInRectangle,
   countDrawnStrokes,
   countPixelsNotOfBackground,
@@ -1533,6 +1534,86 @@ test.describe('catalog: tick-field', () => {
     expect(grownUp, `how much higher ${describe} reaches, in px`).toBeLessThanOrEqual(3.5);
     expect(grownDown, `how much lower ${describe} reaches, in px`).toBeGreaterThanOrEqual(2);
     expect(grownDown, `how much lower ${describe} reaches, in px`).toBeLessThanOrEqual(3.5);
+  });
+
+  test('a lit tick shows one opacity from end to end: once revealed, 600 ms after a click (a tap on mobile) 168px to the left of a tick of the bright upper right part, whose ring passes over it at partial strength, a pixel inside each end the tick grew shows the same colour, within 4 levels per channel, as a pixel at the middle of the tick', async ({ page, context, hasTouch }) => {
+    const tickField = await openEmptyTickField(page, context);
+    await tickField.scrollIntoViewIfNeeded();
+    /* Fully revealed. */
+    await page.clock.runFor(2000);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+
+    /* The unlit tick nearest to a point of the upper right part, where the resting ticks are
+       bright: ticks stand 16px apart within a row and rows 22px apart. */
+    const TICK_SPACING = 16;
+    const ROW_SPACING = 22;
+    const target = { x: 0.8 * fieldBox!.width, y: 0.25 * fieldBox!.height };
+    const strokes = await drawnStrokesInRectangle(tickField, await tickField.screenshot(), {
+      x: target.x - TICK_SPACING,
+      y: target.y - ROW_SPACING,
+      width: 2 * TICK_SPACING,
+      height: 2 * ROW_SPACING,
+    });
+    expect(strokes.length, `ticks drawn whole around (${Math.round(target.x)}, ${Math.round(target.y)})px`).toBeGreaterThan(0);
+    const centreOf = (stroke: Rectangle) => ({ x: stroke.x + stroke.width / 2, y: stroke.y + stroke.height / 2 });
+    const distanceToTarget = (stroke: Rectangle) => Math.hypot(centreOf(stroke).x - target.x, centreOf(stroke).y - target.y);
+    const tick = strokes.reduce((nearest, stroke) => (distanceToTarget(stroke) < distanceToTarget(nearest) ? stroke : nearest));
+    const centre = centreOf(tick);
+    /* Half a pixel in from the tick's left edge: a column of pixels the tick, about 1.6px wide,
+       covers whole, away from its anti-aliased sides. */
+    const pixelColumnX = tick.x + 0.5;
+
+    /* How far up and down the tick reaches: the run of rows with drawn pixels, through the
+       tick's centre, in a column 8px wide around it, well short of its neighbours 16px away. */
+    const column = { x: centre.x - 4, y: 0, width: 8, height: fieldBox!.height };
+    const verticalExtent = async (screenshot: Buffer): Promise<{ top: number; bottom: number }> => {
+      const { rows, scale } = await pixelsNotOfBackgroundPerRow(tickField, screenshot, column);
+      let top = Math.floor(centre.y * scale);
+      let bottom = top;
+      while (top > 0 && rows[top - 1] > 0) top -= 1;
+      while (bottom < rows.length - 1 && rows[bottom + 1] > 0) bottom += 1;
+      return { top: top / scale, bottom: (bottom + 1) / scale };
+    };
+    const unlit = await verticalExtent(await tickField.screenshot());
+
+    /* The ring grows about 0.28px per ms: 600 ms after the click it is about 168px from the
+       click point, right over the tick, at a little more than half its strength. With a fine
+       pointer, the click leaves the pointer 168px from the tick, too far for the hover to light
+       it. */
+    const RADIUS = 168;
+    const clickPoint = { x: fieldBox!.x + centre.x - RADIUS, y: fieldBox!.y + centre.y };
+    expect(clickPoint.x, 'the click point is inside the tick-field').toBeGreaterThan(fieldBox!.x);
+    if (hasTouch) await page.touchscreen.tap(clickPoint.x, clickPoint.y);
+    else await page.mouse.click(clickPoint.x, clickPoint.y);
+    await page.clock.runFor(600);
+    const screenshot = await tickField.screenshot();
+    const lit = await verticalExtent(screenshot);
+
+    const describeTick = `the tick at (${Math.round(centre.x)}, ${Math.round(centre.y)})px, from ${unlit.top.toFixed(1)}–${unlit.bottom.toFixed(1)}px unlit to ${lit.top.toFixed(1)}–${lit.bottom.toFixed(1)}px lit by the ring`;
+    /* Ends at least 1.5px long, so that a pixel halfway along each lies whole inside it, away
+       from its anti-aliased edges. */
+    expect(unlit.top - lit.top, `how much higher ${describeTick} reaches, in px`).toBeGreaterThanOrEqual(1.5);
+    expect(lit.bottom - unlit.bottom, `how much lower ${describeTick} reaches, in px`).toBeGreaterThanOrEqual(1.5);
+
+    const [middle, topEnd, bottomEnd] = await channelsOfPixelsAt(tickField, screenshot, [
+      { x: pixelColumnX, y: centre.y },
+      { x: pixelColumnX, y: (unlit.top + lit.top) / 2 },
+      { x: pixelColumnX, y: (unlit.bottom + lit.bottom) / 2 },
+    ]);
+    const describe = (channels: Channels) => `rgb(${channels.red}, ${channels.green}, ${channels.blue})`;
+    const largestChannelGap = (a: Channels, b: Channels) =>
+      Math.max(Math.abs(a.red - b.red), Math.abs(a.green - b.green), Math.abs(a.blue - b.blue));
+    const TOLERANCE = 4;
+    expect(
+      largestChannelGap(topEnd, middle),
+      `largest gap per channel between a pixel inside the top end of ${describeTick}, ${describe(topEnd)}, and one at its middle, ${describe(middle)}`,
+    ).toBeLessThanOrEqual(TOLERANCE);
+    expect(
+      largestChannelGap(bottomEnd, middle),
+      `largest gap per channel between a pixel inside the bottom end of ${describeTick}, ${describe(bottomEnd)}, and one at its middle, ${describe(middle)}`,
+    ).toBeLessThanOrEqual(TOLERANCE);
   });
 
   test('the ripple spreads: once revealed, 600 ms after the click, a zone to the left of the click point, about 168px from it, is brighter than just before the click, while the zones to its right and left about 84px from it, which the ring lit 300 ms after the click, are back to what they showed before it', async ({ page, context, hasTouch }) => {

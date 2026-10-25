@@ -226,6 +226,36 @@ export async function channelsOfColour(element: Locator, colour: string): Promis
   }, colour);
 }
 
+/* In the screenshot of an element, the channels of the pixel under each of several points of it
+   (CSS pixels, relative to the element's box), in the same order: the screenshot pixel the
+   point falls in. Read through the same colour handling as channelsOfColour. */
+export async function channelsOfPixelsAt(
+  element: Locator,
+  screenshot: Buffer,
+  points: { x: number; y: number }[],
+): Promise<Channels[]> {
+  return element.evaluate(
+    async (el, [base64, spots]) => {
+      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const scale = image.width / el.getBoundingClientRect().width;
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true })!;
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      return spots.map((spot) => {
+        const column = Math.min(image.width - 1, Math.max(0, Math.floor(spot.x * scale)));
+        const row = Math.min(image.height - 1, Math.max(0, Math.floor(spot.y * scale)));
+        const i = 4 * (row * image.width + column);
+        return { red: pixels[i], green: pixels[i + 1], blue: pixels[i + 2] };
+      });
+    },
+    [screenshot.toString('base64'), points] as const,
+  );
+}
+
 /* The colour the screenshot of an element adds on top of the element's background inside a
    rectangle of it (CSS pixels, relative to the element's box): over the pixels that differ
    from the background by more than a rounding error on a channel, the sum, channel by channel,
