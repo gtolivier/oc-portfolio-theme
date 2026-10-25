@@ -296,7 +296,10 @@ class TickField extends HTMLElement {
     if (this.isRevealing()) this.advanceReveal();
     const now = performance.now();
     this.trail = this.trail.filter((point) => this.pointAlpha(point, now) > 0);
-    this.ripples = this.ripples.filter((ripple) => now - ripple.start < FIELD_RIPPLE_DURATION_MS);
+    /* Reduced motion turned on while a ripple spreads: the ripples end at once. */
+    this.ripples = reducedMotionQuery().matches
+      ? []
+      : this.ripples.filter((ripple) => now - ripple.start < FIELD_RIPPLE_DURATION_MS);
   }
 
   /* No frame while off screen, unless the trail or a ripple is still fading. */
