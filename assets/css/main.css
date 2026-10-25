@@ -284,5 +284,5 @@ tick-field > canvas {
 
 /* In the hero, the veil covers the text zone across the full width. */
 .hero .veil {
-  background: linear-gradient(to bottom, transparent, rgb(var(--color-ink-channels) / 0.3) 25%, rgb(var(--color-ink-channels) / 0.3) 60%, transparent);
+  background: linear-gradient(to bottom, transparent, rgb(var(--color-ink-channels) / 0.3) 25% 60%, transparent);
 }
