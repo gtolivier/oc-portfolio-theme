@@ -139,7 +139,7 @@ const FIELD_CREAM_FROM = 0.9;
 
 const FIELD_HOVER_RADIUS_PX = 60;
 
-/* A lit tick grows this much at both ends. */
+/* A lit tick grows this much in all, half at each end. */
 const FIELD_LIT_TICK_GROWTH_PX = 6;
 
 const FIELD_TRAIL_FADE_MS = 1000;
@@ -405,7 +405,7 @@ class TickField extends HTMLElement {
     const { context } = drawing;
     context.globalAlpha = lighting;
     context.fillStyle = drawing.litColor;
-    const growth = Math.round(FIELD_LIT_TICK_GROWTH_PX * lighting);
+    const growth = Math.round((FIELD_LIT_TICK_GROWTH_PX / 2) * Math.min(1, lighting));
     context.fillRect(x, y - growth, FIELD_TICK_WIDTH_PX, tickHeight + 2 * growth);
   }
 
