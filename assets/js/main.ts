@@ -397,15 +397,18 @@ class TickField extends HTMLElement {
     const tickColor = drawing.context.fillStyle;
     const hover = this.hoverLighting(x, y, tickHeight);
     const ripple = this.rippleLighting(x, y, tickHeight);
-    /* The grown ends take the tick's own colour first, so the light over them reads as over the middle. */
-    const growth = this.growthAtEachEnd(Math.max(hover, ripple));
-    if (growth > 0) {
-      drawing.context.fillRect(x, y - growth, FIELD_TICK_WIDTH_PX, growth);
-      drawing.context.fillRect(x, y + tickHeight, FIELD_TICK_WIDTH_PX, growth);
-    }
+    this.drawGrownEnds(drawing, x, y, tickHeight, Math.max(hover, ripple));
     this.drawLitTick(drawing, x, y, tickHeight, hover);
     this.drawLitTick(drawing, x, y, tickHeight, ripple);
     drawing.context.fillStyle = tickColor;
+  }
+
+  /* The grown ends take the tick's own colour first, so the light over them reads as over the middle. */
+  private drawGrownEnds(drawing: FieldDrawing, x: number, y: number, tickHeight: number, lighting: number): void {
+    const growthAtEachEnd = this.growthAtEachEnd(lighting);
+    if (growthAtEachEnd <= 0) return;
+    drawing.context.fillRect(x, y - growthAtEachEnd, FIELD_TICK_WIDTH_PX, growthAtEachEnd);
+    drawing.context.fillRect(x, y + tickHeight, FIELD_TICK_WIDTH_PX, growthAtEachEnd);
   }
 
   private growthAtEachEnd(lighting: number): number {
