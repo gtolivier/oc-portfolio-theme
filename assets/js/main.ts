@@ -113,6 +113,10 @@ const FIELD_TOP_FADE_PX = 96;
 
 const FIELD_TOP_FADE_DIMMING = 0.35;
 
+const FIELD_GREEN_UNTIL = 0.25;
+
+const FIELD_CREAM_FROM = 0.9;
+
 const FIELD_HOVER_RADIUS_PX = 40;
 
 const FIELD_HOVER_TICK_WIDTH_PX = 2;
@@ -262,7 +266,7 @@ class TickField extends HTMLElement {
     canvas.height = this.clientHeight;
     const context = canvas.getContext('2d');
     if (!context) return;
-    context.fillStyle = getComputedStyle(this).color;
+    context.fillStyle = this.tickGradient(context, canvas.width);
     const front = progress * canvas.width;
     for (let x = 0; x < front; x += FIELD_TICK_SPACING_PX) {
       context.globalAlpha = this.tickAlpha(x, canvas.width);
@@ -299,6 +303,15 @@ class TickField extends HTMLElement {
     context.fillStyle = this.accentColor();
     context.fillRect(x, this.pointerY - FIELD_HOVER_RADIUS_PX, FIELD_HOVER_TICK_WIDTH_PX, 2 * FIELD_HOVER_RADIUS_PX);
     context.fillStyle = tickColor;
+  }
+
+  /* Green on the left, cream from the right. */
+  private tickGradient(context: CanvasRenderingContext2D, width: number): CanvasGradient {
+    const style = getComputedStyle(this);
+    const gradient = context.createLinearGradient(0, 0, width, 0);
+    gradient.addColorStop(FIELD_GREEN_UNTIL, style.getPropertyValue('--color-accent-dark').trim());
+    gradient.addColorStop(FIELD_CREAM_FROM, style.getPropertyValue('--color-paper').trim());
+    return gradient;
   }
 
   private accentColor(): string {
