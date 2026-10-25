@@ -124,6 +124,10 @@ const FIELD_BOTTOM_DIMMING = 0.75;
 
 const FIELD_GREEN_UNTIL = 0.25;
 
+const FIELD_ACCENT_FROM = 0.5;
+
+const FIELD_ACCENT_UNTIL = 0.75;
+
 const FIELD_CREAM_FROM = 0.9;
 
 const FIELD_HOVER_RADIUS_PX = 60;
@@ -407,8 +411,8 @@ class TickField extends HTMLElement {
   private tickGradient(context: CanvasRenderingContext2D, width: number, height: number): CanvasGradient {
     const gradient = context.createLinearGradient(0, height, width, 0);
     gradient.addColorStop(FIELD_GREEN_UNTIL, this.themeColor('--color-accent-dark'));
-    gradient.addColorStop(0.5, this.accentColor());
-    gradient.addColorStop(0.75, this.accentColor());
+    gradient.addColorStop(FIELD_ACCENT_FROM, this.accentColor());
+    gradient.addColorStop(FIELD_ACCENT_UNTIL, this.accentColor());
     gradient.addColorStop(FIELD_CREAM_FROM, this.themeColor('--color-paper'));
     return gradient;
   }
