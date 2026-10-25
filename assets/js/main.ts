@@ -148,6 +148,14 @@ const FIELD_RIPPLE_OUTER_FALLOFF_PX = 26;
 /* Where the pointer passed, and since when it lingers there. */
 type TrailPoint = { x: number; y: number; at: number };
 
+/* How many columns and rows of ticks, and where the first one sits. */
+type FieldLayout = { columns: number; rows: number; left: number; top: number };
+
+/* How far along its line of the grid a column or row sits: 0 for the first, 1 for the last. */
+function gridShare(index: number, count: number): number {
+  return count > 1 ? index / (count - 1) : 0;
+}
+
 /* A decorative canvas covering the whole box, behind the content. */
 class TickField extends HTMLElement {
   connectedCallback(): void {
@@ -308,12 +316,12 @@ class TickField extends HTMLElement {
       const x = layout.left + column * FIELD_TICK_SPACING_PX;
       if (x >= front) break;
       context.globalAlpha = this.tickAlpha(x, width);
-      this.drawTickColumn(context, x, layout.columns > 1 ? column / (layout.columns - 1) : 0, layout);
+      this.drawTickColumn(context, x, gridShare(column, layout.columns), layout);
     }
   }
 
   /* The grid of ticks, centred in the box: as many columns and rows as leave the minimum margins. */
-  private layout(width: number, height: number): { columns: number; rows: number; left: number; top: number } {
+  private layout(width: number, height: number): FieldLayout {
     const columns = Math.max(
       1,
       Math.floor((width - 2 * FIELD_MIN_SIDE_MARGIN_PX - FIELD_TICK_WIDTH_PX) / FIELD_TICK_SPACING_PX) + 1,
@@ -334,12 +342,12 @@ class TickField extends HTMLElement {
     context: CanvasRenderingContext2D,
     x: number,
     columnShare: number,
-    layout: { rows: number; top: number },
+    layout: FieldLayout,
   ): void {
     const columnAlpha = context.globalAlpha;
     for (let row = 0; row < layout.rows; row += 1) {
       const y = layout.top + row * FIELD_ROW_SPACING_PX;
-      const tickHeight = this.tickHeight(columnShare, layout.rows > 1 ? row / (layout.rows - 1) : 0);
+      const tickHeight = this.tickHeight(columnShare, gridShare(row, layout.rows));
       context.globalAlpha = columnAlpha * this.rowAlphaFactor(y);
       context.fillRect(x, y, FIELD_TICK_WIDTH_PX, tickHeight);
       this.drawLighting(context, x, y, tickHeight);
