@@ -307,15 +307,18 @@ class TickField extends HTMLElement {
 
   /* Green on the left, cream from the right. */
   private tickGradient(context: CanvasRenderingContext2D, width: number): CanvasGradient {
-    const style = getComputedStyle(this);
     const gradient = context.createLinearGradient(0, 0, width, 0);
-    gradient.addColorStop(FIELD_GREEN_UNTIL, style.getPropertyValue('--color-accent-dark').trim());
-    gradient.addColorStop(FIELD_CREAM_FROM, style.getPropertyValue('--color-paper').trim());
+    gradient.addColorStop(FIELD_GREEN_UNTIL, this.themeColor('--color-accent-dark'));
+    gradient.addColorStop(FIELD_CREAM_FROM, this.themeColor('--color-paper'));
     return gradient;
   }
 
   private accentColor(): string {
-    return getComputedStyle(this).getPropertyValue('--color-accent').trim();
+    return this.themeColor('--color-accent');
+  }
+
+  private themeColor(customProperty: string): string {
+    return getComputedStyle(this).getPropertyValue(customProperty).trim();
   }
 
   /* Brighter from left to right. */
