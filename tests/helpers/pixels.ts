@@ -320,6 +320,79 @@ export async function meanLuminanceGainedInRectangle(
   );
 }
 
+/* How much of the brightness of what an element draws over its background a layer laid over
+   the drawing keeps, inside a rectangle of the element (CSS pixels, relative to its box), given
+   two screenshots of it, the same in all but the layer: `bare`, without the layer, and
+   `covered`, with it. The drawn pixels are those of `bare` that differ from `background` (a CSS
+   colour, the element's background) by more than a rounding error on a channel. `drawn` is the
+   brightness they show in `bare`: the sum of their luma above the background's (Rec. 709
+   weights, 0–255). `kept` is the share of it they show in `covered`, above the luma the other
+   pixels of the rectangle show there, where the layer covers the background alone: whatever
+   the layer adds of its own colour, and its dithering, counts on both sides and cancels out. */
+export async function brightnessKeptUnderLayerInRectangle(
+  element: Locator,
+  bare: Buffer,
+  covered: Buffer,
+  rectangle: Rectangle,
+  background: string,
+): Promise<{ drawn: number; kept: number }> {
+  return element.evaluate(
+    async (el, [bareBase64, coveredBase64, zone, backgroundColour]) => {
+      const TOLERANCE = 2;
+      const luma = (data: Uint8ClampedArray, i: number): number =>
+        0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+      const decode = async (base64: string): Promise<{ pixels: Uint8ClampedArray; width: number; height: number }> => {
+        const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+        const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext('2d', { willReadFrequently: true })!;
+        context.drawImage(image, 0, 0);
+        return { pixels: context.getImageData(0, 0, image.width, image.height).data, width: image.width, height: image.height };
+      };
+      const without = await decode(bareBase64);
+      const withLayer = await decode(coveredBase64);
+      const context = document.createElement('canvas').getContext('2d', { willReadFrequently: true })!;
+      context.fillStyle = backgroundColour;
+      context.fillRect(0, 0, 1, 1);
+      const backgroundPixel = context.getImageData(0, 0, 1, 1).data;
+      const backgroundLuma = luma(backgroundPixel, 0);
+      const width = Math.min(without.width, withLayer.width);
+      const height = Math.min(without.height, withLayer.height);
+      const scale = without.width / el.getBoundingClientRect().width;
+      const fromColumn = Math.max(0, Math.round(zone.x * scale));
+      const toColumn = Math.min(width, Math.round((zone.x + zone.width) * scale));
+      const fromRow = Math.max(0, Math.round(zone.y * scale));
+      const toRow = Math.min(height, Math.round((zone.y + zone.height) * scale));
+      let drawn = 0;
+      let drawnUnderLayer = 0;
+      let drawnCount = 0;
+      let backgroundUnderLayer = 0;
+      let backgroundCount = 0;
+      for (let row = fromRow; row < toRow; row++) {
+        for (let column = fromColumn; column < toColumn; column++) {
+          const i = 4 * (row * without.width + column);
+          const j = 4 * (row * withLayer.width + column);
+          const isDrawn = [0, 1, 2].some((channel) => Math.abs(without.pixels[i + channel] - backgroundPixel[channel]) > TOLERANCE);
+          if (isDrawn) {
+            drawn += luma(without.pixels, i) - backgroundLuma;
+            drawnUnderLayer += luma(withLayer.pixels, j);
+            drawnCount += 1;
+          } else {
+            backgroundUnderLayer += luma(withLayer.pixels, j);
+            backgroundCount += 1;
+          }
+        }
+      }
+      const layerOverBackground = backgroundCount === 0 ? backgroundLuma : backgroundUnderLayer / backgroundCount;
+      const keptBrightness = drawnUnderLayer - drawnCount * layerOverBackground;
+      return { drawn, kept: drawn > 0 ? keptBrightness / drawn : 0 };
+    },
+    [bare.toString('base64'), covered.toString('base64'), rectangle, background] as const,
+  );
+}
+
 /* The vertical bands, at least `minBandWidth` CSS pixels wide each, into which a width of
    `width` CSS pixels splits from its left edge to its right edge, that show no drawn pixel:
    given, for each column of a screenshot, a count of drawn pixels (as

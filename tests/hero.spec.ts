@@ -21,8 +21,8 @@ import { tabUntilFocused } from './helpers/keyboard';
 import {
   type Rectangle,
   bandsWithoutDrawnPixels,
-  luminanceAboveBackgroundInRectangle,
   meanLuminanceGainedInRectangle,
+  brightnessKeptUnderLayerInRectangle,
   pixelsChangedPerColumnInRectangle,
 } from './helpers/pixels';
 import { SIGNS, textOnScreen } from './helpers/text-on-screen';
@@ -598,32 +598,37 @@ test('on phone as on desktop, the hero is a tick field drawn across its whole wi
   }
 });
 
-test('on phone as on desktop, a click (a tap on mobile) on the hero’s tagline starts a ripple around that point: once revealed, 300 ms after the click, zones all around the click point, about 84px from it, got brighter since just before the click, while the zone at the click point did not', async ({ page, hasTouch }) => {
+test('on phone as on desktop, a click (a tap on mobile) on the hero’s professional title starts a ripple around that point: once revealed, 300 ms after the click, zones all around the click point, about 84px from it, got brighter since just before the click, while the zone at the click point did not', async ({ page, hasTouch }) => {
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
   /* The hero is the main content region named by its main heading. */
   const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
   await expect(hero).toBeVisible();
-  const tagline = hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.');
-  await expect(tagline).toBeVisible();
-  await tagline.scrollIntoViewIfNeeded();
+  /* The professional title, below the author name, high in the hero: there, towards the top
+     edge of the veil, the veil lets most of the field show, ripple included. */
+  const title = hero.getByRole('heading', { level: 1 }).getByText('Horloger indépendant', { exact: true });
+  await expect(title).toBeVisible();
+  await title.scrollIntoViewIfNeeded();
   /* Long after the field's reveal (about 1.1 s) and the heading's decoding (in clear 4 s after
      load): from then on, nothing but the ripple changes what the hero shows. */
   await page.clock.runFor(5000);
 
-  /* The click point: the middle of the tagline's first line box (rather than of its bounding
-     box, so that the point stays on its text even if it wraps), relative to the hero. */
+  /* The click point: the middle of the first line box of the title's text (rather than of its
+     element's box, which may span the hero's width, so that the point stays on its letters even
+     if it wraps), relative to the hero. */
   const heroBox = (await hero.boundingBox())!;
-  const onScreen = await tagline.evaluate((el) => {
-    const box = el.getClientRects()[0];
+  const onScreen = await title.evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const box = range.getClientRects()[0];
     return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
   });
   const point = { x: onScreen.x - heroBox.x, y: onScreen.y - heroBox.y };
-  const isOnTheTagline = await tagline.evaluate((el, { x, y }) => {
+  const isOnTheTitle = await title.evaluate((el, { x, y }) => {
     const hit = document.elementFromPoint(x, y);
     return hit !== null && el.contains(hit);
   }, onScreen);
-  expect(isOnTheTagline, 'the click point is on the tagline’s text').toBe(true);
+  expect(isOnTheTitle, 'the click point is on the professional title’s text').toBe(true);
 
   /* The ring grows about 0.28px per ms: 300 ms after the click, it is about 84px from the click
      point. Four zones straddle the ring, 20px deep across it and 40px long along it, to its
@@ -664,7 +669,8 @@ test('on phone as on desktop, a click (a tap on mobile) on the hero’s tagline 
 
   /* Lit by the ring: on average, each pixel of the zone at least 2 luma levels (out of 255)
      brighter than just before the click. The ring crosses a fifth of each zone's depth, and
-     the text over it (the heading's bold letters above the tagline) hides part of it. */
+     the text over it (the author name's bold letters above the title, the tagline below it)
+     hides part of it. */
   const MIN_RING_GAIN = 2;
   const gains = await Promise.all(
     ringZones.map(async (zone) => ({ zone, gain: await meanLuminanceGainedInRectangle(hero, before, after, zone.rectangle) })),
@@ -674,44 +680,79 @@ test('on phone as on desktop, a click (a tap on mobile) on the hero’s tagline 
     .map(({ zone, gain }) => `${zone.name} (${Math.round(zone.rectangle.x)}, ${Math.round(zone.rectangle.y)})px: +${gain.toFixed(2)}`);
   expect(
     dimRingZones,
-    `zones about ${RADIUS}px around the click point on the tagline at (${Math.round(point.x)}, ${Math.round(point.y)})px whose pixels did not get, on average, at least ${MIN_RING_GAIN} luma levels brighter, 300 ms after the click`,
+    `zones about ${RADIUS}px around the click point on the professional title at (${Math.round(point.x)}, ${Math.round(point.y)})px whose pixels did not get, on average, at least ${MIN_RING_GAIN} luma levels brighter, 300 ms after the click`,
   ).toEqual([]);
 
   /* The click point itself: on average, each pixel at most half a luma level brighter. */
   const centreGain = await meanLuminanceGainedInRectangle(hero, before, after, centre);
   expect(
     centreGain,
-    `mean luma gained by the pixels of the 30px square at the click point on the tagline (${Math.round(point.x)}, ${Math.round(point.y)})px, 300 ms after the click`,
+    `mean luma gained by the pixels of the 30px square at the click point on the professional title (${Math.round(point.x)}, ${Math.round(point.y)})px, 300 ms after the click`,
   ).toBeLessThanOrEqual(0.5);
 });
 
-test('on phone as on desktop, the hero’s veil darkens its text zone: with the field still (reduced motion), the field behind the start of the text, at the middle of its height, shows at most 0.8 times the brightness it shows in the same columns in the hero’s bottom-left corner', async ({ page }) => {
-  /* The visitor asks for reduced motion: the field is drawn once, complete, and stays still.
-     Time stands still from before the page loads, until the test advances it. */
+/* The hero of the French home page, still: the visitor asks for reduced motion, so the field is
+   drawn once, complete, and stays still; time stands still from before the page loads, then
+   runs a few animation frames, which draw the field. With its text (heading, tagline, stack
+   and buttons), visible. */
+async function stillHero(page: Page): Promise<{ hero: Locator; text: Record<string, Locator> }> {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
   /* The hero is the main content region named by its main heading. */
   const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
   await expect(hero).toBeVisible();
-  const elements = {
+  const text = {
     'heading': hero.getByRole('heading', { level: 1 }),
     'tagline': hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
     'stack': hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
     'first button, "Voir les projets"': hero.getByRole('link', { name: 'Voir les projets' }),
     'second button, "Contact"': hero.getByRole('link', { name: 'Contact' }),
   };
-  for (const [name, element] of Object.entries(elements)) await expect(element, name).toBeVisible();
-  /* A few animation frames: the field is drawn. */
+  for (const [name, element] of Object.entries(text)) await expect(element, name).toBeVisible();
   await page.clock.runFor(100);
+  return { hero, text };
+}
+
+/* What the hero's veil lets show of the field: two screenshots of the still hero, its text
+   hidden from them without moving anything, so that only the field and the veil laid over it
+   show — `veiled`, as the visitor sees it, and `bare`, the same hero with its veil hidden.
+   Both hold the same ticks at the same places: only the veil tells them apart. The share of
+   the field's brightness a zone of `veiled` keeps (brightnessKeptUnderLayerInRectangle) is what
+   the veil lets through there, whatever the field's own brightness. The hero has no background
+   colour of its own: the page's (`background`) shows through it. */
+async function heroWithAndWithoutVeil(
+  page: Page,
+  hero: Locator,
+  text: Record<string, Locator>,
+): Promise<{ veiled: Buffer; bare: Buffer; background: string }> {
+  for (const element of Object.values(text)) {
+    await element.evaluate((el) => {
+      (el as HTMLElement).style.visibility = 'hidden';
+    });
+  }
+  const veiled = await hero.screenshot();
+  /* The veil: decorative, hidden from assistive technologies, it has no role or name. */
+  const veil = hero.locator('.veil');
+  await expect(veil).toHaveCount(1);
+  await veil.evaluate((el) => {
+    (el as HTMLElement).style.visibility = 'hidden';
+  });
+  const bare = await hero.screenshot();
+  const background = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  return { veiled, bare, background };
+}
+
+test('on phone as on desktop, the hero’s veil darkens its text zone: with the field still (reduced motion), compared with the same hero without its veil, the field behind the middle of the text zone keeps at most 0.8 times the share of its brightness it keeps in the same columns at the hero’s top edge, above the text', async ({ page }) => {
+  const { hero, text } = await stillHero(page);
 
   /* The text zone: from the top of the heading to the bottom of the buttons, the last of the
-     hero's content. */
+     hero's content, across the heading's width. */
   const heroBox = (await hero.boundingBox())!;
-  const headingBox = (await elements.heading.boundingBox())!;
+  const headingBox = (await text.heading.boundingBox())!;
   const buttonsBottom = Math.max(
     ...(await Promise.all(
-      [elements['first button, "Voir les projets"'], elements['second button, "Contact"']].map(async (button) => {
+      [text['first button, "Voir les projets"'], text['second button, "Contact"']].map(async (button) => {
         const box = (await button.boundingBox())!;
         return box.y + box.height;
       }),
@@ -719,36 +760,79 @@ test('on phone as on desktop, the hero’s veil darkens its text zone: with the 
   );
   const textTop = headingBox.y - heroBox.y;
   const textBottom = buttonsBottom - heroBox.y;
-  const textLeft = headingBox.x - heroBox.x;
+  const textMiddle = headingBox.x - heroBox.x + headingBox.width / 2;
 
-  /* The field's ticks are vertical strokes across its whole height, each as bright from top
-     to bottom, brighter from left to right: two zones in the same columns hold the same
-     ticks, and only the veil can make one darker than the other. Two 32px squares, in the
-     columns where the text starts: one at the middle of the text zone's height, the other in
-     the hero's bottom-left corner, below the text, 8px above its bottom edge, where the field
-     is scaled to the screen's pixels as it is elsewhere. */
+  /* Two zones 32px wide, in the columns at the middle of the text zone: a 32px square at the
+     middle of its height, and, above the heading, the strip along the hero's top edge, at
+     most 32px high. The field is brighter at the top than at the bottom: what each zone keeps
+     of the field's brightness is measured against the same hero without its veil. */
   const SIDE = 32;
-  const atText: Rectangle = { x: textLeft, y: (textTop + textBottom) / 2 - SIDE / 2, width: SIDE, height: SIDE };
-  const inCorner: Rectangle = { x: textLeft, y: heroBox.height - 8 - SIDE, width: SIDE, height: SIDE };
-  expect(inCorner.y, 'top of the bottom-left corner square, below the text zone').toBeGreaterThanOrEqual(textBottom);
+  const atText: Rectangle = { x: textMiddle - SIDE / 2, y: (textTop + textBottom) / 2 - SIDE / 2, width: SIDE, height: SIDE };
+  const atTop: Rectangle = { x: textMiddle - SIDE / 2, y: 0, width: SIDE, height: Math.min(SIDE, textTop) };
+  expect(atTop.height, 'height of the strip along the hero’s top edge, above the heading').toBeGreaterThanOrEqual(24);
 
-  /* Only the field is measured, not the glyphs or the buttons: the text is hidden from the
-     screenshot, without moving anything. The hero has no background colour of its own: the
-     page's shows through it. */
-  for (const element of Object.values(elements)) {
-    await element.evaluate((el) => {
-      (el as HTMLElement).style.visibility = 'hidden';
-    });
-  }
-  const pageBackground = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  const shot = await hero.screenshot();
-  const brightnessAtText = await luminanceAboveBackgroundInRectangle(hero, shot, atText, pageBackground);
-  const brightnessInCorner = await luminanceAboveBackgroundInRectangle(hero, shot, inCorner, pageBackground);
-  expect(brightnessInCorner, 'brightness above the background in the hero’s bottom-left corner: ticks are drawn there').toBeGreaterThan(0);
+  const { veiled, bare, background } = await heroWithAndWithoutVeil(page, hero, text);
+  const keptAtText = await brightnessKeptUnderLayerInRectangle(hero, bare, veiled, atText, background);
+  const keptAtTop = await brightnessKeptUnderLayerInRectangle(hero, bare, veiled, atTop, background);
+  expect(keptAtText.drawn, 'brightness above the background of the field behind the middle of the text zone: ticks are drawn there').toBeGreaterThan(0);
+  expect(keptAtTop.drawn, 'brightness above the background of the field at the hero’s top edge: ticks are drawn there').toBeGreaterThan(0);
   expect(
-    brightnessAtText,
-    `brightness above the background of the field behind the start of the text, at (${Math.round(atText.x)}, ${Math.round(atText.y)})px, at most 0.8 times that in the same columns in the bottom-left corner of the ${Math.round(heroBox.width)} × ${Math.round(heroBox.height)}px hero, ${Math.round(brightnessInCorner)}`,
-  ).toBeLessThanOrEqual(0.8 * brightnessInCorner);
+    keptAtText.kept,
+    `share of the field’s brightness kept behind the middle of the text zone, at (${Math.round(atText.x)}, ${Math.round(atText.y)})px, at most 0.8 times that kept in the same columns at the top edge of the ${Math.round(heroBox.width)} × ${Math.round(heroBox.height)}px hero, ${keptAtTop.kept.toFixed(2)}`,
+  ).toBeLessThanOrEqual(0.8 * keptAtTop.kept);
+});
+
+test('on phone as on desktop, the hero’s veil follows the design: with the field still (reduced motion), compared with the same hero without its veil, it hides the field most at about 38 % of the hero’s width and 55 % of its height, and less and less towards the edges: the zone there keeps at most 0.8 times the share of the field’s brightness each zone 10 % of the width or height to its left, right, top and bottom keeps, and from each of these, towards its edge, the zone halfway to the edge, then the zone against it, each keeps at least 1.1 times what the previous one keeps', async ({ page }) => {
+  const { hero, text } = await stillHero(page);
+  const heroBox = (await hero.boundingBox())!;
+  const { width, height } = heroBox;
+
+  /* 32px squares, given by their centres, relative to the hero. One where the veil is at its
+     densest in the design, at 38 % of the width and 55 % of the height. From it, towards each
+     edge of the hero, in a straight line: one 10 % of the hero's width (or height) away, one
+     halfway between that centre and the edge, one 24px from the edge, where the field, which
+     leaves a margin along its edges, still draws ticks. */
+  const SIDE = 32;
+  const INSET = 24 + SIDE / 2;
+  const centre = { x: 0.38 * width, y: 0.55 * height };
+  const towardsEdges = [
+    { name: 'left', points: [{ x: centre.x - 0.1 * width, y: centre.y }, { x: (centre.x + INSET) / 2, y: centre.y }, { x: INSET, y: centre.y }] },
+    { name: 'right', points: [{ x: centre.x + 0.1 * width, y: centre.y }, { x: (centre.x + width - INSET) / 2, y: centre.y }, { x: width - INSET, y: centre.y }] },
+    { name: 'top', points: [{ x: centre.x, y: centre.y - 0.1 * height }, { x: centre.x, y: (centre.y + INSET) / 2 }, { x: centre.x, y: INSET }] },
+    { name: 'bottom', points: [{ x: centre.x, y: centre.y + 0.1 * height }, { x: centre.x, y: (centre.y + height - INSET) / 2 }, { x: centre.x, y: height - INSET }] },
+  ];
+  const square = ({ x, y }: { x: number; y: number }): Rectangle => ({ x: x - SIDE / 2, y: y - SIDE / 2, width: SIDE, height: SIDE });
+  const where = ({ x, y }: { x: number; y: number }): string => `(${Math.round(x)}, ${Math.round(y)})px`;
+
+  /* The field is brighter on the right than on the left, and at the top than at the bottom:
+     what each zone keeps of the field's brightness is measured against the same hero without
+     its veil. */
+  const { veiled, bare, background } = await heroWithAndWithoutVeil(page, hero, text);
+  const keptAt = async (point: { x: number; y: number }): Promise<number> => {
+    const { drawn, kept } = await brightnessKeptUnderLayerInRectangle(hero, bare, veiled, square(point), background);
+    expect(drawn, `brightness above the background of the field around ${where(point)}: ticks are drawn there`).toBeGreaterThan(0);
+    return kept;
+  };
+
+  const keptAtCentre = await keptAt(centre);
+  const notAsDesigned: string[] = [];
+  for (const { name, points } of towardsEdges) {
+    const kept = await Promise.all(points.map(keptAt));
+    const [near, halfway, atEdge] = kept;
+    if (!(keptAtCentre <= 0.8 * near)) {
+      notAsDesigned.push(`${name}: 10 % away, at ${where(points[0])}, keeps ${near.toFixed(2)}, less than 1.25 times the centre`);
+    }
+    if (!(halfway >= 1.1 * near)) {
+      notAsDesigned.push(`${name}: halfway to the edge, at ${where(points[1])}, keeps ${halfway.toFixed(2)}, less than 1.1 times ${near.toFixed(2)} 10 % away`);
+    }
+    if (!(atEdge >= 1.1 * halfway)) {
+      notAsDesigned.push(`${name}: against the edge, at ${where(points[2])}, keeps ${atEdge.toFixed(2)}, less than 1.1 times ${halfway.toFixed(2)} halfway`);
+    }
+  }
+  expect(
+    notAsDesigned,
+    `zones of the ${Math.round(width)} × ${Math.round(height)}px hero where the veil does not hide the field less and less from ${where(centre)}, which keeps ${keptAtCentre.toFixed(2)} of the field’s brightness, towards the edges`,
+  ).toEqual([]);
 });
 
 test('served under /portfolio/, the first hero button of the French home page, "Voir les projets", leads to /portfolio/fr/projets/', async ({ page }) => {
