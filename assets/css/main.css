@@ -126,6 +126,23 @@ h1 {
   margin-bottom: 0;
 }
 
+.hero-stack {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  margin-top: 20px;
+  /* The buttons' margin alone sets the space below the stack. */
+  margin-bottom: 0;
+  color: var(--color-accent);
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 44px;
+}
+
 /* From tablet width, the text block is centred vertically, with 40px of
    padding below it. */
 @media (min-width: 768px) {
@@ -155,25 +172,8 @@ h1 {
   }
 }
 
-.hero-stack {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  letter-spacing: 0.04em;
-  margin-top: 20px;
-  /* The buttons' margin alone sets the space below the stack. */
-  margin-bottom: 0;
-  color: var(--color-accent);
-}
-
 /* Minimum target size (WCAG 2.5.8): an inline link ignores min-height
    and vertical padding, hence inline-block. */
-.hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 44px;
-}
-
 .hero-actions a {
   display: inline-block;
   min-width: var(--min-target-size);
@@ -186,7 +186,6 @@ h1 {
 
 /* First button: filled. */
 .hero-actions a:first-child {
-  font-family: var(--font-mono);
   font-weight: 600;
   color: var(--color-ink);
   background-color: var(--color-paper);
