@@ -10,6 +10,7 @@ import {
   luminanceAboveBackgroundInRectangle,
   luminanceAboveBackgroundPerColumn,
   pixelsNotOfBackgroundPerColumn,
+  pixelsNotOfBackgroundPerRow,
 } from './helpers/pixels';
 
 test.describe('catalog: tick-field', () => {
@@ -221,6 +222,47 @@ test.describe('catalog: tick-field', () => {
       emptyBands,
       `bands of the ${Math.round(width)}px-wide tick-field with no drawn pixel, right after load under reduced motion`,
     ).toEqual([]);
+  });
+
+  test('once revealed, a tick-field is made of short ticks in rows: between two rows of drawn pixels, a horizontal band at least 4px high, across its whole width, shows only its background', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
+       to change it. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await page.clock.runFor(16);
+
+    const { rows, scale } = await pixelsNotOfBackgroundPerRow(tickField, await tickField.screenshot());
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+
+    /* Runs of adjacent screenshot rows, from top to bottom, that show no drawn pixel across
+       the whole width, and that have rows with drawn pixels both above and below them: the
+       gaps between two rows of ticks. Full-height lines leave none. */
+    const MIN_BAND_HEIGHT = 4;
+    const firstDrawn = rows.findIndex((count) => count > 0);
+    const lastDrawn = rows.findLastIndex((count) => count > 0);
+    const gaps: string[] = [];
+    let gapStart = -1;
+    for (let row = firstDrawn + 1; firstDrawn >= 0 && row <= lastDrawn; row++) {
+      if (rows[row] === 0 && gapStart < 0) gapStart = row;
+      if (rows[row] > 0 && gapStart >= 0) {
+        if ((row - gapStart) / scale >= MIN_BAND_HEIGHT) {
+          gaps.push(`${(gapStart / scale).toFixed(1)}–${(row / scale).toFixed(1)}px`);
+        }
+        gapStart = -1;
+      }
+    }
+    expect(
+      gaps.length,
+      `horizontal bands at least ${MIN_BAND_HEIGHT}px high with no drawn pixel between two rows of drawn pixels, in the ${Math.round(fieldBox!.height)}px-high tick-field (drawn from ${(firstDrawn / scale).toFixed(1)}px to ${((lastDrawn + 1) / scale).toFixed(1)}px): ${gaps.join(', ') || 'none'}`,
+    ).toBeGreaterThan(0);
   });
 
   test('a tick-field reveals from left to right: 500 ms after load, every vertical band of its left part shows drawn pixels, while its right part still only shows its background', async ({ page, context }) => {

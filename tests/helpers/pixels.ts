@@ -20,7 +20,7 @@ async function columnsOverBackground(
   screenshot: Buffer,
   rectangle?: Rectangle,
   background?: string,
-): Promise<{ notOfBackground: number[]; luminanceAboveBackground: number[]; scale: number }> {
+): Promise<{ notOfBackground: number[]; notOfBackgroundPerRow: number[]; luminanceAboveBackground: number[]; scale: number }> {
   return element.evaluate(
     async (el, [base64, zone, backgroundColour]) => {
       const TOLERANCE = 2;
@@ -45,6 +45,7 @@ async function columnsOverBackground(
       context.drawImage(image, 0, 0);
       const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
       const notOfBackground = new Array<number>(image.width).fill(0);
+      const notOfBackgroundPerRow = new Array<number>(image.height).fill(0);
       const luminanceAboveBackground = new Array<number>(image.width).fill(0);
       for (let i = 0; i < pixels.length; i += 4) {
         const column = (i / 4) % image.width;
@@ -53,12 +54,13 @@ async function columnsOverBackground(
         for (let channel = 0; channel < 3; channel++) {
           if (Math.abs(pixels[i + channel] - background[channel]) > TOLERANCE) {
             notOfBackground[column] += 1;
+            notOfBackgroundPerRow[row] += 1;
             luminanceAboveBackground[column] += Math.max(0, luma(pixels, i) - backgroundLuma);
             break;
           }
         }
       }
-      return { notOfBackground, luminanceAboveBackground, scale };
+      return { notOfBackground, notOfBackgroundPerRow, luminanceAboveBackground, scale };
     },
     [screenshot.toString('base64'), rectangle ?? null, background ?? null] as const,
   );
@@ -74,6 +76,18 @@ export async function pixelsNotOfBackgroundPerColumn(
 ): Promise<{ columns: number[]; scale: number }> {
   const { notOfBackground, scale } = await columnsOverBackground(element, screenshot);
   return { columns: notOfBackground, scale };
+}
+
+/* Where the pixels of the screenshot of an element differ from the element's background
+   colour by more than a rounding error on a channel: for each row of the screenshot, from top
+   to bottom, the number of such pixels. `scale` is the number of screenshot rows (and
+   columns) per CSS pixel of the element's size. */
+export async function pixelsNotOfBackgroundPerRow(
+  element: Locator,
+  screenshot: Buffer,
+): Promise<{ rows: number[]; scale: number }> {
+  const { notOfBackgroundPerRow, scale } = await columnsOverBackground(element, screenshot);
+  return { rows: notOfBackgroundPerRow, scale };
 }
 
 /* Number of separate vertical strokes drawn between two columns of a screenshot (from
