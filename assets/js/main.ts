@@ -117,7 +117,7 @@ const FIELD_GREEN_UNTIL = 0.25;
 
 const FIELD_CREAM_FROM = 0.9;
 
-const FIELD_HOVER_RADIUS_PX = 40;
+const FIELD_HOVER_RADIUS_PX = 60;
 
 const FIELD_HOVER_TICK_WIDTH_PX = 2;
 
@@ -301,7 +301,8 @@ class TickField extends HTMLElement {
     const tickColor = context.fillStyle;
     context.globalAlpha = this.trailAlpha();
     context.fillStyle = this.accentColor();
-    context.fillRect(x, this.pointerY - FIELD_HOVER_RADIUS_PX, FIELD_HOVER_TICK_WIDTH_PX, 2 * FIELD_HOVER_RADIUS_PX);
+    const halfHeight = Math.sqrt(FIELD_HOVER_RADIUS_PX ** 2 - (x - this.pointerX) ** 2);
+    context.fillRect(x, this.pointerY - halfHeight, FIELD_HOVER_TICK_WIDTH_PX, 2 * halfHeight);
     context.fillStyle = tickColor;
   }
 
