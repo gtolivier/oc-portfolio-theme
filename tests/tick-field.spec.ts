@@ -7,6 +7,7 @@ import {
   colourAddedOverBackgroundInRectangle,
   countDrawnStrokes,
   countPixelsNotOfBackground,
+  heightsOfDrawnRunsInRectangle,
   luminanceAboveBackgroundInRectangle,
   luminanceAboveBackgroundPerColumn,
   pixelsNotOfBackgroundPerColumn,
@@ -343,6 +344,49 @@ test.describe('catalog: tick-field', () => {
       right,
       `brightness above the background of the right quarter (${Math.round(width - QUARTER)}–${Math.round(width)}px), against ${Math.round(left)} for the left quarter (0–${Math.round(QUARTER)}px)`,
     ).toBeGreaterThan(2 * left);
+  });
+
+  test('once revealed, a tick-field has taller ticks on the right than on the left: the typical height of the strokes drawn in its right quarter is more than 1.4 times that of the strokes drawn in its left quarter', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
+       to stretch a tick. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await page.clock.runFor(16);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const width = fieldBox!.width;
+    const height = fieldBox!.height;
+
+    /* The left quarter and the right quarter of the width, each over the whole height: in
+       every column, each vertical run of drawn pixels is a tick, cut by that column. The
+       median of their heights is the typical tick height on that side, which a pixel more or
+       less at the anti-aliased ends of some ticks barely moves. Ticks of the same height
+       everywhere give about the same median on both sides. */
+    const screenshot = await tickField.screenshot();
+    const QUARTER = 0.25 * width;
+    const left = await heightsOfDrawnRunsInRectangle(tickField, screenshot, { x: 0, y: 0, width: QUARTER, height });
+    const right = await heightsOfDrawnRunsInRectangle(tickField, screenshot, { x: width - QUARTER, y: 0, width: QUARTER, height });
+    expect(left.length, `strokes drawn in the left quarter (0–${Math.round(QUARTER)}px)`).toBeGreaterThan(0);
+    expect(right.length, `strokes drawn in the right quarter (${Math.round(width - QUARTER)}–${Math.round(width)}px)`).toBeGreaterThan(0);
+    const median = (values: number[]): number => {
+      const sorted = [...values].sort((a, b) => a - b);
+      const middle = Math.floor(sorted.length / 2);
+      return sorted.length % 2 === 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+    };
+    const leftHeight = median(left);
+    const rightHeight = median(right);
+    expect(
+      rightHeight,
+      `median height of the ${right.length} strokes drawn in the right quarter (${Math.round(width - QUARTER)}–${Math.round(width)}px), in CSS pixels, against ${leftHeight.toFixed(1)}px for the ${left.length} of the left quarter (0–${Math.round(QUARTER)}px)`,
+    ).toBeGreaterThan(1.4 * leftHeight);
   });
 
   test('with a fine pointer, hovering a tick-field brightens the ticks under the pointer: once revealed, the zone around the pointer shows more than 1.5 times the brightness above the background it showed before the hover', async ({ page, context, hasTouch }) => {

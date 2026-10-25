@@ -317,6 +317,57 @@ export function bandsWithoutDrawnPixels(columns: number[], scale: number, width:
   return emptyBands;
 }
 
+/* How tall the strokes drawn inside a rectangle of an element (CSS pixels, relative to its
+   box) are: in each column of the element's screenshot inside the rectangle, every run of
+   vertically adjacent pixels that differ from the element's background colour by more than a
+   rounding error on a channel, its height in CSS pixels. A run cut by the top or bottom edge
+   of the rectangle counts only its part inside it. */
+export async function heightsOfDrawnRunsInRectangle(
+  element: Locator,
+  screenshot: Buffer,
+  rectangle: Rectangle,
+): Promise<number[]> {
+  return element.evaluate(
+    async (el, [base64, zone]) => {
+      const TOLERANCE = 2;
+      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const scale = image.width / el.getBoundingClientRect().width;
+      const fromColumn = Math.max(0, Math.round(zone.x * scale));
+      const toColumn = Math.min(image.width, Math.round((zone.x + zone.width) * scale));
+      const fromRow = Math.max(0, Math.round(zone.y * scale));
+      const toRow = Math.min(image.height, Math.round((zone.y + zone.height) * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true })!;
+      context.fillStyle = getComputedStyle(el).backgroundColor;
+      context.fillRect(0, 0, 1, 1);
+      const background = context.getImageData(0, 0, 1, 1).data;
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      const heights: number[] = [];
+      for (let column = fromColumn; column < toColumn; column++) {
+        let run = 0;
+        for (let row = fromRow; row <= toRow; row++) {
+          const i = 4 * (row * image.width + column);
+          const drawn =
+            row < toRow && [0, 1, 2].some((channel) => Math.abs(pixels[i + channel] - background[channel]) > TOLERANCE);
+          if (drawn) {
+            run += 1;
+          } else if (run > 0) {
+            heights.push(run / scale);
+            run = 0;
+          }
+        }
+      }
+      return heights;
+    },
+    [screenshot.toString('base64'), rectangle] as const,
+  );
+}
+
 /* Number of pixels of the screenshot of an element that differ from the element's background
    colour by more than a rounding error on a channel. */
 export async function countPixelsNotOfBackground(element: Locator, screenshot: Buffer): Promise<number> {
