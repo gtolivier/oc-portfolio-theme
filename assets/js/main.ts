@@ -63,6 +63,7 @@ class ScrambleText extends HTMLElement {
   private decode(text: string): void {
     const reducedMotion = reducedMotionQuery();
     if (reducedMotion.matches) return;
+    this.shown.setAttribute('aria-hidden', 'true');
     this.replaceChildren(invisibleSizer(text), this.shown);
     this.shown.textContent = scramble(text);
     const delayMs = Number(this.getAttribute('delay')) || 0;
