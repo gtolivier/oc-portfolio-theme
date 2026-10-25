@@ -201,16 +201,13 @@ class TickField extends HTMLElement {
       if (reducedMotionQuery().matches) return;
       const { x, y } = this.localPoint(event);
       this.hovering = true;
-      /* The point the pointer leaves starts fading from now, however long it rested there. */
-      const previous = this.trail[this.trail.length - 1];
-      if (previous) previous.at = performance.now();
+      this.leaveLastPoint();
       this.trail.push({ x, y, at: performance.now() });
       this.fadeTrail(canvas);
     });
     this.addEventListener('pointerleave', () => {
       this.hovering = false;
-      const last = this.trail[this.trail.length - 1];
-      if (last) last.at = performance.now();
+      this.leaveLastPoint();
       this.fadeTrail(canvas);
     });
     /* A tap near the field can be redirected to it by the browser: only the raw press
@@ -261,6 +258,12 @@ class TickField extends HTMLElement {
     const spread = offset < 0 ? FIELD_RIPPLE_INNER_FALLOFF_PX : FIELD_RIPPLE_OUTER_FALLOFF_PX;
     const falloff = Math.exp(-((offset / spread) ** 2));
     return Math.max(0, 1 - age / FIELD_RIPPLE_DURATION_MS) * falloff;
+  }
+
+  /* The point the pointer leaves starts fading from now, however long it rested there. */
+  private leaveLastPoint(): void {
+    const last = this.trail[this.trail.length - 1];
+    if (last) last.at = performance.now();
   }
 
   private fadeTrail(canvas: HTMLCanvasElement): void {
