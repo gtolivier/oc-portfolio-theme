@@ -158,7 +158,7 @@ h1 {
 .hero-stack {
   font-family: var(--font-mono);
   font-size: 14px;
-  letter-spacing: 0.56px;
+  letter-spacing: 0.04em;
   margin-top: 20px;
   color: var(--color-accent);
 }
