@@ -119,7 +119,8 @@ const FIELD_MIN_VERTICAL_MARGIN_PX = 18;
 
 const FIELD_MIN_ALPHA = 0.15;
 
-const FIELD_TOP_FADE_DIMMING = 0.75;
+/* How much dimmer the bottom of the field is than its top. */
+const FIELD_BOTTOM_DIMMING = 0.75;
 
 const FIELD_GREEN_UNTIL = 0.25;
 
@@ -377,7 +378,7 @@ class TickField extends HTMLElement {
 
   /* Brighter at the top, dimming down the whole height. */
   private rowAlphaFactor(y: number): number {
-    return 1 - FIELD_TOP_FADE_DIMMING * Math.min(1, y / this.clientHeight);
+    return 1 - FIELD_BOTTOM_DIMMING * Math.min(1, y / this.clientHeight);
   }
 
   /* Taller from left to right, and taller at the top. */
