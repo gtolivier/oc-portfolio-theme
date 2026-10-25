@@ -82,15 +82,14 @@ class ScrambleText extends HTMLElement {
   private revealLeftToRight(text: string): void {
     const letterCount = Array.from(text).length;
     const durationMs = Number(this.getAttribute('duration')) || decodeDurationMs(letterCount);
-    const totalTicks = durationMs / TICK_MS;
-    let tick = 0;
+    const startedAt = performance.now();
     this.tickTimer = setInterval(() => {
-      tick += 1;
-      if (tick >= totalTicks) {
+      const elapsedMs = performance.now() - startedAt;
+      if (elapsedMs >= durationMs) {
         this.showInClear(text);
         return;
       }
-      this.shown.textContent = scramble(text, Math.floor((tick / totalTicks) * letterCount));
+      this.shown.textContent = scramble(text, Math.floor((elapsedMs / durationMs) * letterCount));
     }, TICK_MS);
   }
 }
