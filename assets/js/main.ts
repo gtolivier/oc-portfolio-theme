@@ -102,7 +102,7 @@ const FIELD_REVEAL_DURATION_MS = 1100;
 
 const FIELD_TICK_SPACING_PX = 16;
 
-const FIELD_TICK_WIDTH_PX = 1;
+const FIELD_TICK_WIDTH_PX = 2;
 
 const FIELD_TICK_MIN_HEIGHT_PX = 4;
 
@@ -122,7 +122,8 @@ const FIELD_CREAM_FROM = 0.9;
 
 const FIELD_HOVER_RADIUS_PX = 60;
 
-const FIELD_HOVER_TICK_WIDTH_PX = 2;
+/* A lit tick grows this much at both ends. */
+const FIELD_LIT_TICK_GROWTH_PX = 6;
 
 const FIELD_TRAIL_FADE_MS = 1000;
 
@@ -136,8 +137,6 @@ const FIELD_RIPPLE_RING_HALF_WIDTH_PX = 45;
 const FIELD_RIPPLE_INNER_FALLOFF_PX = 14;
 
 const FIELD_RIPPLE_OUTER_FALLOFF_PX = 26;
-
-const FIELD_RIPPLE_TICK_WIDTH_PX = 12;
 
 /* Where the pointer passed, and since when it lingers there. */
 type TrailPoint = { x: number; y: number; at: number };
@@ -286,16 +285,20 @@ class TickField extends HTMLElement {
   }
 
   private draw(canvas: HTMLCanvasElement, progress: number): void {
-    canvas.width = this.clientWidth;
-    canvas.height = this.clientHeight;
+    /* One canvas pixel per device pixel, so the strokes stay crisp. */
+    const scale = window.devicePixelRatio || 1;
+    const width = this.clientWidth;
+    const height = this.clientHeight;
+    canvas.width = Math.round(width * scale);
+    canvas.height = Math.round(height * scale);
     const context = canvas.getContext('2d');
     if (!context) return;
-    context.fillStyle = this.tickGradient(context, canvas.width);
-    const front = progress * canvas.width;
+    context.scale(scale, scale);
+    context.fillStyle = this.tickGradient(context, width);
+    const front = progress * width;
     for (let x = 0; x < front; x += FIELD_TICK_SPACING_PX) {
-      context.globalAlpha = this.tickAlpha(x, canvas.width);
-      this.drawTickColumn(context, x, canvas.height, this.tickHeight(x, canvas.width));
-      this.drawPointerTrail(context, x);
+      context.globalAlpha = this.tickAlpha(x, width);
+      this.drawTickColumn(context, x, height, this.tickHeight(x, width));
     }
   }
 
@@ -310,13 +313,29 @@ class TickField extends HTMLElement {
   }
 
   private drawRippleOnTick(context: CanvasRenderingContext2D, x: number, y: number, tickHeight: number): void {
-    const lighting = this.rippleLighting(x, y, tickHeight);
-    if (lighting <= 0) return;
     const tickColor = context.fillStyle;
-    context.globalAlpha = lighting;
-    context.fillStyle = this.accentColor();
-    context.fillRect(x, y, FIELD_RIPPLE_TICK_WIDTH_PX, tickHeight);
+    this.drawLitTick(context, x, y, tickHeight, this.hoverLighting(x, y, tickHeight), this.accentColor());
+    this.drawLitTick(context, x, y, tickHeight, this.rippleLighting(x, y, tickHeight), this.rippleColor());
     context.fillStyle = tickColor;
+  }
+
+  private drawLitTick(
+    context: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    tickHeight: number,
+    lighting: number,
+    color: string,
+  ): void {
+    if (lighting <= 0) return;
+    context.globalAlpha = lighting;
+    context.fillStyle = color;
+    const growth = Math.round(FIELD_LIT_TICK_GROWTH_PX * lighting);
+    context.fillRect(x, y - growth, FIELD_TICK_WIDTH_PX, tickHeight + 2 * growth);
+  }
+
+  private rippleColor(): string {
+    return this.themeColor('--color-paper');
   }
 
   /* Brighter at the top. */
@@ -329,17 +348,15 @@ class TickField extends HTMLElement {
     return Math.round(FIELD_TICK_MIN_HEIGHT_PX + (FIELD_TICK_MAX_HEIGHT_PX - FIELD_TICK_MIN_HEIGHT_PX) * (x / width));
   }
 
-  private drawPointerTrail(context: CanvasRenderingContext2D, x: number): void {
-    const tickColor = context.fillStyle;
+  /* A tick is lit near where the pointer passed. */
+  private hoverLighting(x: number, y: number, tickHeight: number): number {
+    let lighting = 0;
     for (const point of this.trail) {
-      const distanceFromPointer = Math.abs(x - point.x);
-      if (distanceFromPointer >= FIELD_HOVER_RADIUS_PX) continue;
-      context.globalAlpha = this.pointAlpha(point);
-      context.fillStyle = this.accentColor();
-      const halfHeight = Math.sqrt(FIELD_HOVER_RADIUS_PX ** 2 - distanceFromPointer ** 2);
-      context.fillRect(x, point.y - halfHeight, FIELD_HOVER_TICK_WIDTH_PX, 2 * halfHeight);
+      const distance = Math.hypot(x + FIELD_TICK_WIDTH_PX / 2 - point.x, y + tickHeight / 2 - point.y);
+      if (distance >= FIELD_HOVER_RADIUS_PX) continue;
+      lighting = Math.max(lighting, this.pointAlpha(point) * (1 - distance / FIELD_HOVER_RADIUS_PX));
     }
-    context.fillStyle = tickColor;
+    return lighting;
   }
 
   /* Green on the left, cream from the right. */
