@@ -4,7 +4,9 @@
   <section class="hero" aria-labelledby="hero-heading">
     <h1 id="hero-heading"><scramble-text>{{ site.Params.author }}</scramble-text>
       {{- with .title }}
-      <span class="hero-title"><scramble-text>{{ . }}</scramble-text></span>
+      {{- /* The title starts decoding when the name is done (see decodeDurationMs in main.ts). */}}
+      {{- $nameDecodeMs := int (math.Min 2000 (math.Max 1500 (mul (strings.RuneCount site.Params.author) 100))) }}
+      <span class="hero-title"><scramble-text delay="{{ $nameDecodeMs }}">{{ . }}</scramble-text></span>
       {{- end }}
     </h1>
     {{- with .tagline }}

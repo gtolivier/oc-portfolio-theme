@@ -4,6 +4,8 @@ const SIGNS = ['|', '/', '\\', '<', '>', '[', ']', '{', '}', '=', '+', '#', '·'
 
 const MIN_DURATION_MS = 1500;
 
+const MAX_DURATION_MS = 2000;
+
 const DURATION_PER_LETTER_MS = 100;
 
 const TICK_MS = 25;
@@ -21,7 +23,7 @@ function reducedMotionQuery(): MediaQueryList {
 }
 
 function decodeDurationMs(letterCount: number): number {
-  return Math.max(MIN_DURATION_MS, letterCount * DURATION_PER_LETTER_MS);
+  return Math.min(MAX_DURATION_MS, Math.max(MIN_DURATION_MS, letterCount * DURATION_PER_LETTER_MS));
 }
 
 function scramble(text: string, clearCount = 0): string {
