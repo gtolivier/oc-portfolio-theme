@@ -443,6 +443,52 @@ test.describe('catalog: scramble-text', () => {
     expect(shown, 'the sentence ends in clear').toBe(sentence);
   });
 
+  test('once in clear, a scramble-text inside a paragraph wraps like plain text: its first word follows the text before it on the same line, and its words go on over the next lines', async ({ page, context }) => {
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it past the end of the decoding. */
+    await openCatalogPage(page, context, 'scramble-text-in-paragraph', 'no-preference');
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+    });
+    /* The only paragraph of the page (tests/fixtures/catalog/content/scramble-text-in-paragraph.md),
+       300px wide: a few words, "Au fil du texte,", then a scramble-text, a phrase much
+       longer than what is left of the line, then more words. */
+    const paragraph = page.getByRole('main').getByTestId('paragraph');
+    const scrambleText = paragraph.locator('scramble-text');
+    await expect(scrambleText).toHaveCount(1);
+    const phrase = 'un texte brouillé se décode de gauche à droite puis se montre en clair';
+    /* 2.1 s after load, a little more than the 2 s cap, the phrase is in clear. */
+    await page.clock.runFor(2100);
+    expect(await textOnScreen(scrambleText)).toBe(phrase.replace(/\s+/g, ''));
+    /* Where the last character of the text before the scramble-text is drawn. */
+    const before = await scrambleText.evaluate((element) => {
+      const text = element.previousSibling;
+      const content = text?.textContent ?? '';
+      const end = content.trimEnd().length;
+      const range = document.createRange();
+      range.setStart(text as Node, end - 1);
+      range.setEnd(text as Node, end);
+      const box = range.getBoundingClientRect();
+      return { top: box.top, bottom: box.bottom };
+    });
+    const boxes = await visibleCharacterBoxes(scrambleText);
+    expect(boxes.length, 'the phrase is drawn on screen').toBeGreaterThan(0);
+    const first = boxes[0];
+    const last = boxes[boxes.length - 1];
+    const middle = (box: { top: number; bottom: number }) => (box.top + box.bottom) / 2;
+    const characterHeight = first.bottom - first.top;
+    /* Its first word sits on the line of "Au fil du texte,", right after it. */
+    expect(
+      Math.abs(middle(first) - middle(before)),
+      `the first letter of the phrase is drawn ${middle(first) - middle(before)}px below the text before it, for characters ${characterHeight}px high: on the same line`,
+    ).toBeLessThan(characterHeight / 2);
+    /* Its last word is on a line below: its words wrapped over more than one line. */
+    expect(
+      middle(last) - middle(first),
+      `the last letter of the phrase is drawn ${middle(last) - middle(first)}px below its first one, for characters ${characterHeight}px high: on a later line`,
+    ).toBeGreaterThan(characterHeight / 2);
+  });
+
   test('under prefers-reduced-motion: reduce, a scramble-text shows its text in clear from load', async ({ page, context }) => {
     /* The visitor asks for reduced motion, and time stands still from before the page
        loads: no animation frame runs and no timer with a delay fires, the page stays as it
