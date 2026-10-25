@@ -128,9 +128,14 @@ const FIELD_TRAIL_FADE_MS = 1000;
 
 const FIELD_RIPPLE_SPEED_PX_PER_MS = 0.28;
 
-const FIELD_RIPPLE_DURATION_MS = 1800;
+const FIELD_RIPPLE_DURATION_MS = 1600;
 
-const FIELD_RIPPLE_RING_HALF_WIDTH_PX = 20;
+const FIELD_RIPPLE_RING_HALF_WIDTH_PX = 45;
+
+/* The ring fades faster behind its middle than ahead of it. */
+const FIELD_RIPPLE_INNER_FALLOFF_PX = 14;
+
+const FIELD_RIPPLE_OUTER_FALLOFF_PX = 26;
 
 const FIELD_RIPPLE_TICK_WIDTH_PX = 12;
 
@@ -203,8 +208,11 @@ class TickField extends HTMLElement {
     if (!this.ripple) return 0;
     const age = this.rippleAge();
     const distance = Math.hypot(x + FIELD_TICK_WIDTH_PX / 2 - this.ripple.x, y + tickHeight / 2 - this.ripple.y);
-    if (Math.abs(distance - age * FIELD_RIPPLE_SPEED_PX_PER_MS) > FIELD_RIPPLE_RING_HALF_WIDTH_PX) return 0;
-    return Math.max(0, 1 - age / FIELD_RIPPLE_DURATION_MS);
+    const offset = distance - age * FIELD_RIPPLE_SPEED_PX_PER_MS;
+    if (Math.abs(offset) > FIELD_RIPPLE_RING_HALF_WIDTH_PX) return 0;
+    const spread = offset < 0 ? FIELD_RIPPLE_INNER_FALLOFF_PX : FIELD_RIPPLE_OUTER_FALLOFF_PX;
+    const falloff = Math.exp(-((offset / spread) ** 2));
+    return Math.max(0, 1 - age / FIELD_RIPPLE_DURATION_MS) * falloff;
   }
 
   private fadeTrail(canvas: HTMLCanvasElement): void {
