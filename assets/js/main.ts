@@ -127,7 +127,7 @@ const FIELD_RIPPLE_SPEED_PX_PER_MS = 0.28;
 
 const FIELD_RIPPLE_DURATION_MS = 1800;
 
-const FIELD_RIPPLE_LINE_WIDTH_PX = 14;
+const FIELD_RIPPLE_RING_HALF_WIDTH_PX = 14;
 
 const FIELD_RIPPLE_TICK_WIDTH_PX = 4;
 
@@ -200,7 +200,7 @@ class TickField extends HTMLElement {
     if (!this.ripple) return 0;
     const age = this.rippleAge();
     const distance = Math.hypot(x + FIELD_TICK_WIDTH_PX / 2 - this.ripple.x, y + tickHeight / 2 - this.ripple.y);
-    if (Math.abs(distance - age * FIELD_RIPPLE_SPEED_PX_PER_MS) > FIELD_RIPPLE_LINE_WIDTH_PX) return 0;
+    if (Math.abs(distance - age * FIELD_RIPPLE_SPEED_PX_PER_MS) > FIELD_RIPPLE_RING_HALF_WIDTH_PX) return 0;
     return Math.max(0, 1 - age / FIELD_RIPPLE_DURATION_MS);
   }
 
@@ -293,16 +293,19 @@ class TickField extends HTMLElement {
     for (let y = 0; y < height; y += FIELD_ROW_SPACING_PX) {
       context.globalAlpha = columnAlpha * this.rowAlphaFactor(y);
       context.fillRect(x, y, FIELD_TICK_WIDTH_PX, tickHeight);
-      const lighting = this.rippleLighting(x, y, tickHeight);
-      if (lighting > 0) {
-        const tickColor = context.fillStyle;
-        context.globalAlpha = lighting;
-        context.fillStyle = this.accentColor();
-        context.fillRect(x, y, FIELD_RIPPLE_TICK_WIDTH_PX, tickHeight);
-        context.fillStyle = tickColor;
-      }
+      this.drawRippleOnTick(context, x, y, tickHeight);
     }
     context.globalAlpha = columnAlpha;
+  }
+
+  private drawRippleOnTick(context: CanvasRenderingContext2D, x: number, y: number, tickHeight: number): void {
+    const lighting = this.rippleLighting(x, y, tickHeight);
+    if (lighting <= 0) return;
+    const tickColor = context.fillStyle;
+    context.globalAlpha = lighting;
+    context.fillStyle = this.accentColor();
+    context.fillRect(x, y, FIELD_RIPPLE_TICK_WIDTH_PX, tickHeight);
+    context.fillStyle = tickColor;
   }
 
   /* Brighter at the top. */
