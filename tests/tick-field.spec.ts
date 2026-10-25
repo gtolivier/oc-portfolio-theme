@@ -381,11 +381,22 @@ test.describe('catalog: tick-field', () => {
       /* The empty margins, in CSS pixels: from each edge of the box to the nearest edge of a
          drawn tick, anti-aliased edges counted by how much of a pixel they cover, so that the
          faint edge of a bright tick reaches no farther than that of a dim one. */
-      const extent = await extentOfDrawnTicks(tickField, await tickField.screenshot());
+      const screenshot = await tickField.screenshot();
+      const extent = await extentOfDrawnTicks(tickField, screenshot);
       expect(extent.left, `drawn ticks in the ${size.width}×${size.height}px tick-field`).not.toBeNaN();
+      /* Across, the edges of the outermost columns of ticks are measured by how much of each
+         screenshot column the ticks cover, summed over the field's whole height, and nothing
+         else: every tick of a column spans the same screenshot columns, whatever its colour and
+         opacity, so neither decides where the column starts and ends. Each column of ticks is
+         taken in a band from 6px outside its edge to 8px inside it, which holds its
+         anti-aliased edges and none of the next column, 16px away. */
+      const [leftColumn, rightColumn] = await horizontalExtentOfDrawnStrokeInRectangles(tickField, screenshot, [
+        { x: extent.left - 6, y: 0, width: 14, height: box!.height },
+        { x: extent.right - 8, y: 0, width: 14, height: box!.height },
+      ]);
       const margins = {
-        left: extent.left,
-        right: box!.width - extent.right,
+        left: leftColumn.x,
+        right: box!.width - (rightColumn.x + rightColumn.width),
         top: extent.top,
         bottom: box!.height - extent.bottom,
       };
@@ -693,6 +704,85 @@ test.describe('catalog: tick-field', () => {
       degreesFromCreamHue(topRight),
       `angle between the hue the top right corner (${Math.round(topRightZone.x)}–${Math.round(width)}px, 0–${Math.round(topRightZone.height)}px) adds over the background, ${describe(topRight)}, and the cream's, ${describe({ red: creamAdds[0], green: creamAdds[1], blue: creamAdds[2] })}`,
     ).toBeLessThan(MAX_DEGREES);
+  });
+
+  test('once revealed, a tick-field is coloured along its diagonal: its ticks are green at the bottom left, accent in the middle and cream in the top right corner, and nowhere else cream: the colour its ticks add over the background in each of these zones, and at its top left and at the bottom of its right part, has the hue, of green, accent and cream, closest to the one named', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
+       to turn a tick to the accent. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, as wide as the page, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await page.clock.runFor(16);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const width = fieldBox!.width;
+    const height = fieldBox!.height;
+    const screenshot = await tickField.screenshot();
+
+    /* The hue of a colour drawn over the background, whatever its opacity: the direction of
+       what it adds over the background, channel by channel. A tick drawn with partial opacity
+       adds a fraction of (colour − background), so neither how bright a tick is nor how many
+       ticks a zone holds changes the direction of what the zone adds, summed over its drawn
+       pixels. A zone's hue is the one of the three theme colours — green (--color-accent-dark),
+       accent (--color-accent) and cream (--color-paper) — whose own direction over the
+       background makes the smallest angle with it. */
+    const themeColour = (customProperty: string): Promise<string> =>
+      tickField.evaluate((el, name) => getComputedStyle(el).getPropertyValue(name).trim(), customProperty);
+    const background = await channelsOfColour(tickField, await tickField.evaluate((el) => getComputedStyle(el).backgroundColor));
+    const added = (colour: Channels): Channels => ({
+      red: colour.red - background.red,
+      green: colour.green - background.green,
+      blue: colour.blue - background.blue,
+    });
+    const hues = {
+      green: added(await channelsOfColour(tickField, await themeColour('--color-accent-dark'))),
+      accent: added(await channelsOfColour(tickField, await themeColour('--color-accent'))),
+      cream: added(await channelsOfColour(tickField, await themeColour('--color-paper'))),
+    };
+    type Hue = keyof typeof hues;
+    const degreesBetween = (a: Channels, b: Channels): number => {
+      const dot = a.red * b.red + a.green * b.green + a.blue * b.blue;
+      const norms = Math.hypot(a.red, a.green, a.blue) * Math.hypot(b.red, b.green, b.blue);
+      return (Math.acos(Math.min(1, dot / norms)) * 180) / Math.PI;
+    };
+    const describe = (channels: Channels): string =>
+      `(${Math.round(channels.red)}, ${Math.round(channels.green)}, ${Math.round(channels.blue)})`;
+
+    /* Zones as shares of the field's width and height, from its top left corner. The bottom
+       of the right part stops short of the right edge, where the diagonal reaches the cream's
+       side at the very corner. */
+    const zones: { name: string; share: Rectangle; expected: (hue: Hue) => boolean; wanted: string }[] = [
+      { name: 'bottom left', share: { x: 0, y: 0.8, width: 0.2, height: 0.2 }, expected: (hue) => hue === 'green', wanted: 'green' },
+      { name: 'middle', share: { x: 0.4, y: 0.35, width: 0.2, height: 0.3 }, expected: (hue) => hue === 'accent', wanted: 'accent' },
+      { name: 'top right corner', share: { x: 0.9, y: 0, width: 0.1, height: 0.15 }, expected: (hue) => hue === 'cream', wanted: 'cream' },
+      { name: 'top left', share: { x: 0, y: 0, width: 0.2, height: 0.15 }, expected: (hue) => hue !== 'cream', wanted: 'not cream' },
+      { name: 'bottom of the right part', share: { x: 0.6, y: 0.85, width: 0.3, height: 0.15 }, expected: (hue) => hue !== 'cream', wanted: 'not cream' },
+    ];
+    const findings: string[] = [];
+    let mismatches = 0;
+    for (const { name, share, expected, wanted } of zones) {
+      const zone = { x: share.x * width, y: share.y * height, width: share.width * width, height: share.height * height };
+      const colour = await colourAddedOverBackgroundInRectangle(tickField, screenshot, zone);
+      const angles = (Object.keys(hues) as Hue[]).map((hue) => ({ hue, degrees: degreesBetween(colour, hues[hue]) }));
+      const closest = angles.reduce((best, angle) => (angle.degrees < best.degrees ? angle : best));
+      const drawn = colour.red !== 0 || colour.green !== 0 || colour.blue !== 0;
+      const matches = drawn && expected(closest.hue);
+      if (!matches) mismatches += 1;
+      findings.push(
+        `${matches ? 'ok' : 'WRONG'} ${name} (${Math.round(zone.x)}–${Math.round(zone.x + zone.width)}px, ${Math.round(zone.y)}–${Math.round(zone.y + zone.height)}px), wanted ${wanted}: adds ${describe(colour)}, closest to ${drawn ? closest.hue : 'nothing (nothing drawn)'}; ${angles.map(({ hue, degrees }) => `${degrees.toFixed(1)}° from ${hue}`).join(', ')}`,
+      );
+    }
+    expect(
+      mismatches,
+      `zones of the ${Math.round(width)}px-wide tick-field whose hue is not the one wanted, against green ${describe(hues.green)}, accent ${describe(hues.accent)} and cream ${describe(hues.cream)} over the background:\n${findings.join('\n')}`,
+    ).toBe(0);
   });
 
   test('once revealed, a tick-field fades from its top right corner, clearly visible, to its bottom left corner, almost invisible, over its whole height: its bottom left tick lies less than 9% of the way from the background to its green, its top right tick more than 40% of the way to the cream, and in a vertical band at the middle of its width, the ticks at mid-height are dimmer than those at the top and brighter than those at the bottom', async ({ page, context }) => {
