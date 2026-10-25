@@ -703,6 +703,68 @@ export async function drawnStrokesInRectangle(
   );
 }
 
+/* How wide and how tall a single stroke drawn inside a rectangle of an element (CSS pixels,
+   relative to its box) is, its anti-aliased edges included, in CSS pixels. Only that stroke must
+   be drawn in the rectangle, over the element's background colour, in one colour with one
+   opacity. Each pixel of the element's screenshot shows the background plus a share of what
+   the stroke adds where it covers a pixel fully, that share being how much of the pixel it
+   covers: the stroke's strength at a pixel is the sum, over the red, green and blue channels,
+   of the pixel's distance from the background (within a rounding error counts as 0). Summed
+   down a column, it is proportional to how much of the column's width the stroke covers, and
+   summed along a row, to how much of the row's height: a column (row) the stroke covers fully
+   gives the most. The width is the sum of the columns over the strongest column; the height,
+   the sum of the rows over the typical row the stroke covers fully, the median of the rows
+   that give at least half the most, which averages out the noise of a dithered drawing. */
+export async function sizeOfDrawnStrokeInRectangle(
+  element: Locator,
+  screenshot: Buffer,
+  rectangle: Rectangle,
+): Promise<{ width: number; height: number }> {
+  return element.evaluate(
+    async (el, [base64, zone]) => {
+      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const scale = image.width / el.getBoundingClientRect().width;
+      const fromColumn = Math.max(0, Math.round(zone.x * scale));
+      const toColumn = Math.min(image.width, Math.round((zone.x + zone.width) * scale));
+      const fromRow = Math.max(0, Math.round(zone.y * scale));
+      const toRow = Math.min(image.height, Math.round((zone.y + zone.height) * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true })!;
+      context.fillStyle = getComputedStyle(el).backgroundColor;
+      context.fillRect(0, 0, 1, 1);
+      const background = context.getImageData(0, 0, 1, 1).data;
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      const strength = (column: number, row: number): number => {
+        const i = 4 * (row * image.width + column);
+        return [0, 1, 2].reduce((sum, channel) => sum + Math.abs(pixels[i + channel] - background[channel]), 0);
+      };
+      const columns = new Array<number>(toColumn - fromColumn).fill(0);
+      const rows = new Array<number>(toRow - fromRow).fill(0);
+      for (let row = fromRow; row < toRow; row++) {
+        for (let column = fromColumn; column < toColumn; column++) {
+          const value = strength(column, row);
+          columns[column - fromColumn] += value;
+          rows[row - fromRow] += value;
+        }
+      }
+      const total = columns.reduce((sum, value) => sum + value, 0);
+      if (total === 0) return { width: 0, height: 0 };
+      const strongestColumn = Math.max(...columns);
+      const strongestRow = Math.max(...rows);
+      const fullRows = rows.filter((value) => value >= strongestRow / 2).sort((a, b) => a - b);
+      const middle = Math.floor(fullRows.length / 2);
+      const typicalRow = fullRows.length % 2 === 1 ? fullRows[middle] : (fullRows[middle - 1] + fullRows[middle]) / 2;
+      return { width: total / strongestColumn / scale, height: total / typicalRow / scale };
+    },
+    [screenshot.toString('base64'), rectangle] as const,
+  );
+}
+
 /* Number of pixels of the screenshot of an element that differ from the element's background
    colour by more than a rounding error on a channel. */
 export async function countPixelsNotOfBackground(element: Locator, screenshot: Buffer): Promise<number> {

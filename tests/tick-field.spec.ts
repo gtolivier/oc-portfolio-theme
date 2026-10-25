@@ -18,6 +18,7 @@ import {
   luminanceAboveBackgroundPerColumn,
   pixelsNotOfBackgroundPerColumn,
   pixelsNotOfBackgroundPerRow,
+  sizeOfDrawnStrokeInRectangle,
 } from './helpers/pixels';
 
 test.describe('catalog: tick-field', () => {
@@ -491,6 +492,71 @@ test.describe('catalog: tick-field', () => {
       rightHeight,
       `median height of the ${right.length} strokes drawn in the right quarter (${Math.round(width - QUARTER)}–${Math.round(width)}px), in CSS pixels, against ${leftHeight.toFixed(1)}px for the ${left.length} of the left quarter (0–${Math.round(QUARTER)}px)`,
     ).toBeGreaterThan(1.4 * leftHeight);
+  });
+
+  test('once revealed, the ticks of a tick-field are about 1.6px wide, and taller at the top than at the bottom: from about 5px at the bottom left to about 13px at the top right, the top left tick being taller than the bottom left one', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
+       to stretch a tick. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, as wide as the page, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await page.clock.runFor(16);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const width = fieldBox!.width;
+    const height = fieldBox!.height;
+    const screenshot = await tickField.screenshot();
+
+    /* In a 60px square at a corner of the field, the tick closest to that corner: among the
+       ticks drawn whole inside the square, those of the column nearest its side edge, then,
+       of these, the one nearest its top or bottom edge. Its size is measured in its box,
+       widened by 2px on every side to take in its faint anti-aliased edges, well short of
+       the neighbouring ticks, 16px and 22px away. */
+    const CORNER = 60;
+    const SAME_COLUMN_PX = 4;
+    const cornerTick = async (corner: { right: boolean; bottom: boolean }): Promise<{ box: Rectangle; width: number; height: number }> => {
+      const zone = { x: corner.right ? width - CORNER : 0, y: corner.bottom ? height - CORNER : 0, width: CORNER, height: CORNER };
+      const name = `${corner.bottom ? 'bottom' : 'top'} ${corner.right ? 'right' : 'left'}`;
+      const ticks = await drawnStrokesInRectangle(tickField, screenshot, zone);
+      expect(ticks.length, `ticks drawn whole in the ${name} corner of the tick-field (${Math.round(zone.x)}–${Math.round(zone.x + zone.width)}px, ${Math.round(zone.y)}–${Math.round(zone.y + zone.height)}px)`).toBeGreaterThan(0);
+      const side = (tick: Rectangle): number => (corner.right ? -(tick.x + tick.width) : tick.x);
+      const end = (tick: Rectangle): number => (corner.bottom ? -(tick.y + tick.height) : tick.y);
+      const nearestSide = Math.min(...ticks.map(side));
+      const column = ticks.filter((tick) => side(tick) - nearestSide <= SAME_COLUMN_PX);
+      const box = column.reduce((nearest, tick) => (end(tick) < end(nearest) ? tick : nearest));
+      const PADDING = 2;
+      const size = await sizeOfDrawnStrokeInRectangle(tickField, screenshot, {
+        x: box.x - PADDING,
+        y: box.y - PADDING,
+        width: box.width + 2 * PADDING,
+        height: box.height + 2 * PADDING,
+      });
+      return { box, ...size };
+    };
+    const bottomLeft = await cornerTick({ right: false, bottom: true });
+    const topLeft = await cornerTick({ right: false, bottom: false });
+    const topRight = await cornerTick({ right: true, bottom: false });
+    const describe = (tick: { box: Rectangle; width: number; height: number }): string =>
+      `${tick.width.toFixed(2)}px wide and ${tick.height.toFixed(2)}px high, at (${tick.box.x.toFixed(1)}px, ${tick.box.y.toFixed(1)}px)`;
+    const sizes = `in the ${Math.round(width)}px-wide tick-field, in CSS pixels, anti-aliased edges counted by how much of a pixel they cover: bottom left tick ${describe(bottomLeft)}, top left tick ${describe(topLeft)}, top right tick ${describe(topRight)}`;
+
+    /* The width is measured on the top right tick, the brightest, whose faint edges stand
+       furthest above rounding errors. 1.6px within 0.2px; 2px ticks fall outside. */
+    expect(Math.abs(topRight.width - 1.6), `distance from 1.6px of the width of the top right tick, ${sizes}`).toBeLessThanOrEqual(0.2);
+    /* About 5px at the bottom left, within 0.6px, and about 13px at the top right, within
+       0.8px. */
+    expect(Math.abs(bottomLeft.height - 5), `distance from 5px of the height of the bottom left tick, ${sizes}`).toBeLessThanOrEqual(0.6);
+    expect(Math.abs(topRight.height - 13), `distance from 13px of the height of the top right tick, ${sizes}`).toBeLessThanOrEqual(0.8);
+    /* Within the left column, taller at the top than at the bottom, by more than half a
+       pixel. */
+    expect(topLeft.height - bottomLeft.height, `height the top left tick has over the bottom left one, ${sizes}`).toBeGreaterThan(0.5);
   });
 
   test('once revealed, a tick-field is green on the left and cream at the top right: the colour its ticks add over the background in its left fifth has clearly more green than red or blue, and in its top right corner takes the hue of the cream', async ({ page, context }) => {
