@@ -460,6 +460,53 @@ test.describe('catalog: tick-field', () => {
     ).toBe(0);
   });
 
+  test('during the reveal, each tick fades in over about 350 ms: 800 ms after load, the ticks the front passed less than about 200 ms before show between 10% and 75% of the brightness above the background they show once revealed, while those it passed more than 400 ms before already show it all, within 10%', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const width = fieldBox!.width;
+    const height = fieldBox!.height;
+
+    /* The reveal sweeps the width from left to right in about 1.1 s, starting at most about
+       50 ms after load: a tick at x is reached between (x / width) × 1100 ms and 50 ms later.
+       800 ms after load, the front stands at about two thirds of the width.
+       - The fresh zone, from 50% to 62% of the width, was reached between about 550 and
+         730 ms after load: less than about 250 ms before, and on average less than 200 ms.
+         Fading in over 350 ms, its ticks are still on their way, about a third to a half as
+         bright as once revealed; drawn at full brightness as soon as the front passes, they
+         would already be as bright as once revealed.
+       - The settled zone, from 8% to 30% of the width, was reached at the latest about 380 ms
+         after load: more than 400 ms before, so its ticks are done fading in. */
+    await page.clock.runFor(800);
+    const zones: (Rectangle & { name: string })[] = [
+      { name: 'fresh', x: 0.5 * width, y: 0, width: 0.12 * width, height },
+      { name: 'settled', x: 0.08 * width, y: 0, width: 0.22 * width, height },
+    ];
+    const duringReveal = await luminanceAboveBackgroundInRectangles(tickField, await tickField.screenshot(), zones);
+
+    /* Once revealed: the same zones, the field drawn whole and still. */
+    await page.clock.runFor(2000);
+    const revealed = await luminanceAboveBackgroundInRectangles(tickField, await tickField.screenshot(), zones);
+
+    const describeZone = (index: number): string =>
+      `${zones[index].name} zone (${Math.round(zones[index].x)}–${Math.round(zones[index].x + zones[index].width)}px of ${Math.round(width)}px): ${Math.round(duringReveal[index])} 800 ms after load, against ${Math.round(revealed[index])} once revealed`;
+    expect(revealed[0], `brightness above the background of the ${describeZone(0)}`).toBeGreaterThan(0);
+    expect(revealed[1], `brightness above the background of the ${describeZone(1)}`).toBeGreaterThan(0);
+    const freshShare = duringReveal[0] / revealed[0];
+    const settledShare = duringReveal[1] / revealed[1];
+    expect(freshShare, `share of its final brightness shown by the ${describeZone(0)}`).toBeGreaterThan(0.1);
+    expect(freshShare, `share of its final brightness shown by the ${describeZone(0)}`).toBeLessThan(0.75);
+    expect(settledShare, `share of its final brightness shown by the ${describeZone(1)}`).toBeGreaterThan(0.9);
+    expect(settledShare, `share of its final brightness shown by the ${describeZone(1)}`).toBeLessThan(1.1);
+  });
+
   test('once revealed, a tick-field is brighter on the right than on the left: 2 s after load, its right quarter shows more than twice the brightness above the background of its left quarter', async ({ page, context }) => {
     await serveSite(context, CATALOG_SITE, siteDirectory);
     await stopClockBeforeLoad(page);
