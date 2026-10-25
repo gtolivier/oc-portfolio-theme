@@ -9,6 +9,7 @@ import {
   SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF,
   SITE_WITH_A_HERO_WITHOUT_AUTHOR,
   SITE_WITH_A_HERO_WITH_LONG_WORDS,
+  SITE_WITH_A_HERO_WITHOUT_TITLE,
   SITE_WITH_A_PAGE_REF_NOT_FOUND,
   buildSite,
   removeDirectory,
@@ -688,6 +689,40 @@ test.describe('home page of another site, with a different hero', () => {
     await expect(links.first()).toHaveAttribute('href', 'mailto:camille@example.org');
     await expect(main.getByRole('link', { name: 'Voir les projets' })).toHaveCount(0);
     await expect(main.getByRole('link', { name: 'Contact' })).toHaveCount(0);
+  });
+});
+
+test.describe('home page of a site whose hero has no title', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_HERO_WITHOUT_TITLE);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('the hero heading, which holds the author name only, decodes: right after load, the name is scrambled, and 4 s later it is in clear', async ({ page, context }) => {
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it: animation frames and timers then run as they would in 4 s. */
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await stopClockBeforeLoad(page);
+    await serveSite(context, SITE_WITH_A_HERO_WITHOUT_TITLE, siteDirectory);
+    await page.goto(`${SITE_WITH_A_HERO_WITHOUT_TITLE.origin}/fr/`);
+    const mainHeading = mainContentHeading(page);
+    await expect(mainHeading).toHaveCount(1);
+    /* What the visitor sees in the heading, whitespace excluded: the name, from params.author,
+       alone, since the [params.hero] block of tests/fixtures/untitled-hero/content/_index.md
+       has no title. */
+    const inClear = 'Jean Exemple'.replace(/\s+/g, '');
+    /* Right after load, none of its letters is shown: one sign in place of each one. */
+    const shown = await textOnScreen(mainHeading);
+    expect(Array.from(shown), `"${shown}" shows one sign per letter of the name`).toHaveLength(Array.from(inClear).length);
+    for (const character of Array.from(shown)) {
+      expect(SIGNS, `"${character}", shown in "${shown}" right after load, is one of the signs`).toContain(character);
+    }
+    /* 4 s after load, the name is in clear. */
+    await page.clock.runFor(4000);
+    expect(await textOnScreen(mainHeading), '4 s after load').toBe(inClear);
   });
 });
 

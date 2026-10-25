@@ -136,6 +136,12 @@ export const SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF = testSite('button-with-tw
    "Échappement". */
 export const CATALOG_SITE = testSite('catalog');
 
+/* The example site's French home page has a hero with a title, displayed
+   after the author name: this site replaces that home page with the one of
+   tests/fixtures/untitled-hero/content, whose hero has a tagline but no
+   title, so that its main heading holds the author name only. */
+export const SITE_WITH_A_HERO_WITHOUT_TITLE = testSite('untitled-hero');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
