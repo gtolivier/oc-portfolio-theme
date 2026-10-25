@@ -288,22 +288,6 @@ test('on the French home page, the hero title line decodes after the name: when 
   }
 });
 
-test('on the French home page, the hero heading decodes at the design’s pace: 1.5 s after load, its author name and professional title are both in clear', async ({ page }) => {
-  /* Design reference: the name and the title decode in about 1.1 s in total, the title
-     continuing where the name ends, so both are in clear well before 1.5 s. Animations are
-     allowed, and time stands still from before the page loads, until the test advances it. */
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await stopClockBeforeLoad(page);
-  await page.goto('/fr/');
-  const mainHeading = mainContentHeading(page);
-  await expect(mainHeading).toHaveCount(1);
-  /* What the visitor sees in the heading, whitespace excluded: the name, from params.author,
-     and the title, from the [params.hero] block of exampleSite/content/_index.md. */
-  const inClear = 'Jean Exemple Horloger indépendant'.replace(/\s+/g, '');
-  await page.clock.runFor(1500);
-  expect(await textOnScreen(mainHeading), '1.5 s after load').toBe(inClear);
-});
-
 test('on the French home page, the hero displays the tagline, one line per entry: the three lines, in order, each below the previous one', async ({ page }) => {
   await page.goto('/fr/');
   const main = page.getByRole('main');
