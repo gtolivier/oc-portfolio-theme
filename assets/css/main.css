@@ -305,6 +305,11 @@ scramble-text:not(:defined) {
   visibility: hidden;
 }
 
+/* Once in clear, the text is plain text again and wraps with the text around it. */
+scramble-text:not(:has(> *)) {
+  display: inline;
+}
+
 scramble-text > * {
   grid-area: 1 / 1;
 }
