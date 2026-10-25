@@ -18,8 +18,8 @@ test.describe('catalog: veil', () => {
        still. Time stands still from before the page loads, until the test advances it. */
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/voile/`);
-    /* The two tick-fields of the page (tests/fixtures/catalog/content/voile.md), side by
+    await page.goto(`${CATALOG_SITE.origin}/fr/veil/`);
+    /* The two tick-fields of the page (tests/fixtures/catalog/content/veil.md), side by
        side, of the same size, with no text and the same solid background: one bare, the
        other holding a veil. */
     const fields = page.getByRole('main').locator('tick-field');

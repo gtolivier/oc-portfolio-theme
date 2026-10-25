@@ -43,10 +43,10 @@ test.describe('catalog: tick-field', () => {
     removeDirectory(siteDirectory);
   });
 
-  /* Serves the catalog and opens tick-field-vide, the visitor's motion preference emulated
+  /* Serves the catalog and opens tick-field-empty, the visitor's motion preference emulated
      when `reducedMotion` is given, and time standing still from before the page loads, until
      the test advances it. Returns the only tick-field of the page, once visible
-     (tests/fixtures/catalog/content/tick-field-vide.md): 320px high, as wide as the page,
+     (tests/fixtures/catalog/content/tick-field-empty.md): 320px high, as wide as the page,
      with no content and a solid background, followed by a paragraph. */
   const openEmptyTickField = async (
     page: Page,
@@ -56,7 +56,7 @@ test.describe('catalog: tick-field', () => {
     await serveSite(context, CATALOG_SITE, siteDirectory);
     if (reducedMotion) await page.emulateMedia({ reducedMotion });
     await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-empty/`);
     const tickField = page.getByRole('main').locator('tick-field');
     await expect(tickField).toHaveCount(1);
     await expect(tickField).toBeVisible();
@@ -2373,8 +2373,8 @@ test.describe('catalog: tick-field', () => {
         return request(callback);
       };
     });
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-long-texte/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-long-texte.md),
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-long-text/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-long-text.md),
        320px high, with no content and a solid background, followed by a long text. */
     const tickField = page.getByRole('main').locator('tick-field');
     await expect(tickField).toHaveCount(1);
