@@ -1023,6 +1023,67 @@ test.describe('catalog: tick-field', () => {
     ).toEqual([]);
   });
 
+  test('the ripple lasts more than a second: once revealed, 1.2 s after the click, a zone down and to the left of the click point, at 45°, about 336px from it, is brighter than just before the click', async ({ page, context, hasTouch }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await tickField.scrollIntoViewIfNeeded();
+    /* Fully revealed. */
+    await page.clock.runFor(2000);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    /* The ring grows about 0.28px per ms: 1.2 s after the click it is about 336px from the
+       click point, farther than the 320px-high field is high and than a phone's field leaves
+       room for on either side of a point. The zone, a 30px square, straddles that circle down
+       and to the left of the click point, at 45°, near the bottom left corner, in the dim part
+       of the field on every screen; the click point lies about 238px to its right and above
+       it, inside any field wider than about 283px. The zone is far enough from the click point
+       for the ring alone to light it, not the glow of a pointer hovering the click point. */
+    const RADIUS = 336;
+    const HALF_SIDE = 15;
+    const diagonal = RADIUS / Math.SQRT2;
+    const zoneCentre = { x: 40, y: fieldBox!.height - 40 };
+    const point = { x: zoneCentre.x + diagonal, y: zoneCentre.y - diagonal };
+    const onScreen = { x: fieldBox!.x + point.x, y: fieldBox!.y + point.y };
+    const zone = { x: zoneCentre.x - HALF_SIDE, y: zoneCentre.y - HALF_SIDE, width: 2 * HALF_SIDE, height: 2 * HALF_SIDE };
+    expect(
+      point.x >= 0 && point.x <= fieldBox!.width && point.y >= 0 && point.y <= fieldBox!.height,
+      `the click point (${Math.round(point.x)}, ${Math.round(point.y)})px lies inside the ${Math.round(fieldBox!.width)}px-wide tick-field`,
+    ).toBe(true);
+    expect(
+      zone.x >= 0 && zone.x + zone.width <= fieldBox!.width && zone.y >= 0 && zone.y + zone.height <= fieldBox!.height,
+      `the zone down and to the left of the click point lies inside the tick-field`,
+    ).toBe(true);
+
+    const brightness = async (): Promise<number> =>
+      luminanceAboveBackgroundInRectangle(tickField, await tickField.screenshot(), zone);
+
+    /* With a fine pointer, a click first brings the pointer over the click point, which lights
+       the ticks under it: the pointer hovers it already before the click, so that both
+       measures show the same hover and differ by the ripple alone. */
+    if (!hasTouch) await page.mouse.move(onScreen.x, onScreen.y);
+    await page.clock.runFor(300);
+    const before = await brightness();
+
+    if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
+    else await page.mouse.click(onScreen.x, onScreen.y);
+    await page.clock.runFor(1200);
+    const after = await brightness();
+
+    /* The ring, faded but still there: more than 1.25 times what the zone showed before the
+       click. */
+    expect(
+      after,
+      `brightness above the background of the 30px square at (${Math.round(zone.x)}, ${Math.round(zone.y)})px, about ${RADIUS}px down and to the left of the click point at (${Math.round(point.x)}, ${Math.round(point.y)})px, 1.2 s after the click, against ${Math.round(before)} just before it`,
+    ).toBeGreaterThan(1.25 * before);
+  });
+
   test('the ripple fades: once revealed, 2 s after the click, every vertical band of the tick-field, from the left edge to the right edge, is back to the brightness it showed just before the click', async ({ page, context, hasTouch }) => {
     await serveSite(context, CATALOG_SITE, siteDirectory);
     await stopClockBeforeLoad(page);
