@@ -127,7 +127,9 @@ const FIELD_RIPPLE_SPEED_PX_PER_MS = 0.28;
 
 const FIELD_RIPPLE_DURATION_MS = 1800;
 
-const FIELD_RIPPLE_LINE_WIDTH_PX = 4;
+const FIELD_RIPPLE_LINE_WIDTH_PX = 14;
+
+const FIELD_RIPPLE_TICK_WIDTH_PX = 4;
 
 /* Where the pointer passed, and since when it lingers there. */
 type TrailPoint = { x: number; y: number; at: number };
@@ -193,15 +195,13 @@ class TickField extends HTMLElement {
     return this.ripple ? performance.now() - this.ripple.start : 0;
   }
 
-  private drawRipple(context: CanvasRenderingContext2D): void {
-    if (!this.ripple) return;
+  /* A tick is lit when the ring passes over it. */
+  private rippleLighting(x: number, y: number, tickHeight: number): number {
+    if (!this.ripple) return 0;
     const age = this.rippleAge();
-    context.globalAlpha = Math.max(0, 1 - age / FIELD_RIPPLE_DURATION_MS);
-    context.strokeStyle = this.accentColor();
-    context.lineWidth = FIELD_RIPPLE_LINE_WIDTH_PX;
-    context.beginPath();
-    context.arc(this.ripple.x, this.ripple.y, age * FIELD_RIPPLE_SPEED_PX_PER_MS, 0, 2 * Math.PI);
-    context.stroke();
+    const distance = Math.hypot(x + FIELD_TICK_WIDTH_PX / 2 - this.ripple.x, y + tickHeight / 2 - this.ripple.y);
+    if (Math.abs(distance - age * FIELD_RIPPLE_SPEED_PX_PER_MS) > FIELD_RIPPLE_LINE_WIDTH_PX) return 0;
+    return Math.max(0, 1 - age / FIELD_RIPPLE_DURATION_MS);
   }
 
   private fadeTrail(canvas: HTMLCanvasElement): void {
@@ -286,7 +286,6 @@ class TickField extends HTMLElement {
       this.drawTickColumn(context, x, canvas.height, this.tickHeight(x, canvas.width));
       this.drawPointerTrail(context, x);
     }
-    this.drawRipple(context);
   }
 
   private drawTickColumn(context: CanvasRenderingContext2D, x: number, height: number, tickHeight: number): void {
@@ -294,6 +293,14 @@ class TickField extends HTMLElement {
     for (let y = 0; y < height; y += FIELD_ROW_SPACING_PX) {
       context.globalAlpha = columnAlpha * this.rowAlphaFactor(y);
       context.fillRect(x, y, FIELD_TICK_WIDTH_PX, tickHeight);
+      const lighting = this.rippleLighting(x, y, tickHeight);
+      if (lighting > 0) {
+        const tickColor = context.fillStyle;
+        context.globalAlpha = lighting;
+        context.fillStyle = this.accentColor();
+        context.fillRect(x, y, FIELD_RIPPLE_TICK_WIDTH_PX, tickHeight);
+        context.fillStyle = tickColor;
+      }
     }
     context.globalAlpha = columnAlpha;
   }
