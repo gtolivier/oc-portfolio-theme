@@ -4,6 +4,9 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+# The tests only read the repository.
+permissions:
+  contents: read
 jobs:
   test:
     timeout-minutes: 60
