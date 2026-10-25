@@ -1064,6 +1064,142 @@ test.describe('catalog: tick-field', () => {
     ).toBe(before.emptyBands.length);
   });
 
+  test('a lit tick is the same tick, taller: once revealed, under the hover (with a fine pointer) and 300 ms after a click (a tap on mobile), each tick of a zone of three rows of three ticks stays a separate stroke at the same x, no wider than before it was lit, covering at least what it covered before, and some of them are more than 1px taller; nothing is drawn between two ticks of a row or between two rows', async ({ page, context, hasTouch }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background, followed by a paragraph. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await tickField.scrollIntoViewIfNeeded();
+    /* Fully revealed. */
+    await page.clock.runFor(2000);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const viewport = page.viewportSize();
+    expect(viewport, 'the page has a viewport').not.toBeNull();
+
+    const strokesIn = async (zone: Rectangle): Promise<Rectangle[]> =>
+      drawnStrokesInRectangle(tickField, await tickField.screenshot(), zone);
+    const describeBox = (box: Rectangle) =>
+      `${box.x.toFixed(1)}–${(box.x + box.width).toFixed(1)}px × ${box.y.toFixed(1)}–${(box.y + box.height).toFixed(1)}px`;
+
+    /* The unlit tick nearest to a point, in the dim left part where the ticks are short, and the
+       zone of three rows of three ticks around it: ticks stand 16px apart within a row and rows
+       22px apart, so that each edge of the zone runs halfway between two columns, or two rows,
+       of ticks, well clear of a tick grown a few pixels taller. */
+    const TICK_SPACING = 16;
+    const ROW_SPACING = 22;
+    const zoneAround = async (target: { x: number; y: number }): Promise<{ centre: { x: number; y: number }; zone: Rectangle }> => {
+      const search = { x: target.x - TICK_SPACING, y: target.y - ROW_SPACING, width: 2 * TICK_SPACING, height: 2 * ROW_SPACING };
+      const strokes = await strokesIn(search);
+      expect(strokes.length, `ticks drawn whole around (${Math.round(target.x)}, ${Math.round(target.y)})px`).toBeGreaterThan(0);
+      const centreOf = (stroke: Rectangle) => ({ x: stroke.x + stroke.width / 2, y: stroke.y + stroke.height / 2 });
+      const distanceToTarget = (stroke: Rectangle) => Math.hypot(centreOf(stroke).x - target.x, centreOf(stroke).y - target.y);
+      const tick = strokes.reduce((nearest, stroke) => (distanceToTarget(stroke) < distanceToTarget(nearest) ? stroke : nearest));
+      const centre = centreOf(tick);
+      return {
+        centre,
+        zone: { x: centre.x - 1.5 * TICK_SPACING, y: centre.y - 1.5 * ROW_SPACING, width: 3 * TICK_SPACING, height: 3 * ROW_SPACING },
+      };
+    };
+
+    /* The strokes drawn whole in the zone once its ticks are lit, against its unlit ticks: each
+       unlit tick must match exactly one lit stroke, and each lit stroke one unlit tick, so that
+       nothing is drawn between two ticks or two rows, nor joins them. A lit tick stays at the
+       same x and no wider, within half a pixel, and covers at least the height it covered,
+       within half a pixel. Also returns how much taller the lit ticks grew, at most. */
+    const TOLERANCE = 0.5;
+    const compare = (unlit: Rectangle[], lit: Rectangle[]): { problems: string[]; growth: number } => {
+      const problems: string[] = [];
+      let growth = -Infinity;
+      const overlaps = (a: Rectangle, b: Rectangle) =>
+        a.x < b.x + b.width + TOLERANCE && b.x < a.x + a.width + TOLERANCE && a.y < b.y + b.height && b.y < a.y + a.height;
+      for (const stroke of lit) {
+        if (!unlit.some((tick) => overlaps(tick, stroke))) problems.push(`lit stroke ${describeBox(stroke)} matches no unlit tick`);
+      }
+      for (const tick of unlit) {
+        const matches = lit.filter((stroke) => overlaps(tick, stroke));
+        if (matches.length !== 1) {
+          problems.push(`unlit tick ${describeBox(tick)} matches ${matches.length} lit strokes${matches.length ? `: ${matches.map(describeBox).join(', ')}` : ''}`);
+          continue;
+        }
+        const [stroke] = matches;
+        const sameTick =
+          Math.abs(stroke.x - tick.x) <= TOLERANCE &&
+          stroke.width <= tick.width + TOLERANCE &&
+          stroke.y <= tick.y + TOLERANCE &&
+          stroke.y + stroke.height >= tick.y + tick.height - TOLERANCE;
+        if (!sameTick) problems.push(`unlit tick ${describeBox(tick)} lit as ${describeBox(stroke)}`);
+        growth = Math.max(growth, stroke.height - tick.height);
+      }
+      if (lit.length !== unlit.length) problems.push(`${lit.length} lit strokes against ${unlit.length} unlit ticks`);
+      return { problems, growth };
+    };
+
+    if (!hasTouch) {
+      /* Hover: the pointer on the tick nearest to a point of the left part at mid-height, from a
+         point of the page 40px below the tick-field, or above it if the viewport ends first. */
+      const MARGIN = 40;
+      const outside = {
+        x: fieldBox!.x + 0.2 * fieldBox!.width,
+        y:
+          fieldBox!.y + fieldBox!.height + MARGIN < viewport!.height
+            ? fieldBox!.y + fieldBox!.height + MARGIN
+            : fieldBox!.y - MARGIN,
+      };
+      expect(outside.y, 'the point the pointer starts from is in the viewport').toBeGreaterThanOrEqual(0);
+      await page.mouse.move(outside.x, outside.y);
+      await page.clock.runFor(300);
+      const { centre, zone } = await zoneAround({ x: 0.2 * fieldBox!.width, y: fieldBox!.height / 2 });
+      const unlit = await strokesIn(zone);
+      expect(unlit.length, `unlit ticks drawn whole in the zone ${describeBox(zone)}`).toBe(9);
+
+      await page.mouse.move(fieldBox!.x + centre.x, fieldBox!.y + centre.y);
+      /* A few animation frames. */
+      await page.clock.runFor(100);
+      const { problems, growth } = compare(unlit, await strokesIn(zone));
+      expect(
+        problems,
+        `strokes drawn whole in the zone ${describeBox(zone)} under the pointer at (${Math.round(centre.x)}, ${Math.round(centre.y)})px, against its unlit ticks`,
+      ).toEqual([]);
+      expect(growth, `how much taller the ticks of the zone ${describeBox(zone)} grew under the pointer, at most, in px`).toBeGreaterThan(1);
+
+      /* The pointer leaves the field and its trail fades. */
+      await page.mouse.move(outside.x, outside.y);
+      await page.clock.runFor(4000);
+    }
+
+    /* Ripple: the ring grows about 0.28px per ms, so that 300 ms after the click it is about
+       84px from the click point. The click point is at mid-height, 84 + 30px from the left edge;
+       the zone is around the tick nearest to the point 84px to its left, where the ring passes,
+       far enough from the click point for the ring alone to light it, not the glow of a pointer
+       hovering the click point. */
+    const RADIUS = 84;
+    const point = { x: RADIUS + 30, y: fieldBox!.height / 2 };
+    const onScreen = { x: fieldBox!.x + point.x, y: fieldBox!.y + point.y };
+    /* With a fine pointer, a click first brings the pointer over the click point: it hovers it
+       already before the click, so that both measures differ by the ripple alone. */
+    if (!hasTouch) await page.mouse.move(onScreen.x, onScreen.y);
+    await page.clock.runFor(300);
+    const { zone } = await zoneAround({ x: point.x - RADIUS, y: point.y });
+    const unlit = await strokesIn(zone);
+    expect(unlit.length, `unlit ticks drawn whole in the zone ${describeBox(zone)}`).toBe(9);
+
+    if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
+    else await page.mouse.click(onScreen.x, onScreen.y);
+    await page.clock.runFor(300);
+    const { problems, growth } = compare(unlit, await strokesIn(zone));
+    expect(
+      problems,
+      `strokes drawn whole in the zone ${describeBox(zone)}, which the ring crosses about ${RADIUS}px to the left of the click point at (${Math.round(point.x)}, ${Math.round(point.y)})px 300 ms after the click, against its unlit ticks`,
+    ).toEqual([]);
+    expect(growth, `how much taller the ticks of the zone ${describeBox(zone)} grew 300 ms after the click, at most, in px`).toBeGreaterThan(1);
+  });
+
   test('the ripple spreads: once revealed, 600 ms after the click, a zone to the left of the click point, about 168px from it, is brighter than just before the click, while the zones to its right and left about 84px from it, which the ring lit 300 ms after the click, are back to what they showed before it', async ({ page, context, hasTouch }) => {
     await serveSite(context, CATALOG_SITE, siteDirectory);
     await stopClockBeforeLoad(page);
