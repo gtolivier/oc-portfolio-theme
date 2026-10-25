@@ -500,6 +500,16 @@ export async function brightnessKeptUnderLayerInRectangle(
   );
 }
 
+/* The adjacent vertical bands, at least `minBandWidth` CSS pixels wide each and `height`
+   high, into which a width of `width` CSS pixels splits from its left edge (x = 0) to its
+   right edge, as rectangles: the first starts at the left edge, the last ends at the right
+   edge. The same split as bandsWithoutDrawnPixels. */
+export function verticalBands(width: number, height: number, minBandWidth = 40): Rectangle[] {
+  const bandCount = Math.max(1, Math.floor(width / minBandWidth));
+  const bandWidth = width / bandCount;
+  return Array.from({ length: bandCount }, (_, band) => ({ x: band * bandWidth, y: 0, width: bandWidth, height }));
+}
+
 /* The vertical bands, at least `minBandWidth` CSS pixels wide each, into which a width of
    `width` CSS pixels splits from its left edge to its right edge, that show no drawn pixel:
    given, for each column of a screenshot, a count of drawn pixels (as

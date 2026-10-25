@@ -1,9 +1,10 @@
-import { test, expect } from '@playwright/test';
+import { type BrowserContext, type Locator, type Page, test, expect } from '@playwright/test';
 import { CATALOG_SITE, buildSite, removeDirectory, serveSite } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
 import {
   type Channels,
   type Rectangle,
+  bandsWithoutDrawnPixels,
   brightestLuminanceAboveBackgroundPerColumnInRectangle,
   channelsOfColour,
   colourAddedOverBackgroundInRectangle,
@@ -22,7 +23,14 @@ import {
   pixelsNotOfBackgroundPerRow,
   sizeOfDrawnStrokeInRectangle,
   strongestShareOfColourInRectangle,
+  verticalBands,
 } from './helpers/pixels';
+
+/* The y, on the page, of a point `margin` CSS pixels below the box of a tick-field, or above
+   it if the viewport, `viewportHeight` high, ends first: outside the tick-field. */
+function yBelowOrAboveField(fieldBox: Rectangle, viewportHeight: number, margin: number): number {
+  return fieldBox.y + fieldBox.height + margin < viewportHeight ? fieldBox.y + fieldBox.height + margin : fieldBox.y - margin;
+}
 
 test.describe('catalog: tick-field', () => {
   let siteDirectory: string;
@@ -32,6 +40,26 @@ test.describe('catalog: tick-field', () => {
   test.afterAll(() => {
     removeDirectory(siteDirectory);
   });
+
+  /* Serves the catalog and opens tick-field-vide, the visitor's motion preference emulated
+     when `reducedMotion` is given, and time standing still from before the page loads, until
+     the test advances it. Returns the only tick-field of the page, once visible
+     (tests/fixtures/catalog/content/tick-field-vide.md): 320px high, as wide as the page,
+     with no content and a solid background, followed by a paragraph. */
+  const openEmptyTickField = async (
+    page: Page,
+    context: BrowserContext,
+    reducedMotion?: 'reduce' | 'no-preference',
+  ): Promise<Locator> => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    if (reducedMotion) await page.emulateMedia({ reducedMotion });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    return tickField;
+  };
 
   test('a tick-field shows a decorative canvas, hidden from assistive technologies, that covers its whole box behind its content: its link stays the element under the pointer', async ({ page, context }) => {
     await serveSite(context, CATALOG_SITE, siteDirectory);
@@ -83,14 +111,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('right after load, a tick-field is empty: on screen, it only shows its background', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     /* Right after load: the first animation frame has run. */
     await page.clock.runFor(16);
 
@@ -100,14 +121,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('2 s after load, a tick-field is drawn across its whole width: every vertical band of it, from the left edge to the right edge, shows pixels that differ from its background', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     await page.clock.runFor(2000);
 
     const screenshot = await tickField.screenshot();
@@ -120,29 +134,12 @@ test.describe('catalog: tick-field', () => {
        at the left edge, the last ends at the right edge. Every band must show drawn pixels,
        so that the drawing reaches both edges and leaves no gap in between. */
     const MIN_BAND_WIDTH = 40;
-    const bandCount = Math.max(1, Math.floor(width / MIN_BAND_WIDTH));
-    const bandWidth = width / bandCount;
-    const emptyBands: string[] = [];
-    for (let band = 0; band < bandCount; band++) {
-      const fromColumn = Math.round(band * bandWidth * scale);
-      const toColumn = Math.round((band + 1) * bandWidth * scale);
-      const drawn = columns.slice(fromColumn, toColumn).some((count) => count > 0);
-      if (!drawn) {
-        emptyBands.push(`${Math.round(band * bandWidth)}–${Math.round((band + 1) * bandWidth)}px`);
-      }
-    }
+    const emptyBands = bandsWithoutDrawnPixels(columns, scale, width, MIN_BAND_WIDTH);
     expect(emptyBands, `bands of the ${Math.round(width)}px-wide tick-field with no drawn pixel`).toEqual([]);
   });
 
   test('once revealed, after the window is widened, a tick-field is drawn up to its new right edge with ticks as close together as before: 100 ms after the resize, every vertical band of it shows as many ticks as the same width showed before the resize, not the fewer, wider ticks of the old field stretched', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, as wide as the page, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     /* Revealed: the reveal sweeps the width in about 1.1 s. */
     await page.clock.runFor(2000);
 
@@ -193,17 +190,9 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('under prefers-reduced-motion: reduce, a tick-field is drawn across its whole width from load: right after load, every vertical band of it, from the left edge to the right edge, shows pixels that differ from its background', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* The visitor asks for reduced motion, and time stands still from before the page
        loads, until the test advances it by a single animation frame. */
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context, 'reduce');
     /* Right after load: the first animation frame has run, long before the reveal, which
        sweeps the width in about 1.1 s, would have reached the right edge. */
     await page.clock.runFor(16);
@@ -218,17 +207,7 @@ test.describe('catalog: tick-field', () => {
        at the left edge, the last ends at the right edge. Every band must show drawn pixels,
        so that the drawing reaches both edges and leaves no gap in between. */
     const MIN_BAND_WIDTH = 40;
-    const bandCount = Math.max(1, Math.floor(width / MIN_BAND_WIDTH));
-    const bandWidth = width / bandCount;
-    const emptyBands: string[] = [];
-    for (let band = 0; band < bandCount; band++) {
-      const fromColumn = Math.round(band * bandWidth * scale);
-      const toColumn = Math.round((band + 1) * bandWidth * scale);
-      const drawn = columns.slice(fromColumn, toColumn).some((count) => count > 0);
-      if (!drawn) {
-        emptyBands.push(`${Math.round(band * bandWidth)}–${Math.round((band + 1) * bandWidth)}px`);
-      }
-    }
+    const emptyBands = bandsWithoutDrawnPixels(columns, scale, width, MIN_BAND_WIDTH);
     expect(
       emptyBands,
       `bands of the ${Math.round(width)}px-wide tick-field with no drawn pixel, right after load under reduced motion`,
@@ -236,17 +215,9 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('once revealed, a tick-field is made of short ticks in rows: between two rows of drawn pixels, a horizontal band at least 4px high, across its whole width, shows only its background', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
        to change it. */
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context, 'reduce');
     await page.clock.runFor(16);
 
     const { rows, scale } = await pixelsNotOfBackgroundPerRow(tickField, await tickField.screenshot());
@@ -259,17 +230,7 @@ test.describe('catalog: tick-field', () => {
     const MIN_BAND_HEIGHT = 4;
     const firstDrawn = rows.findIndex((count) => count > 0);
     const lastDrawn = rows.findLastIndex((count) => count > 0);
-    const gaps: string[] = [];
-    let gapStart = -1;
-    for (let row = firstDrawn + 1; firstDrawn >= 0 && row <= lastDrawn; row++) {
-      if (rows[row] === 0 && gapStart < 0) gapStart = row;
-      if (rows[row] > 0 && gapStart >= 0) {
-        if ((row - gapStart) / scale >= MIN_BAND_HEIGHT) {
-          gaps.push(`${(gapStart / scale).toFixed(1)}–${(row / scale).toFixed(1)}px`);
-        }
-        gapStart = -1;
-      }
-    }
+    const gaps = horizontalBandsWithoutDrawnPixels(rows, scale, MIN_BAND_HEIGHT);
     expect(
       gaps.length,
       `horizontal bands at least ${MIN_BAND_HEIGHT}px high with no drawn pixel between two rows of drawn pixels, in the ${Math.round(fieldBox!.height)}px-high tick-field (drawn from ${(firstDrawn / scale).toFixed(1)}px to ${((lastDrawn + 1) / scale).toFixed(1)}px): ${gaps.join(', ') || 'none'}`,
@@ -277,17 +238,9 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('once revealed, the ticks of a tick-field stand 16px apart within a row, and its rows 22px apart: from one tick\'s left edge to the next one\'s in the same row, and from one row\'s top to the next row\'s top', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
        to widen or light a tick. */
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context, 'reduce');
     await page.clock.runFor(16);
 
     const fieldBox = await tickField.boundingBox();
@@ -332,17 +285,9 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('once revealed, a tick-field is centred in its box: at several sizes, the empty margin on its left equals the one on its right, and the one at its top equals the one at its bottom, within a pixel; the side margins are at least 24px, the top and bottom ones at least 18px', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
        to light or lengthen a tick. */
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context, 'reduce');
     await page.clock.runFor(16);
 
     /* Sizes that leave different room around a field of ticks 16px apart in rows 22px apart,
@@ -411,14 +356,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('a tick-field reveals from left to right: 500 ms after load, every vertical band of its left part shows drawn pixels, while its right part still only shows its background', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     /* Midway through the reveal, which sweeps the width in about 1.1 s: the front is near
        the middle, well past the left part and well short of the right part. */
     await page.clock.runFor(500);
@@ -433,17 +371,7 @@ test.describe('catalog: tick-field', () => {
        40px wide each: every band must show drawn pixels. */
     const LEFT_PART_END = 0.3 * width;
     const MIN_BAND_WIDTH = 40;
-    const bandCount = Math.max(1, Math.floor(LEFT_PART_END / MIN_BAND_WIDTH));
-    const bandWidth = LEFT_PART_END / bandCount;
-    const emptyBands: string[] = [];
-    for (let band = 0; band < bandCount; band++) {
-      const fromColumn = Math.round(band * bandWidth * scale);
-      const toColumn = Math.round((band + 1) * bandWidth * scale);
-      const drawn = columns.slice(fromColumn, toColumn).some((count) => count > 0);
-      if (!drawn) {
-        emptyBands.push(`${Math.round(band * bandWidth)}–${Math.round((band + 1) * bandWidth)}px`);
-      }
-    }
+    const emptyBands = bandsWithoutDrawnPixels(columns, scale, LEFT_PART_END, MIN_BAND_WIDTH);
     expect(
       emptyBands,
       `bands of the left part (0–${Math.round(LEFT_PART_END)}px) of the ${Math.round(width)}px-wide tick-field with no drawn pixel`,
@@ -461,14 +389,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('during the reveal, each tick fades in over about 350 ms: 800 ms after load, the ticks the front passed less than about 200 ms before show between 10% and 75% of the brightness above the background they show once revealed, while those it passed more than 400 ms before already show it all, within 10%', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
     const width = fieldBox!.width;
@@ -508,14 +429,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('once revealed, a tick-field is brighter on the right than on the left: 2 s after load, its right quarter shows more than twice the brightness above the background of its left quarter', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     await page.clock.runFor(2000);
 
     const screenshot = await tickField.screenshot();
@@ -538,17 +452,9 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('once revealed, within a column, a tick-field is brighter at the top than at the bottom: in a vertical band at the middle of its width, the strokes of its top quarter are, at their brightest, more than 1.3 times as bright above the background as those of its bottom quarter', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
        to brighten a tick. */
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context, 'reduce');
     await page.clock.runFor(16);
 
     const fieldBox = await tickField.boundingBox();
@@ -581,17 +487,9 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('once revealed, a tick-field has taller ticks on the right than on the left: the typical height of the strokes drawn in its right quarter is more than 1.4 times that of the strokes drawn in its left quarter', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
        to stretch a tick. */
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context, 'reduce');
     await page.clock.runFor(16);
 
     const fieldBox = await tickField.boundingBox();
@@ -624,17 +522,9 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('once revealed, the ticks of a tick-field are about 1.6px wide, and taller at the top than at the bottom: from about 5px at the bottom left to about 13px at the top right, the top left tick being taller than the bottom left one', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
        to stretch a tick. */
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, as wide as the page, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context, 'reduce');
     await page.clock.runFor(16);
 
     const fieldBox = await tickField.boundingBox();
@@ -689,17 +579,9 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('once revealed, a tick-field is green on the left and cream at the top right: the colour its ticks add over the background in its left fifth has clearly more green than red or blue, and in its top right corner takes the hue of the cream', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
        to turn a tick to the accent. */
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context, 'reduce');
     await page.clock.runFor(16);
 
     const fieldBox = await tickField.boundingBox();
@@ -754,17 +636,9 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('once revealed, a tick-field is coloured along its diagonal: its ticks are green at the bottom left, accent in the middle and cream in the top right corner, and nowhere else cream: the colour its ticks add over the background in each of these zones, and at its top left and at the bottom of its right part, has the hue, of green, accent and cream, closest to the one named', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
        to turn a tick to the accent. */
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, as wide as the page, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context, 'reduce');
     await page.clock.runFor(16);
 
     const fieldBox = await tickField.boundingBox();
@@ -833,17 +707,9 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('once revealed, a tick-field fades from its top right corner, clearly visible, to its bottom left corner, almost invisible, over its whole height: its bottom left tick lies less than 9% of the way from the background to its green, its top right tick more than 40% of the way to the cream, and in a vertical band at the middle of its width, the ticks at mid-height are dimmer than those at the top and brighter than those at the bottom', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
        to brighten a tick. */
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, as wide as the page, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context, 'reduce');
     await page.clock.runFor(16);
 
     const fieldBox = await tickField.boundingBox();
@@ -902,14 +768,7 @@ test.describe('catalog: tick-field', () => {
 
   test('with a fine pointer, hovering a tick-field brightens the ticks under the pointer: once revealed, the zone around the pointer shows more than 1.5 times the brightness above the background it showed before the hover', async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
     /* Fully revealed. */
     await page.clock.runFor(2000);
@@ -937,14 +796,7 @@ test.describe('catalog: tick-field', () => {
 
   test('with a fine pointer, the trail stays local: once revealed, a zone far below the pointer, in the same columns, and a zone far to its side, at the same height, keep the brightness they showed before the hover', async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
     /* Fully revealed. */
     await page.clock.runFor(2000);
@@ -996,14 +848,7 @@ test.describe('catalog: tick-field', () => {
 
   test('with a fine pointer, hovering lights a disc around the pointer: once revealed, a tick 48px straight above the pointer and the same tick 48px up and to the right of it, at 45°, gain alike over the brightness they showed before the hover, within 25%', async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background, followed by a paragraph. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
     /* Fully revealed. */
     await page.clock.runFor(2000);
@@ -1040,13 +885,7 @@ test.describe('catalog: tick-field', () => {
     /* A point of the page 40px below the tick-field, or above it if the viewport ends first:
        outside the tick-field, where the pointer goes between the two hovers. */
     const MARGIN = 40;
-    const outside = {
-      x: fieldBox!.x + tickCentre.x,
-      y:
-        fieldBox!.y + fieldBox!.height + MARGIN < viewport!.height
-          ? fieldBox!.y + fieldBox!.height + MARGIN
-          : fieldBox!.y - MARGIN,
-    };
+    const outside = { x: fieldBox!.x + tickCentre.x, y: yBelowOrAboveField(fieldBox!, viewport!.height, MARGIN) };
     expect(outside.y, 'the point the pointer leaves for is in the viewport').toBeGreaterThanOrEqual(0);
 
     const brightness = async (): Promise<number> =>
@@ -1078,14 +917,7 @@ test.describe('catalog: tick-field', () => {
 
   test('with a fine pointer, the light falls off with distance: once revealed, a tick 15px from the pointer gains more than twice the brightness over what it showed before the hover that the same tick gains 45px from the pointer, near the edge of the 60px disc, where it still gains', async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background, followed by a paragraph. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
     /* Fully revealed. */
     await page.clock.runFor(2000);
@@ -1120,13 +952,7 @@ test.describe('catalog: tick-field', () => {
     /* A point of the page 40px below the tick-field, or above it if the viewport ends first:
        outside the tick-field, where the pointer goes between the two hovers. */
     const MARGIN = 40;
-    const outside = {
-      x: fieldBox!.x + tickCentre.x,
-      y:
-        fieldBox!.y + fieldBox!.height + MARGIN < viewport!.height
-          ? fieldBox!.y + fieldBox!.height + MARGIN
-          : fieldBox!.y - MARGIN,
-    };
+    const outside = { x: fieldBox!.x + tickCentre.x, y: yBelowOrAboveField(fieldBox!, viewport!.height, MARGIN) };
     expect(outside.y, 'the point the pointer leaves for is in the viewport').toBeGreaterThanOrEqual(0);
 
     const brightness = async (): Promise<number> =>
@@ -1160,14 +986,7 @@ test.describe('catalog: tick-field', () => {
 
   test('with a fine pointer, hovered ticks turn to the accent colour, even where the field is bright: once revealed, the colour the zone around the pointer adds over the background, in the bright right part, takes the hue of the accent', async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
     /* Fully revealed. */
     await page.clock.runFor(2000);
@@ -1218,14 +1037,7 @@ test.describe('catalog: tick-field', () => {
 
   test('with a fine pointer, the trail fades: once revealed, 150 ms after the pointer leaves the tick-field the zone it hovered is still brighter than before the hover, and 4 s after it is back to the brightness it showed before the hover', async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
     /* Fully revealed. */
     await page.clock.runFor(2000);
@@ -1242,13 +1054,7 @@ test.describe('catalog: tick-field', () => {
     /* A point of the page 40px below the tick-field, or above it if the viewport ends first:
        outside the tick-field, in the same column. */
     const MARGIN = 40;
-    const outside = {
-      x: fieldBox!.x + point.x,
-      y:
-        fieldBox!.y + fieldBox!.height + MARGIN < viewport!.height
-          ? fieldBox!.y + fieldBox!.height + MARGIN
-          : fieldBox!.y - MARGIN,
-    };
+    const outside = { x: fieldBox!.x + point.x, y: yBelowOrAboveField(fieldBox!, viewport!.height, MARGIN) };
     expect(
       outside.y < fieldBox!.y || outside.y > fieldBox!.y + fieldBox!.height,
       'the point the pointer leaves for is outside the tick-field',
@@ -1285,14 +1091,7 @@ test.describe('catalog: tick-field', () => {
 
   test('with a fine pointer, the trail lingers: once revealed, 150 ms after the pointer moves elsewhere inside the tick-field, far from where it was, the zone it hovered is still brighter than before the hover, and 4 s after it is back to the brightness it showed before the hover', async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
     /* Fully revealed. */
     await page.clock.runFor(2000);
@@ -1342,14 +1141,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('a click (a tap on mobile) starts a ripple: once revealed, 300 ms after the click, zones all around the click point, about 84px from it, are brighter than just before the click, while the zone at the click point is not', async ({ page, context, hasTouch }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
     /* Fully revealed. */
     await page.clock.runFor(2000);
@@ -1417,14 +1209,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('the ripple lights the ticks themselves: once revealed, 300 ms after the click, a zone the ring crosses about 84px to the left of the click point is brighter than just before the click, yet still shows, between its rows of ticks, as many horizontal bands at least 4px high with no drawn pixel as it did before the click', async ({ page, context, hasTouch }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
     /* Fully revealed. */
     await page.clock.runFor(2000);
@@ -1490,14 +1275,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('a lit tick is the same tick, taller: once revealed, under the hover (with a fine pointer) and 300 ms after a click (a tap on mobile), each tick of a zone of three rows of three ticks stays a separate stroke at the same x, no wider than before it was lit, covering at least what it covered before, and some of them are more than 1px taller; nothing is drawn between two ticks of a row or between two rows', async ({ page, context, hasTouch }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background, followed by a paragraph. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
     /* Fully revealed. */
     await page.clock.runFor(2000);
@@ -1585,13 +1363,7 @@ test.describe('catalog: tick-field', () => {
       /* Hover: the pointer on the tick nearest to a point of the left part at mid-height, from a
          point of the page 40px below the tick-field, or above it if the viewport ends first. */
       const MARGIN = 40;
-      const outside = {
-        x: fieldBox!.x + 0.2 * fieldBox!.width,
-        y:
-          fieldBox!.y + fieldBox!.height + MARGIN < viewport!.height
-            ? fieldBox!.y + fieldBox!.height + MARGIN
-            : fieldBox!.y - MARGIN,
-      };
+      const outside = { x: fieldBox!.x + 0.2 * fieldBox!.width, y: yBelowOrAboveField(fieldBox!, viewport!.height, MARGIN) };
       expect(outside.y, 'the point the pointer starts from is in the viewport').toBeGreaterThanOrEqual(0);
       await page.mouse.move(outside.x, outside.y);
       await page.clock.runFor(300);
@@ -1650,14 +1422,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('the ripple spreads: once revealed, 600 ms after the click, a zone to the left of the click point, about 168px from it, is brighter than just before the click, while the zones to its right and left about 84px from it, which the ring lit 300 ms after the click, are back to what they showed before it', async ({ page, context, hasTouch }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
     /* Fully revealed. */
     await page.clock.runFor(2000);
@@ -1739,14 +1504,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('the ripple lasts more than a second: once revealed, 1.2 s after the click, a zone down and to the left of the click point, at 45°, about 336px from it, is brighter than just before the click', async ({ page, context, hasTouch }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
     /* Fully revealed. */
     await page.clock.runFor(2000);
@@ -1800,14 +1558,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('the ripple is strongest at the middle of its ring and fades towards its edges, and is gone 1.7 s after the click: once revealed, 300 ms after the click, the ticks at the middle of the ring, about 84px from the click point, gain more than 1.5 times as much brightness as those 12 to 22px inside it, and as those 12 to 22px outside it, which still gain some; 1.7 s after the click, every vertical band of the tick-field is back to the brightness it showed just before the click', async ({ page, context, hasTouch }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
     /* Fully revealed. */
     await page.clock.runFor(2000);
@@ -1865,9 +1616,7 @@ test.describe('catalog: tick-field', () => {
     /* The width split into adjacent vertical bands, at least 40px wide each and as high as the
        field: together they cover every place the ring crossed. */
     const MIN_BAND_WIDTH = 40;
-    const bandCount = Math.max(1, Math.floor(width / MIN_BAND_WIDTH));
-    const bandWidth = width / bandCount;
-    const bands = Array.from({ length: bandCount }, (_, band) => ({ x: band * bandWidth, y: 0, width: bandWidth, height }));
+    const bands = verticalBands(width, height, MIN_BAND_WIDTH);
     const beforeBands = await luminanceAboveBackgroundInRectangles(tickField, beforeScreenshot, bands);
 
     if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
@@ -1918,14 +1667,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('the ripple turns the ticks it lights to the accent colour and makes them nearly opaque: once revealed, 300 ms after the click, the colour the ticks at the middle of the ring add over the background, in the dim left part, takes the hue of the accent, and one of them shows a pixel 60% to 110% of the way from the background to the accent, with almost no other hue', async ({ page, context, hasTouch }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
     /* Fully revealed. */
     await page.clock.runFor(2000);
@@ -2026,14 +1768,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('the ripple fades: once revealed, 2 s after the click, every vertical band of the tick-field, from the left edge to the right edge, is back to the brightness it showed just before the click', async ({ page, context, hasTouch }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
     /* Fully revealed. */
     await page.clock.runFor(2000);
@@ -2051,14 +1786,7 @@ test.describe('catalog: tick-field', () => {
        cover the whole field, every place the ring crossed and every place it would still be
        on, about 560px from the click point, had it not faded. */
     const MIN_BAND_WIDTH = 40;
-    const bandCount = Math.max(1, Math.floor(width / MIN_BAND_WIDTH));
-    const bandWidth = width / bandCount;
-    const bands = Array.from({ length: bandCount }, (_, band) => ({
-      x: band * bandWidth,
-      y: 0,
-      width: bandWidth,
-      height: fieldBox!.height,
-    }));
+    const bands = verticalBands(width, fieldBox!.height, MIN_BAND_WIDTH);
     const brightness = async (): Promise<number[]> => {
       const screenshot = await tickField.screenshot();
       return Promise.all(bands.map((band) => luminanceAboveBackgroundInRectangle(tickField, screenshot, band)));
@@ -2091,14 +1819,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('a click (a tap on mobile) outside a tick-field starts no ripple: once revealed, 300 ms after a click just below its bottom edge, the zones of the field about 84px from the click point are what they showed just before the click', async ({ page, context, hasTouch }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background, followed by a paragraph. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
     /* Fully revealed. */
     await page.clock.runFor(2000);
@@ -2184,17 +1905,9 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('under prefers-reduced-motion: reduce, a tick-field stays still: 2 s after load, after a hover (with a fine pointer) and 300 ms after a click (a tap on mobile) at its centre, every vertical band of it, from the left edge to the right edge, shows the brightness it showed right after load', async ({ page, context, hasTouch }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* The visitor asks for reduced motion, and time stands still from before the page
        loads, until the test advances it. */
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context, 'reduce');
     await tickField.scrollIntoViewIfNeeded();
     /* Right after load: the first animation frame has run. */
     await page.clock.runFor(16);
@@ -2208,14 +1921,7 @@ test.describe('catalog: tick-field', () => {
        cover the whole field, the glow around a hovered point and the ring around a click point
        included. */
     const MIN_BAND_WIDTH = 40;
-    const bandCount = Math.max(1, Math.floor(width / MIN_BAND_WIDTH));
-    const bandWidth = width / bandCount;
-    const bands = Array.from({ length: bandCount }, (_, band) => ({
-      x: band * bandWidth,
-      y: 0,
-      width: bandWidth,
-      height: fieldBox!.height,
-    }));
+    const bands = verticalBands(width, fieldBox!.height, MIN_BAND_WIDTH);
     const brightness = async (): Promise<number[]> => {
       const screenshot = await tickField.screenshot();
       return Promise.all(bands.map((band) => luminanceAboveBackgroundInRectangle(tickField, screenshot, band)));
@@ -2257,17 +1963,9 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('if the visitor turns on reduced motion during the reveal, a tick-field is drawn across its whole width at once, then stays still: two animation frames after the switch, every vertical band of it shows drawn pixels, and 300 ms after a click (a tap on mobile) at its centre, every band shows the brightness it showed right after the switch', async ({ page, context, hasTouch }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it to the middle of the reveal. */
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
+    const tickField = await openEmptyTickField(page, context, 'no-preference');
     await tickField.scrollIntoViewIfNeeded();
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -2291,15 +1989,8 @@ test.describe('catalog: tick-field', () => {
     /* The width split into adjacent vertical bands, at least 40px wide each and as high as the
        field: the first starts at the left edge, the last ends at the right edge. */
     const MIN_BAND_WIDTH = 40;
-    const bandCount = Math.max(1, Math.floor(width / MIN_BAND_WIDTH));
-    const bandWidth = width / bandCount;
-    const bands = Array.from({ length: bandCount }, (_, band) => ({
-      x: band * bandWidth,
-      y: 0,
-      width: bandWidth,
-      height: fieldBox!.height,
-    }));
-    const describeBand = (band: (typeof bands)[number]): string =>
+    const bands = verticalBands(width, fieldBox!.height, MIN_BAND_WIDTH);
+    const describeBand = (band: Rectangle): string =>
       `${Math.round(band.x)}–${Math.round(band.x + band.width)}px`;
 
     /* Drawn at once: every band shows drawn pixels, the right part included. */
@@ -2417,16 +2108,7 @@ test.describe('catalog: tick-field', () => {
        at the left edge, the last ends at the right edge. Every band must show drawn pixels:
        the reveal went on to the right edge. */
     const MIN_BAND_WIDTH = 40;
-    const bandCount = Math.max(1, Math.floor(width / MIN_BAND_WIDTH));
-    const bandWidth = width / bandCount;
-    const emptyBands: string[] = [];
-    for (let band = 0; band < bandCount; band++) {
-      const fromColumn = Math.round(band * bandWidth * scale);
-      const toColumn = Math.round((band + 1) * bandWidth * scale);
-      if (!columns.slice(fromColumn, toColumn).some((count) => count > 0)) {
-        emptyBands.push(`${Math.round(band * bandWidth)}–${Math.round((band + 1) * bandWidth)}px`);
-      }
-    }
+    const emptyBands = bandsWithoutDrawnPixels(columns, scale, width, MIN_BAND_WIDTH);
     expect(
       emptyBands,
       `bands of the ${Math.round(width)}px-wide tick-field with no drawn pixel, 2 s after it was scrolled back on screen`,

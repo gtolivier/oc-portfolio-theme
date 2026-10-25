@@ -1,4 +1,4 @@
-import { test, expect, type Locator } from '@playwright/test';
+import { test, expect, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { CATALOG_SITE, buildSite, removeDirectory, serveSite } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { SIGNS, textOnScreen, textOnScreenWithSpaces } from './helpers/text-on-screen';
@@ -61,14 +61,26 @@ test.describe('catalog: scramble-text', () => {
     removeDirectory(siteDirectory);
   });
 
-  test('right after load, a scramble-text shows none of the letters of its text: each one is replaced by a sign from | / \\ < > [ ] { } = + # ·', async ({ page, context }) => {
+  /* Serves the catalog and opens its French page `slug`, the visitor's motion preference
+     emulated as `reducedMotion`, and time standing still from before the page loads, until
+     the test advances it. */
+  const openCatalogPage = async (
+    page: Page,
+    context: BrowserContext,
+    slug: string,
+    reducedMotion: 'reduce' | 'no-preference',
+  ): Promise<void> => {
     await serveSite(context, CATALOG_SITE, siteDirectory);
+    await page.emulateMedia({ reducedMotion });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/${slug}/`);
+  };
+
+  test('right after load, a scramble-text shows none of the letters of its text: each one is replaced by a sign from | / \\ < > [ ] { } = + # ·', async ({ page, context }) => {
     /* Animations are allowed, and time stands still from before the page loads: no
        animation frame runs and no timer with a delay fires, the page stays as it is right
        after load. */
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text/`);
+    await openCatalogPage(page, context, 'scramble-text', 'no-preference');
     /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text.md),
        whose text is "Échappement": 11 letters. */
     const scrambleText = page.getByRole('main').locator('scramble-text');
@@ -82,12 +94,9 @@ test.describe('catalog: scramble-text', () => {
   });
 
   test('1.5 s after load, a short scramble-text shows its text in clear', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it: animation frames and timers then run as they would in 1.5 s. */
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text/`);
+    await openCatalogPage(page, context, 'scramble-text', 'no-preference');
     /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text.md),
        whose text is a single short word: "Échappement". */
     const scrambleText = page.getByRole('main').locator('scramble-text');
@@ -97,12 +106,9 @@ test.describe('catalog: scramble-text', () => {
   });
 
   test('a scramble-text decodes left to right: midway, its first letters are in clear and its last ones still scrambled', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it, step by step, to watch the decoding as it goes. */
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text/`);
+    await openCatalogPage(page, context, 'scramble-text', 'no-preference');
     /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text.md),
        whose text is "Échappement": 11 letters. */
     const scrambleText = page.getByRole('main').locator('scramble-text');
@@ -131,12 +137,9 @@ test.describe('catalog: scramble-text', () => {
   });
 
   test('with a delay, a scramble-text stays fully scrambled until the delay is over, then decodes and ends in clear', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it, step by step, to watch the text during the delay and after it. */
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-delay/`);
+    await openCatalogPage(page, context, 'scramble-text-delay', 'no-preference');
     /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text-delay.md),
        whose text is "Échappement" (11 letters) and whose delay is 1000 ms. */
     const scrambleText = page.getByRole('main').locator('scramble-text');
@@ -158,12 +161,9 @@ test.describe('catalog: scramble-text', () => {
   });
 
   test('a scramble-text takes longer to decode the longer its text: when a short one is in clear, a long one on the same page is still partly scrambled', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it: animation frames and timers then run as they would in 1.5 s. */
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-lengths/`);
+    await openCatalogPage(page, context, 'scramble-text-lengths', 'no-preference');
     /* The two scramble-texts of the page (tests/fixtures/catalog/content/scramble-text-lengths.md):
        a short one, "Échappement" (11 letters), then a long sentence (over 90 letters). */
     const scrambleTexts = page.getByRole('main').locator('scramble-text');
@@ -184,12 +184,9 @@ test.describe('catalog: scramble-text', () => {
   });
 
   test('however long its text, a scramble-text is in clear 2 s after it starts decoding: a sentence of over 90 letters is in clear 2.1 s after load', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it: animation frames and timers then run as they would in 2.1 s. */
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-lengths/`);
+    await openCatalogPage(page, context, 'scramble-text-lengths', 'no-preference');
     /* The second scramble-text of the page (tests/fixtures/catalog/content/scramble-text-lengths.md),
        a long sentence (over 90 letters) without a delay: it starts decoding at load. At a
        tenth of a second per letter, it would still be decoding for more than 9 s. */
@@ -203,12 +200,9 @@ test.describe('catalog: scramble-text', () => {
   });
 
   test('with a short duration (0.6 s), a long scramble-text is in clear 0.6 s after it starts decoding: a sentence of over 90 letters is in clear 1 s after load', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it: animation frames and timers then run as they would in 1 s. */
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-duration/`);
+    await openCatalogPage(page, context, 'scramble-text-duration', 'no-preference');
     /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text-duration.md),
        a long sentence (over 90 letters) without a delay, whose duration is 600 ms: it starts
        decoding at load. Without a duration, it would still be decoding until 2 s after load. */
@@ -223,12 +217,9 @@ test.describe('catalog: scramble-text', () => {
   });
 
   test('with a long duration (3 s), a short scramble-text is still partly scrambled 2 s after it starts decoding, and in clear 3 s after', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it: animation frames and timers then run as they would in 2 s, then 3 s. */
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-long-duration/`);
+    await openCatalogPage(page, context, 'scramble-text-long-duration', 'no-preference');
     /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text-long-duration.md),
        a single short word, "Échappement" (11 letters), without a delay, whose duration is
        3000 ms: it starts decoding at load. Without a duration, it would be in clear 1.5 s
@@ -252,12 +243,9 @@ test.describe('catalog: scramble-text', () => {
   });
 
   test('while a scramble-text decodes, the accessible name of the heading that contains it is its final text', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it, step by step, to watch the decoding as it goes. */
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-heading/`);
+    await openCatalogPage(page, context, 'scramble-text-heading', 'no-preference');
     /* The only second-level heading of the page (tests/fixtures/catalog/content/scramble-text-heading.md),
        whose whole text is a scramble-text: "Échappement". */
     const heading = page.getByRole('main').getByRole('heading', { level: 2 });
@@ -277,12 +265,9 @@ test.describe('catalog: scramble-text', () => {
   });
 
   test('while a scramble-text decodes, its spaces stay spaces, at the same positions', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it, step by step, to watch the decoding as it goes. */
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-lengths/`);
+    await openCatalogPage(page, context, 'scramble-text-lengths', 'no-preference');
     /* The second scramble-text of the page (tests/fixtures/catalog/content/scramble-text-lengths.md),
        a long sentence with many spaces, still decoding 1.5 s after load. */
     const scrambleTexts = page.getByRole('main').locator('scramble-text');
@@ -304,12 +289,9 @@ test.describe('catalog: scramble-text', () => {
   });
 
   test('while a scramble-text decodes, the box it takes on screen keeps the width and height of its final text', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it, step by step, to watch the decoding as it goes. */
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text/`);
+    await openCatalogPage(page, context, 'scramble-text', 'no-preference');
     /* The size of a text depends on its font: the theme's fonts are loaded before measuring. */
     await page.evaluate(async () => {
       await document.fonts.ready;
@@ -348,12 +330,9 @@ test.describe('catalog: scramble-text', () => {
   });
 
   test('a long scramble-text wraps like plain text in a narrow container: while it decodes and once in clear, it spans several lines and stays within the container width', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it, step by step, to watch the decoding as it goes. */
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-wrap/`);
+    await openCatalogPage(page, context, 'scramble-text-wrap', 'no-preference');
     await page.evaluate(async () => {
       await document.fonts.ready;
     });
@@ -397,13 +376,10 @@ test.describe('catalog: scramble-text', () => {
   });
 
   test('under prefers-reduced-motion: reduce, a scramble-text shows its text in clear from load', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* The visitor asks for reduced motion, and time stands still from before the page
        loads: no animation frame runs and no timer with a delay fires, the page stays as it
        is right after load. */
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text/`);
+    await openCatalogPage(page, context, 'scramble-text', 'reduce');
     /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text.md),
        whose text is "Échappement". */
     const scrambleText = page.getByRole('main').locator('scramble-text');
@@ -412,12 +388,9 @@ test.describe('catalog: scramble-text', () => {
   });
 
   test('if the visitor turns on reduced motion while a scramble-text decodes, its text is in clear at once', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it to the middle of the decoding. */
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text/`);
+    await openCatalogPage(page, context, 'scramble-text', 'no-preference');
     /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text.md),
        whose text is "Échappement": in clear 1.5 s after load. */
     const scrambleText = page.getByRole('main').locator('scramble-text');

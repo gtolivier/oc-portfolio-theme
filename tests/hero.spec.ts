@@ -182,6 +182,27 @@ function mainContentHeading(page: Page): Locator {
   return page.getByRole('main').getByRole('heading', { level: 1 });
 }
 
+/* The two desktop windows the hero's layout is checked at: a wide one, 1280 × 900, and one
+   768 px wide, 768 × 1024, where the desktop spacing starts. */
+const DESKTOP_VIEWPORTS = [{ width: 1280, height: 900 }, { width: 768, height: 1024 }];
+
+/* Sizes the window to `viewport`, then opens the French home page and waits for its fonts. */
+async function openHomeAt(page: Page, viewport: { width: number; height: number }): Promise<void> {
+  await page.setViewportSize(viewport);
+  await page.goto('/fr/');
+  await page.evaluate(() => document.fonts.ready);
+}
+
+/* The y, in the window, of the bottom edge of the lowest of `buttons`' boxes. */
+async function bottomOfButtons(buttons: Locator[]): Promise<number> {
+  return Math.max(
+    ...(await Promise.all(buttons.map(async (button) => {
+      const box = (await button.boundingBox())!;
+      return box.y + box.height;
+    }))),
+  );
+}
+
 test('on the French home page, the main heading starts with the site author name', async ({ page }) => {
   await page.goto('/fr/');
   const mainHeading = mainContentHeading(page);
@@ -245,13 +266,11 @@ test('on phone as on desktop, the hero heading follows the design’s spacing: n
      line-height 1.02; title line-height 1.3 and margin-top 36px (24px on a phone). Desktop
      projects are checked at a wide window and at 768 px wide, where the desktop spacing
      starts; phone projects at their own size. */
-  const viewports = isMobile ? [page.viewportSize()!] : [{ width: 1280, height: 900 }, { width: 768, height: 1024 }];
+  const viewports = isMobile ? [page.viewportSize()!] : DESKTOP_VIEWPORTS;
   const expectedGap = isMobile ? 24 : 36;
   for (const viewport of viewports) {
     const size = `${viewport.width} × ${viewport.height}`;
-    await page.setViewportSize(viewport);
-    await page.goto('/fr/');
-    await page.evaluate(() => document.fonts.ready);
+    await openHomeAt(page, viewport);
     const mainHeading = mainContentHeading(page);
     /* Both lines in clear: the decoding is over. */
     await expect(mainHeading).toHaveText(/^\s*Jean Exemple\s*Horloger indépendant\s*$/);
@@ -307,14 +326,12 @@ test('on phone as on desktop, the hero tagline follows the design’s spacing: 2
      layout, 18px and 40px below the heading; the line height and the maximum width stay.
      Desktop projects are checked at a wide window and at 768 px wide, where the desktop
      spacing starts; phone projects at their own size. */
-  const viewports = isMobile ? [page.viewportSize()!] : [{ width: 1280, height: 900 }, { width: 768, height: 1024 }];
+  const viewports = isMobile ? [page.viewportSize()!] : DESKTOP_VIEWPORTS;
   const expectedFontSize = isMobile ? 18 : 20;
   const expectedGap = isMobile ? 40 : 165;
   for (const viewport of viewports) {
     const size = `${viewport.width} × ${viewport.height}`;
-    await page.setViewportSize(viewport);
-    await page.goto('/fr/');
-    await page.evaluate(() => document.fonts.ready);
+    await openHomeAt(page, viewport);
     const mainHeading = mainContentHeading(page);
     /* Both heading lines in clear: the decoding is over. */
     await expect(mainHeading).toHaveText(/^\s*Jean Exemple\s*Horloger indépendant\s*$/);
@@ -353,12 +370,10 @@ test('on phone as on desktop, the hero stack follows the design’s spacing: 14 
      20px below the tagline. The design has no phone layout: the same values apply there.
      Desktop projects are checked at a wide window and at 768 px wide, where the desktop
      spacing starts; phone projects at their own size. */
-  const viewports = isMobile ? [page.viewportSize()!] : [{ width: 1280, height: 900 }, { width: 768, height: 1024 }];
+  const viewports = isMobile ? [page.viewportSize()!] : DESKTOP_VIEWPORTS;
   for (const viewport of viewports) {
     const size = `${viewport.width} × ${viewport.height}`;
-    await page.setViewportSize(viewport);
-    await page.goto('/fr/');
-    await page.evaluate(() => document.fonts.ready);
+    await openHomeAt(page, viewport);
     const main = page.getByRole('main');
     /* The tagline: the element holding its first line, which holds the other two as well. */
     const tagline = main.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.');
@@ -395,12 +410,10 @@ test('on phone as on desktop, the hero buttons follow the design’s sizing and 
      has no phone layout: the same values apply there. Desktop projects are checked at a wide
      window and at 768 px wide, where the desktop spacing starts; phone projects at their own
      size. */
-  const viewports = isMobile ? [page.viewportSize()!] : [{ width: 1280, height: 900 }, { width: 768, height: 1024 }];
+  const viewports = isMobile ? [page.viewportSize()!] : DESKTOP_VIEWPORTS;
   for (const viewport of viewports) {
     const size = `${viewport.width} × ${viewport.height}`;
-    await page.setViewportSize(viewport);
-    await page.goto('/fr/');
-    await page.evaluate(() => document.fonts.ready);
+    await openHomeAt(page, viewport);
     const stack = page.getByRole('main').getByText('Laiton · Acier · Rubis · Émail', { exact: true });
     await expect(stack).toBeVisible();
     const first = firstHeroButton(page);
@@ -695,11 +708,9 @@ test('from 768 px wide, the hero’s text block is centred vertically in the her
   /* Design reference: the text block (heading, tagline, stack, buttons) sits in the middle of
      the hero, with 40 px of padding below it. Both windows are tall enough to leave the hero
      free space around its text. */
-  for (const viewport of [{ width: 1280, height: 900 }, { width: 768, height: 1024 }]) {
+  for (const viewport of DESKTOP_VIEWPORTS) {
     const size = `${viewport.width} × ${viewport.height}`;
-    await page.setViewportSize(viewport);
-    await page.goto('/fr/');
-    await page.evaluate(() => document.fonts.ready);
+    await openHomeAt(page, viewport);
     /* The hero is the main content region named by its main heading. */
     const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
     const heading = hero.getByRole('heading', { level: 1 });
@@ -709,12 +720,7 @@ test('from 768 px wide, the hero’s text block is centred vertically in the her
 
     const heroBox = (await hero.boundingBox())!;
     const headingBox = (await heading.boundingBox())!;
-    const buttonsBottom = Math.max(
-      ...(await Promise.all(buttons.map(async (button) => {
-        const box = (await button.boundingBox())!;
-        return box.y + box.height;
-      }))),
-    );
+    const buttonsBottom = await bottomOfButtons(buttons);
     const spaceAbove = headingBox.y - heroBox.y;
     const spaceBelow = heroBox.y + heroBox.height - buttonsBottom;
     expect.soft(
@@ -830,14 +836,7 @@ test('on phone as on desktop, the hero is a tick field drawn across its whole wi
      edge, across its whole width: no text shows there, and the heading's decoding does not
      reach it, so a pixel that changed there shows the field. */
   const heroBox = (await hero.boundingBox())!;
-  const buttonsBottom = Math.max(
-    ...(await Promise.all(
-      [elements['first button, "Voir les projets"'], elements['second button, "Contact"']].map(async (button) => {
-        const box = (await button.boundingBox())!;
-        return box.y + box.height;
-      }),
-    )),
-  );
+  const buttonsBottom = await bottomOfButtons([elements['first button, "Voir les projets"'], elements['second button, "Contact"']]);
   const strip = { x: 0, y: buttonsBottom - heroBox.y + 4, width: heroBox.width, height: heroBox.y + heroBox.height - buttonsBottom - 4 };
   expect(strip.height, 'height of the empty strip of the hero below its buttons').toBeGreaterThanOrEqual(16);
   const { columns, scale } = await pixelsChangedPerColumnInRectangle(hero, rightAfterLoad, twoSecondsLater, strip);
@@ -1041,14 +1040,7 @@ test('on phone as on desktop, the hero’s veil darkens its text zone: with the 
      hero's content, across the heading's width. */
   const heroBox = (await hero.boundingBox())!;
   const headingBox = (await text.heading.boundingBox())!;
-  const buttonsBottom = Math.max(
-    ...(await Promise.all(
-      [text['first button, "Voir les projets"'], text['second button, "Contact"']].map(async (button) => {
-        const box = (await button.boundingBox())!;
-        return box.y + box.height;
-      }),
-    )),
-  );
+  const buttonsBottom = await bottomOfButtons([text['first button, "Voir les projets"'], text['second button, "Contact"']]);
   const textTop = headingBox.y - heroBox.y;
   const textBottom = buttonsBottom - heroBox.y;
   const textMiddle = headingBox.x - heroBox.x + headingBox.width / 2;
