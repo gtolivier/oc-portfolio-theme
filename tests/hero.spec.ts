@@ -485,10 +485,10 @@ test('on the French home page, the hero heading decodes: right after load, its a
   expect(await textOnScreen(mainHeading), '4 s after load').toBe(inClear);
 });
 
-test('on the French home page, the hero title line decodes after the name: when the first letters of the author name are in clear, the professional title is still fully scrambled', async ({ page }) => {
-  /* Design reference: the title line starts decoding where the name ends, as if both lines
-     were one text with the title placed after the name. Animations are allowed, and time
-     stands still from before the page loads, until the test advances it. */
+test('on the French home page, the hero title line decodes together with the name: when the first letters of the author name are in clear, the first letters of the professional title are in clear too', async ({ page }) => {
+  /* Both lines start decoding at the same moment, as the user chose after comparing the hero
+     with the design. Animations are allowed, and time stands still from before the page
+     loads, until the test advances it. */
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
@@ -506,17 +506,16 @@ test('on the French home page, the hero title line decodes after the name: when 
   }
   expect(shown.join(''), 'the name starts with "Jean" in clear within 4 s of load').toMatch(/^Jean/);
   expect(shown, `"${shown.join('')}" shows one character per letter of the name and the title`).toHaveLength(name.length + title.length);
-  /* At that moment, none of the title letters is shown: one sign in place of each one. */
+  /* At that moment, the title has started decoding too: its first letters, "Ho", are in
+     clear. */
   const titleShown = shown.slice(name.length).join('');
-  for (const character of Array.from(titleShown)) {
-    expect(SIGNS, `"${character}", shown in the title "${titleShown}" when the name starts with "Jean" in clear, is one of the signs`).toContain(character);
-  }
+  expect(titleShown, `the title, shown as "${titleShown}" when the name starts with "Jean" in clear, starts with its first letters in clear`).toMatch(/^Ho/);
 });
 
 test('on the French home page, the hero heading decodes at the design’s pace: 1.5 s after load, its author name and professional title are both in clear', async ({ page }) => {
-  /* Design reference: the name and the title decode in about 1.1 s in total, the title
-     continuing where the name ends, so both are in clear well before 1.5 s. Animations are
-     allowed, and time stands still from before the page loads, until the test advances it. */
+  /* Design reference: the name and the title decode in about 1.1 s at most, both starting
+     at load, so both are in clear well before 1.5 s. Animations are allowed, and time stands
+     still from before the page loads, until the test advances it. */
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
