@@ -298,6 +298,13 @@ scramble-text {
   display: inline-grid;
 }
 
+/* Until the theme script has defined it, the text stays hidden rather than
+   flash in clear before being scrambled. head.html shows it again when
+   scripts are disabled. */
+scramble-text:not(:defined) {
+  visibility: hidden;
+}
+
 scramble-text > * {
   grid-area: 1 / 1;
 }
