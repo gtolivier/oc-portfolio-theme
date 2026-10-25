@@ -183,6 +183,25 @@ test.describe('catalog: scramble-text', () => {
     ).toBe(true);
   });
 
+  test('however long its text, a scramble-text is in clear 2 s after it starts decoding: a sentence of over 90 letters is in clear 2.1 s after load', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it: animation frames and timers then run as they would in 2.1 s. */
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text-lengths/`);
+    /* The second scramble-text of the page (tests/fixtures/catalog/content/scramble-text-lengths.md),
+       a long sentence (over 90 letters) without a delay: it starts decoding at load. At a
+       tenth of a second per letter, it would still be decoding for more than 9 s. */
+    const scrambleTexts = page.getByRole('main').locator('scramble-text');
+    await expect(scrambleTexts).toHaveCount(2);
+    const long = 'Un texte brouillé se décode de gauche à droite, une lettre après une autre, puis finit par se montrer entièrement en clair'.replace(/\s+/g, '');
+    expect(Array.from(long).length, 'the sentence has over 90 letters').toBeGreaterThan(90);
+    /* 2.1 s after load, a little more than the 2 s cap, the whole sentence is in clear. */
+    await page.clock.runFor(2100);
+    expect(await textOnScreen(scrambleTexts.nth(1))).toBe(long);
+  });
+
   test('while a scramble-text decodes, the accessible name of the heading that contains it is its final text', async ({ page, context }) => {
     await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Animations are allowed, and time stands still from before the page loads, until the
@@ -299,7 +318,7 @@ test.describe('catalog: scramble-text', () => {
       const box = element.getBoundingClientRect();
       return { left: box.left, right: box.right };
     });
-    /* From load until the sentence is in clear (about 10 s for its letters), every 500 ms:
+    /* From load until the sentence is in clear (2 s, however long it is), every 500 ms:
        the characters shown lie within the container's width and over several lines, as the
        same text would as plain text. Signs and letters may not have the same width, so the
        exact line breaks are not checked. */
