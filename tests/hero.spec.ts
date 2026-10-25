@@ -15,7 +15,9 @@ import {
   serveSite,
   tryToBuildSite,
 } from './helpers/built-site';
+import { stopClockBeforeLoad } from './helpers/clock';
 import { tabUntilFocused } from './helpers/keyboard';
+import { SIGNS, textOnScreen } from './helpers/text-on-screen';
 
 /* Checks that each tagline line is visible in the area, and that each one starts below the
    previous one, in the given order. */
@@ -226,6 +228,28 @@ test('on the French home page, the professional title that follows the author na
     weight: '600',
     color: 'rgb(42, 136, 141)',
   });
+});
+
+test('on the French home page, the hero heading decodes: right after load, its author name and professional title are scrambled, and 4 s later both are in clear', async ({ page }) => {
+  /* Animations are allowed, and time stands still from before the page loads, until the
+     test advances it: animation frames and timers then run as they would in 4 s. */
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  const mainHeading = mainContentHeading(page);
+  await expect(mainHeading).toHaveCount(1);
+  /* What the visitor sees in the heading, whitespace excluded: the name, from params.author,
+     and the title, from the [params.hero] block of exampleSite/content/_index.md. */
+  const inClear = 'Jean Exemple Horloger indépendant'.replace(/\s+/g, '');
+  /* Right after load, none of their letters is shown: one sign in place of each one. */
+  const shown = await textOnScreen(mainHeading);
+  expect(Array.from(shown), `"${shown}" shows one sign per letter of the name and the title`).toHaveLength(Array.from(inClear).length);
+  for (const character of Array.from(shown)) {
+    expect(SIGNS, `"${character}", shown in "${shown}" right after load, is one of the signs`).toContain(character);
+  }
+  /* 4 s after load, the name and the title are both in clear. */
+  await page.clock.runFor(4000);
+  expect(await textOnScreen(mainHeading), '4 s after load').toBe(inClear);
 });
 
 test('on the French home page, the hero displays the tagline, one line per entry: the three lines, in order, each below the previous one', async ({ page }) => {
