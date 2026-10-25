@@ -1140,6 +1140,57 @@ test.describe('catalog: tick-field', () => {
     ).toBeLessThanOrEqual(0.1 * before);
   });
 
+  test('with a fine pointer, the trail lingers where the pointer rested: once revealed, after the pointer stays 2 s on a spot, 150 ms after it moves elsewhere inside the tick-field, far from that spot, the zone it rested on is still brighter than before the hover, and 4 s after it is back to the brightness it showed before the hover', async ({ page, context, hasTouch }) => {
+    test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
+    const tickField = await openEmptyTickField(page, context);
+    await tickField.scrollIntoViewIfNeeded();
+    /* Fully revealed. */
+    await page.clock.runFor(2000);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    /* A point in the left half, where the ticks are dim, at mid-height; the zone is the 40px
+       square centred on it. */
+    const point = { x: 0.2 * fieldBox!.width, y: fieldBox!.height / 2 };
+    const HALF_SIDE = 20;
+    const zone = { x: point.x - HALF_SIDE, y: point.y - HALF_SIDE, width: 2 * HALF_SIDE, height: 2 * HALF_SIDE };
+    /* Where the pointer moves next: 200px to the right, at the same height, still inside the
+       tick-field. The zone is well over 100px from it, far outside the glow around it. */
+    const elsewhere = { x: point.x + 200, y: point.y };
+    expect(
+      elsewhere.x,
+      `the point the pointer moves to lies inside the ${Math.round(fieldBox!.width)}px-wide tick-field`,
+    ).toBeLessThan(fieldBox!.width);
+
+    const brightness = async (): Promise<number> =>
+      luminanceAboveBackgroundInRectangle(tickField, await tickField.screenshot(), zone);
+
+    const before = await brightness();
+
+    await page.mouse.move(fieldBox!.x + point.x, fieldBox!.y + point.y);
+    /* The pointer rests there, without moving, for 2 s. */
+    await page.clock.runFor(2000);
+    const lit = await brightness();
+
+    await page.mouse.move(fieldBox!.x + elsewhere.x, fieldBox!.y + elsewhere.y);
+    /* Shortly after the pointer moves away: still more than half of what the hover added. */
+    await page.clock.runFor(150);
+    const shortlyAfter = await brightness();
+    expect(
+      shortlyAfter,
+      `brightness above the background of the 40px square at (${Math.round(point.x)}, ${Math.round(point.y)})px 150 ms after the pointer, resting there for 2 s, moved to (${Math.round(elsewhere.x)}, ${Math.round(elsewhere.y)})px, against ${Math.round(before)} before the hover and ${Math.round(lit)} under the resting pointer`,
+    ).toBeGreaterThan(before + 0.5 * (lit - before));
+
+    /* A few seconds later, the pointer still elsewhere: back to what it showed before the
+       hover, within 10%. */
+    await page.clock.runFor(4000);
+    const later = await brightness();
+    expect(
+      Math.abs(later - before),
+      `change in brightness above the background of the 40px square at (${Math.round(point.x)}, ${Math.round(point.y)})px 4 s after the pointer, resting there for 2 s, moved to (${Math.round(elsewhere.x)}, ${Math.round(elsewhere.y)})px (${Math.round(before)} before the hover → ${Math.round(later)}; ${Math.round(lit)} under the resting pointer)`,
+    ).toBeLessThanOrEqual(0.1 * before);
+  });
+
   test('a click (a tap on mobile) starts a ripple: once revealed, 300 ms after the click, zones all around the click point, about 84px from it, are brighter than just before the click, while the zone at the click point is not', async ({ page, context, hasTouch }) => {
     const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
