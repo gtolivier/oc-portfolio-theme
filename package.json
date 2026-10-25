@@ -5,7 +5,7 @@
   "scripts": {
     "test": "playwright test",
     "fonts": "node scripts/fonts.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p assets/js"
   },
   "keywords": [],
   "author": "",

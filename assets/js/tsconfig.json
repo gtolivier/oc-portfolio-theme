@@ -1,0 +1,9 @@
+{
+  // The theme script runs in the browser: same options as the root
+  // configuration, without Node's types.
+  "extends": "../../tsconfig.json",
+  "include": ["."],
+  "compilerOptions": {
+    "types": []
+  }
+}

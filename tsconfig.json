@@ -1,8 +1,10 @@
 {
   // Visit https://aka.ms/tsconfig to read more about this file
   // Type checking only: Hugo (js.Build) compiles the theme script,
-  // Playwright the tests.
-  "include": ["assets/js", "tests", "playwright.config.ts"],
+  // Playwright the tests. This file covers the Node side (tests, Playwright
+  // configuration); assets/js/tsconfig.json covers the browser script,
+  // without Node's types.
+  "include": ["tests", "playwright.config.ts"],
   "compilerOptions": {
     "noEmit": true,
 
