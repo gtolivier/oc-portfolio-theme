@@ -773,6 +773,45 @@ test.describe('home page of a site whose hero has long words, on a 320 px wide p
       expect.soft(right, `right edge within the window: ${name}`).toBeLessThanOrEqual(width);
     }
   });
+
+  test('on a 320 px wide phone, while the heading of a hero with long words decodes, the page never scrolls horizontally: every 250 ms from load until the title is almost in clear, the name and the title stay within the width', async ({ page, context }) => {
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it, step by step. */
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await stopClockBeforeLoad(page);
+    await serveSite(context, SITE_WITH_A_HERO_WITH_LONG_WORDS, siteDirectory);
+    await page.goto(`${SITE_WITH_A_HERO_WITH_LONG_WORDS.origin}/fr/`);
+    const width = page.viewportSize()!.width;
+    expect(width, 'window width').toBe(320);
+
+    /* The name, "Apolline Vanderkerckhove-Fictive", from params.author
+       (tests/fixtures/hero-with-long-words/hugo.toml), decodes first; the title,
+       "Horlogère-restauratrice", from tests/fixtures/hero-with-long-words/content/_index.md,
+       decodes when the name is done. Both are done within 4 s of load. */
+    const mainHeading = mainContentHeading(page);
+    await expect(mainHeading).toHaveCount(1);
+    const elements = {
+      'author name (h1)': mainHeading,
+      /* While it decodes, the title shows signs: it is found by the name it keeps for
+         assistive technologies. */
+      'professional title': mainHeading.getByLabel('Horlogère-restauratrice', { exact: true }),
+    };
+    for (let elapsedMs = 0; elapsedMs < 4000; elapsedMs += 250) {
+      if (elapsedMs > 0) await page.clock.runFor(250);
+      const moment = `${elapsedMs} ms after load`;
+      /* At this moment, the heading is still partly scrambled: it shows at least one sign. */
+      const shown = await textOnScreen(mainHeading);
+      expect(Array.from(shown).some((character) => SIGNS.includes(character)), `"${shown}", shown ${moment}, still holds a sign`).toBe(true);
+
+      const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+      expect.soft(pageWidth, `no horizontal scrolling ${moment}`).toBeLessThanOrEqual(width);
+      for (const [name, element] of Object.entries(elements)) {
+        const { left, right } = await displayedExtent(element);
+        expect.soft(left, `left edge within the window ${moment}: ${name}`).toBeGreaterThanOrEqual(0);
+        expect.soft(right, `right edge within the window ${moment}: ${name}`).toBeLessThanOrEqual(width);
+      }
+    }
+  });
 });
 
 test.describe('home page of a site served under /portfolio/, with a button declared by a url from the site root', () => {
