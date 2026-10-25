@@ -252,6 +252,34 @@ test('on the French home page, the hero heading decodes: right after load, its a
   expect(await textOnScreen(mainHeading), '4 s after load').toBe(inClear);
 });
 
+test('on the French home page, the hero title line decodes after the name: when the first letters of the author name are in clear, the professional title is still fully scrambled', async ({ page }) => {
+  /* Design reference: the title line starts decoding where the name ends, as if both lines
+     were one text with the title placed after the name. Animations are allowed, and time
+     stands still from before the page loads, until the test advances it. */
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  const mainHeading = mainContentHeading(page);
+  await expect(mainHeading).toHaveCount(1);
+  /* What the visitor sees in the heading, whitespace excluded: the name, from params.author,
+     then the title, from the [params.hero] block of exampleSite/content/_index.md. */
+  const name = Array.from('Jean Exemple'.replace(/\s+/g, ''));
+  const title = Array.from('Horloger indépendant'.replace(/\s+/g, ''));
+  /* Time advances in small steps until the first word of the name, "Jean", is in clear. */
+  let shown = Array.from(await textOnScreen(mainHeading));
+  for (let elapsedMs = 0; elapsedMs < 4000 && !shown.join('').startsWith('Jean'); elapsedMs += 25) {
+    await page.clock.runFor(25);
+    shown = Array.from(await textOnScreen(mainHeading));
+  }
+  expect(shown.join(''), 'the name starts with "Jean" in clear within 4 s of load').toMatch(/^Jean/);
+  expect(shown, `"${shown.join('')}" shows one character per letter of the name and the title`).toHaveLength(name.length + title.length);
+  /* At that moment, none of the title letters is shown: one sign in place of each one. */
+  const titleShown = shown.slice(name.length).join('');
+  for (const character of Array.from(titleShown)) {
+    expect(SIGNS, `"${character}", shown in the title "${titleShown}" when the name starts with "Jean" in clear, is one of the signs`).toContain(character);
+  }
+});
+
 test('on the French home page, the hero displays the tagline, one line per entry: the three lines, in order, each below the previous one', async ({ page }) => {
   await page.goto('/fr/');
   const main = page.getByRole('main');
