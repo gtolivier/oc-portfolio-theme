@@ -109,6 +109,8 @@ const FIELD_ROW_SPACING_PX = 16;
 
 const FIELD_MIN_ALPHA = 0.15;
 
+const FIELD_TOP_FADE_PX = 96;
+
 const FIELD_HOVER_RADIUS_PX = 40;
 
 const FIELD_HOVER_TICK_WIDTH_PX = 2;
@@ -269,9 +271,13 @@ class TickField extends HTMLElement {
   }
 
   private drawTickColumn(context: CanvasRenderingContext2D, x: number, height: number, tickHeight: number): void {
+    const columnAlpha = context.globalAlpha;
     for (let y = 0; y < height; y += FIELD_ROW_SPACING_PX) {
+      /* Brighter at the top. */
+      context.globalAlpha = columnAlpha * (1 - 0.35 * Math.min(1, y / FIELD_TOP_FADE_PX));
       context.fillRect(x, y, FIELD_TICK_WIDTH_PX, tickHeight);
     }
+    context.globalAlpha = columnAlpha;
   }
 
   /* Taller from left to right. */
