@@ -297,11 +297,12 @@ class TickField extends HTMLElement {
 
   private drawPointerTrail(context: CanvasRenderingContext2D, x: number): void {
     if (this.pointerX === undefined || this.pointerY === undefined) return;
-    if (Math.abs(x - this.pointerX) >= FIELD_HOVER_RADIUS_PX) return;
+    const distanceFromPointer = Math.abs(x - this.pointerX);
+    if (distanceFromPointer >= FIELD_HOVER_RADIUS_PX) return;
     const tickColor = context.fillStyle;
     context.globalAlpha = this.trailAlpha();
     context.fillStyle = this.accentColor();
-    const halfHeight = Math.sqrt(FIELD_HOVER_RADIUS_PX ** 2 - (x - this.pointerX) ** 2);
+    const halfHeight = Math.sqrt(FIELD_HOVER_RADIUS_PX ** 2 - distanceFromPointer ** 2);
     context.fillRect(x, this.pointerY - halfHeight, FIELD_HOVER_TICK_WIDTH_PX, 2 * halfHeight);
     context.fillStyle = tickColor;
   }
