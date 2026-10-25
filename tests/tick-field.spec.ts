@@ -1,6 +1,7 @@
 import { type BrowserContext, type Locator, type Page, test, expect } from '@playwright/test';
 import { CATALOG_SITE, buildSite, removeDirectory, serveSite } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
+import { clickOrTap } from './helpers/pointer';
 import {
   type Channels,
   type Rectangle,
@@ -34,6 +35,39 @@ function yBelowOrAboveField(fieldBox: Rectangle, viewportHeight: number, margin:
   return fieldBox.y + fieldBox.height + margin < viewportHeight ? fieldBox.y + fieldBox.height + margin : fieldBox.y - margin;
 }
 
+type Point = { x: number; y: number };
+
+function centreOf(stroke: Rectangle): Point {
+  return { x: stroke.x + stroke.width / 2, y: stroke.y + stroke.height / 2 };
+}
+
+/* Among drawn strokes, the one whose centre lies nearest to `target`; the first of them on a
+   tie. */
+function strokeNearest(strokes: Rectangle[], target: Point): Rectangle {
+  const distanceToTarget = (stroke: Rectangle) => Math.hypot(centreOf(stroke).x - target.x, centreOf(stroke).y - target.y);
+  return strokes.reduce((nearest, stroke) => (distanceToTarget(stroke) < distanceToTarget(nearest) ? stroke : nearest));
+}
+
+/* How far up and down the tick centred at `centre` reaches in a screenshot of a tick-field
+   `fieldHeight` high, in CSS pixels from its top: the run of rows with drawn pixels, through
+   the tick's centre, in a column 8px wide around it, well short of its neighbours 16px away,
+   over the whole height of the field, so that a tick grown into its neighbours above or below
+   shows how far it reaches. */
+async function verticalExtentOfTick(
+  tickField: Locator,
+  screenshot: Buffer,
+  centre: Point,
+  fieldHeight: number,
+): Promise<{ top: number; bottom: number }> {
+  const column = { x: centre.x - 4, y: 0, width: 8, height: fieldHeight };
+  const { rows, scale } = await pixelsNotOfBackgroundPerRow(tickField, screenshot, column);
+  let top = Math.floor(centre.y * scale);
+  let bottom = top;
+  while (top > 0 && rows[top - 1] > 0) top -= 1;
+  while (bottom < rows.length - 1 && rows[bottom + 1] > 0) bottom += 1;
+  return { top: top / scale, bottom: (bottom + 1) / scale };
+}
+
 test.describe('catalog: tick-field', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
@@ -60,6 +94,15 @@ test.describe('catalog: tick-field', () => {
     const tickField = page.getByRole('main').locator('tick-field');
     await expect(tickField).toHaveCount(1);
     await expect(tickField).toBeVisible();
+    return tickField;
+  };
+
+  /* Opens tick-field-empty like openEmptyTickField, the visitor's motion preference left as the
+     browser sets it, scrolls the tick-field into view and lets 2 s pass: it is fully revealed. */
+  const openRevealedTickField = async (page: Page, context: BrowserContext): Promise<Locator> => {
+    const tickField = await openEmptyTickField(page, context);
+    await tickField.scrollIntoViewIfNeeded();
+    await page.clock.runFor(2000);
     return tickField;
   };
 
@@ -835,10 +878,7 @@ test.describe('catalog: tick-field', () => {
 
   test('with a fine pointer, hovering a tick-field brightens the ticks under the pointer: once revealed, the zone around the pointer shows more than 1.5 times the brightness above the background it showed before the hover', async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -863,10 +903,7 @@ test.describe('catalog: tick-field', () => {
 
   test('with a fine pointer, the trail stays local: once revealed, a zone far below the pointer, in the same columns, and a zone far to its side, at the same height, keep the brightness they showed before the hover', async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -915,10 +952,7 @@ test.describe('catalog: tick-field', () => {
 
   test('with a fine pointer, hovering lights a disc around the pointer: once revealed, a tick 48px straight above the pointer and the same tick 48px up and to the right of it, at 45°, gain alike over the brightness they showed before the hover, within 25%', async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -932,9 +966,7 @@ test.describe('catalog: tick-field', () => {
     const search = { x: target.x - 16, y: target.y - 20, width: 32, height: 40 };
     const strokes = await drawnStrokesInRectangle(tickField, await tickField.screenshot(), search);
     expect(strokes.length, `ticks drawn whole around (${Math.round(target.x)}, ${Math.round(target.y)})px`).toBeGreaterThan(0);
-    const centreOf = (stroke: Rectangle) => ({ x: stroke.x + stroke.width / 2, y: stroke.y + stroke.height / 2 });
-    const distanceToTarget = (stroke: Rectangle) => Math.hypot(centreOf(stroke).x - target.x, centreOf(stroke).y - target.y);
-    const tick = strokes.reduce((nearest, stroke) => (distanceToTarget(stroke) < distanceToTarget(nearest) ? stroke : nearest));
+    const tick = strokeNearest(strokes, target);
     const tickCentre = centreOf(tick);
     /* The tick with a few pixels around it, room for it to grow when lit, short of its
        neighbours. */
@@ -984,10 +1016,7 @@ test.describe('catalog: tick-field', () => {
 
   test('with a fine pointer, the light falls off with distance: once revealed, a tick 15px from the pointer gains more than twice the brightness over what it showed before the hover that the same tick gains 45px from the pointer, near the edge of the 60px disc, where it still gains', async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -1001,9 +1030,7 @@ test.describe('catalog: tick-field', () => {
     const search = { x: target.x - 16, y: target.y - 20, width: 32, height: 40 };
     const strokes = await drawnStrokesInRectangle(tickField, await tickField.screenshot(), search);
     expect(strokes.length, `ticks drawn whole around (${Math.round(target.x)}, ${Math.round(target.y)})px`).toBeGreaterThan(0);
-    const centreOf = (stroke: Rectangle) => ({ x: stroke.x + stroke.width / 2, y: stroke.y + stroke.height / 2 });
-    const distanceToTarget = (stroke: Rectangle) => Math.hypot(centreOf(stroke).x - target.x, centreOf(stroke).y - target.y);
-    const tick = strokes.reduce((nearest, stroke) => (distanceToTarget(stroke) < distanceToTarget(nearest) ? stroke : nearest));
+    const tick = strokeNearest(strokes, target);
     const tickCentre = centreOf(tick);
     /* The tick with a few pixels around it, room for it to grow when lit, short of its
        neighbours. */
@@ -1053,10 +1080,7 @@ test.describe('catalog: tick-field', () => {
 
   test('with a fine pointer, hovered ticks turn to the accent colour, even where the field is bright: once revealed, the colour the zone around the pointer adds over the background, in the bright right part, takes the hue of the accent', async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -1104,10 +1128,7 @@ test.describe('catalog: tick-field', () => {
 
   test('with a fine pointer, the trail fades: once revealed, 150 ms after the pointer leaves the tick-field the zone it hovered is still brighter than before the hover, and 4 s after it is back to the brightness it showed before the hover', async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -1158,10 +1179,7 @@ test.describe('catalog: tick-field', () => {
 
   test('with a fine pointer, the trail lingers: once revealed, 150 ms after the pointer moves elsewhere inside the tick-field, far from where it was, the zone it hovered is still brighter than before the hover, and 4 s after it is back to the brightness it showed before the hover', async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -1209,10 +1227,7 @@ test.describe('catalog: tick-field', () => {
 
   test('with a fine pointer, the trail lingers where the pointer rested: once revealed, after the pointer stays 2 s on a spot, 150 ms after it moves elsewhere inside the tick-field, far from that spot, the zone it rested on is still brighter than before the hover, and 4 s after it is back to the brightness it showed before the hover', async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -1259,10 +1274,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('a click (a tap on mobile) starts a ripple: once revealed, 300 ms after the click, zones all around the click point, about 84px from it, are brighter than just before the click, while the zone at the click point is not', async ({ page, context, hasTouch }) => {
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -1300,8 +1312,7 @@ test.describe('catalog: tick-field', () => {
     await page.clock.runFor(300);
     const before = await brightness();
 
-    if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
-    else await page.mouse.click(onScreen.x, onScreen.y);
+    await clickOrTap(page, hasTouch, onScreen);
     await page.clock.runFor(300);
     const after = await brightness();
 
@@ -1327,10 +1338,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('the ripple lights the ticks themselves: once revealed, 300 ms after the click, a zone the ring crosses about 84px to the left of the click point is brighter than just before the click, yet still shows, between its rows of ticks, as many horizontal bands at least 4px high with no drawn pixel as it did before the click', async ({ page, context, hasTouch }) => {
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -1374,8 +1382,7 @@ test.describe('catalog: tick-field', () => {
       `empty horizontal bands at least ${MIN_BAND_HEIGHT}px high between rows of ticks in the zone ${describeZone}, before the click`,
     ).toBeGreaterThanOrEqual(2);
 
-    if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
-    else await page.mouse.click(onScreen.x, onScreen.y);
+    await clickOrTap(page, hasTouch, onScreen);
     await page.clock.runFor(300);
     const after = await measure();
 
@@ -1393,10 +1400,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('a lit tick is the same tick, taller: once revealed, under the hover (with a fine pointer) and 300 ms after a click (a tap on mobile), each tick of a zone of three rows of three ticks stays a separate stroke at the same x, no wider than before it was lit, covering at least what it covered before, and some of them are more than 1px taller; nothing is drawn between two ticks of a row or between two rows', async ({ page, context, hasTouch }) => {
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -1434,10 +1438,7 @@ test.describe('catalog: tick-field', () => {
       const search = { x: target.x - TICK_SPACING, y: target.y - ROW_SPACING, width: 2 * TICK_SPACING, height: 2 * ROW_SPACING };
       const strokes = await strokesIn(search);
       expect(strokes.length, `ticks drawn whole around (${Math.round(target.x)}, ${Math.round(target.y)})px`).toBeGreaterThan(0);
-      const centreOf = (stroke: Rectangle) => ({ x: stroke.x + stroke.width / 2, y: stroke.y + stroke.height / 2 });
-      const distanceToTarget = (stroke: Rectangle) => Math.hypot(centreOf(stroke).x - target.x, centreOf(stroke).y - target.y);
-      const tick = strokes.reduce((nearest, stroke) => (distanceToTarget(stroke) < distanceToTarget(nearest) ? stroke : nearest));
-      const centre = centreOf(tick);
+      const centre = centreOf(strokeNearest(strokes, target));
       return {
         centre,
         zone: { x: centre.x - 1.5 * TICK_SPACING, y: centre.y - 1.5 * ROW_SPACING, width: 3 * TICK_SPACING, height: 3 * ROW_SPACING },
@@ -1528,8 +1529,7 @@ test.describe('catalog: tick-field', () => {
     const unlit = await ticksIn(zone);
     expect(unlit.length, `unlit ticks drawn whole in the zone ${describeBox(zone)}`).toBe(9);
 
-    if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
-    else await page.mouse.click(onScreen.x, onScreen.y);
+    await clickOrTap(page, hasTouch, onScreen);
     await page.clock.runFor(300);
     const { problems, growth } = compare(unlit, await ticksIn(zone));
     expect(
@@ -1540,10 +1540,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('a lit tick grows about 3px at each end at full strength, and no more where lights overlap: once revealed, 100 ms after two clicks (two taps on mobile), 24px to the left and 24px to the right of a tick, whose two rings pass over it at once, near full strength, while with a fine pointer the hover lights it as well, the tick reaches between 2 and 3.5px higher and between 2 and 3.5px lower than before it was lit', async ({ page, context, hasTouch }) => {
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -1560,23 +1557,10 @@ test.describe('catalog: tick-field', () => {
       height: 2 * ROW_SPACING,
     });
     expect(strokes.length, `ticks drawn whole around (${Math.round(target.x)}, ${Math.round(target.y)})px`).toBeGreaterThan(0);
-    const centreOf = (stroke: Rectangle) => ({ x: stroke.x + stroke.width / 2, y: stroke.y + stroke.height / 2 });
-    const distanceToTarget = (stroke: Rectangle) => Math.hypot(centreOf(stroke).x - target.x, centreOf(stroke).y - target.y);
-    const centre = centreOf(strokes.reduce((nearest, stroke) => (distanceToTarget(stroke) < distanceToTarget(nearest) ? stroke : nearest)));
+    const centre = centreOf(strokeNearest(strokes, target));
 
-    /* How far up and down the tick reaches: the run of rows with drawn pixels, through the
-       tick's centre, in a column 8px wide around it, well short of its neighbours 16px away,
-       over the whole height of the field, so that a tick grown into its neighbours above or
-       below shows how far it reaches. */
-    const column = { x: centre.x - 4, y: 0, width: 8, height: fieldBox!.height };
-    const verticalExtent = async (): Promise<{ top: number; bottom: number }> => {
-      const { rows, scale } = await pixelsNotOfBackgroundPerRow(tickField, await tickField.screenshot(), column);
-      let top = Math.floor(centre.y * scale);
-      let bottom = top;
-      while (top > 0 && rows[top - 1] > 0) top -= 1;
-      while (bottom < rows.length - 1 && rows[bottom + 1] > 0) bottom += 1;
-      return { top: top / scale, bottom: (bottom + 1) / scale };
-    };
+    const verticalExtent = async (): Promise<{ top: number; bottom: number }> =>
+      verticalExtentOfTick(tickField, await tickField.screenshot(), centre, fieldBox!.height);
     const unlit = await verticalExtent();
 
     /* The rings grow about 0.28px per ms: about 100 ms after the clicks, both are about 24px
@@ -1585,10 +1569,7 @@ test.describe('catalog: tick-field', () => {
        too. Both clicks at the same instant: time stands still until the test advances it. */
     const OFFSET = 24;
     for (const side of [-1, 1]) {
-      const x = fieldBox!.x + centre.x + side * OFFSET;
-      const y = fieldBox!.y + centre.y;
-      if (hasTouch) await page.touchscreen.tap(x, y);
-      else await page.mouse.click(x, y);
+      await clickOrTap(page, hasTouch, { x: fieldBox!.x + centre.x + side * OFFSET, y: fieldBox!.y + centre.y });
     }
     await page.clock.runFor(100);
     const lit = await verticalExtent();
@@ -1603,10 +1584,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('a lit tick shows one opacity from end to end: once revealed, 600 ms after a click (a tap on mobile) 168px to the left of a tick of the bright upper right part, whose ring passes over it at partial strength, a pixel inside each end the tick grew shows the same colour, within 4 levels per channel, as a pixel at the middle of the tick', async ({ page, context, hasTouch }) => {
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -1623,25 +1601,14 @@ test.describe('catalog: tick-field', () => {
       height: 2 * ROW_SPACING,
     });
     expect(strokes.length, `ticks drawn whole around (${Math.round(target.x)}, ${Math.round(target.y)})px`).toBeGreaterThan(0);
-    const centreOf = (stroke: Rectangle) => ({ x: stroke.x + stroke.width / 2, y: stroke.y + stroke.height / 2 });
-    const distanceToTarget = (stroke: Rectangle) => Math.hypot(centreOf(stroke).x - target.x, centreOf(stroke).y - target.y);
-    const tick = strokes.reduce((nearest, stroke) => (distanceToTarget(stroke) < distanceToTarget(nearest) ? stroke : nearest));
+    const tick = strokeNearest(strokes, target);
     const centre = centreOf(tick);
     /* Half a pixel in from the tick's left edge: a column of pixels the tick, about 1.6px wide,
        covers whole, away from its anti-aliased sides. */
     const pixelColumnX = tick.x + 0.5;
 
-    /* How far up and down the tick reaches: the run of rows with drawn pixels, through the
-       tick's centre, in a column 8px wide around it, well short of its neighbours 16px away. */
-    const column = { x: centre.x - 4, y: 0, width: 8, height: fieldBox!.height };
-    const verticalExtent = async (screenshot: Buffer): Promise<{ top: number; bottom: number }> => {
-      const { rows, scale } = await pixelsNotOfBackgroundPerRow(tickField, screenshot, column);
-      let top = Math.floor(centre.y * scale);
-      let bottom = top;
-      while (top > 0 && rows[top - 1] > 0) top -= 1;
-      while (bottom < rows.length - 1 && rows[bottom + 1] > 0) bottom += 1;
-      return { top: top / scale, bottom: (bottom + 1) / scale };
-    };
+    const verticalExtent = async (screenshot: Buffer): Promise<{ top: number; bottom: number }> =>
+      verticalExtentOfTick(tickField, screenshot, centre, fieldBox!.height);
     const unlit = await verticalExtent(await tickField.screenshot());
 
     /* The ring grows about 0.28px per ms: 600 ms after the click it is about 168px from the
@@ -1651,8 +1618,7 @@ test.describe('catalog: tick-field', () => {
     const RADIUS = 168;
     const clickPoint = { x: fieldBox!.x + centre.x - RADIUS, y: fieldBox!.y + centre.y };
     expect(clickPoint.x, 'the click point is inside the tick-field').toBeGreaterThan(fieldBox!.x);
-    if (hasTouch) await page.touchscreen.tap(clickPoint.x, clickPoint.y);
-    else await page.mouse.click(clickPoint.x, clickPoint.y);
+    await clickOrTap(page, hasTouch, clickPoint);
     await page.clock.runFor(600);
     const screenshot = await tickField.screenshot();
     const lit = await verticalExtent(screenshot);
@@ -1683,10 +1649,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('the ripple spreads: once revealed, 600 ms after the click, a zone to the left of the click point, about 168px from it, is brighter than just before the click, while the zones to its right and left about 84px from it, which the ring lit 300 ms after the click, are back to what they showed before it', async ({ page, context, hasTouch }) => {
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -1738,8 +1701,7 @@ test.describe('catalog: tick-field', () => {
     await page.clock.runFor(300);
     const before = await brightness();
 
-    if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
-    else await page.mouse.click(onScreen.x, onScreen.y);
+    await clickOrTap(page, hasTouch, onScreen);
     await page.clock.runFor(600);
     const after = await brightness();
 
@@ -1765,10 +1727,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('ripples add up: once revealed, 300 ms after a first click (a tap on mobile), a second click elsewhere in the tick-field leaves the first ripple running alongside the new one: 300 ms after the second click, a zone to the left of the first click point, about 168px from it, and a zone above the second click point, about 84px from it, are both brighter than just before the first click', async ({ page, context, hasTouch }) => {
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -1807,11 +1766,6 @@ test.describe('catalog: tick-field', () => {
       const screenshot = await tickField.screenshot();
       return Promise.all(zones.map((zone) => luminanceAboveBackgroundInRectangle(tickField, screenshot, zone.rectangle)));
     };
-    const click = async (point: { x: number; y: number }): Promise<void> => {
-      const { x, y } = onScreen(point);
-      if (hasTouch) await page.touchscreen.tap(x, y);
-      else await page.mouse.click(x, y);
-    };
 
     /* With a fine pointer, a click first brings the pointer over the click point, which lights
        the ticks under it: the pointer hovers the first click point already before the click. */
@@ -1819,9 +1773,9 @@ test.describe('catalog: tick-field', () => {
     await page.clock.runFor(300);
     const before = await brightness();
 
-    await click(first);
+    await clickOrTap(page, hasTouch, onScreen(first));
     await page.clock.runFor(300);
-    await click(second);
+    await clickOrTap(page, hasTouch, onScreen(second));
     await page.clock.runFor(300);
     const after = await brightness();
 
@@ -1837,10 +1791,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('the ripple lasts more than a second: once revealed, 1.2 s after the click, a zone down and to the left of the click point, at 45°, about 336px from it, is brighter than just before the click', async ({ page, context, hasTouch }) => {
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -1877,8 +1828,7 @@ test.describe('catalog: tick-field', () => {
     await page.clock.runFor(300);
     const before = await brightness();
 
-    if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
-    else await page.mouse.click(onScreen.x, onScreen.y);
+    await clickOrTap(page, hasTouch, onScreen);
     await page.clock.runFor(1200);
     const after = await brightness();
 
@@ -1891,10 +1841,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('the ripple is strongest at the middle of its ring and fades towards its edges, and is gone 1.7 s after the click: once revealed, 300 ms after the click, the ticks at the middle of the ring, about 84px from the click point, gain more than 1.5 times as much brightness as those 12 to 22px inside it, and as those 12 to 22px outside it, which still gain some; 1.7 s after the click, every vertical band of the tick-field is back to the brightness it showed just before the click', async ({ page, context, hasTouch }) => {
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -1952,8 +1899,7 @@ test.describe('catalog: tick-field', () => {
     const bands = verticalBands(width, height, MIN_BAND_WIDTH);
     const beforeBands = await luminanceAboveBackgroundInRectangles(tickField, beforeScreenshot, bands);
 
-    if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
-    else await page.mouse.click(onScreen.x, onScreen.y);
+    await clickOrTap(page, hasTouch, onScreen);
     await page.clock.runFor(300);
     const afterTicks = await luminanceAboveBackgroundInRectangles(tickField, await tickField.screenshot(), allBoxes);
 
@@ -2000,10 +1946,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('the ripple turns the ticks it lights to the accent colour and makes them nearly opaque: once revealed, 300 ms after the click, the colour the ticks at the middle of the ring add over the background, in the dim left part, takes the hue of the accent, and one of them shows a pixel 60% to 110% of the way from the background to the accent, with almost no other hue', async ({ page, context, hasTouch }) => {
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -2060,8 +2003,7 @@ test.describe('catalog: tick-field', () => {
     };
     const before = degreesFromAccentHue(await colourAdded(beforeScreenshot));
 
-    if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
-    else await page.mouse.click(onScreen.x, onScreen.y);
+    await clickOrTap(page, hasTouch, onScreen);
     await page.clock.runFor(300);
     const afterScreenshot = await tickField.screenshot();
 
@@ -2101,10 +2043,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('the ripple fades: once revealed, 2 s after the click, every vertical band of the tick-field, from the left edge to the right edge, is back to the brightness it showed just before the click', async ({ page, context, hasTouch }) => {
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -2132,8 +2071,7 @@ test.describe('catalog: tick-field', () => {
     await page.clock.runFor(300);
     const before = await brightness();
 
-    if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
-    else await page.mouse.click(onScreen.x, onScreen.y);
+    await clickOrTap(page, hasTouch, onScreen);
     await page.clock.runFor(2000);
     const after = await brightness();
 
@@ -2152,10 +2090,7 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('a click (a tap on mobile) outside a tick-field starts no ripple: once revealed, 300 ms after a click just below its bottom edge, the zones of the field about 84px from the click point are what they showed just before the click', async ({ page, context, hasTouch }) => {
-    const tickField = await openEmptyTickField(page, context);
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
+    const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
@@ -2218,8 +2153,7 @@ test.describe('catalog: tick-field', () => {
     await page.clock.runFor(300);
     const before = await brightness();
 
-    if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
-    else await page.mouse.click(onScreen.x, onScreen.y);
+    await clickOrTap(page, hasTouch, onScreen);
     await page.clock.runFor(300);
     const after = await brightness();
 
@@ -2276,8 +2210,7 @@ test.describe('catalog: tick-field', () => {
     /* A click (a tap on mobile) at the centre of the field, with room all around it for a
        ring, which would be about 84px from it 300 ms after the click. */
     const clicked = { x: width / 2, y: fieldBox!.height / 2 };
-    if (hasTouch) await page.touchscreen.tap(fieldBox!.x + clicked.x, fieldBox!.y + clicked.y);
-    else await page.mouse.click(fieldBox!.x + clicked.x, fieldBox!.y + clicked.y);
+    await clickOrTap(page, hasTouch, { x: fieldBox!.x + clicked.x, y: fieldBox!.y + clicked.y });
     await page.clock.runFor(300);
     const afterwards = await brightness();
 
@@ -2343,8 +2276,7 @@ test.describe('catalog: tick-field', () => {
       Promise.all(bands.map((band) => luminanceAboveBackgroundInRectangle(tickField, screenshot, band)));
     const rightAfterSwitch = await brightness(afterSwitch);
     const clicked = { x: width / 2, y: fieldBox!.height / 2 };
-    if (hasTouch) await page.touchscreen.tap(fieldBox!.x + clicked.x, fieldBox!.y + clicked.y);
-    else await page.mouse.click(fieldBox!.x + clicked.x, fieldBox!.y + clicked.y);
+    await clickOrTap(page, hasTouch, { x: fieldBox!.x + clicked.x, y: fieldBox!.y + clicked.y });
     await page.clock.runFor(300);
     const afterwards = await brightness(await tickField.screenshot());
 

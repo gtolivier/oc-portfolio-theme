@@ -18,6 +18,7 @@ import {
 } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { tabUntilFocused } from './helpers/keyboard';
+import { clickOrTap } from './helpers/pointer';
 import {
   type Rectangle,
   bandsWithoutDrawnPixels,
@@ -950,8 +951,7 @@ test('on phone as on desktop, a click (a tap on mobile) on the hero’s professi
   await page.clock.runFor(300);
   const before = await hero.screenshot();
 
-  if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
-  else await page.mouse.click(onScreen.x, onScreen.y);
+  await clickOrTap(page, hasTouch, onScreen);
   await page.clock.runFor(300);
   const after = await hero.screenshot();
 
