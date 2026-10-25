@@ -93,6 +93,46 @@ test.describe('catalog: scramble-text', () => {
     }
   });
 
+  test('while the theme script is still loading, a scramble-text shows none of the letters of its text', async ({ page, context }) => {
+    /* Animations are allowed. The theme script is held back, as on a slow connection: the
+       page is parsed and painted before the script runs. */
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    let releaseScript!: () => void;
+    const scriptReleased = new Promise<void>((resolve) => {
+      releaseScript = resolve;
+    });
+    let scriptRequested!: () => void;
+    const scriptHeld = new Promise<void>((resolve) => {
+      scriptRequested = resolve;
+    });
+    await page.route(`${CATALOG_SITE.origin}/js/main*.js`, async (route) => {
+      scriptRequested();
+      await scriptReleased;
+      await route.fallback();
+    });
+    try {
+      await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text/`, { waitUntil: 'commit' });
+      await scriptHeld;
+      /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text.md),
+         whose text is "Échappement". */
+      const scrambleText = page.getByRole('main').locator('scramble-text');
+      await expect(scrambleText).toHaveCount(1);
+      /* Two animation frames: the page, scramble-text included, has been painted at least
+         once, while the script is still on its way. */
+      await page.evaluate(
+        () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+      );
+      const shown = await textOnScreen(scrambleText);
+      const letters = Array.from('Échappement');
+      for (const character of Array.from(shown)) {
+        expect(letters, `"${character}", shown in "${shown}" before the script has run, is not one of its letters`).not.toContain(character);
+      }
+    } finally {
+      releaseScript();
+    }
+  });
+
   test('1.5 s after load, a short scramble-text shows its text in clear', async ({ page, context }) => {
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it: animation frames and timers then run as they would in 1.5 s. */
