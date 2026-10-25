@@ -3,6 +3,7 @@ import { CATALOG_SITE, buildSite, removeDirectory, serveSite } from './helpers/b
 import { stopClockBeforeLoad } from './helpers/clock';
 import {
   type Channels,
+  brightestLuminanceAboveBackgroundPerColumnInRectangle,
   channelsOfColour,
   colourAddedOverBackgroundInRectangle,
   countDrawnStrokes,
@@ -344,6 +345,49 @@ test.describe('catalog: tick-field', () => {
       right,
       `brightness above the background of the right quarter (${Math.round(width - QUARTER)}–${Math.round(width)}px), against ${Math.round(left)} for the left quarter (0–${Math.round(QUARTER)}px)`,
     ).toBeGreaterThan(2 * left);
+  });
+
+  test('once revealed, within a column, a tick-field is brighter at the top than at the bottom: in a vertical band at the middle of its width, the strokes of its top quarter are, at their brightest, more than 1.3 times as bright above the background as those of its bottom quarter', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
+       to brighten a tick. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await page.clock.runFor(16);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const width = fieldBox!.width;
+    const height = fieldBox!.height;
+
+    /* A vertical band at the middle of the width, a fifth of it wide, cut into its top quarter
+       and its bottom quarter: the same columns, so that whatever changes from left to right
+       changes the same in both. In each screenshot column of a zone, the brightest drawn pixel
+       is one a tick covers fully, whatever the tick's height or its anti-aliased edges; their
+       mean is how bright the zone's ticks are. A field as bright at the top as at the bottom
+       gives about the same mean in both zones. */
+    const screenshot = await tickField.screenshot();
+    const band = { x: 0.4 * width, width: 0.2 * width };
+    const QUARTER = 0.25 * height;
+    const top = await brightestLuminanceAboveBackgroundPerColumnInRectangle(tickField, screenshot, { ...band, y: 0, height: QUARTER });
+    const bottom = await brightestLuminanceAboveBackgroundPerColumnInRectangle(tickField, screenshot, { ...band, y: height - QUARTER, height: QUARTER });
+    const describeZone = (y: number): string =>
+      `(${Math.round(band.x)}–${Math.round(band.x + band.width)}px, ${Math.round(y)}–${Math.round(y + QUARTER)}px)`;
+    expect(top.length, `columns with drawn pixels in the top quarter of the band ${describeZone(0)}`).toBeGreaterThan(0);
+    expect(bottom.length, `columns with drawn pixels in the bottom quarter of the band ${describeZone(height - QUARTER)}`).toBeGreaterThan(0);
+    const mean = (values: number[]): number => values.reduce((total, value) => total + value, 0) / values.length;
+    const topBrightness = mean(top);
+    const bottomBrightness = mean(bottom);
+    expect(
+      topBrightness,
+      `mean, over its ${top.length} drawn columns, of the brightest pixel's luma above the background in the top quarter ${describeZone(0)}, against ${bottomBrightness.toFixed(1)} over the ${bottom.length} of the bottom quarter ${describeZone(height - QUARTER)}`,
+    ).toBeGreaterThan(1.3 * bottomBrightness);
   });
 
   test('once revealed, a tick-field has taller ticks on the right than on the left: the typical height of the strokes drawn in its right quarter is more than 1.4 times that of the strokes drawn in its left quarter', async ({ page, context }) => {

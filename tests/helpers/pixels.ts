@@ -368,6 +368,59 @@ export async function heightsOfDrawnRunsInRectangle(
   );
 }
 
+/* How bright the strokes drawn inside a rectangle of an element (CSS pixels, relative to its
+   box) are at their brightest: for each column of the element's screenshot inside the
+   rectangle, from left to right, that shows at least one pixel differing from the element's
+   background colour by more than a rounding error on a channel, the luma above the
+   background's (Rec. 709 weights, 0–255; darker counts as 0) of its brightest pixel inside
+   the rectangle. The brightest pixel of a stroke is one it covers fully: unlike a sum, it
+   depends neither on the stroke's length nor on its anti-aliased edges. */
+export async function brightestLuminanceAboveBackgroundPerColumnInRectangle(
+  element: Locator,
+  screenshot: Buffer,
+  rectangle: Rectangle,
+): Promise<number[]> {
+  return element.evaluate(
+    async (el, [base64, zone]) => {
+      const TOLERANCE = 2;
+      const luma = (data: Uint8ClampedArray, i: number): number =>
+        0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const scale = image.width / el.getBoundingClientRect().width;
+      const fromColumn = Math.max(0, Math.round(zone.x * scale));
+      const toColumn = Math.min(image.width, Math.round((zone.x + zone.width) * scale));
+      const fromRow = Math.max(0, Math.round(zone.y * scale));
+      const toRow = Math.min(image.height, Math.round((zone.y + zone.height) * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true })!;
+      context.fillStyle = getComputedStyle(el).backgroundColor;
+      context.fillRect(0, 0, 1, 1);
+      const background = context.getImageData(0, 0, 1, 1).data;
+      const backgroundLuma = luma(background, 0);
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      const brightest: number[] = [];
+      for (let column = fromColumn; column < toColumn; column++) {
+        let drawn = false;
+        let max = 0;
+        for (let row = fromRow; row < toRow; row++) {
+          const i = 4 * (row * image.width + column);
+          if (![0, 1, 2].some((channel) => Math.abs(pixels[i + channel] - background[channel]) > TOLERANCE)) continue;
+          drawn = true;
+          max = Math.max(max, luma(pixels, i) - backgroundLuma);
+        }
+        if (drawn) brightest.push(max);
+      }
+      return brightest;
+    },
+    [screenshot.toString('base64'), rectangle] as const,
+  );
+}
+
 /* Number of pixels of the screenshot of an element that differ from the element's background
    colour by more than a rounding error on a channel. */
 export async function countPixelsNotOfBackground(element: Locator, screenshot: Buffer): Promise<number> {
