@@ -47,14 +47,18 @@ function invisibleSizer(text: string): HTMLSpanElement {
    text decodes left to right. The text stays available to assistive
    technologies through aria-label. */
 class ScrambleText extends HTMLElement {
+  private shown = document.createElement('span');
+
+  private startTimer: ReturnType<typeof setTimeout> | undefined;
+
+  private tickTimer: ReturnType<typeof setInterval> | undefined;
+
   connectedCallback(): void {
     const text = this.textContent ?? '';
     this.setAttribute('role', 'text');
     this.setAttribute('aria-label', text);
     this.decode(text);
   }
-
-  private shown = document.createElement('span');
 
   private decode(text: string): void {
     const reducedMotion = reducedMotionQuery();
@@ -67,10 +71,6 @@ class ScrambleText extends HTMLElement {
       if (reducedMotion.matches) this.showInClear(text);
     });
   }
-
-  private startTimer: ReturnType<typeof setTimeout> | undefined;
-
-  private tickTimer: ReturnType<typeof setInterval> | undefined;
 
   private showInClear(text: string): void {
     clearTimeout(this.startTimer);
@@ -154,8 +154,11 @@ const FIELD_RIPPLE_INNER_FALLOFF_PX = 14;
 
 const FIELD_RIPPLE_OUTER_FALLOFF_PX = 26;
 
+/* In CSS pixels, from the element's top-left corner. */
+type Point = { x: number; y: number };
+
 /* Where the pointer passed, and since when it lingers there. */
-type TrailPoint = { x: number; y: number; at: number };
+type TrailPoint = Point & { at: number };
 
 /* How many columns and rows of ticks, and where the first one sits. */
 type FieldLayout = { columns: number; rows: number; left: number; top: number };
@@ -173,6 +176,23 @@ function fadeInAlpha(widthShare: number, progress: number): number {
 
 /* A decorative canvas covering the whole box, behind the content. */
 class TickField extends HTMLElement {
+  /* How far the reveal front has crossed the width, up to FIELD_REVEALED_PROGRESS. */
+  private progress = 0;
+
+  private onScreen = true;
+
+  private revealing = false;
+
+  private trail: TrailPoint[] = [];
+
+  private hovering = false;
+
+  private fading = false;
+
+  private pressedInside = false;
+
+  private ripple: (Point & { start: number }) | undefined;
+
   connectedCallback(): void {
     const canvas = document.createElement('canvas');
     canvas.setAttribute('aria-hidden', 'true');
@@ -201,10 +221,10 @@ class TickField extends HTMLElement {
       this.startRipple(canvas, x, y);
     });
     this.revealLeftToRight(canvas);
-    new ResizeObserver(() => this.draw(canvas, this.progress)).observe(this);
+    new ResizeObserver(() => this.draw(canvas)).observe(this);
   }
 
-  private localPoint(event: MouseEvent): { x: number; y: number } {
+  private localPoint(event: MouseEvent): Point {
     const box = this.getBoundingClientRect();
     return { x: event.clientX - box.left, y: event.clientY - box.top };
   }
@@ -214,16 +234,12 @@ class TickField extends HTMLElement {
     return x >= 0 && y >= 0 && x <= this.clientWidth && y <= this.clientHeight;
   }
 
-  private pressedInside = false;
-
-  private ripple: { x: number; y: number; start: number } | undefined;
-
   private startRipple(canvas: HTMLCanvasElement, x: number, y: number): void {
     this.ripple = { x, y, start: performance.now() };
     const step = (): void => {
       if (this.rippleAge() >= FIELD_RIPPLE_DURATION_MS) this.ripple = undefined;
       else requestAnimationFrame(step);
-      this.draw(canvas, this.progress);
+      this.draw(canvas);
     };
     requestAnimationFrame(step);
   }
@@ -245,23 +261,17 @@ class TickField extends HTMLElement {
   }
 
   private fadeTrail(canvas: HTMLCanvasElement): void {
-    this.draw(canvas, this.progress);
+    this.draw(canvas);
     if (this.fading) return;
     this.fading = true;
     const step = (): void => {
       this.trail = this.trail.filter((point) => this.pointAlpha(point) > 0);
-      this.draw(canvas, this.progress);
+      this.draw(canvas);
       if (this.hasFadingPoint()) requestAnimationFrame(step);
       else this.fading = false;
     };
     requestAnimationFrame(step);
   }
-
-  private trail: TrailPoint[] = [];
-
-  private hovering = false;
-
-  private fading = false;
 
   /* The point under the pointer stays fully lit; the others fade with age. */
   private pointAlpha(point: TrailPoint): number {
@@ -277,12 +287,6 @@ class TickField extends HTMLElement {
     return this.trail.some((point) => !this.isUnderPointer(point));
   }
 
-  private progress = 0;
-
-  private onScreen = true;
-
-  private revealing = false;
-
   private revealLeftToRight(canvas: HTMLCanvasElement): void {
     const start = performance.now();
     const step = (): void => {
@@ -294,7 +298,7 @@ class TickField extends HTMLElement {
       this.progress = reducedMotionQuery().matches
         ? FIELD_REVEALED_PROGRESS
         : Math.min(FIELD_REVEALED_PROGRESS, Math.max(0, elapsedMs / FIELD_REVEAL_DURATION_MS));
-      this.draw(canvas, this.progress);
+      this.draw(canvas);
       if (this.progress < FIELD_REVEALED_PROGRESS) requestAnimationFrame(step);
       else this.revealing = false;
     };
@@ -314,7 +318,7 @@ class TickField extends HTMLElement {
     }).observe(this);
   }
 
-  private draw(canvas: HTMLCanvasElement, progress: number): void {
+  private draw(canvas: HTMLCanvasElement): void {
     /* One canvas pixel per device pixel, so the strokes stay crisp. */
     const scale = window.devicePixelRatio || 1;
     const width = this.clientWidth;
@@ -325,12 +329,12 @@ class TickField extends HTMLElement {
     if (!context) return;
     context.scale(scale, scale);
     context.fillStyle = this.tickGradient(context, width, height);
-    const front = progress * width;
+    const front = this.progress * width;
     const layout = this.layout(width, height);
     for (let column = 0; column < layout.columns; column += 1) {
       const x = layout.left + column * FIELD_TICK_SPACING_PX;
       if (x >= front) break;
-      context.globalAlpha = this.tickAlpha(x, width) * fadeInAlpha(x / width, progress);
+      context.globalAlpha = this.tickAlpha(x, width) * fadeInAlpha(x / width, this.progress);
       this.drawTickColumn(context, x, gridShare(column, layout.columns), layout);
     }
   }
@@ -372,8 +376,8 @@ class TickField extends HTMLElement {
 
   private drawLighting(context: CanvasRenderingContext2D, x: number, y: number, tickHeight: number): void {
     const tickColor = context.fillStyle;
-    this.drawLitTick(context, x, y, tickHeight, this.hoverLighting(x, y, tickHeight), this.accentColor());
-    this.drawLitTick(context, x, y, tickHeight, this.rippleLighting(x, y, tickHeight), this.accentColor());
+    this.drawLitTick(context, x, y, tickHeight, this.hoverLighting(x, y, tickHeight));
+    this.drawLitTick(context, x, y, tickHeight, this.rippleLighting(x, y, tickHeight));
     context.fillStyle = tickColor;
   }
 
@@ -383,11 +387,10 @@ class TickField extends HTMLElement {
     y: number,
     tickHeight: number,
     lighting: number,
-    color: string,
   ): void {
     if (lighting <= 0) return;
     context.globalAlpha = lighting;
-    context.fillStyle = color;
+    context.fillStyle = this.accentColor();
     const growth = Math.round(FIELD_LIT_TICK_GROWTH_PX * lighting);
     context.fillRect(x, y - growth, FIELD_TICK_WIDTH_PX, tickHeight + 2 * growth);
   }
@@ -415,7 +418,7 @@ class TickField extends HTMLElement {
   }
 
   /* Measured from the tick's centre. */
-  private distanceFromTick(x: number, y: number, tickHeight: number, point: { x: number; y: number }): number {
+  private distanceFromTick(x: number, y: number, tickHeight: number, point: Point): number {
     return Math.hypot(x + FIELD_TICK_WIDTH_PX / 2 - point.x, y + tickHeight / 2 - point.y);
   }
 
