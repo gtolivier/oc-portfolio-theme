@@ -1472,6 +1472,69 @@ test.describe('catalog: tick-field', () => {
     expect(growth, `how much taller the ticks of the zone ${describeBox(zone)} grew 300 ms after the click, at most, in px`).toBeGreaterThan(1);
   });
 
+  test('a lit tick grows about 3px at each end at full strength, and no more where lights overlap: once revealed, 100 ms after two clicks (two taps on mobile), 24px to the left and 24px to the right of a tick, whose two rings pass over it at once, near full strength, while with a fine pointer the hover lights it as well, the tick reaches between 2 and 3.5px higher and between 2 and 3.5px lower than before it was lit', async ({ page, context, hasTouch }) => {
+    const tickField = await openEmptyTickField(page, context);
+    await tickField.scrollIntoViewIfNeeded();
+    /* Fully revealed. */
+    await page.clock.runFor(2000);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+
+    /* The unlit tick nearest to a point of the left part at mid-height, before any pointer
+       comes over the field: ticks stand 16px apart within a row and rows 22px apart. */
+    const TICK_SPACING = 16;
+    const ROW_SPACING = 22;
+    const target = { x: 0.2 * fieldBox!.width, y: fieldBox!.height / 2 };
+    const strokes = await drawnStrokesInRectangle(tickField, await tickField.screenshot(), {
+      x: target.x - TICK_SPACING,
+      y: target.y - ROW_SPACING,
+      width: 2 * TICK_SPACING,
+      height: 2 * ROW_SPACING,
+    });
+    expect(strokes.length, `ticks drawn whole around (${Math.round(target.x)}, ${Math.round(target.y)})px`).toBeGreaterThan(0);
+    const centreOf = (stroke: Rectangle) => ({ x: stroke.x + stroke.width / 2, y: stroke.y + stroke.height / 2 });
+    const distanceToTarget = (stroke: Rectangle) => Math.hypot(centreOf(stroke).x - target.x, centreOf(stroke).y - target.y);
+    const centre = centreOf(strokes.reduce((nearest, stroke) => (distanceToTarget(stroke) < distanceToTarget(nearest) ? stroke : nearest)));
+
+    /* How far up and down the tick reaches: the run of rows with drawn pixels, through the
+       tick's centre, in a column 8px wide around it, well short of its neighbours 16px away,
+       over the whole height of the field, so that a tick grown into its neighbours above or
+       below shows how far it reaches. */
+    const column = { x: centre.x - 4, y: 0, width: 8, height: fieldBox!.height };
+    const verticalExtent = async (): Promise<{ top: number; bottom: number }> => {
+      const { rows, scale } = await pixelsNotOfBackgroundPerRow(tickField, await tickField.screenshot(), column);
+      let top = Math.floor(centre.y * scale);
+      let bottom = top;
+      while (top > 0 && rows[top - 1] > 0) top -= 1;
+      while (bottom < rows.length - 1 && rows[bottom + 1] > 0) bottom += 1;
+      return { top: top / scale, bottom: (bottom + 1) / scale };
+    };
+    const unlit = await verticalExtent();
+
+    /* The rings grow about 0.28px per ms: about 100 ms after the clicks, both are about 24px
+       from their click points, right over the tick, and still near full strength. With a fine
+       pointer, the second click leaves the pointer 24px from the tick, which the hover lights
+       too. Both clicks at the same instant: time stands still until the test advances it. */
+    const OFFSET = 24;
+    for (const side of [-1, 1]) {
+      const x = fieldBox!.x + centre.x + side * OFFSET;
+      const y = fieldBox!.y + centre.y;
+      if (hasTouch) await page.touchscreen.tap(x, y);
+      else await page.mouse.click(x, y);
+    }
+    await page.clock.runFor(100);
+    const lit = await verticalExtent();
+
+    const describe = `the tick at (${Math.round(centre.x)}, ${Math.round(centre.y)})px, from ${unlit.top.toFixed(1)}–${unlit.bottom.toFixed(1)}px unlit to ${lit.top.toFixed(1)}–${lit.bottom.toFixed(1)}px lit by two rings at once${hasTouch ? '' : ' and the hover'}`;
+    const grownUp = unlit.top - lit.top;
+    const grownDown = lit.bottom - unlit.bottom;
+    expect(grownUp, `how much higher ${describe} reaches, in px`).toBeGreaterThanOrEqual(2);
+    expect(grownUp, `how much higher ${describe} reaches, in px`).toBeLessThanOrEqual(3.5);
+    expect(grownDown, `how much lower ${describe} reaches, in px`).toBeGreaterThanOrEqual(2);
+    expect(grownDown, `how much lower ${describe} reaches, in px`).toBeLessThanOrEqual(3.5);
+  });
+
   test('the ripple spreads: once revealed, 600 ms after the click, a zone to the left of the click point, about 168px from it, is brighter than just before the click, while the zones to its right and left about 84px from it, which the ring lit 300 ms after the click, are back to what they showed before it', async ({ page, context, hasTouch }) => {
     const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
