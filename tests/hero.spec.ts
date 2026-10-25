@@ -9,13 +9,25 @@ import {
   SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF,
   SITE_WITH_A_HERO_WITHOUT_AUTHOR,
   SITE_WITH_A_HERO_WITH_LONG_WORDS,
+  SITE_WITH_A_HERO_WITHOUT_TITLE,
   SITE_WITH_A_PAGE_REF_NOT_FOUND,
   buildSite,
   removeDirectory,
   serveSite,
   tryToBuildSite,
 } from './helpers/built-site';
+import { stopClockBeforeLoad } from './helpers/clock';
 import { tabUntilFocused } from './helpers/keyboard';
+import { clickOrTap } from './helpers/pointer';
+import {
+  type Rectangle,
+  bandsWithoutDrawnPixels,
+  meanLuminanceGainedInRectangle,
+  brightnessKeptUnderLayerInRectangle,
+  pixelsChangedPerColumnInRectangle,
+  pixelsNotOfBackgroundPerRow,
+} from './helpers/pixels';
+import { SIGNS, textOnScreen } from './helpers/text-on-screen';
 
 /* Checks that each tagline line is visible in the area, and that each one starts below the
    previous one, in the given order. */
@@ -171,6 +183,27 @@ function mainContentHeading(page: Page): Locator {
   return page.getByRole('main').getByRole('heading', { level: 1 });
 }
 
+/* The two desktop windows the hero's layout is checked at: a wide one, 1280 × 900, and one
+   768 px wide, 768 × 1024, where the desktop spacing starts. */
+const DESKTOP_VIEWPORTS = [{ width: 1280, height: 900 }, { width: 768, height: 1024 }];
+
+/* Sizes the window to `viewport`, then opens the French home page and waits for its fonts. */
+async function openHomeAt(page: Page, viewport: { width: number; height: number }): Promise<void> {
+  await page.setViewportSize(viewport);
+  await page.goto('/fr/');
+  await page.evaluate(() => document.fonts.ready);
+}
+
+/* The y, in the window, of the bottom edge of the lowest of `buttons`' boxes. */
+async function bottomOfButtons(buttons: Locator[]): Promise<number> {
+  return Math.max(
+    ...(await Promise.all(buttons.map(async (button) => {
+      const box = (await button.boundingBox())!;
+      return box.y + box.height;
+    }))),
+  );
+}
+
 test('on the French home page, the main heading starts with the site author name', async ({ page }) => {
   await page.goto('/fr/');
   const mainHeading = mainContentHeading(page);
@@ -226,6 +259,274 @@ test('on the French home page, the professional title that follows the author na
     weight: '600',
     color: 'rgb(42, 136, 141)',
   });
+});
+
+test('on phone as on desktop, the hero heading follows the design’s spacing: name with a line height of 1.02, professional title with a line height of 1.3, both letter-spaced by -0.64 px within 0.02 px, and the title line starting 36 px below the name line from 768 px wide, 24 px on a phone, within 1.5 px', async ({ page, isMobile }) => {
+  /* Design reference: letter-spacing -0.02em set on the h1 itself, whose font size is the
+     browser default for an h1 (2em of 16 px = 32 px): both lines inherit -0.64 px. Name
+     line-height 1.02; title line-height 1.3 and margin-top 36px (24px on a phone). Desktop
+     projects are checked at a wide window and at 768 px wide, where the desktop spacing
+     starts; phone projects at their own size. */
+  const viewports = isMobile ? [page.viewportSize()!] : DESKTOP_VIEWPORTS;
+  const expectedGap = isMobile ? 24 : 36;
+  for (const viewport of viewports) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await openHomeAt(page, viewport);
+    const mainHeading = mainContentHeading(page);
+    /* Both lines in clear: the decoding is over. */
+    await expect(mainHeading).toHaveText(/^\s*Jean Exemple\s*Horloger indépendant\s*$/);
+
+    /* For each line: computed size, line height and letter spacing of the element holding its
+       text, and the top and bottom of its line boxes. A text's client rects cover its glyphs'
+       content area (or its line box); the line box extends it by half the leading on each
+       side, centred on it. */
+    const lines = await mainHeading.evaluate((root, texts) => texts.map((text) => {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const start = (node.textContent ?? '').indexOf(text);
+        if (start === -1) continue;
+        const style = getComputedStyle(node.parentElement!);
+        const fontSize = parseFloat(style.fontSize);
+        const lineHeight = parseFloat(style.lineHeight);
+        const range = document.createRange();
+        range.setStart(node, start);
+        range.setEnd(node, start + text.length);
+        const rects = Array.from(range.getClientRects()).filter((rect) => rect.width > 0);
+        const first = rects[0];
+        const last = rects[rects.length - 1];
+        return {
+          fontSize,
+          rawLineHeight: style.lineHeight,
+          lineHeight,
+          rawLetterSpacing: style.letterSpacing,
+          letterSpacing: parseFloat(style.letterSpacing),
+          lineTop: first.top - (lineHeight - first.height) / 2,
+          lineBottom: last.bottom + (lineHeight - last.height) / 2,
+        };
+      }
+      return null;
+    }), ['Jean Exemple', 'Horloger indépendant']);
+    const [name, title] = lines;
+    expect(name, `at ${size}, author name found`).not.toBeNull();
+    expect(title, `at ${size}, professional title found`).not.toBeNull();
+
+    expect.soft(name!.lineHeight / name!.fontSize, `at ${size}, name line height (${name!.rawLineHeight} for ${name!.fontSize}px)`).toBeCloseTo(1.02, 2);
+    expect.soft(title!.lineHeight / title!.fontSize, `at ${size}, title line height (${title!.rawLineHeight} for ${title!.fontSize}px)`).toBeCloseTo(1.3, 2);
+    /* Distance to -0.64 px; NaN while the letter spacing is `normal`. */
+    expect.soft(Math.abs(name!.letterSpacing + 0.64), `at ${size}, name letter spacing (${name!.rawLetterSpacing}) differs from -0.64px by`).toBeLessThanOrEqual(0.02);
+    expect.soft(Math.abs(title!.letterSpacing + 0.64), `at ${size}, title letter spacing (${title!.rawLetterSpacing}) differs from -0.64px by`).toBeLessThanOrEqual(0.02);
+    const gap = title!.lineTop - name!.lineBottom;
+    expect.soft(gap, `at ${size}, space between the bottom of the name line and the top of the title line`).toBeGreaterThanOrEqual(expectedGap - 1.5);
+    expect.soft(gap, `at ${size}, space between the bottom of the name line and the top of the title line`).toBeLessThanOrEqual(expectedGap + 1.5);
+  }
+});
+
+test('on phone as on desktop, the hero tagline follows the design’s spacing: 20 px with a line height of 1.55, at most 600 px wide, starting 165 px below the heading from 768 px wide; 18 px, 40 px below the heading on a phone; within 1.5 px', async ({ page, isMobile }) => {
+  /* Design reference: tagline in 20px, line-height 1.55, max-width 600px, margin-top 165px
+     below the heading, which has no margin of its own. On a phone, where the design has no
+     layout, 18px and 40px below the heading; the line height and the maximum width stay.
+     Desktop projects are checked at a wide window and at 768 px wide, where the desktop
+     spacing starts; phone projects at their own size. */
+  const viewports = isMobile ? [page.viewportSize()!] : DESKTOP_VIEWPORTS;
+  const expectedFontSize = isMobile ? 18 : 20;
+  const expectedGap = isMobile ? 40 : 165;
+  for (const viewport of viewports) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await openHomeAt(page, viewport);
+    const mainHeading = mainContentHeading(page);
+    /* Both heading lines in clear: the decoding is over. */
+    await expect(mainHeading).toHaveText(/^\s*Jean Exemple\s*Horloger indépendant\s*$/);
+    /* The tagline: the element holding its first line, which holds the other two as well. */
+    const tagline = page.getByRole('main').getByText('Montres mécaniques sur mesure — 20 ans d’atelier.');
+    await expect(tagline).toBeVisible();
+    await expect(tagline).toContainText('de pendules et de montres anciennes.');
+
+    const style = await tagline.evaluate((el) => {
+      const computed = getComputedStyle(el);
+      return {
+        fontSize: parseFloat(computed.fontSize),
+        rawLineHeight: computed.lineHeight,
+        lineHeight: parseFloat(computed.lineHeight),
+        maxWidth: computed.maxWidth,
+        width: el.getBoundingClientRect().width,
+      };
+    });
+    expect.soft(style.fontSize, `at ${size}, tagline font size`).toBeCloseTo(expectedFontSize, 1);
+    expect.soft(style.lineHeight / style.fontSize, `at ${size}, tagline line height (${style.rawLineHeight} for ${style.fontSize}px)`).toBeCloseTo(1.55, 2);
+    expect.soft(style.maxWidth, `at ${size}, tagline maximum width`).toBe('600px');
+    expect.soft(style.width, `at ${size}, tagline width`).toBeLessThanOrEqual(600.5);
+
+    /* The gap between the bottom of the heading's own box (its title line included) and the
+       top of the tagline's box. */
+    const headingBox = (await mainHeading.boundingBox())!;
+    const taglineBox = (await tagline.boundingBox())!;
+    const gap = taglineBox.y - (headingBox.y + headingBox.height);
+    expect.soft(gap, `at ${size}, space between the bottom of the heading and the top of the tagline`).toBeGreaterThanOrEqual(expectedGap - 1.5);
+    expect.soft(gap, `at ${size}, space between the bottom of the heading and the top of the tagline`).toBeLessThanOrEqual(expectedGap + 1.5);
+  }
+});
+
+test('on phone as on desktop, the hero stack follows the design’s spacing: 14 px, letter-spaced by 0.56 px (0.04em) within 0.02 px, starting 20 px below the tagline within 1.5 px', async ({ page, isMobile }) => {
+  /* Design reference: stack in 14px, letter-spacing 0.04em (0.56 px at 14 px), margin-top
+     20px below the tagline. The design has no phone layout: the same values apply there.
+     Desktop projects are checked at a wide window and at 768 px wide, where the desktop
+     spacing starts; phone projects at their own size. */
+  const viewports = isMobile ? [page.viewportSize()!] : DESKTOP_VIEWPORTS;
+  for (const viewport of viewports) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await openHomeAt(page, viewport);
+    const main = page.getByRole('main');
+    /* The tagline: the element holding its first line, which holds the other two as well. */
+    const tagline = main.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.');
+    await expect(tagline).toBeVisible();
+    await expect(tagline).toContainText('de pendules et de montres anciennes.');
+    const stack = main.getByText('Laiton · Acier · Rubis · Émail', { exact: true });
+    await expect(stack).toBeVisible();
+
+    const style = await stack.evaluate((el) => {
+      const computed = getComputedStyle(el);
+      return {
+        fontSize: parseFloat(computed.fontSize),
+        rawLetterSpacing: computed.letterSpacing,
+        letterSpacing: parseFloat(computed.letterSpacing),
+      };
+    });
+    expect.soft(style.fontSize, `at ${size}, stack font size`).toBeCloseTo(14, 1);
+    /* Distance to 0.56 px; NaN while the letter spacing is `normal`. */
+    expect.soft(Math.abs(style.letterSpacing - 0.56), `at ${size}, stack letter spacing (${style.rawLetterSpacing}) differs from 0.56px by`).toBeLessThanOrEqual(0.02);
+
+    /* The gap between the bottom of the tagline's box and the top of the stack's box. */
+    const taglineBox = (await tagline.boundingBox())!;
+    const stackBox = (await stack.boundingBox())!;
+    const gap = stackBox.y - (taglineBox.y + taglineBox.height);
+    expect.soft(gap, `at ${size}, space between the bottom of the tagline and the top of the stack`).toBeGreaterThanOrEqual(20 - 1.5);
+    expect.soft(gap, `at ${size}, space between the bottom of the tagline and the top of the stack`).toBeLessThanOrEqual(20 + 1.5);
+  }
+});
+
+test('on phone as on desktop, the hero buttons follow the design’s sizing and spacing: both in IBM Plex Mono 15 px, letter-spaced by 0.6 px (0.04em) within 0.02 px, with 26 px of horizontal padding, the same height within 1 px, 16 px apart and starting 44 px below the stack, within 1.5 px', async ({ page, isMobile }) => {
+  /* Design reference: buttons in mono 15px, letter-spacing 0.04em (0.6 px at 15 px), padding
+     14px 26px for the filled one, 13px 26px plus a 1px border for the outlined one, so both
+     are the same height; their row has a 16px gap and sits 44px below the stack. The design
+     has no phone layout: the same values apply there. Desktop projects are checked at a wide
+     window and at 768 px wide, where the desktop spacing starts; phone projects at their own
+     size. */
+  const viewports = isMobile ? [page.viewportSize()!] : DESKTOP_VIEWPORTS;
+  for (const viewport of viewports) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await openHomeAt(page, viewport);
+    const stack = page.getByRole('main').getByText('Laiton · Acier · Rubis · Émail', { exact: true });
+    await expect(stack).toBeVisible();
+    const first = firstHeroButton(page);
+    const second = secondHeroButton(page);
+    await expect(first).toHaveText(/^\s*Voir les projets/);
+    await expect(second).toHaveText('Contact');
+
+    const buttons = { 'first button, "Voir les projets"': first, 'second button, "Contact"': second };
+    for (const [name, button] of Object.entries(buttons)) {
+      await expect(button, `${name} at ${size}`).toBeVisible();
+      const style = await button.evaluate((el) => {
+        const computed = getComputedStyle(el);
+        return {
+          family: computed.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
+          fontSize: parseFloat(computed.fontSize),
+          rawLetterSpacing: computed.letterSpacing,
+          letterSpacing: parseFloat(computed.letterSpacing),
+          paddingLeft: parseFloat(computed.paddingLeft),
+          paddingRight: parseFloat(computed.paddingRight),
+        };
+      });
+      expect.soft(style.family, `at ${size}, ${name} font`).toBe('IBM Plex Mono');
+      expect.soft(style.fontSize, `at ${size}, ${name} font size`).toBeCloseTo(15, 1);
+      /* Distance to 0.6 px; NaN while the letter spacing is `normal`. */
+      expect.soft(Math.abs(style.letterSpacing - 0.6), `at ${size}, ${name} letter spacing (${style.rawLetterSpacing}) differs from 0.6px by`).toBeLessThanOrEqual(0.02);
+      expect.soft(style.paddingLeft, `at ${size}, ${name} left padding`).toBeCloseTo(26, 1);
+      expect.soft(style.paddingRight, `at ${size}, ${name} right padding`).toBeCloseTo(26, 1);
+    }
+
+    const stackBox = (await stack.boundingBox())!;
+    const firstBox = (await first.boundingBox())!;
+    const secondBox = (await second.boundingBox())!;
+    expect.soft(Math.abs(firstBox.height - secondBox.height), `at ${size}, height of the first button (${firstBox.height} px) differs from the second's (${secondBox.height} px) by`).toBeLessThanOrEqual(1);
+
+    /* 16 px between the two buttons: side by side when they share a line; when the second one
+       wraps below the first, as the design's wrapping row lays it out, 16 px between the rows. */
+    const shareALine = secondBox.y < firstBox.y + firstBox.height;
+    const apart = shareALine ? secondBox.x - (firstBox.x + firstBox.width) : secondBox.y - (firstBox.y + firstBox.height);
+    const apartLabel = `at ${size}, space between the buttons (${shareALine ? 'side by side' : 'second one below the first'})`;
+    expect.soft(apart, apartLabel).toBeGreaterThanOrEqual(16 - 1.5);
+    expect.soft(apart, apartLabel).toBeLessThanOrEqual(16 + 1.5);
+
+    /* The gap between the bottom of the stack's box and the top of the buttons' boxes. */
+    const below = Math.min(firstBox.y, secondBox.y) - (stackBox.y + stackBox.height);
+    expect.soft(below, `at ${size}, space between the bottom of the stack and the top of the buttons`).toBeGreaterThanOrEqual(44 - 1.5);
+    expect.soft(below, `at ${size}, space between the bottom of the stack and the top of the buttons`).toBeLessThanOrEqual(44 + 1.5);
+  }
+});
+
+test('on the French home page, the hero heading decodes: right after load, its author name and professional title are scrambled, and 4 s later both are in clear', async ({ page }) => {
+  /* Animations are allowed, and time stands still from before the page loads, until the
+     test advances it: animation frames and timers then run as they would in 4 s. */
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  const mainHeading = mainContentHeading(page);
+  await expect(mainHeading).toHaveCount(1);
+  /* What the visitor sees in the heading, whitespace excluded: the name, from params.author,
+     and the title, from the [params.hero] block of exampleSite/content/_index.md. */
+  const inClear = 'Jean Exemple Horloger indépendant'.replace(/\s+/g, '');
+  /* Right after load, none of their letters is shown: one sign in place of each one. */
+  const shown = await textOnScreen(mainHeading);
+  expect(Array.from(shown), `"${shown}" shows one sign per letter of the name and the title`).toHaveLength(Array.from(inClear).length);
+  for (const character of Array.from(shown)) {
+    expect(SIGNS, `"${character}", shown in "${shown}" right after load, is one of the signs`).toContain(character);
+  }
+  /* 4 s after load, the name and the title are both in clear. */
+  await page.clock.runFor(4000);
+  expect(await textOnScreen(mainHeading), '4 s after load').toBe(inClear);
+});
+
+test('on the French home page, the hero title line decodes together with the name: when the first letters of the author name are in clear, the first letters of the professional title are in clear too', async ({ page }) => {
+  /* Both lines start decoding at the same moment, as the user chose after comparing the hero
+     with the design. Animations are allowed, and time stands still from before the page
+     loads, until the test advances it. */
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  const mainHeading = mainContentHeading(page);
+  await expect(mainHeading).toHaveCount(1);
+  /* What the visitor sees in the heading, whitespace excluded: the name, from params.author,
+     then the title, from the [params.hero] block of exampleSite/content/_index.md. */
+  const name = Array.from('Jean Exemple'.replace(/\s+/g, ''));
+  const title = Array.from('Horloger indépendant'.replace(/\s+/g, ''));
+  /* Time advances in small steps until the first word of the name, "Jean", is in clear. */
+  let shown = Array.from(await textOnScreen(mainHeading));
+  for (let elapsedMs = 0; elapsedMs < 4000 && !shown.join('').startsWith('Jean'); elapsedMs += 25) {
+    await page.clock.runFor(25);
+    shown = Array.from(await textOnScreen(mainHeading));
+  }
+  expect(shown.join(''), 'the name starts with "Jean" in clear within 4 s of load').toMatch(/^Jean/);
+  expect(shown, `"${shown.join('')}" shows one character per letter of the name and the title`).toHaveLength(name.length + title.length);
+  /* At that moment, the title has started decoding too: its first letters, "Ho", are in
+     clear. */
+  const titleShown = shown.slice(name.length).join('');
+  expect(titleShown, `the title, shown as "${titleShown}" when the name starts with "Jean" in clear, starts with its first letters in clear`).toMatch(/^Ho/);
+});
+
+test('on the French home page, the hero heading decodes at the design’s pace: 1.5 s after load, its author name and professional title are both in clear', async ({ page }) => {
+  /* Design reference: the name and the title decode in about 1.1 s at most, both starting
+     at load, so both are in clear well before 1.5 s. Animations are allowed, and time stands
+     still from before the page loads, until the test advances it. */
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  const mainHeading = mainContentHeading(page);
+  await expect(mainHeading).toHaveCount(1);
+  /* What the visitor sees in the heading, whitespace excluded: the name, from params.author,
+     and the title, from the [params.hero] block of exampleSite/content/_index.md. */
+  const inClear = 'Jean Exemple Horloger indépendant'.replace(/\s+/g, '');
+  await page.clock.runFor(1500);
+  expect(await textOnScreen(mainHeading), '1.5 s after load').toBe(inClear);
 });
 
 test('on the French home page, the hero displays the tagline, one line per entry: the three lines, in order, each below the previous one', async ({ page }) => {
@@ -403,6 +704,36 @@ test('on the French home page, the hero fills at least the full window height be
     .toBeGreaterThanOrEqual(viewportHeight - 1);
 });
 
+test('from 768 px wide, the hero’s text block is centred vertically in the hero, as in the design: at 1280 × 900 and at 768 × 1024, the space between its buttons and the bottom of the hero is the space between the top of the hero and its heading plus 40 px, within 4 px', async ({ page }) => {
+  /* Design reference: the text block (heading, tagline, stack, buttons) sits in the middle of
+     the hero, with 40 px of padding below it. Both windows are tall enough to leave the hero
+     free space around its text. */
+  for (const viewport of DESKTOP_VIEWPORTS) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await openHomeAt(page, viewport);
+    /* The hero is the main content region named by its main heading. */
+    const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+    const heading = hero.getByRole('heading', { level: 1 });
+    const buttons = [hero.getByRole('link', { name: 'Voir les projets' }), hero.getByRole('link', { name: 'Contact' })];
+    await expect(heading, `heading at ${size}`).toBeVisible();
+    for (const button of buttons) await expect(button, `button at ${size}`).toBeVisible();
+
+    const heroBox = (await hero.boundingBox())!;
+    const headingBox = (await heading.boundingBox())!;
+    const buttonsBottom = await bottomOfButtons(buttons);
+    const spaceAbove = headingBox.y - heroBox.y;
+    const spaceBelow = heroBox.y + heroBox.height - buttonsBottom;
+    expect.soft(
+      spaceBelow - spaceAbove,
+      `at ${size}, space below the buttons (${Math.round(spaceBelow)} px) minus space above the heading (${Math.round(spaceAbove)} px)`,
+    ).toBeGreaterThanOrEqual(36);
+    expect.soft(
+      spaceBelow - spaceAbove,
+      `at ${size}, space below the buttons (${Math.round(spaceBelow)} px) minus space above the heading (${Math.round(spaceAbove)} px)`,
+    ).toBeLessThanOrEqual(44);
+  }
+});
+
 test('the hero content is aligned with the header logo: 16 px from the left edge on a phone, 48 px on desktop', async ({ page, isMobile }) => {
   await page.goto('/fr/');
   /* Design reference: 16 px side margin on a phone, 48 px on desktop, like the header. The
@@ -478,6 +809,343 @@ test('on phone as on desktop, each hero button offers a target of at least 24 ×
   }
 });
 
+test('on phone as on desktop, the hero is a tick field drawn across its whole width, behind its text, even where its ticks are faintest: 2 s after load, every vertical band of the empty strip below its buttons, from the left edge, whose bottom-left ticks are almost invisible, to the right edge, shows pixels that changed at all since right after load, and at the middle of the heading, the tagline, the stack and each button, the element under the pointer is that element, so a click lands on the button', async ({ page }) => {
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  /* The hero is the main content region named by its main heading. */
+  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  await expect(hero).toBeVisible();
+  const elements = {
+    'heading': hero.getByRole('heading', { level: 1 }),
+    'tagline': hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
+    'stack': hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
+    'first button, "Voir les projets"': hero.getByRole('link', { name: 'Voir les projets' }),
+    'second button, "Contact"': hero.getByRole('link', { name: 'Contact' }),
+  };
+  for (const [name, element] of Object.entries(elements)) await expect(element, name).toBeVisible();
+
+  /* Right after load: the first animation frame has run, before the field starts its reveal.
+     Then 2 s, long after the reveal, which sweeps the width in about 1.1 s, has reached the
+     right edge. */
+  await page.clock.runFor(16);
+  const rightAfterLoad = await hero.screenshot();
+  await page.clock.runFor(2000 - 16);
+  const twoSecondsLater = await hero.screenshot();
+
+  /* The strip of the hero below its buttons, the last of its content, down to its bottom
+     edge, across its whole width: no text shows there, and the heading's decoding does not
+     reach it, so a pixel that changed there shows the field. Its bottom-left corner is the
+     field's faintest, under the veil too: the ticks of the leftmost band change their pixels
+     by only a few colour levels, fewer in some renderings than the rounding error other
+     comparisons allow. Since the screenshots are lossless and only the field changes between
+     them there, any change at all counts as drawn. */
+  const heroBox = (await hero.boundingBox())!;
+  const buttonsBottom = await bottomOfButtons([elements['first button, "Voir les projets"'], elements['second button, "Contact"']]);
+  const strip = { x: 0, y: buttonsBottom - heroBox.y + 4, width: heroBox.width, height: heroBox.y + heroBox.height - buttonsBottom - 4 };
+  expect(strip.height, 'height of the empty strip of the hero below its buttons').toBeGreaterThanOrEqual(16);
+  const ANY_CHANGE = 0;
+  const { columns, scale } = await pixelsChangedPerColumnInRectangle(hero, rightAfterLoad, twoSecondsLater, strip, ANY_CHANGE);
+  expect(
+    bandsWithoutDrawnPixels(columns, scale, heroBox.width),
+    `bands of the ${Math.round(heroBox.width)}px-wide hero, in the strip below its buttons, with no pixel changed at all since right after load`,
+  ).toEqual([]);
+
+  /* Behind the text: at the middle of the first line box of each element (rather than of its
+     bounding box, so that the point stays on it even if it wraps), the element under the
+     pointer is that element or one of its descendants, not the field drawn over the hero. */
+  for (const [name, element] of Object.entries(elements)) {
+    const isUnderThePointer = await element.evaluate((el) => {
+      const firstLineBox = el.getClientRects()[0];
+      if (!firstLineBox) return false;
+      const hit = document.elementFromPoint(
+        firstLineBox.left + firstLineBox.width / 2,
+        firstLineBox.top + firstLineBox.height / 2,
+      );
+      return hit !== null && el.contains(hit);
+    });
+    expect.soft(isUnderThePointer, `at the middle of the ${name}, the element under the pointer is the ${name}`).toBe(true);
+  }
+});
+
+test('on phone as on desktop, a click (a tap on mobile) on the hero’s professional title starts a ripple around that point: once revealed, 300 ms after the click, zones all around the click point, about 84px from it, got brighter since just before the click, while the zone at the click point did not', async ({ page, hasTouch }) => {
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  /* The hero is the main content region named by its main heading. */
+  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  await expect(hero).toBeVisible();
+  /* The professional title, below the author name, high in the hero: there, towards the top
+     edge of the veil, the veil lets most of the field show, ripple included. */
+  const title = hero.getByRole('heading', { level: 1 }).getByText('Horloger indépendant', { exact: true });
+  await expect(title).toBeVisible();
+  await title.scrollIntoViewIfNeeded();
+  /* Long after the field's reveal (about 1.1 s) and the heading's decoding (in clear 4 s after
+     load): from then on, nothing but the ripple changes what the hero shows. */
+  await page.clock.runFor(5000);
+
+  /* The click point: the middle of the first line box of the title's text (rather than of its
+     element's box, which may span the hero's width, so that the point stays on its letters even
+     if it wraps), relative to the hero. */
+  const heroBox = (await hero.boundingBox())!;
+  const onScreen = await title.evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const box = range.getClientRects()[0];
+    return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  });
+  const point = { x: onScreen.x - heroBox.x, y: onScreen.y - heroBox.y };
+  const isOnTheTitle = await title.evaluate((el, { x, y }) => {
+    const hit = document.elementFromPoint(x, y);
+    return hit !== null && el.contains(hit);
+  }, onScreen);
+  expect(isOnTheTitle, 'the click point is on the professional title’s text').toBe(true);
+
+  /* The middle of the field's highest row of ticks, relative to the hero, whatever margin the
+     field leaves along the hero's top edge: on a screenshot of the hero with its text and veil
+     hidden, without moving anything, the first run of rows that show drawn pixels over the
+     page's background. */
+  const hideAllButTheField = (visibility: string) =>
+    hero.evaluate((el, value) => {
+      for (const child of Array.from(el.children)) {
+        if (child.localName !== 'canvas') (child as HTMLElement).style.visibility = value;
+      }
+    }, visibility);
+  await hideAllButTheField('hidden');
+  const fieldOnly = await hero.screenshot();
+  await hideAllButTheField('');
+  const pageBackground = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const { rows, scale } = await pixelsNotOfBackgroundPerRow(hero, fieldOnly, undefined, pageBackground);
+  const firstDrawnRow = rows.findIndex((count) => count > 0);
+  expect(firstDrawnRow, 'rows of the hero that show ticks').toBeGreaterThanOrEqual(0);
+  let lastRowOfHighestTicks = firstDrawnRow;
+  while (rows[lastRowOfHighestTicks + 1] > 0) lastRowOfHighestTicks += 1;
+  const highestTicksMiddle = (firstDrawnRow + lastRowOfHighestTicks + 1) / 2 / scale;
+
+  /* The ring grows about 0.28px per ms: 300 ms after the click, it is about 84px from the click
+     point. Four zones straddle the ring, 20px deep across it and 40px long along it, to its
+     right, left, top and bottom; the top one lies straight above the click point, or, where the
+     ring passes above the field's highest row of ticks, where the ring crosses that row, up and
+     to the right of the click point. One 30px square sits at the click point, well inside the
+     ring. All of them are far enough from the click point for the ring alone to light them, not
+     the glow of a pointer hovering the click point. Text lies in some of them: what each zone
+     gained is measured between two screenshots, where unchanged text adds nothing. */
+  const RADIUS = 84;
+  const DEPTH = 20;
+  const LENGTH = 40;
+  const topY = Math.max(point.y - RADIUS, highestTicksMiddle);
+  const top = { x: point.x + Math.sqrt(Math.max(0, RADIUS ** 2 - (point.y - topY) ** 2)), y: topY };
+  const ringZones = [
+    { name: 'right', rectangle: { x: point.x + RADIUS - DEPTH / 2, y: point.y - LENGTH / 2, width: DEPTH, height: LENGTH } },
+    { name: 'left', rectangle: { x: point.x - RADIUS - DEPTH / 2, y: point.y - LENGTH / 2, width: DEPTH, height: LENGTH } },
+    { name: 'top', rectangle: { x: top.x - LENGTH / 2, y: top.y - DEPTH / 2, width: LENGTH, height: DEPTH } },
+    { name: 'bottom', rectangle: { x: point.x - LENGTH / 2, y: point.y + RADIUS - DEPTH / 2, width: LENGTH, height: DEPTH } },
+  ];
+  for (const zone of ringZones) {
+    const { x, y, width, height } = zone.rectangle;
+    expect(
+      x >= 0 && y >= 0 && x + width <= heroBox.width && y + height <= heroBox.height,
+      `the ${zone.name} zone about ${RADIUS}px from the click point lies inside the ${Math.round(heroBox.width)} × ${Math.round(heroBox.height)}px hero`,
+    ).toBe(true);
+  }
+  const HALF_SIDE = 15;
+  const centre = { x: point.x - HALF_SIDE, y: point.y - HALF_SIDE, width: 2 * HALF_SIDE, height: 2 * HALF_SIDE };
+
+  /* With a fine pointer, a click first brings the pointer over the click point, which lights
+     the ticks under it: the pointer hovers it already before the click, so that both
+     screenshots show the same hover and differ by the ripple alone. */
+  if (!hasTouch) await page.mouse.move(onScreen.x, onScreen.y);
+  await page.clock.runFor(300);
+  const before = await hero.screenshot();
+
+  await clickOrTap(page, hasTouch, onScreen);
+  await page.clock.runFor(300);
+  const after = await hero.screenshot();
+
+  /* Lit by the ring: on average, each pixel of the zone at least 0.15 luma level (out of 255)
+     brighter than just before the click; without a click, the zones gain nothing. The gain is
+     small: the ring crosses a fifth of each zone's depth, the text over it (the author name's
+     bold letters above the title, the tagline below it) hides part of it, and the ring's
+     accent, darker than the field's cream, lies there under the hero's dark veil. */
+  const MIN_RING_GAIN = 0.15;
+  const gains = await Promise.all(
+    ringZones.map(async (zone) => ({ zone, gain: await meanLuminanceGainedInRectangle(hero, before, after, zone.rectangle) })),
+  );
+  const dimRingZones = gains
+    .filter(({ gain }) => !(gain >= MIN_RING_GAIN))
+    .map(({ zone, gain }) => `${zone.name} (${Math.round(zone.rectangle.x)}, ${Math.round(zone.rectangle.y)})px: +${gain.toFixed(2)}`);
+  expect(
+    dimRingZones,
+    `zones about ${RADIUS}px around the click point on the professional title at (${Math.round(point.x)}, ${Math.round(point.y)})px whose pixels did not get, on average, at least ${MIN_RING_GAIN} luma levels brighter, 300 ms after the click`,
+  ).toEqual([]);
+
+  /* The click point itself: on average, each pixel at most half a luma level brighter. */
+  const centreGain = await meanLuminanceGainedInRectangle(hero, before, after, centre);
+  expect(
+    centreGain,
+    `mean luma gained by the pixels of the 30px square at the click point on the professional title (${Math.round(point.x)}, ${Math.round(point.y)})px, 300 ms after the click`,
+  ).toBeLessThanOrEqual(0.5);
+});
+
+/* The hero of the French home page, still: the visitor asks for reduced motion, so the field is
+   drawn once, complete, and stays still; time stands still from before the page loads, then
+   runs a few animation frames, which draw the field. With its text (heading, tagline, stack
+   and buttons), visible. */
+async function stillHero(page: Page): Promise<{ hero: Locator; text: Record<string, Locator> }> {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  /* The hero is the main content region named by its main heading. */
+  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  await expect(hero).toBeVisible();
+  const text = {
+    'heading': hero.getByRole('heading', { level: 1 }),
+    'tagline': hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
+    'stack': hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
+    'first button, "Voir les projets"': hero.getByRole('link', { name: 'Voir les projets' }),
+    'second button, "Contact"': hero.getByRole('link', { name: 'Contact' }),
+  };
+  for (const [name, element] of Object.entries(text)) await expect(element, name).toBeVisible();
+  await page.clock.runFor(100);
+  return { hero, text };
+}
+
+/* What the hero's veil lets show of the field: two screenshots of the still hero, its text
+   hidden from them without moving anything, so that only the field and the veil laid over it
+   show — `veiled`, as the visitor sees it, and `bare`, the same hero with its veil hidden.
+   Both hold the same ticks at the same places: only the veil tells them apart. The share of
+   the field's brightness a zone of `veiled` keeps (brightnessKeptUnderLayerInRectangle) is what
+   the veil lets through there, whatever the field's own brightness. The hero has no background
+   colour of its own: the page's (`background`) shows through it. */
+async function heroWithAndWithoutVeil(
+  page: Page,
+  hero: Locator,
+  text: Record<string, Locator>,
+): Promise<{ veiled: Buffer; bare: Buffer; background: string }> {
+  for (const element of Object.values(text)) {
+    await element.evaluate((el) => {
+      (el as HTMLElement).style.visibility = 'hidden';
+    });
+  }
+  const veiled = await hero.screenshot();
+  /* The veil: decorative, hidden from assistive technologies, it has no role or name. */
+  const veil = hero.locator('.veil');
+  await expect(veil).toHaveCount(1);
+  await veil.evaluate((el) => {
+    (el as HTMLElement).style.visibility = 'hidden';
+  });
+  const bare = await hero.screenshot();
+  const background = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  return { veiled, bare, background };
+}
+
+test('on phone as on desktop, the hero’s veil darkens its text zone: with the field still (reduced motion), compared with the same hero without its veil, the field behind the middle of the text zone keeps at most 0.8 times the share of its brightness it keeps in the same columns at the hero’s top edge, above the text', async ({ page }) => {
+  const { hero, text } = await stillHero(page);
+
+  /* The text zone: from the top of the heading to the bottom of the buttons, the last of the
+     hero's content, across the heading's width. */
+  const heroBox = (await hero.boundingBox())!;
+  const headingBox = (await text.heading.boundingBox())!;
+  const buttonsBottom = await bottomOfButtons([text['first button, "Voir les projets"'], text['second button, "Contact"']]);
+  const textTop = headingBox.y - heroBox.y;
+  const textBottom = buttonsBottom - heroBox.y;
+  const textMiddle = headingBox.x - heroBox.x + headingBox.width / 2;
+
+  /* Two zones 32px wide, in the columns at the middle of the text zone: a 32px square at the
+     middle of its height, and, above the heading, the strip along the hero's top edge, at
+     most 32px high. The field is brighter at the top than at the bottom: what each zone keeps
+     of the field's brightness is measured against the same hero without its veil. */
+  const SIDE = 32;
+  const atText: Rectangle = { x: textMiddle - SIDE / 2, y: (textTop + textBottom) / 2 - SIDE / 2, width: SIDE, height: SIDE };
+  const atTop: Rectangle = { x: textMiddle - SIDE / 2, y: 0, width: SIDE, height: Math.min(SIDE, textTop) };
+  expect(atTop.height, 'height of the strip along the hero’s top edge, above the heading').toBeGreaterThanOrEqual(24);
+
+  const { veiled, bare, background } = await heroWithAndWithoutVeil(page, hero, text);
+  const keptAtText = await brightnessKeptUnderLayerInRectangle(hero, bare, veiled, atText, background);
+  const keptAtTop = await brightnessKeptUnderLayerInRectangle(hero, bare, veiled, atTop, background);
+  expect(keptAtText.drawn, 'brightness above the background of the field behind the middle of the text zone: ticks are drawn there').toBeGreaterThan(0);
+  expect(keptAtTop.drawn, 'brightness above the background of the field at the hero’s top edge: ticks are drawn there').toBeGreaterThan(0);
+  expect(
+    keptAtText.kept,
+    `share of the field’s brightness kept behind the middle of the text zone, at (${Math.round(atText.x)}, ${Math.round(atText.y)})px, at most 0.8 times that kept in the same columns at the top edge of the ${Math.round(heroBox.width)} × ${Math.round(heroBox.height)}px hero, ${keptAtTop.kept.toFixed(2)}`,
+  ).toBeLessThanOrEqual(0.8 * keptAtTop.kept);
+});
+
+test('on phone as on desktop, the hero’s veil follows the design: with the field still (reduced motion), compared with the same hero without its veil, it hides the field most at about 38 % of the hero’s width and 55 % of its height, and less and less towards the edges: the zone there keeps at most 0.8 times the share of the field’s brightness each zone 10 % of the width or height to its left, right, top and bottom keeps, and from each of these, towards its edge, the zone halfway to the edge, then the zone against it, each keeps at least 1.1 times what the previous one keeps', async ({ page }) => {
+  const { hero, text } = await stillHero(page);
+  const heroBox = (await hero.boundingBox())!;
+  const { width, height } = heroBox;
+
+  /* 32px squares, given by their centres, relative to the hero. One where the veil is at its
+     densest in the design, at 38 % of the width and 55 % of the height. From it, towards each
+     edge of the hero, in a straight line: one 10 % of the hero's width (or height) away, one
+     halfway between that centre and the edge, one 24px from the edge, where the field, which
+     leaves a margin along its edges, still draws ticks. */
+  const SIDE = 32;
+  const INSET = 24 + SIDE / 2;
+  const centre = { x: 0.38 * width, y: 0.55 * height };
+  const towardsEdges = [
+    { name: 'left', points: [{ x: centre.x - 0.1 * width, y: centre.y }, { x: (centre.x + INSET) / 2, y: centre.y }, { x: INSET, y: centre.y }] },
+    { name: 'right', points: [{ x: centre.x + 0.1 * width, y: centre.y }, { x: (centre.x + width - INSET) / 2, y: centre.y }, { x: width - INSET, y: centre.y }] },
+    { name: 'top', points: [{ x: centre.x, y: centre.y - 0.1 * height }, { x: centre.x, y: (centre.y + INSET) / 2 }, { x: centre.x, y: INSET }] },
+    { name: 'bottom', points: [{ x: centre.x, y: centre.y + 0.1 * height }, { x: centre.x, y: (centre.y + height - INSET) / 2 }, { x: centre.x, y: height - INSET }] },
+  ];
+  const square = ({ x, y }: { x: number; y: number }): Rectangle => ({ x: x - SIDE / 2, y: y - SIDE / 2, width: SIDE, height: SIDE });
+  const where = ({ x, y }: { x: number; y: number }): string => `(${Math.round(x)}, ${Math.round(y)})px`;
+
+  /* The field is brighter on the right than on the left, and at the top than at the bottom:
+     what each zone keeps of the field's brightness is measured against the same hero without
+     its veil. */
+  const { veiled, bare, background } = await heroWithAndWithoutVeil(page, hero, text);
+  const keptAt = async (point: { x: number; y: number }): Promise<number> => {
+    const { drawn, kept } = await brightnessKeptUnderLayerInRectangle(hero, bare, veiled, square(point), background);
+    expect(drawn, `brightness above the background of the field around ${where(point)}: ticks are drawn there`).toBeGreaterThan(0);
+    return kept;
+  };
+
+  const keptAtCentre = await keptAt(centre);
+  const notAsDesigned: string[] = [];
+  for (const { name, points } of towardsEdges) {
+    const kept = await Promise.all(points.map(keptAt));
+    const [near, halfway, atEdge] = kept;
+    if (!(keptAtCentre <= 0.8 * near)) {
+      notAsDesigned.push(`${name}: 10 % away, at ${where(points[0])}, keeps ${near.toFixed(2)}, less than 1.25 times the centre`);
+    }
+    if (!(halfway >= 1.1 * near)) {
+      notAsDesigned.push(`${name}: halfway to the edge, at ${where(points[1])}, keeps ${halfway.toFixed(2)}, less than 1.1 times ${near.toFixed(2)} 10 % away`);
+    }
+    if (!(atEdge >= 1.1 * halfway)) {
+      notAsDesigned.push(`${name}: against the edge, at ${where(points[2])}, keeps ${atEdge.toFixed(2)}, less than 1.1 times ${halfway.toFixed(2)} halfway`);
+    }
+  }
+  expect(
+    notAsDesigned,
+    `zones of the ${Math.round(width)} × ${Math.round(height)}px hero where the veil does not hide the field less and less from ${where(centre)}, which keeps ${keptAtCentre.toFixed(2)} of the field’s brightness, towards the edges`,
+  ).toEqual([]);
+});
+
+test('on phone as on desktop, the hero’s veil spreads as wide as the design’s: with the field still (reduced motion), compared with the same hero without its veil, halfway along the horizontal line from its densest point, at 38 % of the hero’s width and 55 % of its height, to the hero’s right edge, the field keeps at most 0.63 of its brightness', async ({ page }) => {
+  const { hero, text } = await stillHero(page);
+  const { width, height } = (await hero.boundingBox())!;
+
+  /* A 32px square centred halfway between the veil's densest point in the design, at 38 % of
+     the width and 55 % of the height, and the hero's right edge, on the same row: at 69 % of
+     the width. The design's veil, an ellipse reaching 70 % of the width on each side of that
+     point, still hides more than 40 % of the field there; a veil reaching less than half the
+     width fades out sooner and lets most of the field show. */
+  const SIDE = 32;
+  const point = { x: (0.38 * width + width) / 2, y: 0.55 * height };
+  const halfway: Rectangle = { x: point.x - SIDE / 2, y: point.y - SIDE / 2, width: SIDE, height: SIDE };
+
+  /* The field is brighter on the right than on the left: what the zone keeps of the field's
+     brightness is measured against the same hero without its veil. */
+  const { veiled, bare, background } = await heroWithAndWithoutVeil(page, hero, text);
+  const { drawn, kept } = await brightnessKeptUnderLayerInRectangle(hero, bare, veiled, halfway, background);
+  expect(drawn, `brightness above the background of the field around (${Math.round(point.x)}, ${Math.round(point.y)})px: ticks are drawn there`).toBeGreaterThan(0);
+  expect(
+    kept,
+    `share of the field’s brightness kept around (${Math.round(point.x)}, ${Math.round(point.y)})px, halfway from the veil’s densest point to the right edge of the ${Math.round(width)} × ${Math.round(height)}px hero`,
+  ).toBeLessThanOrEqual(0.63);
+});
+
 test('served under /portfolio/, the first hero button of the French home page, "Voir les projets", leads to /portfolio/fr/projets/', async ({ page }) => {
   await page.goto('http://localhost:1315/portfolio/fr/');
   const firstButton = firstHeroButton(page);
@@ -538,6 +1206,45 @@ test('on the English home page, the first hero button, "View projects", leads to
   await expect(page).toHaveURL('/en/projects/');
 });
 
+test.describe('home page without JavaScript', () => {
+  /* The theme rule: no JavaScript is required to read the content. Animations (the decoding
+     heading, the tick field behind the hero) are an enhancement. */
+  test.use({ javaScriptEnabled: false });
+
+  test('without JavaScript, the hero of the French home page is complete and readable: the heading shows the author name and the professional title in clear, with the tagline, the stack and both buttons, nothing left transparent', async ({ page }) => {
+    await page.goto('/fr/');
+    const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+    const mainHeading = hero.getByRole('heading', { level: 1 });
+    /* In clear: the heading displays the name and the title themselves, not scrambled signs,
+       whether in its text or in generated content. */
+    await expect(mainHeading).toHaveText(/^\s*Jean Exemple\s*Horloger indépendant\s*$/);
+    expect(await displayedText(mainHeading), 'text displayed by the heading').toBe('Jean Exemple Horloger indépendant');
+    const elements = {
+      'author name (h1)': mainHeading,
+      'professional title': mainHeading.getByText('Horloger indépendant', { exact: true }),
+      'tagline, line 1': hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
+      'tagline, line 2': hero.getByText('Conception, réparation et entretien'),
+      'tagline, line 3': hero.getByText('de pendules et de montres anciennes.'),
+      'stack': hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
+      'first button': hero.getByRole('link', { name: 'Voir les projets' }),
+      'second button': hero.getByRole('link', { name: 'Contact' }),
+    };
+    for (const [name, element] of Object.entries(elements)) {
+      await expect(element, name).toBeVisible();
+      /* Readable: no element is left transparent, waiting for a script to reveal it. The
+         effective opacity multiplies those of the element and of its ancestors. */
+      const opacity = await element.evaluate((el) => {
+        let product = 1;
+        for (let node: Element | null = el; node; node = node.parentElement) {
+          product *= parseFloat(getComputedStyle(node).opacity);
+        }
+        return product;
+      });
+      expect.soft(opacity, `effective opacity: ${name}`).toBe(1);
+    }
+  });
+});
+
 test.describe('home page without a hero', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
@@ -562,6 +1269,21 @@ test.describe('home page without a hero', () => {
     await expect(main.getByText('Jean Exemple')).toHaveCount(0);
     await expect(main.getByRole('link')).toHaveCount(0);
     await expect(main).toHaveText(homePageText);
+  });
+
+  test('on a home page without a hero and on another page, the theme’s script runs to its end without raising any error', async ({ page, context }) => {
+    await serveSite(context, SITE_WITHOUT_HERO, siteDirectory);
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(`${page.url()}: ${error.message}`));
+    for (const address of ['/fr/', '/fr/page-longue/']) {
+      await page.goto(`${SITE_WITHOUT_HERO.origin}${address}`);
+      /* The script defines its two custom elements last: once both are defined, it has run
+         to its end, so the absence of errors does not come from a script that did not run. */
+      await page.waitForFunction(
+        () => customElements.get('scramble-text') !== undefined && customElements.get('tick-field') !== undefined,
+      );
+    }
+    expect(errors).toEqual([]);
   });
 });
 
@@ -597,6 +1319,40 @@ test.describe('home page of another site, with a different hero', () => {
     await expect(links.first()).toHaveAttribute('href', 'mailto:camille@example.org');
     await expect(main.getByRole('link', { name: 'Voir les projets' })).toHaveCount(0);
     await expect(main.getByRole('link', { name: 'Contact' })).toHaveCount(0);
+  });
+});
+
+test.describe('home page of a site whose hero has no title', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_HERO_WITHOUT_TITLE);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('the hero heading, which holds the author name only, decodes: right after load, the name is scrambled, and 4 s later it is in clear', async ({ page, context }) => {
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it: animation frames and timers then run as they would in 4 s. */
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await stopClockBeforeLoad(page);
+    await serveSite(context, SITE_WITH_A_HERO_WITHOUT_TITLE, siteDirectory);
+    await page.goto(`${SITE_WITH_A_HERO_WITHOUT_TITLE.origin}/fr/`);
+    const mainHeading = mainContentHeading(page);
+    await expect(mainHeading).toHaveCount(1);
+    /* What the visitor sees in the heading, whitespace excluded: the name, from params.author,
+       alone, since the [params.hero] block of tests/fixtures/untitled-hero/content/_index.md
+       has no title. */
+    const inClear = 'Jean Exemple'.replace(/\s+/g, '');
+    /* Right after load, none of its letters is shown: one sign in place of each one. */
+    const shown = await textOnScreen(mainHeading);
+    expect(Array.from(shown), `"${shown}" shows one sign per letter of the name`).toHaveLength(Array.from(inClear).length);
+    for (const character of Array.from(shown)) {
+      expect(SIGNS, `"${character}", shown in "${shown}" right after load, is one of the signs`).toContain(character);
+    }
+    /* 4 s after load, the name is in clear. */
+    await page.clock.runFor(4000);
+    expect(await textOnScreen(mainHeading), '4 s after load').toBe(inClear);
   });
 });
 
@@ -646,6 +1402,55 @@ test.describe('home page of a site whose hero has long words, on a 320 px wide p
       expect.soft(left, `left edge within the window: ${name}`).toBeGreaterThanOrEqual(0);
       expect.soft(right, `right edge within the window: ${name}`).toBeLessThanOrEqual(width);
     }
+  });
+
+  test('on a 320 px wide phone, while the heading of a hero with long words decodes, the page never scrolls horizontally: every 250 ms from load, while the heading is still scrambled at load, until it is in clear, within 6 s, the name and the title stay within the width', async ({ page, context }) => {
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it, step by step. */
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await stopClockBeforeLoad(page);
+    await serveSite(context, SITE_WITH_A_HERO_WITH_LONG_WORDS, siteDirectory);
+    await page.goto(`${SITE_WITH_A_HERO_WITH_LONG_WORDS.origin}/fr/`);
+    const width = page.viewportSize()!.width;
+    expect(width, 'window width').toBe(320);
+
+    /* The name, "Apolline Vanderkerckhove-Fictive", from params.author
+       (tests/fixtures/hero-with-long-words/hugo.toml), decodes first; the title,
+       "Horlogère-restauratrice", from tests/fixtures/hero-with-long-words/content/_index.md,
+       decodes when the name is done. Both are in clear within 6 s of load. */
+    const mainHeading = mainContentHeading(page);
+    await expect(mainHeading).toHaveCount(1);
+    const elements = {
+      'author name (h1)': mainHeading,
+      /* While it decodes, the title shows signs: it is found by the name it keeps for
+         assistive technologies. */
+      'professional title': mainHeading.getByLabel('Horlogère-restauratrice', { exact: true }),
+    };
+    const inClear = 'Apolline Vanderkerckhove-Fictive Horlogère-restauratrice'.replace(/\s+/g, '');
+    const holdsASign = (text: string) => Array.from(text).some((character) => SIGNS.includes(character));
+    /* Every 250 ms from load, while the heading still shows a sign, and at the first moment
+       it shows none, the page does not scroll horizontally and the name and the title stay
+       within the width. */
+    let shown = '';
+    let elapsedMs = 0;
+    for (; elapsedMs <= 6000; elapsedMs += 250) {
+      if (elapsedMs > 0) await page.clock.runFor(250);
+      const moment = `${elapsedMs} ms after load`;
+      shown = await textOnScreen(mainHeading);
+      /* Right after load, the heading is scrambled: the test sees it while it decodes. */
+      if (elapsedMs === 0) expect(holdsASign(shown), `"${shown}", shown right after load, holds a sign`).toBe(true);
+
+      const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+      expect.soft(pageWidth, `no horizontal scrolling ${moment}`).toBeLessThanOrEqual(width);
+      for (const [name, element] of Object.entries(elements)) {
+        const { left, right } = await displayedExtent(element);
+        expect.soft(left, `left edge within the window ${moment}: ${name}`).toBeGreaterThanOrEqual(0);
+        expect.soft(right, `right edge within the window ${moment}: ${name}`).toBeLessThanOrEqual(width);
+      }
+      if (!holdsASign(shown)) break;
+    }
+    /* The decoding ends: the heading is in clear, within 6 s of load. */
+    expect(shown, `heading shown ${elapsedMs} ms after load, in clear`).toBe(inClear);
   });
 });
 

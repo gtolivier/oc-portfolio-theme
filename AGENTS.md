@@ -24,6 +24,9 @@ The roadmap (one conversation per feature) lives in the private repository
   command, for working runs on a few test files.
 - `npm test`: all 5 Playwright projects (starts Hugo on its own, port
   1314). Left to the CI, which runs it on every pull request.
+- `npm run typecheck`: TypeScript type check (theme script in
+  `assets/js/`, tests, Playwright configuration). Hugo compiles the script
+  with `js.Build`.
 
 ## Rules
 

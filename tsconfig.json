@@ -1,0 +1,27 @@
+{
+  // Visit https://aka.ms/tsconfig to read more about this file
+  // Type checking only: Hugo (js.Build) compiles the theme script,
+  // Playwright the tests. This file covers the Node side (tests, Playwright
+  // configuration); assets/js/tsconfig.json covers the browser script,
+  // without Node's types.
+  "include": ["tests", "playwright.config.ts"],
+  "compilerOptions": {
+    "noEmit": true,
+
+    // Environment Settings
+    // See also https://aka.ms/tsconfig/module
+    "module": "preserve",
+    "target": "esnext",
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "types": ["node"],
+
+    // Recommended Options
+    "strict": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+  }
+}

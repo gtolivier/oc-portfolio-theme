@@ -1,10 +1,12 @@
 {{ define "main" }}
   {{- with .Params.hero }}
   {{- if not site.Params.author }}{{ errorf "hero : le paramètre author du site n’est pas renseigné" }}{{ end }}
-  <section class="hero" aria-labelledby="hero-heading">
-    <h1 id="hero-heading">{{ site.Params.author }}
+  <tick-field class="hero" role="region" aria-labelledby="hero-heading">
+    {{- /* The hero decodes faster than the default pace. The name and the title start decoding together. */}}
+    {{- $heroLetterMs := 40 }}
+    <h1 id="hero-heading"><scramble-text duration="{{ mul (strings.RuneCount site.Params.author) $heroLetterMs }}">{{ site.Params.author }}</scramble-text>
       {{- with .title }}
-      <span class="hero-title">{{ . }}</span>
+      <span class="hero-title"><scramble-text duration="{{ mul (strings.RuneCount .) $heroLetterMs }}">{{ . }}</scramble-text></span>
       {{- end }}
     </h1>
     {{- with .tagline }}
@@ -22,7 +24,8 @@
       {{- end }}
     </p>
     {{- end }}
-  </section>
+    <div class="veil" aria-hidden="true"></div>
+  </tick-field>
   {{- end }}
   {{ .Content }}
 {{ end }}
