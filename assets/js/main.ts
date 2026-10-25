@@ -100,7 +100,7 @@ const FIELD_REVEAL_DELAY_MS = 50;
 
 const FIELD_REVEAL_DURATION_MS = 1100;
 
-const FIELD_TICK_SPACING_PX = 8;
+const FIELD_TICK_SPACING_PX = 16;
 
 const FIELD_TICK_WIDTH_PX = 1;
 
@@ -108,7 +108,7 @@ const FIELD_TICK_MIN_HEIGHT_PX = 4;
 
 const FIELD_TICK_MAX_HEIGHT_PX = 10;
 
-const FIELD_ROW_SPACING_PX = 16;
+const FIELD_ROW_SPACING_PX = 22;
 
 const FIELD_MIN_ALPHA = 0.15;
 
@@ -130,9 +130,9 @@ const FIELD_RIPPLE_SPEED_PX_PER_MS = 0.28;
 
 const FIELD_RIPPLE_DURATION_MS = 1800;
 
-const FIELD_RIPPLE_RING_HALF_WIDTH_PX = 14;
+const FIELD_RIPPLE_RING_HALF_WIDTH_PX = 20;
 
-const FIELD_RIPPLE_TICK_WIDTH_PX = 4;
+const FIELD_RIPPLE_TICK_WIDTH_PX = 12;
 
 /* Where the pointer passed, and since when it lingers there. */
 type TrailPoint = { x: number; y: number; at: number };
