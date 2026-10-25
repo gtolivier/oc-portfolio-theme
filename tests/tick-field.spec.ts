@@ -614,9 +614,11 @@ test.describe('catalog: tick-field', () => {
     /* The width is measured on the top right tick, the brightest, whose faint edges stand
        furthest above rounding errors. 1.6px within 0.2px; 2px ticks fall outside. */
     expect(Math.abs(topRight.width - 1.6), `distance from 1.6px of the width of the top right tick, ${sizes}`).toBeLessThanOrEqual(0.2);
-    /* About 5px at the bottom left, within 0.6px, and about 13px at the top right, within
-       0.8px. */
-    expect(Math.abs(bottomLeft.height - 5), `distance from 5px of the height of the bottom left tick, ${sizes}`).toBeLessThanOrEqual(0.6);
+    /* About 5px at the bottom left, within 1px, and about 13px at the top right, within
+       0.8px. The bottom left tick is the field's dimmest: it stands only a few colour levels
+       above the background, so its faint anti-aliased edges, counted by how much of a pixel
+       they cover, shift by most of a pixel from one renderer to another. */
+    expect(Math.abs(bottomLeft.height - 5), `distance from 5px of the height of the bottom left tick, ${sizes}`).toBeLessThanOrEqual(1);
     expect(Math.abs(topRight.height - 13), `distance from 13px of the height of the top right tick, ${sizes}`).toBeLessThanOrEqual(0.8);
     /* Within the left column, taller at the top than at the bottom, by more than half a
        pixel. */
