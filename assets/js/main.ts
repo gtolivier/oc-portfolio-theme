@@ -462,7 +462,8 @@ class TickField extends HTMLElement {
   private drawLitTick(drawing: FieldDrawing, x: number, y: number, tickHeight: number, lighting: number): void {
     if (lighting <= 0) return;
     const { context } = drawing;
-    context.globalAlpha = lighting;
+    /* The canvas ignores an alpha above 1: summed rings are capped here. */
+    context.globalAlpha = Math.min(1, lighting);
     context.fillStyle = drawing.litColor;
     const growthAtEachEnd = this.growthAtEachEnd(lighting);
     context.fillRect(x, y - growthAtEachEnd, FIELD_TICK_WIDTH_PX, tickHeight + 2 * growthAtEachEnd);
