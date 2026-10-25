@@ -239,6 +239,29 @@ test.describe('catalog: scramble-text', () => {
     expect(await textOnScreen(scrambleTexts.nth(1))).toBe(long);
   });
 
+  test('even when the main thread of the page is busy while it decodes, a scramble-text is in clear 2 s after it starts decoding: a sentence of over 90 letters, the page busy for 1 s midway, is in clear 2.1 s after load', async ({ page, context }) => {
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it. */
+    await openCatalogPage(page, context, 'scramble-text-lengths', 'no-preference');
+    /* The second scramble-text of the page (tests/fixtures/catalog/content/scramble-text-lengths.md),
+       a long sentence (over 90 letters) without a delay: it starts decoding at load, and on an
+       idle page it is in clear 2 s later. */
+    const scrambleTexts = page.getByRole('main').locator('scramble-text');
+    await expect(scrambleTexts).toHaveCount(2);
+    const long = 'Un texte brouillé se décode de gauche à droite, une lettre après une autre, puis finit par se montrer entièrement en clair'.replace(/\s+/g, '');
+    expect(Array.from(long).length, 'the sentence has over 90 letters').toBeGreaterThan(90);
+    /* 0.5 s after load, while it decodes, the main thread of the page is busy for 1 s, as under
+       heavy page scripts or on a slow device. For the page's timers, that is time jumping 1 s
+       ahead: each timer due meanwhile fires at most once, at the end, the callbacks it missed
+       skipped rather than replayed. */
+    await page.clock.runFor(500);
+    await page.clock.fastForward(1000);
+    /* 2.1 s after load, a little more than the 2 s cap, the whole sentence is in clear all the
+       same. */
+    await page.clock.runFor(600);
+    expect(await textOnScreen(scrambleTexts.nth(1))).toBe(long);
+  });
+
   test('with a short duration (0.6 s), a long scramble-text is in clear 0.6 s after it starts decoding: a sentence of over 90 letters is in clear 1 s after load', async ({ page, context }) => {
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it: animation frames and timers then run as they would in 1 s. */
