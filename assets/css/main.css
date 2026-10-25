@@ -122,6 +122,8 @@ h1 {
   line-height: 1.55;
   max-width: 600px;
   margin-top: 40px;
+  /* The stack's margin alone sets the space below the tagline. */
+  margin-bottom: 0;
 }
 
 /* From tablet width, the text block is centred vertically, with 40px of
@@ -155,6 +157,9 @@ h1 {
 
 .hero-stack {
   font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 0.56px;
+  margin-top: 20px;
   color: var(--color-accent);
 }
 
