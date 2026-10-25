@@ -625,6 +625,59 @@ export async function brightestLuminanceAboveBackgroundPerColumnInRectangle(
   );
 }
 
+/* How strongly a colour shows at its strongest inside a rectangle of an element (CSS pixels,
+   relative to its box): over the pixels of the element's screenshot inside the rectangle, the
+   largest share of the way from the element's background colour to `colour` (a CSS colour)
+   that a pixel lies, measured along that way (the projection of pixel − background on
+   colour − background, over the length of colour − background, squared); 0 when no pixel is
+   on that side of the background. A stroke of that colour drawn with an opacity shows it, at a
+   pixel it covers fully, as that share: unlike a sum, it depends neither on the stroke's
+   length nor on its anti-aliased edges. The colour is read through the same colour handling as
+   the screenshot. */
+export async function strongestShareOfColourInRectangle(
+  element: Locator,
+  screenshot: Buffer,
+  rectangle: Rectangle,
+  colour: string,
+): Promise<number> {
+  return element.evaluate(
+    async (el, [base64, zone, cssColour]) => {
+      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const scale = image.width / el.getBoundingClientRect().width;
+      const fromColumn = Math.max(0, Math.round(zone.x * scale));
+      const toColumn = Math.min(image.width, Math.round((zone.x + zone.width) * scale));
+      const fromRow = Math.max(0, Math.round(zone.y * scale));
+      const toRow = Math.min(image.height, Math.round((zone.y + zone.height) * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true })!;
+      context.fillStyle = getComputedStyle(el).backgroundColor;
+      context.fillRect(0, 0, 1, 1);
+      const background = context.getImageData(0, 0, 1, 1).data;
+      context.fillStyle = cssColour;
+      context.fillRect(0, 0, 1, 1);
+      const target = context.getImageData(0, 0, 1, 1).data;
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      const way = [0, 1, 2].map((channel) => target[channel] - background[channel]);
+      const length = way.reduce((sum, value) => sum + value * value, 0);
+      let strongest = 0;
+      for (let row = fromRow; row < toRow; row++) {
+        for (let column = fromColumn; column < toColumn; column++) {
+          const i = 4 * (row * image.width + column);
+          const along = [0, 1, 2].reduce((sum, channel) => sum + (pixels[i + channel] - background[channel]) * way[channel], 0);
+          strongest = Math.max(strongest, along / length);
+        }
+      }
+      return strongest;
+    },
+    [screenshot.toString('base64'), rectangle, colour] as const,
+  );
+}
+
 /* The separate strokes drawn inside a rectangle of an element (CSS pixels, relative to its
    box): in the element's screenshot, each group of pixels that differ from the element's
    background colour by more than a rounding error on a channel and touch one another (sides or
@@ -765,6 +818,63 @@ export async function sizeOfDrawnStrokeInRectangle(
       return { width: total / strongestColumn / scale, height: total / typicalRow / scale };
     },
     [screenshot.toString('base64'), rectangle] as const,
+  );
+}
+
+/* Where a single upright stroke drawn inside each of several rectangles of an element (CSS
+   pixels, relative to its box) lies across, in the same order: its left edge, relative to the
+   element's box, and its width, its anti-aliased edges included, in CSS pixels, whatever its
+   opacity. Only that stroke must be drawn in a rectangle, over the element's background colour;
+   it may be drawn in several layers, provided they all span the same columns. As for
+   sizeOfDrawnStrokeInRectangle, a pixel's strength is the sum, over the red, green and blue
+   channels, of its distance from the background, and summed down a column it is proportional
+   to how much of the column's width the stroke covers: the width is the sum of the columns
+   over the strongest one, and the stroke's middle the average position of the columns weighted
+   by their sums; its left edge lies half its width left of its middle. Unlike the box of the
+   pixels that differ from the background by more than a rounding error, it does not shrink
+   when a dim stroke's faint edges fall within that rounding error. NaN when no pixel of a
+   rectangle differs from the background. */
+export async function horizontalExtentOfDrawnStrokeInRectangles(
+  element: Locator,
+  screenshot: Buffer,
+  rectangles: Rectangle[],
+): Promise<{ x: number; width: number }[]> {
+  return element.evaluate(
+    async (el, [base64, zones]) => {
+      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const scale = image.width / el.getBoundingClientRect().width;
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true })!;
+      context.fillStyle = getComputedStyle(el).backgroundColor;
+      context.fillRect(0, 0, 1, 1);
+      const background = context.getImageData(0, 0, 1, 1).data;
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      const strength = (column: number, row: number): number => {
+        const i = 4 * (row * image.width + column);
+        return [0, 1, 2].reduce((sum, channel) => sum + Math.abs(pixels[i + channel] - background[channel]), 0);
+      };
+      return zones.map((zone) => {
+        const fromColumn = Math.max(0, Math.round(zone.x * scale));
+        const toColumn = Math.min(image.width, Math.round((zone.x + zone.width) * scale));
+        const fromRow = Math.max(0, Math.round(zone.y * scale));
+        const toRow = Math.min(image.height, Math.round((zone.y + zone.height) * scale));
+        const columns = new Array<number>(Math.max(0, toColumn - fromColumn)).fill(0);
+        for (let row = fromRow; row < toRow; row++) {
+          for (let column = fromColumn; column < toColumn; column++) columns[column - fromColumn] += strength(column, row);
+        }
+        const total = columns.reduce((sum, value) => sum + value, 0);
+        if (total === 0) return { x: NaN, width: NaN };
+        const middle = fromColumn + columns.reduce((sum, value, index) => sum + (index + 0.5) * value, 0) / total;
+        const width = total / Math.max(...columns);
+        return { x: (middle - width / 2) / scale, width: width / scale };
+      });
+    },
+    [screenshot.toString('base64'), rectangles] as const,
   );
 }
 

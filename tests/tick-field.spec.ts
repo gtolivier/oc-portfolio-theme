@@ -14,12 +14,14 @@ import {
   extentOfDrawnTicks,
   heightsOfDrawnRunsInRectangle,
   horizontalBandsWithoutDrawnPixels,
+  horizontalExtentOfDrawnStrokeInRectangles,
   luminanceAboveBackgroundInRectangle,
   luminanceAboveBackgroundInRectangles,
   luminanceAboveBackgroundPerColumn,
   pixelsNotOfBackgroundPerColumn,
   pixelsNotOfBackgroundPerRow,
   sizeOfDrawnStrokeInRectangle,
+  strongestShareOfColourInRectangle,
 } from './helpers/pixels';
 
 test.describe('catalog: tick-field', () => {
@@ -693,6 +695,74 @@ test.describe('catalog: tick-field', () => {
     ).toBeLessThan(MAX_DEGREES);
   });
 
+  test('once revealed, a tick-field fades from its top right corner, clearly visible, to its bottom left corner, almost invisible, over its whole height: its bottom left tick lies less than 9% of the way from the background to its green, its top right tick more than 40% of the way to the cream, and in a vertical band at the middle of its width, the ticks at mid-height are dimmer than those at the top and brighter than those at the bottom', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
+       to brighten a tick. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, as wide as the page, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await page.clock.runFor(16);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const width = fieldBox!.width;
+    const height = fieldBox!.height;
+    const screenshot = await tickField.screenshot();
+    const themeColour = (customProperty: string): Promise<string> =>
+      tickField.evaluate((el, name) => getComputedStyle(el).getPropertyValue(name).trim(), customProperty);
+    const describeZone = (zone: Rectangle): string =>
+      `(${Math.round(zone.x)}–${Math.round(zone.x + zone.width)}px, ${Math.round(zone.y)}–${Math.round(zone.y + zone.height)}px)`;
+
+    /* The corner ticks: a 40px square at a corner holds the tick of the field's outermost
+       column and row there, and none of its neighbours, 16px and 22px away beyond margins of
+       at least 24px and 18px. A tick drawn with an opacity shows, at a pixel it covers fully,
+       that share of the way from the background to its colour, whatever its height: green
+       (the theme's --color-accent-dark) at the left, cream (--color-paper) at the top right.
+       At the bottom left, a tick less than 9% of the way is barely there; at the top right,
+       more than 40% of the way stands out. */
+    const CORNER = 40;
+    const bottomLeftZone = { x: 0, y: height - CORNER, width: CORNER, height: CORNER };
+    const topRightZone = { x: width - CORNER, y: 0, width: CORNER, height: CORNER };
+    const bottomLeft = await strongestShareOfColourInRectangle(tickField, screenshot, bottomLeftZone, await themeColour('--color-accent-dark'));
+    const topRight = await strongestShareOfColourInRectangle(tickField, screenshot, topRightZone, await themeColour('--color-paper'));
+    const corners = `bottom left tick ${(100 * bottomLeft).toFixed(1)}% of the way from the background to the green, in ${describeZone(bottomLeftZone)}; top right tick ${(100 * topRight).toFixed(1)}% of the way to the cream, in ${describeZone(topRightZone)}`;
+    expect.soft(bottomLeft, `strongest pixel of the ${corners}`).toBeLessThan(0.09);
+    expect.soft(topRight, `strongest pixel of the ${corners}`).toBeGreaterThan(0.4);
+
+    /* Down a vertical band at the middle of the width, a fifth of it wide: the same columns at
+       the top, at mid-height and at the bottom, so that whatever changes from left to right
+       changes the same in all three. The top and bottom zones, 40px high, each hold the
+       field's first or last row; the one at mid-height, 22px high, the row there. In each
+       screenshot column of a zone, the brightest drawn pixel is one a tick covers fully,
+       whatever the tick's height; their mean is how bright the zone's ticks are. A field that
+       only dims near its top shows mid-height ticks as bright as the bottom ones. */
+    const band = { x: 0.4 * width, width: 0.2 * width };
+    const MIDDLE_ROW = 22;
+    const zones = {
+      top: { ...band, y: 0, height: CORNER },
+      middle: { ...band, y: height / 2 - MIDDLE_ROW / 2, height: MIDDLE_ROW },
+      bottom: { ...band, y: height - CORNER, height: CORNER },
+    };
+    const mean = (values: number[]): number => values.reduce((total, value) => total + value, 0) / values.length;
+    const brightness = async (zone: Rectangle): Promise<number> => {
+      const columns = await brightestLuminanceAboveBackgroundPerColumnInRectangle(tickField, screenshot, zone);
+      expect(columns.length, `columns with drawn pixels in ${describeZone(zone)}`).toBeGreaterThan(0);
+      return mean(columns);
+    };
+    const top = await brightness(zones.top);
+    const middle = await brightness(zones.middle);
+    const bottom = await brightness(zones.bottom);
+    const column = `mean, over the drawn columns of each zone, of the brightest pixel's luma above the background: top ${describeZone(zones.top)} ${top.toFixed(1)}, mid-height ${describeZone(zones.middle)} ${middle.toFixed(1)}, bottom ${describeZone(zones.bottom)} ${bottom.toFixed(1)}`;
+    expect.soft(top, `top against 1.1 times mid-height; ${column}`).toBeGreaterThan(1.1 * middle);
+    expect.soft(middle, `mid-height against 1.15 times bottom; ${column}`).toBeGreaterThan(1.15 * bottom);
+  });
+
   test('with a fine pointer, hovering a tick-field brightens the ticks under the pointer: once revealed, the zone around the pointer shows more than 1.5 times the brightness above the background it showed before the hover', async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
     await serveSite(context, CATALOG_SITE, siteDirectory);
@@ -1222,6 +1292,22 @@ test.describe('catalog: tick-field', () => {
       drawnStrokesInRectangle(tickField, await tickField.screenshot(), zone);
     const describeBox = (box: Rectangle) =>
       `${box.x.toFixed(1)}–${(box.x + box.width).toFixed(1)}px × ${box.y.toFixed(1)}–${(box.y + box.height).toFixed(1)}px`;
+    /* The ticks drawn whole in a zone, each across from its left edge to its right edge as far
+       as it covers the pixels, anti-aliased edges included, whatever its opacity: a dim tick
+       whose faint edge column falls within a rounding error of the background is as wide as the
+       same tick lit. Measured over the tick's own rows, 2px beyond its drawn pixels on either
+       side, well short of its neighbours 16px away. */
+    const ticksIn = async (zone: Rectangle): Promise<Rectangle[]> => {
+      const screenshot = await tickField.screenshot();
+      const strokes = await drawnStrokesInRectangle(tickField, screenshot, zone);
+      const PADDING = 2;
+      const across = await horizontalExtentOfDrawnStrokeInRectangles(
+        tickField,
+        screenshot,
+        strokes.map((stroke) => ({ ...stroke, x: stroke.x - PADDING, width: stroke.width + 2 * PADDING })),
+      );
+      return strokes.map((stroke, i) => ({ ...stroke, ...across[i] }));
+    };
 
     /* The unlit tick nearest to a point, in the dim left part where the ticks are short, and the
        zone of three rows of three ticks around it: ticks stand 16px apart within a row and rows
@@ -1291,13 +1377,13 @@ test.describe('catalog: tick-field', () => {
       await page.mouse.move(outside.x, outside.y);
       await page.clock.runFor(300);
       const { centre, zone } = await zoneAround({ x: 0.2 * fieldBox!.width, y: fieldBox!.height / 2 });
-      const unlit = await strokesIn(zone);
+      const unlit = await ticksIn(zone);
       expect(unlit.length, `unlit ticks drawn whole in the zone ${describeBox(zone)}`).toBe(9);
 
       await page.mouse.move(fieldBox!.x + centre.x, fieldBox!.y + centre.y);
       /* A few animation frames. */
       await page.clock.runFor(100);
-      const { problems, growth } = compare(unlit, await strokesIn(zone));
+      const { problems, growth } = compare(unlit, await ticksIn(zone));
       expect(
         problems,
         `strokes drawn whole in the zone ${describeBox(zone)} under the pointer at (${Math.round(centre.x)}, ${Math.round(centre.y)})px, against its unlit ticks`,
@@ -1330,13 +1416,13 @@ test.describe('catalog: tick-field', () => {
     if (!hasTouch) await page.mouse.move(onScreen.x, onScreen.y);
     await page.clock.runFor(300);
     const { zone } = await zoneAround({ x: point.x - RADIUS, y: point.y });
-    const unlit = await strokesIn(zone);
+    const unlit = await ticksIn(zone);
     expect(unlit.length, `unlit ticks drawn whole in the zone ${describeBox(zone)}`).toBe(9);
 
     if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
     else await page.mouse.click(onScreen.x, onScreen.y);
     await page.clock.runFor(300);
-    const { problems, growth } = compare(unlit, await strokesIn(zone));
+    const { problems, growth } = compare(unlit, await ticksIn(zone));
     expect(
       problems,
       `strokes drawn whole in the zone ${describeBox(zone)}, which the ring crosses about ${RADIUS}px to the left of the click point at (${Math.round(point.x)}, ${Math.round(point.y)})px 300 ms after the click, against its unlit ticks`,
