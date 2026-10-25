@@ -2348,6 +2348,72 @@ test.describe('catalog: tick-field', () => {
     ).toEqual([]);
   });
 
+  test('if the visitor turns on reduced motion while a ripple spreads, a tick-field stays still from then on: once revealed, 300 ms after a click (a tap on mobile) at its centre, reduced motion is turned on, and 300 ms and 2 s after the switch, every vertical band of it shows the brightness it showed two animation frames after the switch', async ({ page, context, hasTouch }) => {
+    /* Animations are allowed: the visitor's motion preference is left as the browser sets
+       it, and the field is fully revealed. */
+    const tickField = await openRevealedTickField(page, context);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const width = fieldBox!.width;
+    /* The centre of the field, with room all around it for a ring, about 84px from it 300 ms
+       after the click and still spreading. */
+    const clicked = { x: width / 2, y: fieldBox!.height / 2 };
+    const onScreen = { x: fieldBox!.x + clicked.x, y: fieldBox!.y + clicked.y };
+
+    /* The width split into adjacent vertical bands, at least 40px wide each and as high as the
+       field: the first starts at the left edge, the last ends at the right edge. Together they
+       cover the whole field, every place the ring crosses. */
+    const MIN_BAND_WIDTH = 40;
+    const bands = verticalBands(width, fieldBox!.height, MIN_BAND_WIDTH);
+    const describeBand = (band: Rectangle): string =>
+      `${Math.round(band.x)}–${Math.round(band.x + band.width)}px`;
+    const brightness = async (): Promise<number[]> => {
+      const screenshot = await tickField.screenshot();
+      return Promise.all(bands.map((band) => luminanceAboveBackgroundInRectangle(tickField, screenshot, band)));
+    };
+    /* The bands whose brightness differs from `reference` by more than `tolerance` of it. */
+    const changedBands = (reference: number[], measured: number[], tolerance: number): string[] =>
+      bands
+        .map((band, index) => ({ band, before: reference[index], after: measured[index] }))
+        .filter(({ before, after }) => Math.abs(after - before) > tolerance * before)
+        .map(({ band, before, after }) => `${describeBand(band)}: ${Math.round(before)} → ${Math.round(after)}`);
+
+    /* With a fine pointer, a click first brings the pointer over the click point, which lights
+       the ticks under it: the pointer hovers it already before the click, so that the field
+       differs by the ripple alone. */
+    if (!hasTouch) await page.mouse.move(onScreen.x, onScreen.y);
+    await page.clock.runFor(300);
+    const beforeClick = await brightness();
+
+    /* The ripple spreads: 300 ms after the click, its ring lights bands the field showed
+       dimmer just before the click. */
+    await clickOrTap(page, hasTouch, onScreen);
+    await page.clock.runFor(300);
+    expect(
+      changedBands(beforeClick, await brightness(), 0.05),
+      `bands of the ${Math.round(width)}px-wide tick-field whose brightness above the background, 300 ms after a ${hasTouch ? 'tap' : 'click'} at (${Math.round(clicked.x)}, ${Math.round(clicked.y)})px, differs by more than 5% from what they showed just before it`,
+    ).not.toEqual([]);
+
+    /* The visitor then asks for reduced motion, the ring still far from the end of its 1.7 s.
+       Time moves by two animation frames, then stands still again. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.clock.runFor(32);
+    const rightAfterSwitch = await brightness();
+
+    /* From then on, still: 300 ms after the switch, while the ring would still spread, and
+       2 s after it, once it would have faded, each band shows what it showed right after the
+       switch, within 2%. */
+    await page.clock.runFor(300);
+    const shortlyAfter = changedBands(rightAfterSwitch, await brightness(), 0.02).map((band) => `300 ms after: ${band}`);
+    await page.clock.runFor(1700);
+    const longAfter = changedBands(rightAfterSwitch, await brightness(), 0.02).map((band) => `2 s after: ${band}`);
+    expect(
+      [...shortlyAfter, ...longAfter],
+      `bands of the ${Math.round(width)}px-wide tick-field whose brightness above the background, 300 ms and 2 s after reduced motion was turned on while the ripple of a ${hasTouch ? 'tap' : 'click'} at (${Math.round(clicked.x)}, ${Math.round(clicked.y)})px spread, differs by more than 2% from what they showed two animation frames after the switch`,
+    ).toEqual([]);
+  });
+
   test('a tick-field scrolled out of view during its reveal stops animating, and resumes once back: while it is off screen, the page requests no animation frame, and 2 s after it is back on screen, every vertical band of it, from the left edge to the right edge, shows drawn pixels', async ({ page, context }) => {
     await serveSite(context, CATALOG_SITE, siteDirectory);
     await stopClockBeforeLoad(page);
