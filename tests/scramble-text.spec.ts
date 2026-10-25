@@ -264,6 +264,34 @@ test.describe('catalog: scramble-text', () => {
     }
   });
 
+  test('while a scramble-text decodes, assistive technologies are given only its final text: none of its signs is in the accessibility tree', async ({ page, context }) => {
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it, step by step, to watch the decoding as it goes. */
+    await openCatalogPage(page, context, 'scramble-text-heading', 'no-preference');
+    /* The only second-level heading of the page (tests/fixtures/catalog/content/scramble-text-heading.md),
+       whose whole text is a scramble-text: "Échappement". */
+    const heading = page.getByRole('main').getByRole('heading', { level: 2 });
+    await expect(heading).toHaveCount(1);
+    await expect(heading.locator('scramble-text')).toHaveCount(1);
+    /* From load until the text is in clear (1.5 s), every 25 ms: the accessibility tree of
+       the heading — its role, its name and every text a screen reader can reach inside it,
+       such as when it reads the page line by line — holds "Échappement" and none of the
+       signs shown on screen. Its level, written "[level=2]", is not text and is left out. */
+    for (let elapsed = 0; elapsed < 1500; elapsed += 25) {
+      if (elapsed > 0) await page.clock.runFor(25);
+      const shown = await textOnScreen(heading);
+      const accessibilityTree = await heading.ariaSnapshot();
+      const exposed = accessibilityTree.replace('[level=2]', '');
+      expect(exposed, `at ${elapsed} ms, while "${shown}" is shown, assistive technologies get the final text`).toContain('Échappement');
+      for (const sign of Array.from(SIGNS)) {
+        expect(
+          exposed,
+          `at ${elapsed} ms, while "${shown}" is shown, the accessibility tree of the heading holds no "${sign}":\n${accessibilityTree}`,
+        ).not.toContain(sign);
+      }
+    }
+  });
+
   test('while a scramble-text decodes, its spaces stay spaces, at the same positions', async ({ page, context }) => {
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it, step by step, to watch the decoding as it goes. */
