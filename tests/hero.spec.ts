@@ -878,6 +878,30 @@ test('on phone as on desktop, the hero’s veil follows the design: with the fie
   ).toEqual([]);
 });
 
+test('on phone as on desktop, the hero’s veil spreads as wide as the design’s: with the field still (reduced motion), compared with the same hero without its veil, halfway along the horizontal line from its densest point, at 38 % of the hero’s width and 55 % of its height, to the hero’s right edge, the field keeps at most 0.63 of its brightness', async ({ page }) => {
+  const { hero, text } = await stillHero(page);
+  const { width, height } = (await hero.boundingBox())!;
+
+  /* A 32px square centred halfway between the veil's densest point in the design, at 38 % of
+     the width and 55 % of the height, and the hero's right edge, on the same row: at 69 % of
+     the width. The design's veil, an ellipse reaching 70 % of the width on each side of that
+     point, still hides more than 40 % of the field there; a veil reaching less than half the
+     width fades out sooner and lets most of the field show. */
+  const SIDE = 32;
+  const point = { x: (0.38 * width + width) / 2, y: 0.55 * height };
+  const halfway: Rectangle = { x: point.x - SIDE / 2, y: point.y - SIDE / 2, width: SIDE, height: SIDE };
+
+  /* The field is brighter on the right than on the left: what the zone keeps of the field's
+     brightness is measured against the same hero without its veil. */
+  const { veiled, bare, background } = await heroWithAndWithoutVeil(page, hero, text);
+  const { drawn, kept } = await brightnessKeptUnderLayerInRectangle(hero, bare, veiled, halfway, background);
+  expect(drawn, `brightness above the background of the field around (${Math.round(point.x)}, ${Math.round(point.y)})px: ticks are drawn there`).toBeGreaterThan(0);
+  expect(
+    kept,
+    `share of the field’s brightness kept around (${Math.round(point.x)}, ${Math.round(point.y)})px, halfway from the veil’s densest point to the right edge of the ${Math.round(width)} × ${Math.round(height)}px hero`,
+  ).toBeLessThanOrEqual(0.63);
+});
+
 test('served under /portfolio/, the first hero button of the French home page, "Voir les projets", leads to /portfolio/fr/projets/', async ({ page }) => {
   await page.goto('http://localhost:1315/portfolio/fr/');
   const firstButton = firstHeroButton(page);
