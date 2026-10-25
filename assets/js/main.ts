@@ -201,7 +201,7 @@ class TickField extends HTMLElement {
 
   private pressedInside = false;
 
-  private ripple: (Point & { start: number }) | undefined;
+  private ripples: (Point & { start: number })[] = [];
 
   connectedCallback(): void {
     this.canvas.setAttribute('aria-hidden', 'true');
@@ -226,7 +226,7 @@ class TickField extends HTMLElement {
     });
     this.addEventListener('click', (event) => {
       if (!this.pressedInside || reducedMotionQuery().matches) return;
-      this.ripple = { ...this.localPoint(event), start: performance.now() };
+      this.ripples.push({ ...this.localPoint(event), start: performance.now() });
       this.requestDraw();
     });
     this.revealStart = performance.now();
@@ -265,12 +265,12 @@ class TickField extends HTMLElement {
   private advanceAnimations(): void {
     if (this.isRevealing()) this.advanceReveal();
     this.trail = this.trail.filter((point) => this.pointAlpha(point) > 0);
-    if (this.rippleAge() >= FIELD_RIPPLE_DURATION_MS) this.ripple = undefined;
+    this.ripples = this.ripples.filter((ripple) => this.rippleAge(ripple) < FIELD_RIPPLE_DURATION_MS);
   }
 
   /* No frame while off screen, unless the trail or a ripple is still fading. */
   private isAnimating(): boolean {
-    return this.isRevealing() || this.hasFadingPoint() || this.ripple !== undefined;
+    return this.isRevealing() || this.hasFadingPoint() || this.ripples.length > 0;
   }
 
   private isRevealing(): boolean {
@@ -291,15 +291,18 @@ class TickField extends HTMLElement {
     }).observe(this);
   }
 
-  private rippleAge(): number {
-    return this.ripple ? performance.now() - this.ripple.start : 0;
+  private rippleAge(ripple: { start: number }): number {
+    return performance.now() - ripple.start;
   }
 
-  /* A tick is lit when the ring passes over it. */
+  /* A tick is lit when a ring passes over it; rings add up. */
   private rippleLighting(x: number, y: number, tickHeight: number): number {
-    if (!this.ripple) return 0;
-    const age = this.rippleAge();
-    const distance = this.distanceFromTick(x, y, tickHeight, this.ripple);
+    return this.ripples.reduce((sum, ripple) => sum + this.singleRippleLighting(ripple, x, y, tickHeight), 0);
+  }
+
+  private singleRippleLighting(ripple: Point & { start: number }, x: number, y: number, tickHeight: number): number {
+    const age = this.rippleAge(ripple);
+    const distance = this.distanceFromTick(x, y, tickHeight, ripple);
     const offset = distance - age * FIELD_RIPPLE_SPEED_PX_PER_MS;
     if (Math.abs(offset) > FIELD_RIPPLE_RING_HALF_WIDTH_PX) return 0;
     const spread = offset < 0 ? FIELD_RIPPLE_INNER_FALLOFF_PX : FIELD_RIPPLE_OUTER_FALLOFF_PX;
