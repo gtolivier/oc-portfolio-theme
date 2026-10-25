@@ -301,6 +301,53 @@ test('on phone as on desktop, the hero heading follows the design’s spacing: n
   }
 });
 
+test('on phone as on desktop, the hero tagline follows the design’s spacing: 20 px with a line height of 1.55, at most 600 px wide, starting 165 px below the heading from 768 px wide; 18 px, 40 px below the heading on a phone; within 1.5 px', async ({ page, isMobile }) => {
+  /* Design reference: tagline in 20px, line-height 1.55, max-width 600px, margin-top 165px
+     below the heading, which has no margin of its own. On a phone, where the design has no
+     layout, 18px and 40px below the heading; the line height and the maximum width stay.
+     Desktop projects are checked at a wide window and at 768 px wide, where the desktop
+     spacing starts; phone projects at their own size. */
+  const viewports = isMobile ? [page.viewportSize()!] : [{ width: 1280, height: 900 }, { width: 768, height: 1024 }];
+  const expectedFontSize = isMobile ? 18 : 20;
+  const expectedGap = isMobile ? 40 : 165;
+  for (const viewport of viewports) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await page.setViewportSize(viewport);
+    await page.goto('/fr/');
+    await page.evaluate(() => document.fonts.ready);
+    const mainHeading = mainContentHeading(page);
+    /* Both heading lines in clear: the decoding is over. */
+    await expect(mainHeading).toHaveText(/^\s*Jean Exemple\s*Horloger indépendant\s*$/);
+    /* The tagline: the element holding its first line, which holds the other two as well. */
+    const tagline = page.getByRole('main').getByText('Montres mécaniques sur mesure — 20 ans d’atelier.');
+    await expect(tagline).toBeVisible();
+    await expect(tagline).toContainText('de pendules et de montres anciennes.');
+
+    const style = await tagline.evaluate((el) => {
+      const computed = getComputedStyle(el);
+      return {
+        fontSize: parseFloat(computed.fontSize),
+        rawLineHeight: computed.lineHeight,
+        lineHeight: parseFloat(computed.lineHeight),
+        maxWidth: computed.maxWidth,
+        width: el.getBoundingClientRect().width,
+      };
+    });
+    expect.soft(style.fontSize, `at ${size}, tagline font size`).toBeCloseTo(expectedFontSize, 1);
+    expect.soft(style.lineHeight / style.fontSize, `at ${size}, tagline line height (${style.rawLineHeight} for ${style.fontSize}px)`).toBeCloseTo(1.55, 2);
+    expect.soft(style.maxWidth, `at ${size}, tagline maximum width`).toBe('600px');
+    expect.soft(style.width, `at ${size}, tagline width`).toBeLessThanOrEqual(600.5);
+
+    /* The gap between the bottom of the heading's own box (its title line included) and the
+       top of the tagline's box. */
+    const headingBox = (await mainHeading.boundingBox())!;
+    const taglineBox = (await tagline.boundingBox())!;
+    const gap = taglineBox.y - (headingBox.y + headingBox.height);
+    expect.soft(gap, `at ${size}, space between the bottom of the heading and the top of the tagline`).toBeGreaterThanOrEqual(expectedGap - 1.5);
+    expect.soft(gap, `at ${size}, space between the bottom of the heading and the top of the tagline`).toBeLessThanOrEqual(expectedGap + 1.5);
+  }
+});
+
 test('on the French home page, the hero heading decodes: right after load, its author name and professional title are scrambled, and 4 s later both are in clear', async ({ page }) => {
   /* Animations are allowed, and time stands still from before the page loads, until the
      test advances it: animation frames and timers then run as they would in 4 s. */
