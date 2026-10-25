@@ -875,6 +875,21 @@ test.describe('home page without a hero', () => {
     await expect(main.getByRole('link')).toHaveCount(0);
     await expect(main).toHaveText(homePageText);
   });
+
+  test('on a home page without a hero and on another page, the theme’s script runs to its end without raising any error', async ({ page, context }) => {
+    await serveSite(context, SITE_WITHOUT_HERO, siteDirectory);
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(`${page.url()}: ${error.message}`));
+    for (const address of ['/fr/', '/fr/page-longue/']) {
+      await page.goto(`${SITE_WITHOUT_HERO.origin}${address}`);
+      /* The script defines its two custom elements last: once both are defined, it has run
+         to its end, so the absence of errors does not come from a script that did not run. */
+      await page.waitForFunction(
+        () => customElements.get('scramble-text') !== undefined && customElements.get('tick-field') !== undefined,
+      );
+    }
+    expect(errors).toEqual([]);
+  });
 });
 
 test.describe('home page of another site, with a different hero', () => {
