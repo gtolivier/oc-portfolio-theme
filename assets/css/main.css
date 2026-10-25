@@ -282,7 +282,8 @@ tick-field > canvas {
   pointer-events: none;
 }
 
-/* In the hero, the veil covers the text zone across the full width. */
+/* In the hero, the veil is densest at 38 % of the width and 55 % of the height
+   and fades out towards the edges. */
 .hero .veil {
-  background: linear-gradient(to bottom, transparent, rgb(var(--color-ink-channels) / 0.3) 25% 60%, transparent);
+  background: radial-gradient(ellipse 45% 60% at 38% 55%, rgb(var(--color-ink-channels) / 0.9), transparent);
 }
