@@ -18,8 +18,12 @@ The roadmap (one conversation per feature) lives in the private repository
 ## Commands
 
 - `hugo server --source exampleSite`: example site, locally.
-- `npm test`: Playwright tests (starts Hugo on its own, port 1314).
-- `npx playwright test --project=chromium`: a single browser.
+- `npx playwright test --project=chromium --project=mobile-chrome`: the
+  test command — desktop and mobile Chromium. The TDD cycles run this one.
+- `npx playwright test --project=chromium {files}`: the focused test
+  command, for working runs on a few test files.
+- `npm test`: all 5 Playwright projects (starts Hugo on its own, port
+  1314). Left to the CI, which runs it on every pull request.
 
 ## Rules
 
