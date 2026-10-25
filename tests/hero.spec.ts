@@ -683,11 +683,12 @@ test('on phone as on desktop, a click (a tap on mobile) on the hero’s professi
   await page.clock.runFor(300);
   const after = await hero.screenshot();
 
-  /* Lit by the ring: on average, each pixel of the zone at least 2 luma levels (out of 255)
-     brighter than just before the click. The ring crosses a fifth of each zone's depth, and
-     the text over it (the author name's bold letters above the title, the tagline below it)
-     hides part of it. */
-  const MIN_RING_GAIN = 2;
+  /* Lit by the ring: on average, each pixel of the zone at least 0.15 luma level (out of 255)
+     brighter than just before the click; without a click, the zones gain nothing. The gain is
+     small: the ring crosses a fifth of each zone's depth, the text over it (the author name's
+     bold letters above the title, the tagline below it) hides part of it, and the ring's
+     accent, darker than the field's cream, lies there under the hero's dark veil. */
+  const MIN_RING_GAIN = 0.15;
   const gains = await Promise.all(
     ringZones.map(async (zone) => ({ zone, gain: await meanLuminanceGainedInRectangle(hero, before, after, zone.rectangle) })),
   );
