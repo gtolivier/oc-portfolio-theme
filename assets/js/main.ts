@@ -169,6 +169,9 @@ type LitPoint = Point & { alpha: number };
 /* Where a click started a ring, and when. */
 type Ripple = Point & { start: number };
 
+/* A ripple as one drawing sees it: its age read once, at the drawing's time. */
+type AgedRipple = Point & { age: number };
+
 /* How many columns and rows of ticks, and where the first one sits. */
 type FieldLayout = { columns: number; rows: number; left: number; top: number };
 
@@ -183,6 +186,7 @@ type FieldDrawing = {
   height: number;
   litColor: string;
   litTrail: LitPoint[];
+  agedRipples: AgedRipple[];
 };
 
 /* How far along its line of the grid a column or row sits: 0 for the first, 1 for the last. */
@@ -223,6 +227,11 @@ class TickField extends HTMLElement {
   private pressedInside = false;
 
   private ripples: Ripple[] = [];
+
+  private gradient: CanvasGradient | undefined;
+
+  /* The box size and colours the gradient was made for. */
+  private gradientKey = '';
 
   connectedCallback(): void {
     this.canvas.setAttribute('aria-hidden', 'true');
@@ -288,7 +297,7 @@ class TickField extends HTMLElement {
     if (this.isRevealing()) this.advanceReveal();
     const now = performance.now();
     this.trail = this.trail.filter((point) => this.pointAlpha(point, now) > 0);
-    this.ripples = this.ripples.filter((ripple) => this.rippleAge(ripple) < FIELD_RIPPLE_DURATION_MS);
+    this.ripples = this.ripples.filter((ripple) => now - ripple.start < FIELD_RIPPLE_DURATION_MS);
   }
 
   /* No frame while off screen, unless the trail or a ripple is still fading. */
@@ -314,17 +323,19 @@ class TickField extends HTMLElement {
     }).observe(this);
   }
 
-  private rippleAge(ripple: Ripple): number {
-    return performance.now() - ripple.start;
+  /* Read once per drawing, not once per tick. */
+  private agedRipples(): AgedRipple[] {
+    const now = performance.now();
+    return this.ripples.map((ripple) => ({ x: ripple.x, y: ripple.y, age: now - ripple.start }));
   }
 
   /* A tick is lit when a ring passes over it; rings add up. */
-  private rippleLighting(x: number, y: number, tickHeight: number): number {
-    return this.ripples.reduce((sum, ripple) => sum + this.singleRippleLighting(ripple, x, y, tickHeight), 0);
+  private rippleLighting(agedRipples: AgedRipple[], x: number, y: number, tickHeight: number): number {
+    return agedRipples.reduce((sum, ripple) => sum + this.singleRippleLighting(ripple, x, y, tickHeight), 0);
   }
 
-  private singleRippleLighting(ripple: Ripple, x: number, y: number, tickHeight: number): number {
-    const age = this.rippleAge(ripple);
+  private singleRippleLighting(ripple: AgedRipple, x: number, y: number, tickHeight: number): number {
+    const { age } = ripple;
     const distance = this.distanceFromTick(x, y, tickHeight, ripple);
     const offset = distance - age * FIELD_RIPPLE_SPEED_PX_PER_MS;
     if (Math.abs(offset) > FIELD_RIPPLE_RING_HALF_WIDTH_PX) return 0;
@@ -382,6 +393,7 @@ class TickField extends HTMLElement {
       height,
       litColor: colors.accent,
       litTrail: this.litTrail(),
+      agedRipples: this.agedRipples(),
     };
     for (let column = 0; column < drawing.layout.columns; column += 1) {
       const x = drawing.layout.left + column * FIELD_TICK_SPACING_PX;
@@ -428,7 +440,7 @@ class TickField extends HTMLElement {
   private drawLighting(drawing: FieldDrawing, x: number, y: number, tickHeight: number): void {
     const tickColor = drawing.context.fillStyle;
     const hover = this.hoverLighting(drawing.litTrail, x, y, tickHeight);
-    const ripple = this.rippleLighting(x, y, tickHeight);
+    const ripple = this.rippleLighting(drawing.agedRipples, x, y, tickHeight);
     this.drawGrownEnds(drawing, x, y, tickHeight, Math.max(hover, ripple));
     this.drawLitTick(drawing, x, y, tickHeight, hover);
     this.drawLitTick(drawing, x, y, tickHeight, ripple);
@@ -497,8 +509,23 @@ class TickField extends HTMLElement {
     return { x: x + FIELD_TICK_WIDTH_PX / 2, y: y + tickHeight / 2 };
   }
 
-  /* Along the diagonal: green at the bottom left, accent in the middle, cream at the top right. */
+  /* Made again only when the box size or the theme colours change. */
   private tickGradient(
+    context: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    colors: FieldColors,
+  ): CanvasGradient {
+    const key = [width, height, colors.green, colors.accent, colors.cream].join(' ');
+    if (!this.gradient || key !== this.gradientKey) {
+      this.gradient = this.createTickGradient(context, width, height, colors);
+      this.gradientKey = key;
+    }
+    return this.gradient;
+  }
+
+  /* Along the diagonal: green at the bottom left, accent in the middle, cream at the top right. */
+  private createTickGradient(
     context: CanvasRenderingContext2D,
     width: number,
     height: number,
