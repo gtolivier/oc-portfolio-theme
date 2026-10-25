@@ -294,15 +294,15 @@ class TickField extends HTMLElement {
      revealStart: no frame is requested for it while off screen, so it catches up once back. */
   private advanceAnimations(): void {
     if (this.isRevealing()) this.advanceReveal();
+    /* Reduced motion turned on while the trail fades or a ripple spreads: both end at once. */
+    if (reducedMotionQuery().matches) {
+      this.trail = [];
+      this.ripples = [];
+      return;
+    }
     const now = performance.now();
-    /* Reduced motion turned on while the trail fades: the trail ends at once. */
-    this.trail = reducedMotionQuery().matches
-      ? []
-      : this.trail.filter((point) => this.pointAlpha(point, now) > 0);
-    /* Reduced motion turned on while a ripple spreads: the ripples end at once. */
-    this.ripples = reducedMotionQuery().matches
-      ? []
-      : this.ripples.filter((ripple) => now - ripple.start < FIELD_RIPPLE_DURATION_MS);
+    this.trail = this.trail.filter((point) => this.pointAlpha(point, now) > 0);
+    this.ripples = this.ripples.filter((ripple) => now - ripple.start < FIELD_RIPPLE_DURATION_MS);
   }
 
   /* No frame while off screen, unless the trail or a ripple is still fading. */
