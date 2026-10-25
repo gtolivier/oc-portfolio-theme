@@ -161,6 +161,9 @@ type Point = { x: number; y: number };
 /* Where the pointer passed, and since when it lingers there. */
 type TrailPoint = Point & { at: number };
 
+/* Where a click started a ring, and when. */
+type Ripple = Point & { start: number };
+
 /* How many columns and rows of ticks, and where the first one sits. */
 type FieldLayout = { columns: number; rows: number; left: number; top: number };
 
@@ -201,7 +204,7 @@ class TickField extends HTMLElement {
 
   private pressedInside = false;
 
-  private ripples: (Point & { start: number })[] = [];
+  private ripples: Ripple[] = [];
 
   connectedCallback(): void {
     this.canvas.setAttribute('aria-hidden', 'true');
@@ -291,7 +294,7 @@ class TickField extends HTMLElement {
     }).observe(this);
   }
 
-  private rippleAge(ripple: { start: number }): number {
+  private rippleAge(ripple: Ripple): number {
     return performance.now() - ripple.start;
   }
 
@@ -300,7 +303,7 @@ class TickField extends HTMLElement {
     return this.ripples.reduce((sum, ripple) => sum + this.singleRippleLighting(ripple, x, y, tickHeight), 0);
   }
 
-  private singleRippleLighting(ripple: Point & { start: number }, x: number, y: number, tickHeight: number): number {
+  private singleRippleLighting(ripple: Ripple, x: number, y: number, tickHeight: number): number {
     const age = this.rippleAge(ripple);
     const distance = this.distanceFromTick(x, y, tickHeight, ripple);
     const offset = distance - age * FIELD_RIPPLE_SPEED_PX_PER_MS;
