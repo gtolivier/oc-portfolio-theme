@@ -1,7 +1,7 @@
 {{ define "main" }}
   {{- with .Params.hero }}
   {{- if not site.Params.author }}{{ errorf "hero : le paramètre author du site n’est pas renseigné" }}{{ end }}
-  <section class="hero" aria-labelledby="hero-heading">
+  <tick-field class="hero" role="region" aria-labelledby="hero-heading">
     <h1 id="hero-heading"><scramble-text>{{ site.Params.author }}</scramble-text>
       {{- with .title }}
       {{- /* The title starts decoding when the name is done (see decodeDurationMs in main.ts). */}}
@@ -25,7 +25,7 @@
       {{- end }}
     </p>
     {{- end }}
-  </section>
+  </tick-field>
   {{- end }}
   {{ .Content }}
 {{ end }}
