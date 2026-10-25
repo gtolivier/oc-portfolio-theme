@@ -1790,6 +1790,63 @@ test.describe('catalog: tick-field', () => {
     ).toEqual([]);
   });
 
+  test('where the rings of two ripples cross, a tick is at least as bright as under one of them alone: once revealed, 300 ms after two clicks (two taps on mobile) at once, 84px to the left and 84px to the right of a tick of the dim left part, whose two rings pass over it at their strongest, the tick shows at least the brightness above the background it shows 300 ms after either click alone', async ({ page, context, hasTouch }) => {
+    const tickField = await openRevealedTickField(page, context);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const width = fieldBox!.width;
+
+    /* The ring grows about 0.28px per ms: 300 ms after a click, its middle is about 84px from
+       the click point. The tick is the one nearest to a point at mid-height, 40px short of
+       putting the left click point against the left edge: in the dim left part on every
+       screen, where the ripple's light shows plainly over the tick's own. Both click points lie
+       on its row, 84px away, so that each ring passes over it at its middle at the same moment,
+       and farther than the 60px a pointer hovering a click point lights: the rings alone light
+       it. Ticks stand 16px apart within a row and rows 22px apart. */
+    const RADIUS = 84;
+    const TICK_SPACING = 16;
+    const ROW_SPACING = 22;
+    const target = { x: RADIUS + 40, y: fieldBox!.height / 2 };
+    const strokes = await drawnStrokesInRectangle(tickField, await tickField.screenshot(), {
+      x: target.x - TICK_SPACING,
+      y: target.y - ROW_SPACING,
+      width: 2 * TICK_SPACING,
+      height: 2 * ROW_SPACING,
+    });
+    expect(strokes.length, `ticks drawn whole around (${Math.round(target.x)}, ${Math.round(target.y)})px`).toBeGreaterThan(0);
+    const tick = strokeNearest(strokes, target);
+    const centre = centreOf(tick);
+    const left = { x: fieldBox!.x + centre.x - RADIUS, y: fieldBox!.y + centre.y };
+    const right = { x: fieldBox!.x + centre.x + RADIUS, y: fieldBox!.y + centre.y };
+    expect(
+      centre.x - RADIUS > 0 && centre.x + RADIUS < width,
+      `both click points, ${RADIUS}px to either side of the tick at (${Math.round(centre.x)}, ${Math.round(centre.y)})px, lie inside the ${Math.round(width)}px-wide tick-field`,
+    ).toBe(true);
+
+    /* The tick in its box widened by 2px on either side and 5px above and below, so that its
+       light counts even if a ring draws it a little wider or taller; its neighbours, lit or
+       not, stay outside. */
+    const box = { x: tick.x - 2, y: tick.y - 5, width: tick.width + 4, height: tick.height + 10 };
+    const brightnessAfter = async (clicks: { x: number; y: number }[]): Promise<number> => {
+      /* All clicks at the same instant: time stands still until the test advances it. */
+      for (const click of clicks) await clickOrTap(page, hasTouch, click);
+      await page.clock.runFor(300);
+      const brightness = await luminanceAboveBackgroundInRectangle(tickField, await tickField.screenshot(), box);
+      /* Long enough for the ripples, gone 1.7 s after their clicks, to leave nothing behind. */
+      await page.clock.runFor(2000);
+      return brightness;
+    };
+    const leftAlone = await brightnessAfter([left]);
+    const rightAlone = await brightnessAfter([right]);
+    const crossing = await brightnessAfter([left, right]);
+
+    expect(
+      crossing,
+      `brightness above the background of the tick at (${Math.round(centre.x)}, ${Math.round(centre.y)})px, 300 ms after two clicks at once ${RADIUS}px to its left and right, against ${Math.round(leftAlone)} after the left click alone and ${Math.round(rightAlone)} after the right click alone`,
+    ).toBeGreaterThanOrEqual(Math.max(leftAlone, rightAlone));
+  });
+
   test('the ripple lasts more than a second: once revealed, 1.2 s after the click, a zone down and to the left of the click point, at 45°, about 336px from it, is brighter than just before the click', async ({ page, context, hasTouch }) => {
     const tickField = await openRevealedTickField(page, context);
 
