@@ -77,7 +77,8 @@ class ScrambleText extends HTMLElement {
 
   private revealLeftToRight(text: string): void {
     const letterCount = Array.from(text).length;
-    const totalTicks = decodeDurationMs(letterCount) / TICK_MS;
+    const durationMs = Number(this.getAttribute('duration')) || decodeDurationMs(letterCount);
+    const totalTicks = durationMs / TICK_MS;
     let tick = 0;
     this.tickTimer = setInterval(() => {
       tick += 1;
