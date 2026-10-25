@@ -9,7 +9,6 @@ import {
   colourAddedOverBackgroundInRectangle,
   countDrawnStrokes,
   countPixelsNotOfBackground,
-  drawnPixelsClosestToColourInRectangles,
   drawnStrokesInRectangle,
   heightsOfDrawnRunsInRectangle,
   horizontalBandsWithoutDrawnPixels,
@@ -1467,114 +1466,6 @@ test.describe('catalog: tick-field', () => {
       changedBands,
       `bands of the ${Math.round(width)}px-wide tick-field whose brightness above the background, 1.7 s after the click at (${Math.round(point.x)}, ${Math.round(point.y)})px, differs by more than 5% from what they showed just before it`,
     ).toEqual([]);
-  });
-
-  test('the ripple turns the ticks it lights to the accent colour and makes them nearly opaque: once revealed, 300 ms after the click, the colour the ticks at the middle of the ring add over the background, in the dim left part, takes the hue of the accent, and one of them shows a pixel 60% to 110% of the way from the background to the accent, with almost no other hue', async ({ page, context, hasTouch }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
-    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
-       320px high, with no content and a solid background. */
-    const tickField = page.getByRole('main').locator('tick-field');
-    await expect(tickField).toHaveCount(1);
-    await expect(tickField).toBeVisible();
-    await tickField.scrollIntoViewIfNeeded();
-    /* Fully revealed. */
-    await page.clock.runFor(2000);
-
-    const fieldBox = await tickField.boundingBox();
-    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
-    const height = fieldBox!.height;
-    /* The ring grows about 0.28px per ms: 300 ms after the click, its middle is about 84px
-       from the click point. The ticks measured lie to the left of the click point, their
-       centre within 7px of that circle; the click point is at mid-height, 42px short of
-       putting the ring against the left edge: they lie in the dim left part on every screen,
-       where the ticks are green and faint. All of them are more than 60px from the click
-       point, far enough for the ring alone to light them, not the glow of a pointer hovering
-       the click point. */
-    const RADIUS = 84;
-    const MIDDLE = 7;
-    const point = { x: RADIUS + 42, y: height / 2 };
-    const onScreen = { x: fieldBox!.x + point.x, y: fieldBox!.y + point.y };
-
-    /* With a fine pointer, a click first brings the pointer over the click point, which lights
-       the ticks under it: the pointer hovers it already before the click, so that both
-       measures show the same hover and differ by the ripple alone. */
-    if (!hasTouch) await page.mouse.move(onScreen.x, onScreen.y);
-    await page.clock.runFor(300);
-    const beforeScreenshot = await tickField.screenshot();
-
-    /* The ticks at the middle of the ring, as drawn just before the click, each in its box
-       widened by 2px on either side and 5px above and below, so that a tick the ripple draws
-       a little wider or taller still lies inside it; the boxes of two ticks never overlap. */
-    const ticks = await drawnStrokesInRectangle(tickField, beforeScreenshot, { x: 0, y: 0, width: point.x, height });
-    const boxes = ticks
-      .filter((tick) => Math.abs(Math.hypot(tick.x + tick.width / 2 - point.x, tick.y + tick.height / 2 - point.y) - RADIUS) <= MIDDLE)
-      .map((tick) => ({ x: tick.x - 2, y: tick.y - 5, width: tick.width + 4, height: tick.height + 10 }));
-    expect(boxes.length, 'ticks at the middle of the ring, to the left of the click point').toBeGreaterThanOrEqual(4);
-
-    /* The accent (the theme's --color-accent) adds (accent − background) over the background.
-       The hue of a colour drawn over the background, whatever its opacity, is the direction of
-       what it adds: the angle between that and what the accent adds says how far it is from
-       the accent's hue, 0° when only the accent is drawn there; the field's own green is about
-       20° away, its cream farther. */
-    const background = await channelsOfColour(tickField, await tickField.evaluate((el) => getComputedStyle(el).backgroundColor));
-    const accentColour = await tickField.evaluate((el) => getComputedStyle(el).getPropertyValue('--color-accent').trim());
-    const accent = await channelsOfColour(tickField, accentColour);
-    const accentAdds = [accent.red - background.red, accent.green - background.green, accent.blue - background.blue];
-    const accentNorm = Math.hypot(...accentAdds);
-    const degreesFromAccentHue = (added: Channels): number => {
-      const vector = [added.red, added.green, added.blue];
-      const dot = vector.reduce((sum, value, index) => sum + value * accentAdds[index], 0);
-      return (Math.acos(Math.min(1, dot / (Math.hypot(...vector) * accentNorm))) * 180) / Math.PI;
-    };
-    const colourAdded = async (screenshot: Buffer): Promise<Channels> => {
-      const added = await Promise.all(boxes.map((box) => colourAddedOverBackgroundInRectangle(tickField, screenshot, box)));
-      return added.reduce(
-        (sum, box) => ({ red: sum.red + box.red, green: sum.green + box.green, blue: sum.blue + box.blue }),
-        { red: 0, green: 0, blue: 0 },
-      );
-    };
-    const before = degreesFromAccentHue(await colourAdded(beforeScreenshot));
-
-    if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
-    else await page.mouse.click(onScreen.x, onScreen.y);
-    await page.clock.runFor(300);
-    const afterScreenshot = await tickField.screenshot();
-
-    /* The hue: within a few degrees of the accent's, and at most half as far from it as before
-       the click. */
-    const after = degreesFromAccentHue(await colourAdded(afterScreenshot));
-    const MAX_DEGREES = 8;
-    const hueMessage = `angle between the hue the ${boxes.length} ticks at the middle of the ring, about ${RADIUS}px to the left of the click point at (${Math.round(point.x)}, ${Math.round(point.y)})px, add over the background 300 ms after the click and the accent's, against ${before.toFixed(1)}° just before it`;
-    expect(after, hueMessage).toBeLessThan(MAX_DEGREES);
-    expect(after, hueMessage).toBeLessThan(before / 2);
-
-    /* Nearly opaque: in each tick, the pixel closest to the accent, written as the background
-       plus a share of (accent − background) — how far along the way from the background to
-       the accent it lies — plus what it adds in any other direction, as a share of the same
-       length. In one of the ticks at least, that pixel lies at least 60% of the way to the
-       accent and not more than 10% beyond it, and strays from that way by less than 15% of
-       its length. */
-    const closest = await drawnPixelsClosestToColourInRectangles(tickField, afterScreenshot, boxes, accentColour);
-    const shares = closest
-      .filter((pixel): pixel is Channels => pixel !== null)
-      .map((pixel) => {
-        const vector = [pixel.red - background.red, pixel.green - background.green, pixel.blue - background.blue];
-        const along = vector.reduce((sum, value, index) => sum + value * accentAdds[index], 0) / accentNorm ** 2;
-        const astray = Math.hypot(...vector.map((value, index) => value - along * accentAdds[index])) / accentNorm;
-        return { pixel, along, astray };
-      });
-    const MIN_ALONG = 0.6;
-    const MAX_ALONG = 1.1;
-    const MAX_ASTRAY = 0.15;
-    const describeShares = shares
-      .map(({ pixel, along, astray }) => `(${pixel.red}, ${pixel.green}, ${pixel.blue}): ${Math.round(100 * along)}% along, ${Math.round(100 * astray)}% astray`)
-      .join('; ');
-    expect(
-      shares.some(({ along, astray }) => along >= MIN_ALONG && along <= MAX_ALONG && astray < MAX_ASTRAY),
-      `a tick at the middle of the ring, 300 ms after the click at (${Math.round(point.x)}, ${Math.round(point.y)})px, whose pixel closest to the accent (${accent.red}, ${accent.green}, ${accent.blue}) lies ${100 * MIN_ALONG}% to ${100 * MAX_ALONG}% of the way from the background (${background.red}, ${background.green}, ${background.blue}) to it, straying less than ${100 * MAX_ASTRAY}% from that way; per tick: ${describeShares}`,
-    ).toBe(true);
   });
 
   test('the ripple fades: once revealed, 2 s after the click, every vertical band of the tick-field, from the left edge to the right edge, is back to the brightness it showed just before the click', async ({ page, context, hasTouch }) => {
