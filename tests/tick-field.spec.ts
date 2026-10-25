@@ -433,6 +433,71 @@ test.describe('catalog: tick-field', () => {
     ).toBeGreaterThan(1.4 * leftHeight);
   });
 
+  test('once revealed, a tick-field is green on the left and cream at the top right: the colour its ticks add over the background in its left fifth has clearly more green than red or blue, and in its top right corner takes the hue of the cream', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
+       to turn a tick to the accent. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await page.clock.runFor(16);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const width = fieldBox!.width;
+    const height = fieldBox!.height;
+    const screenshot = await tickField.screenshot();
+
+    /* The hue of a colour drawn over the background, whatever its opacity: the direction of
+       what it adds over the background, channel by channel. Ticks drawn with partial opacity
+       add a fraction of (colour − background), so the brightness of a zone does not change
+       which channels it adds most of. */
+    const describe = (added: Channels): string =>
+      `(${Math.round(added.red)}, ${Math.round(added.green)}, ${Math.round(added.blue)})`;
+
+    /* The left fifth, over the whole height: green. The green it adds is well above both the
+       red and the blue it adds; ticks of the theme's cream add more red than green. */
+    const leftZone = { x: 0, y: 0, width: 0.2 * width, height };
+    const left = await colourAddedOverBackgroundInRectangle(tickField, screenshot, leftZone);
+    const leftMessage = `red, green and blue the left fifth (0–${Math.round(leftZone.width)}px) adds over the background, summed over its drawn pixels: ${describe(left)}`;
+    expect(left.green, leftMessage).toBeGreaterThan(0);
+    expect(left.green, `${leftMessage}; green against 1.4 times red`).toBeGreaterThan(1.4 * left.red);
+    expect(left.green, `${leftMessage}; green against 1.4 times blue`).toBeGreaterThan(1.4 * left.blue);
+
+    /* The top right corner, the last tenth of the width over the top 15% of the height:
+       cream (the theme's --color-paper). The angle between what it adds over the background
+       and what the cream adds says how far its hue is from the cream's: 0° when only the
+       cream is drawn there; the accent is about 25° away, the green farther. */
+    const background = await channelsOfColour(tickField, await tickField.evaluate((el) => getComputedStyle(el).backgroundColor));
+    const cream = await channelsOfColour(
+      tickField,
+      await tickField.evaluate((el) => getComputedStyle(el).getPropertyValue('--color-paper').trim()),
+    );
+    const creamAdds = [cream.red - background.red, cream.green - background.green, cream.blue - background.blue];
+    const degreesFromCreamHue = (added: Channels): number => {
+      const vector = [added.red, added.green, added.blue];
+      const dot = vector.reduce((sum, value, index) => sum + value * creamAdds[index], 0);
+      const norm = (values: number[]) => Math.hypot(...values);
+      return (Math.acos(Math.min(1, dot / (norm(vector) * norm(creamAdds)))) * 180) / Math.PI;
+    };
+    const topRightZone = { x: 0.9 * width, y: 0, width: 0.1 * width, height: 0.15 * height };
+    const topRight = await colourAddedOverBackgroundInRectangle(tickField, screenshot, topRightZone);
+    expect(
+      topRight.red + topRight.green + topRight.blue,
+      `colour the top right corner (${Math.round(topRightZone.x)}–${Math.round(width)}px, 0–${Math.round(topRightZone.height)}px) adds over the background: ${describe(topRight)}`,
+    ).toBeGreaterThan(0);
+    const MAX_DEGREES = 8;
+    expect(
+      degreesFromCreamHue(topRight),
+      `angle between the hue the top right corner (${Math.round(topRightZone.x)}–${Math.round(width)}px, 0–${Math.round(topRightZone.height)}px) adds over the background, ${describe(topRight)}, and the cream's, ${describe({ red: creamAdds[0], green: creamAdds[1], blue: creamAdds[2] })}`,
+    ).toBeLessThan(MAX_DEGREES);
+  });
+
   test('with a fine pointer, hovering a tick-field brightens the ticks under the pointer: once revealed, the zone around the pointer shows more than 1.5 times the brightness above the background it showed before the hover', async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
     await serveSite(context, CATALOG_SITE, siteDirectory);
