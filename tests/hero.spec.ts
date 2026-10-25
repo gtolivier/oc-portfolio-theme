@@ -388,6 +388,68 @@ test('on phone as on desktop, the hero stack follows the design’s spacing: 14 
   }
 });
 
+test('on phone as on desktop, the hero buttons follow the design’s sizing and spacing: both in IBM Plex Mono 15 px, letter-spaced by 0.6 px (0.04em) within 0.02 px, with 26 px of horizontal padding, the same height within 1 px, 16 px apart and starting 44 px below the stack, within 1.5 px', async ({ page, isMobile }) => {
+  /* Design reference: buttons in mono 15px, letter-spacing 0.04em (0.6 px at 15 px), padding
+     14px 26px for the filled one, 13px 26px plus a 1px border for the outlined one, so both
+     are the same height; their row has a 16px gap and sits 44px below the stack. The design
+     has no phone layout: the same values apply there. Desktop projects are checked at a wide
+     window and at 768 px wide, where the desktop spacing starts; phone projects at their own
+     size. */
+  const viewports = isMobile ? [page.viewportSize()!] : [{ width: 1280, height: 900 }, { width: 768, height: 1024 }];
+  for (const viewport of viewports) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await page.setViewportSize(viewport);
+    await page.goto('/fr/');
+    await page.evaluate(() => document.fonts.ready);
+    const stack = page.getByRole('main').getByText('Laiton · Acier · Rubis · Émail', { exact: true });
+    await expect(stack).toBeVisible();
+    const first = firstHeroButton(page);
+    const second = secondHeroButton(page);
+    await expect(first).toHaveText(/^\s*Voir les projets/);
+    await expect(second).toHaveText('Contact');
+
+    const buttons = { 'first button, "Voir les projets"': first, 'second button, "Contact"': second };
+    for (const [name, button] of Object.entries(buttons)) {
+      await expect(button, `${name} at ${size}`).toBeVisible();
+      const style = await button.evaluate((el) => {
+        const computed = getComputedStyle(el);
+        return {
+          family: computed.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
+          fontSize: parseFloat(computed.fontSize),
+          rawLetterSpacing: computed.letterSpacing,
+          letterSpacing: parseFloat(computed.letterSpacing),
+          paddingLeft: parseFloat(computed.paddingLeft),
+          paddingRight: parseFloat(computed.paddingRight),
+        };
+      });
+      expect.soft(style.family, `at ${size}, ${name} font`).toBe('IBM Plex Mono');
+      expect.soft(style.fontSize, `at ${size}, ${name} font size`).toBeCloseTo(15, 1);
+      /* Distance to 0.6 px; NaN while the letter spacing is `normal`. */
+      expect.soft(Math.abs(style.letterSpacing - 0.6), `at ${size}, ${name} letter spacing (${style.rawLetterSpacing}) differs from 0.6px by`).toBeLessThanOrEqual(0.02);
+      expect.soft(style.paddingLeft, `at ${size}, ${name} left padding`).toBeCloseTo(26, 1);
+      expect.soft(style.paddingRight, `at ${size}, ${name} right padding`).toBeCloseTo(26, 1);
+    }
+
+    const stackBox = (await stack.boundingBox())!;
+    const firstBox = (await first.boundingBox())!;
+    const secondBox = (await second.boundingBox())!;
+    expect.soft(Math.abs(firstBox.height - secondBox.height), `at ${size}, height of the first button (${firstBox.height} px) differs from the second's (${secondBox.height} px) by`).toBeLessThanOrEqual(1);
+
+    /* 16 px between the two buttons: side by side when they share a line; when the second one
+       wraps below the first, as the design's wrapping row lays it out, 16 px between the rows. */
+    const shareALine = secondBox.y < firstBox.y + firstBox.height;
+    const apart = shareALine ? secondBox.x - (firstBox.x + firstBox.width) : secondBox.y - (firstBox.y + firstBox.height);
+    const apartLabel = `at ${size}, space between the buttons (${shareALine ? 'side by side' : 'second one below the first'})`;
+    expect.soft(apart, apartLabel).toBeGreaterThanOrEqual(16 - 1.5);
+    expect.soft(apart, apartLabel).toBeLessThanOrEqual(16 + 1.5);
+
+    /* The gap between the bottom of the stack's box and the top of the buttons' boxes. */
+    const below = Math.min(firstBox.y, secondBox.y) - (stackBox.y + stackBox.height);
+    expect.soft(below, `at ${size}, space between the bottom of the stack and the top of the buttons`).toBeGreaterThanOrEqual(44 - 1.5);
+    expect.soft(below, `at ${size}, space between the bottom of the stack and the top of the buttons`).toBeLessThanOrEqual(44 + 1.5);
+  }
+});
+
 test('on the French home page, the hero heading decodes: right after load, its author name and professional title are scrambled, and 4 s later both are in clear', async ({ page }) => {
   /* Animations are allowed, and time stands still from before the page loads, until the
      test advances it: animation frames and timers then run as they would in 4 s. */
