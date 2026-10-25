@@ -18,7 +18,7 @@ import {
 } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { tabUntilFocused } from './helpers/keyboard';
-import { bandsWithoutDrawnPixels, pixelsChangedPerColumnInRectangle } from './helpers/pixels';
+import { bandsWithoutDrawnPixels, meanLuminanceGainedInRectangle, pixelsChangedPerColumnInRectangle } from './helpers/pixels';
 import { SIGNS, textOnScreen } from './helpers/text-on-screen';
 
 /* Checks that each tagline line is visible in the area, and that each one starts below the
@@ -590,6 +590,93 @@ test('on phone as on desktop, the hero is a tick field drawn across its whole wi
     });
     expect.soft(isUnderThePointer, `at the middle of the ${name}, the element under the pointer is the ${name}`).toBe(true);
   }
+});
+
+test('on phone as on desktop, a click (a tap on mobile) on the hero’s tagline starts a ripple around that point: once revealed, 300 ms after the click, zones all around the click point, about 84px from it, got brighter since just before the click, while the zone at the click point did not', async ({ page, hasTouch }) => {
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  /* The hero is the main content region named by its main heading. */
+  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  await expect(hero).toBeVisible();
+  const tagline = hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.');
+  await expect(tagline).toBeVisible();
+  await tagline.scrollIntoViewIfNeeded();
+  /* Long after the field's reveal (about 1.1 s) and the heading's decoding (in clear 4 s after
+     load): from then on, nothing but the ripple changes what the hero shows. */
+  await page.clock.runFor(5000);
+
+  /* The click point: the middle of the tagline's first line box (rather than of its bounding
+     box, so that the point stays on its text even if it wraps), relative to the hero. */
+  const heroBox = (await hero.boundingBox())!;
+  const onScreen = await tagline.evaluate((el) => {
+    const box = el.getClientRects()[0];
+    return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  });
+  const point = { x: onScreen.x - heroBox.x, y: onScreen.y - heroBox.y };
+  const isOnTheTagline = await tagline.evaluate((el, { x, y }) => {
+    const hit = document.elementFromPoint(x, y);
+    return hit !== null && el.contains(hit);
+  }, onScreen);
+  expect(isOnTheTagline, 'the click point is on the tagline’s text').toBe(true);
+
+  /* The ring grows about 0.28px per ms: 300 ms after the click, it is about 84px from the click
+     point. Four zones straddle the ring, 20px deep across it and 40px long along it, to its
+     right, left, top and bottom; one 30px square sits at the click point, well inside the ring.
+     All of them are far enough from the click point for the ring alone to light them, not the
+     glow of a pointer hovering the click point. Text lies in some of them: what each zone
+     gained is measured between two screenshots, where unchanged text adds nothing. */
+  const RADIUS = 84;
+  const DEPTH = 20;
+  const LENGTH = 40;
+  const ringZones = [
+    { name: 'right', rectangle: { x: point.x + RADIUS - DEPTH / 2, y: point.y - LENGTH / 2, width: DEPTH, height: LENGTH } },
+    { name: 'left', rectangle: { x: point.x - RADIUS - DEPTH / 2, y: point.y - LENGTH / 2, width: DEPTH, height: LENGTH } },
+    { name: 'top', rectangle: { x: point.x - LENGTH / 2, y: point.y - RADIUS - DEPTH / 2, width: LENGTH, height: DEPTH } },
+    { name: 'bottom', rectangle: { x: point.x - LENGTH / 2, y: point.y + RADIUS - DEPTH / 2, width: LENGTH, height: DEPTH } },
+  ];
+  for (const zone of ringZones) {
+    const { x, y, width, height } = zone.rectangle;
+    expect(
+      x >= 0 && y >= 0 && x + width <= heroBox.width && y + height <= heroBox.height,
+      `the ${zone.name} zone about ${RADIUS}px from the click point lies inside the ${Math.round(heroBox.width)} × ${Math.round(heroBox.height)}px hero`,
+    ).toBe(true);
+  }
+  const HALF_SIDE = 15;
+  const centre = { x: point.x - HALF_SIDE, y: point.y - HALF_SIDE, width: 2 * HALF_SIDE, height: 2 * HALF_SIDE };
+
+  /* With a fine pointer, a click first brings the pointer over the click point, which lights
+     the ticks under it: the pointer hovers it already before the click, so that both
+     screenshots show the same hover and differ by the ripple alone. */
+  if (!hasTouch) await page.mouse.move(onScreen.x, onScreen.y);
+  await page.clock.runFor(300);
+  const before = await hero.screenshot();
+
+  if (hasTouch) await page.touchscreen.tap(onScreen.x, onScreen.y);
+  else await page.mouse.click(onScreen.x, onScreen.y);
+  await page.clock.runFor(300);
+  const after = await hero.screenshot();
+
+  /* Lit by the ring: on average, each pixel of the zone at least 2 luma levels (out of 255)
+     brighter than just before the click. The ring crosses a fifth of each zone's depth, and
+     the text over it (the heading's bold letters above the tagline) hides part of it. */
+  const MIN_RING_GAIN = 2;
+  const gains = await Promise.all(
+    ringZones.map(async (zone) => ({ zone, gain: await meanLuminanceGainedInRectangle(hero, before, after, zone.rectangle) })),
+  );
+  const dimRingZones = gains
+    .filter(({ gain }) => !(gain >= MIN_RING_GAIN))
+    .map(({ zone, gain }) => `${zone.name} (${Math.round(zone.rectangle.x)}, ${Math.round(zone.rectangle.y)})px: +${gain.toFixed(2)}`);
+  expect(
+    dimRingZones,
+    `zones about ${RADIUS}px around the click point on the tagline at (${Math.round(point.x)}, ${Math.round(point.y)})px whose pixels did not get, on average, at least ${MIN_RING_GAIN} luma levels brighter, 300 ms after the click`,
+  ).toEqual([]);
+
+  /* The click point itself: on average, each pixel at most half a luma level brighter. */
+  const centreGain = await meanLuminanceGainedInRectangle(hero, before, after, centre);
+  expect(
+    centreGain,
+    `mean luma gained by the pixels of the 30px square at the click point on the tagline (${Math.round(point.x)}, ${Math.round(point.y)})px, 300 ms after the click`,
+  ).toBeLessThanOrEqual(0.5);
 });
 
 test('served under /portfolio/, the first hero button of the French home page, "Voir les projets", leads to /portfolio/fr/projets/', async ({ page }) => {

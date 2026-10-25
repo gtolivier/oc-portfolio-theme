@@ -227,6 +227,56 @@ export async function pixelsChangedPerColumnInRectangle(
   );
 }
 
+/* How much brighter a rectangle of an element (CSS pixels, relative to its box) became between
+   two screenshots of it, taken at different times: the mean, over the pixels of the rectangle,
+   of how much brighter each pixel is in `after` than in `before` (luma, Rec. 709 weights,
+   0–255; pixels that got darker count as 0). For an element without a background colour of
+   its own, or whose rectangle holds text: what did not change, text included, adds nothing. */
+export async function meanLuminanceGainedInRectangle(
+  element: Locator,
+  before: Buffer,
+  after: Buffer,
+  rectangle: Rectangle,
+): Promise<number> {
+  return element.evaluate(
+    async (el, [beforeBase64, afterBase64, zone]) => {
+      const luma = (data: Uint8ClampedArray, i: number): number =>
+        0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+      const decode = async (base64: string): Promise<{ pixels: Uint8ClampedArray; width: number; height: number }> => {
+        const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+        const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext('2d', { willReadFrequently: true })!;
+        context.drawImage(image, 0, 0);
+        return { pixels: context.getImageData(0, 0, image.width, image.height).data, width: image.width, height: image.height };
+      };
+      const first = await decode(beforeBase64);
+      const second = await decode(afterBase64);
+      const width = Math.min(first.width, second.width);
+      const height = Math.min(first.height, second.height);
+      const scale = first.width / el.getBoundingClientRect().width;
+      const fromColumn = Math.max(0, Math.round(zone.x * scale));
+      const toColumn = Math.min(width, Math.round((zone.x + zone.width) * scale));
+      const fromRow = Math.max(0, Math.round(zone.y * scale));
+      const toRow = Math.min(height, Math.round((zone.y + zone.height) * scale));
+      let gained = 0;
+      let count = 0;
+      for (let row = fromRow; row < toRow; row++) {
+        for (let column = fromColumn; column < toColumn; column++) {
+          const i = 4 * (row * first.width + column);
+          const j = 4 * (row * second.width + column);
+          gained += Math.max(0, luma(second.pixels, j) - luma(first.pixels, i));
+          count += 1;
+        }
+      }
+      return count === 0 ? 0 : gained / count;
+    },
+    [before.toString('base64'), after.toString('base64'), rectangle] as const,
+  );
+}
+
 /* The vertical bands, at least `minBandWidth` CSS pixels wide each, into which a width of
    `width` CSS pixels splits from its left edge to its right edge, that show no drawn pixel:
    given, for each column of a screenshot, a count of drawn pixels (as
