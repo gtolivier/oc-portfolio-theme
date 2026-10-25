@@ -308,7 +308,7 @@ class TickField extends HTMLElement {
     const context = canvas.getContext('2d');
     if (!context) return;
     context.scale(scale, scale);
-    context.fillStyle = this.tickGradient(context, width);
+    context.fillStyle = this.tickGradient(context, width, height);
     const front = progress * width;
     const layout = this.layout(width, height);
     for (let column = 0; column < layout.columns; column += 1) {
@@ -403,10 +403,12 @@ class TickField extends HTMLElement {
     return Math.hypot(x + FIELD_TICK_WIDTH_PX / 2 - point.x, y + tickHeight / 2 - point.y);
   }
 
-  /* Green on the left, cream from the right. */
-  private tickGradient(context: CanvasRenderingContext2D, width: number): CanvasGradient {
-    const gradient = context.createLinearGradient(0, 0, width, 0);
+  /* Along the diagonal: green at the bottom left, accent in the middle, cream at the top right. */
+  private tickGradient(context: CanvasRenderingContext2D, width: number, height: number): CanvasGradient {
+    const gradient = context.createLinearGradient(0, height, width, 0);
     gradient.addColorStop(FIELD_GREEN_UNTIL, this.themeColor('--color-accent-dark'));
+    gradient.addColorStop(0.5, this.accentColor());
+    gradient.addColorStop(0.75, this.accentColor());
     gradient.addColorStop(FIELD_CREAM_FROM, this.themeColor('--color-paper'));
     return gradient;
   }
