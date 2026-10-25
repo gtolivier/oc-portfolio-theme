@@ -2,9 +2,9 @@
   {{- with .Params.hero }}
   {{- if not site.Params.author }}{{ errorf "hero : le paramètre author du site n’est pas renseigné" }}{{ end }}
   <section class="hero" aria-labelledby="hero-heading">
-    <h1 id="hero-heading">{{ site.Params.author }}
+    <h1 id="hero-heading"><scramble-text>{{ site.Params.author }}</scramble-text>
       {{- with .title }}
-      <span class="hero-title">{{ . }}</span>
+      <span class="hero-title"><scramble-text>{{ . }}</scramble-text></span>
       {{- end }}
     </h1>
     {{- with .tagline }}

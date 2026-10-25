@@ -35,7 +35,7 @@ function scramble(text: string, clearCount = 0): string {
 function invisibleSizer(text: string): HTMLSpanElement {
   const sizer = document.createElement('span');
   sizer.setAttribute('aria-hidden', 'true');
-  sizer.style.visibility = 'hidden';
+  sizer.style.opacity = '0';
   sizer.textContent = text;
   return sizer;
 }
@@ -54,12 +54,9 @@ class ScrambleText extends HTMLElement {
   private shown = document.createElement('span');
 
   private decode(text: string): void {
-    this.replaceChildren(invisibleSizer(text), this.shown);
     const reducedMotion = reducedMotionQuery();
-    if (reducedMotion.matches) {
-      this.shown.textContent = text;
-      return;
-    }
+    if (reducedMotion.matches) return;
+    this.replaceChildren(invisibleSizer(text), this.shown);
     this.shown.textContent = scramble(text);
     const delayMs = Number(this.getAttribute('delay')) || 0;
     this.startTimer = setTimeout(() => this.revealLeftToRight(text), delayMs);
@@ -75,7 +72,7 @@ class ScrambleText extends HTMLElement {
   private showInClearAtOnce(text: string): void {
     clearTimeout(this.startTimer);
     clearInterval(this.tickTimer);
-    this.shown.textContent = text;
+    this.textContent = text;
   }
 
   private revealLeftToRight(text: string): void {
@@ -86,7 +83,7 @@ class ScrambleText extends HTMLElement {
       tick += 1;
       if (tick >= totalTicks) {
         clearInterval(this.tickTimer);
-        this.shown.textContent = text;
+        this.textContent = text;
         return;
       }
       this.shown.textContent = scramble(text, Math.floor((tick / totalTicks) * letterCount));
