@@ -160,16 +160,28 @@ h1 {
   font-size: 14px;
   letter-spacing: 0.04em;
   margin-top: 20px;
+  /* The buttons' margin alone sets the space below the stack. */
+  margin-bottom: 0;
   color: var(--color-accent);
 }
 
 /* Minimum target size (WCAG 2.5.8): an inline link ignores min-height
    and vertical padding, hence inline-block. */
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 44px;
+}
+
 .hero-actions a {
   display: inline-block;
   min-width: var(--min-target-size);
   min-height: var(--min-target-size);
-  padding: 0.5rem 1rem;
+  padding: 14px 26px;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  letter-spacing: 0.04em;
 }
 
 /* First button: filled. */
@@ -186,6 +198,8 @@ h1 {
   color: var(--color-paper);
   background-color: transparent;
   border: 1px solid rgb(var(--color-paper-channels) / 0.5);
+  /* 1px less than the filled button: the border makes up the difference. */
+  padding-block: 13px;
   text-decoration: none;
 }
 
