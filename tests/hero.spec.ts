@@ -24,6 +24,7 @@ import {
   meanLuminanceGainedInRectangle,
   brightnessKeptUnderLayerInRectangle,
   pixelsChangedPerColumnInRectangle,
+  pixelsNotOfBackgroundPerRow,
 } from './helpers/pixels';
 import { SIGNS, textOnScreen } from './helpers/text-on-screen';
 
@@ -646,19 +647,44 @@ test('on phone as on desktop, a click (a tap on mobile) on the hero’s professi
   }, onScreen);
   expect(isOnTheTitle, 'the click point is on the professional title’s text').toBe(true);
 
+  /* The middle of the field's highest row of ticks, relative to the hero, whatever margin the
+     field leaves along the hero's top edge: on a screenshot of the hero with its text and veil
+     hidden, without moving anything, the first run of rows that show drawn pixels over the
+     page's background. */
+  const hideAllButTheField = (visibility: string) =>
+    hero.evaluate((el, value) => {
+      for (const child of Array.from(el.children)) {
+        if (child.localName !== 'canvas') (child as HTMLElement).style.visibility = value;
+      }
+    }, visibility);
+  await hideAllButTheField('hidden');
+  const fieldOnly = await hero.screenshot();
+  await hideAllButTheField('');
+  const pageBackground = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const { rows, scale } = await pixelsNotOfBackgroundPerRow(hero, fieldOnly, undefined, pageBackground);
+  const firstDrawnRow = rows.findIndex((count) => count > 0);
+  expect(firstDrawnRow, 'rows of the hero that show ticks').toBeGreaterThanOrEqual(0);
+  let lastRowOfHighestTicks = firstDrawnRow;
+  while (rows[lastRowOfHighestTicks + 1] > 0) lastRowOfHighestTicks += 1;
+  const highestTicksMiddle = (firstDrawnRow + lastRowOfHighestTicks + 1) / 2 / scale;
+
   /* The ring grows about 0.28px per ms: 300 ms after the click, it is about 84px from the click
      point. Four zones straddle the ring, 20px deep across it and 40px long along it, to its
-     right, left, top and bottom; one 30px square sits at the click point, well inside the ring.
-     All of them are far enough from the click point for the ring alone to light them, not the
-     glow of a pointer hovering the click point. Text lies in some of them: what each zone
+     right, left, top and bottom; the top one lies straight above the click point, or, where the
+     ring passes above the field's highest row of ticks, where the ring crosses that row, up and
+     to the right of the click point. One 30px square sits at the click point, well inside the
+     ring. All of them are far enough from the click point for the ring alone to light them, not
+     the glow of a pointer hovering the click point. Text lies in some of them: what each zone
      gained is measured between two screenshots, where unchanged text adds nothing. */
   const RADIUS = 84;
   const DEPTH = 20;
   const LENGTH = 40;
+  const topY = Math.max(point.y - RADIUS, highestTicksMiddle);
+  const top = { x: point.x + Math.sqrt(Math.max(0, RADIUS ** 2 - (point.y - topY) ** 2)), y: topY };
   const ringZones = [
     { name: 'right', rectangle: { x: point.x + RADIUS - DEPTH / 2, y: point.y - LENGTH / 2, width: DEPTH, height: LENGTH } },
     { name: 'left', rectangle: { x: point.x - RADIUS - DEPTH / 2, y: point.y - LENGTH / 2, width: DEPTH, height: LENGTH } },
-    { name: 'top', rectangle: { x: point.x - LENGTH / 2, y: point.y - RADIUS - DEPTH / 2, width: LENGTH, height: DEPTH } },
+    { name: 'top', rectangle: { x: top.x - LENGTH / 2, y: top.y - DEPTH / 2, width: LENGTH, height: DEPTH } },
     { name: 'bottom', rectangle: { x: point.x - LENGTH / 2, y: point.y + RADIUS - DEPTH / 2, width: LENGTH, height: DEPTH } },
   ];
   for (const zone of ringZones) {

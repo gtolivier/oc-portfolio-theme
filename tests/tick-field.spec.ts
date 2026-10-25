@@ -11,6 +11,7 @@ import {
   countPixelsNotOfBackground,
   drawnPixelsClosestToColourInRectangles,
   drawnStrokesInRectangle,
+  extentOfDrawnTicks,
   heightsOfDrawnRunsInRectangle,
   horizontalBandsWithoutDrawnPixels,
   luminanceAboveBackgroundInRectangle,
@@ -326,6 +327,74 @@ test.describe('catalog: tick-field', () => {
       { tickSpacing: median(tickGaps), rowSpacing: median(rowGaps) },
       `spacings of the ticks drawn in the middle half of the ${Math.round(width)}px-wide tick-field, in CSS pixels, within half a pixel: median of ${tickGaps.length} gaps between neighbouring ticks of a row, and of ${rowGaps.length} gaps between neighbouring rows`,
     ).toEqual({ tickSpacing: expect.closeTo(16, 0), rowSpacing: expect.closeTo(22, 0) });
+  });
+
+  test('once revealed, a tick-field is centred in its box: at several sizes, the empty margin on its left equals the one on its right, and the one at its top equals the one at its bottom, within a pixel; the side margins are at least 24px, the top and bottom ones at least 18px', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
+       to light or lengthen a tick. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await page.clock.runFor(16);
+
+    /* Sizes that leave different room around a field of ticks 16px apart in rows 22px apart,
+       so that a field set at a fixed distance from the top left corner shows unequal margins
+       in at least one of them. All fit in a phone's width. */
+    const SIZES = [
+      { width: 280, height: 320 },
+      { width: 287, height: 331 },
+      { width: 297, height: 343 },
+    ];
+    /* The text above the field can leave it at a fraction of a pixel from the top of the page,
+       which would shift its screenshot by up to a pixel against its box: the field is moved,
+       without changing the layout around it, onto whole CSS pixels. */
+    await tickField.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      const left = box.left + window.scrollX;
+      const top = box.top + window.scrollY;
+      element.style.left = `${Math.round(left) - left}px`;
+      element.style.top = `${Math.round(top) - top}px`;
+    });
+    const problems: string[] = [];
+    const measured: string[] = [];
+    for (const size of SIZES) {
+      await tickField.evaluate((element, { width, height }) => {
+        element.style.width = `${width}px`;
+        element.style.height = `${height}px`;
+      }, size);
+      await page.clock.runFor(100);
+      const box = await tickField.boundingBox();
+      expect(box, 'the tick-field has a box on screen').not.toBeNull();
+      expect({ width: box!.width, height: box!.height }, 'size of the tick-field, in CSS pixels').toEqual({
+        width: expect.closeTo(size.width, 0),
+        height: expect.closeTo(size.height, 0),
+      });
+
+      /* The empty margins, in CSS pixels: from each edge of the box to the nearest edge of a
+         drawn tick, anti-aliased edges counted by how much of a pixel they cover, so that the
+         faint edge of a bright tick reaches no farther than that of a dim one. */
+      const extent = await extentOfDrawnTicks(tickField, await tickField.screenshot());
+      expect(extent.left, `drawn ticks in the ${size.width}×${size.height}px tick-field`).not.toBeNaN();
+      const margins = {
+        left: extent.left,
+        right: box!.width - extent.right,
+        top: extent.top,
+        bottom: box!.height - extent.bottom,
+      };
+      const describe = `${size.width}×${size.height}px: left ${margins.left.toFixed(2)}, right ${margins.right.toFixed(2)}, top ${margins.top.toFixed(2)}, bottom ${margins.bottom.toFixed(2)}`;
+      measured.push(describe);
+      if (Math.abs(margins.left - margins.right) > 1) problems.push(`${describe}: left and right margins differ by more than 1px`);
+      if (Math.abs(margins.top - margins.bottom) > 1) problems.push(`${describe}: top and bottom margins differ by more than 1px`);
+      if (Math.min(margins.left, margins.right) < 24) problems.push(`${describe}: a side margin is under 24px`);
+      if (Math.min(margins.top, margins.bottom) < 18) problems.push(`${describe}: a top or bottom margin is under 18px`);
+    }
+    expect(problems, `empty margins around the drawn ticks, in CSS pixels (${measured.join('; ')})`).toEqual([]);
   });
 
   test('a tick-field reveals from left to right: 500 ms after load, every vertical band of its left part shows drawn pixels, while its right part still only shows its background', async ({ page, context }) => {
@@ -1241,12 +1310,20 @@ test.describe('catalog: tick-field', () => {
     }
 
     /* Ripple: the ring grows about 0.28px per ms, so that 300 ms after the click it is about
-       84px from the click point. The click point is at mid-height, 84 + 30px from the left edge;
-       the zone is around the tick nearest to the point 84px to its left, where the ring passes,
-       far enough from the click point for the ring alone to light it, not the glow of a pointer
-       hovering the click point. */
+       84px from the click point. The click point is at mid-height, 84px to the right of the
+       second column of ticks from the left, found from the drawn ticks whatever margin the field
+       leaves along its left edge, so that a whole column stands on either side of it; the zone
+       is around the tick nearest to the point 84px to the click point's left, where the ring
+       passes, far enough from the click point for the ring alone to light it, not the glow of a
+       pointer hovering the click point. */
     const RADIUS = 84;
-    const point = { x: RADIUS + 30, y: fieldBox!.height / 2 };
+    const leftHalf = await strokesIn({ x: 0, y: 0, width: fieldBox!.width / 2, height: fieldBox!.height });
+    const columnCentres: number[] = [];
+    for (const centreX of leftHalf.map((stroke) => stroke.x + stroke.width / 2).sort((a, b) => a - b)) {
+      if (columnCentres.length === 0 || centreX - columnCentres[columnCentres.length - 1] > TICK_SPACING / 2) columnCentres.push(centreX);
+    }
+    expect(columnCentres.length, `columns of ticks drawn in the left half of the tick-field`).toBeGreaterThanOrEqual(2);
+    const point = { x: RADIUS + columnCentres[1], y: fieldBox!.height / 2 };
     const onScreen = { x: fieldBox!.x + point.x, y: fieldBox!.y + point.y };
     /* With a fine pointer, a click first brings the pointer over the click point: it hovers it
        already before the click, so that both measures differ by the ripple alone. */
