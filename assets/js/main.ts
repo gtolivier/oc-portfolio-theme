@@ -108,6 +108,9 @@ const FIELD_TICK_MIN_HEIGHT_PX = 5;
 
 const FIELD_TICK_MAX_HEIGHT_PX = 13;
 
+/* How much of a tick's height its column sets; its row sets the rest. */
+const FIELD_TICK_HEIGHT_COLUMN_SHARE = 0.7;
+
 const FIELD_ROW_SPACING_PX = 22;
 
 const FIELD_MIN_ALPHA = 0.15;
@@ -342,7 +345,8 @@ class TickField extends HTMLElement {
 
   /* Taller from left to right, and taller at the top. */
   private tickHeight(x: number, y: number, width: number, height: number): number {
-    const growth = 0.7 * (x / width) + 0.3 * (1 - y / height);
+    const growth =
+      FIELD_TICK_HEIGHT_COLUMN_SHARE * (x / width) + (1 - FIELD_TICK_HEIGHT_COLUMN_SHARE) * (1 - y / height);
     return Math.round(FIELD_TICK_MIN_HEIGHT_PX + (FIELD_TICK_MAX_HEIGHT_PX - FIELD_TICK_MIN_HEIGHT_PX) * growth);
   }
 
