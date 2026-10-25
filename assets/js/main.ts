@@ -138,12 +138,16 @@ class TickField extends HTMLElement {
     this.addEventListener('pointermove', (event) => {
       if (reducedMotionQuery().matches) return;
       const { x, y } = this.localPoint(event);
-      this.pointerX = x;
-      this.pointerY = y;
-      this.leftAt = undefined;
-      this.draw(canvas, this.progress);
+      this.hovering = true;
+      this.trail.push({ x, y, at: performance.now() });
+      this.fadeTrail(canvas);
     });
-    this.addEventListener('pointerleave', () => this.fadeTrail(canvas));
+    this.addEventListener('pointerleave', () => {
+      this.hovering = false;
+      const last = this.trail[this.trail.length - 1];
+      if (last) last.at = performance.now();
+      this.fadeTrail(canvas);
+    });
     /* A tap near the field can be redirected to it by the browser: only the raw press
        point tells whether it was inside. */
     document.addEventListener('pointerdown', (event) => {
@@ -169,8 +173,6 @@ class TickField extends HTMLElement {
   }
 
   private pressedInside = false;
-
-  private leftAt: number | undefined;
 
   private ripple: { x: number; y: number; start: number } | undefined;
 
@@ -200,31 +202,31 @@ class TickField extends HTMLElement {
   }
 
   private fadeTrail(canvas: HTMLCanvasElement): void {
-    this.leftAt = performance.now();
+    this.draw(canvas, this.progress);
+    if (this.fading) return;
+    this.fading = true;
     const step = (): void => {
-      if (this.leftAt === undefined) return;
-      if (this.trailAlpha() === 0) {
-        this.pointerX = undefined;
-        this.pointerY = undefined;
-        this.leftAt = undefined;
-      } else {
-        requestAnimationFrame(step);
-      }
+      this.trail = this.trail.filter((point) => this.pointAlpha(point) > 0);
       this.draw(canvas, this.progress);
+      if (this.trail.length > 1 || (this.trail.length === 1 && !this.hovering)) requestAnimationFrame(step);
+      else this.fading = false;
     };
     requestAnimationFrame(step);
   }
 
-  private trailAlpha(): number {
-    if (this.leftAt === undefined) return 1;
-    return Math.max(0, 1 - (performance.now() - this.leftAt) / FIELD_TRAIL_FADE_MS);
+  private trail: { x: number; y: number; at: number }[] = [];
+
+  private hovering = false;
+
+  private fading = false;
+
+  /* The point under the pointer stays fully lit; the others fade with age. */
+  private pointAlpha(point: { at: number }): number {
+    if (this.hovering && point === this.trail[this.trail.length - 1]) return 1;
+    return Math.max(0, 1 - (performance.now() - point.at) / FIELD_TRAIL_FADE_MS);
   }
 
   private progress = 0;
-
-  private pointerX: number | undefined;
-
-  private pointerY: number | undefined;
 
   private onScreen = true;
 
@@ -296,14 +298,15 @@ class TickField extends HTMLElement {
   }
 
   private drawPointerTrail(context: CanvasRenderingContext2D, x: number): void {
-    if (this.pointerX === undefined || this.pointerY === undefined) return;
-    const distanceFromPointer = Math.abs(x - this.pointerX);
-    if (distanceFromPointer >= FIELD_HOVER_RADIUS_PX) return;
     const tickColor = context.fillStyle;
-    context.globalAlpha = this.trailAlpha();
-    context.fillStyle = this.accentColor();
-    const halfHeight = Math.sqrt(FIELD_HOVER_RADIUS_PX ** 2 - distanceFromPointer ** 2);
-    context.fillRect(x, this.pointerY - halfHeight, FIELD_HOVER_TICK_WIDTH_PX, 2 * halfHeight);
+    for (const point of this.trail) {
+      const distanceFromPointer = Math.abs(x - point.x);
+      if (distanceFromPointer >= FIELD_HOVER_RADIUS_PX) continue;
+      context.globalAlpha = this.pointAlpha(point);
+      context.fillStyle = this.accentColor();
+      const halfHeight = Math.sqrt(FIELD_HOVER_RADIUS_PX ** 2 - distanceFromPointer ** 2);
+      context.fillRect(x, point.y - halfHeight, FIELD_HOVER_TICK_WIDTH_PX, 2 * halfHeight);
+    }
     context.fillStyle = tickColor;
   }
 
