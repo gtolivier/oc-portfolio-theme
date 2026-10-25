@@ -288,6 +288,22 @@ test('on the French home page, the hero title line decodes after the name: when 
   }
 });
 
+test('on the French home page, the hero heading decodes at the design’s pace: 1.5 s after load, its author name and professional title are both in clear', async ({ page }) => {
+  /* Design reference: the name and the title decode in about 1.1 s in total, the title
+     continuing where the name ends, so both are in clear well before 1.5 s. Animations are
+     allowed, and time stands still from before the page loads, until the test advances it. */
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  const mainHeading = mainContentHeading(page);
+  await expect(mainHeading).toHaveCount(1);
+  /* What the visitor sees in the heading, whitespace excluded: the name, from params.author,
+     and the title, from the [params.hero] block of exampleSite/content/_index.md. */
+  const inClear = 'Jean Exemple Horloger indépendant'.replace(/\s+/g, '');
+  await page.clock.runFor(1500);
+  expect(await textOnScreen(mainHeading), '1.5 s after load').toBe(inClear);
+});
+
 test('on the French home page, the hero displays the tagline, one line per entry: the three lines, in order, each below the previous one', async ({ page }) => {
   await page.goto('/fr/');
   const main = page.getByRole('main');
@@ -1093,7 +1109,7 @@ test.describe('home page of a site whose hero has long words, on a 320 px wide p
     }
   });
 
-  test('on a 320 px wide phone, while the heading of a hero with long words decodes, the page never scrolls horizontally: every 250 ms from load until the title is almost in clear, the name and the title stay within the width', async ({ page, context }) => {
+  test('on a 320 px wide phone, while the heading of a hero with long words decodes, the page never scrolls horizontally: every 250 ms from load, while the heading is still scrambled at load, until it is in clear, within 6 s, the name and the title stay within the width', async ({ page, context }) => {
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it, step by step. */
     await page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -1106,7 +1122,7 @@ test.describe('home page of a site whose hero has long words, on a 320 px wide p
     /* The name, "Apolline Vanderkerckhove-Fictive", from params.author
        (tests/fixtures/hero-with-long-words/hugo.toml), decodes first; the title,
        "Horlogère-restauratrice", from tests/fixtures/hero-with-long-words/content/_index.md,
-       decodes when the name is done. Both are done within 4 s of load. */
+       decodes when the name is done. Both are in clear within 6 s of load. */
     const mainHeading = mainContentHeading(page);
     await expect(mainHeading).toHaveCount(1);
     const elements = {
@@ -1115,12 +1131,19 @@ test.describe('home page of a site whose hero has long words, on a 320 px wide p
          assistive technologies. */
       'professional title': mainHeading.getByLabel('Horlogère-restauratrice', { exact: true }),
     };
-    for (let elapsedMs = 0; elapsedMs < 4000; elapsedMs += 250) {
+    const inClear = 'Apolline Vanderkerckhove-Fictive Horlogère-restauratrice'.replace(/\s+/g, '');
+    const holdsASign = (text: string) => Array.from(text).some((character) => SIGNS.includes(character));
+    /* Every 250 ms from load, while the heading still shows a sign, and at the first moment
+       it shows none, the page does not scroll horizontally and the name and the title stay
+       within the width. */
+    let shown = '';
+    let elapsedMs = 0;
+    for (; elapsedMs <= 6000; elapsedMs += 250) {
       if (elapsedMs > 0) await page.clock.runFor(250);
       const moment = `${elapsedMs} ms after load`;
-      /* At this moment, the heading is still partly scrambled: it shows at least one sign. */
-      const shown = await textOnScreen(mainHeading);
-      expect(Array.from(shown).some((character) => SIGNS.includes(character)), `"${shown}", shown ${moment}, still holds a sign`).toBe(true);
+      shown = await textOnScreen(mainHeading);
+      /* Right after load, the heading is scrambled: the test sees it while it decodes. */
+      if (elapsedMs === 0) expect(holdsASign(shown), `"${shown}", shown right after load, holds a sign`).toBe(true);
 
       const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
       expect.soft(pageWidth, `no horizontal scrolling ${moment}`).toBeLessThanOrEqual(width);
@@ -1129,7 +1152,10 @@ test.describe('home page of a site whose hero has long words, on a 320 px wide p
         expect.soft(left, `left edge within the window ${moment}: ${name}`).toBeGreaterThanOrEqual(0);
         expect.soft(right, `right edge within the window ${moment}: ${name}`).toBeLessThanOrEqual(width);
       }
+      if (!holdsASign(shown)) break;
     }
+    /* The decoding ends: the heading is in clear, within 6 s of load. */
+    expect(shown, `heading shown ${elapsedMs} ms after load, in clear`).toBe(inClear);
   });
 });
 
