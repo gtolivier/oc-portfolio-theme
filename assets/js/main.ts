@@ -124,10 +124,12 @@ const FIELD_MIN_SIDE_MARGIN_PX = 24;
 
 const FIELD_MIN_VERTICAL_MARGIN_PX = 18;
 
-const FIELD_MIN_ALPHA = 0.15;
+const FIELD_MIN_ALPHA = 0.06;
 
-/* How much dimmer the bottom of the field is than its top. */
-const FIELD_BOTTOM_DIMMING = 0.75;
+const FIELD_MAX_ALPHA = 0.61;
+
+/* How much of a tick's place along the diagonal its horizontal place sets; the vertical one sets the rest. */
+const FIELD_PLACE_HORIZONTAL_SHARE = 0.75;
 
 const FIELD_GREEN_UNTIL = 0.25;
 
@@ -171,7 +173,13 @@ type FieldLayout = { columns: number; rows: number; left: number; top: number };
 type FieldColors = { green: string; accent: string; cream: string };
 
 /* What every tick of one drawing of the field shares; the height is the box's, in CSS pixels. */
-type FieldDrawing = { context: CanvasRenderingContext2D; layout: FieldLayout; height: number; litColor: string };
+type FieldDrawing = {
+  context: CanvasRenderingContext2D;
+  layout: FieldLayout;
+  width: number;
+  height: number;
+  litColor: string;
+};
 
 /* How far along its line of the grid a column or row sits: 0 for the first, 1 for the last. */
 function gridShare(index: number, count: number): number {
@@ -347,11 +355,11 @@ class TickField extends HTMLElement {
     const colors = this.themeColors();
     context.fillStyle = this.tickGradient(context, width, height, colors);
     const front = this.progress * width;
-    const drawing = { context, layout: this.layout(width, height), height, litColor: colors.accent };
+    const drawing = { context, layout: this.layout(width, height), width, height, litColor: colors.accent };
     for (let column = 0; column < drawing.layout.columns; column += 1) {
       const x = drawing.layout.left + column * FIELD_TICK_SPACING_PX;
       if (x >= front) break;
-      context.globalAlpha = this.tickAlpha(x, width) * fadeInAlpha(x / width, this.progress);
+      context.globalAlpha = fadeInAlpha(x / width, this.progress);
       this.drawTickColumn(drawing, x, gridShare(column, drawing.layout.columns));
     }
   }
@@ -386,7 +394,7 @@ class TickField extends HTMLElement {
     for (let row = 0; row < layout.rows; row += 1) {
       const y = layout.top + row * FIELD_ROW_SPACING_PX;
       const tickHeight = this.tickHeight(columnShare, gridShare(row, layout.rows));
-      context.globalAlpha = columnAlpha * this.rowAlphaFactor(y, drawing.height);
+      context.globalAlpha = columnAlpha * this.restingAlpha(x, y, drawing.width, drawing.height);
       context.fillRect(x, y, FIELD_TICK_WIDTH_PX, tickHeight);
       this.drawLighting(drawing, x, y, tickHeight);
     }
@@ -424,9 +432,13 @@ class TickField extends HTMLElement {
     context.fillRect(x, y - growthAtEachEnd, FIELD_TICK_WIDTH_PX, tickHeight + 2 * growthAtEachEnd);
   }
 
-  /* Brighter at the top, dimming down the whole height. */
-  private rowAlphaFactor(y: number, height: number): number {
-    return 1 - FIELD_BOTTOM_DIMMING * Math.min(1, y / height);
+  /* Set by the tick's place along the diagonal, eased in and out: brighter to the right and at the top. */
+  private restingAlpha(x: number, y: number, width: number, height: number): number {
+    const horizontal = FIELD_PLACE_HORIZONTAL_SHARE * (x / width);
+    const vertical = (1 - FIELD_PLACE_HORIZONTAL_SHARE) * (1 - y / height);
+    const place = Math.min(1, Math.max(0, horizontal + vertical));
+    const eased = place * place * (3 - 2 * place);
+    return FIELD_MIN_ALPHA + (FIELD_MAX_ALPHA - FIELD_MIN_ALPHA) * eased;
   }
 
   /* Taller from left to right, and taller at the top. */
@@ -471,11 +483,6 @@ class TickField extends HTMLElement {
     const style = getComputedStyle(this);
     const color = (customProperty: string): string => style.getPropertyValue(customProperty).trim();
     return { green: color('--color-accent-dark'), accent: color('--color-accent'), cream: color('--color-paper') };
-  }
-
-  /* Brighter from left to right. */
-  private tickAlpha(x: number, width: number): number {
-    return FIELD_MIN_ALPHA + (1 - FIELD_MIN_ALPHA) * (x / width);
   }
 }
 
