@@ -270,6 +270,61 @@ test.describe('catalog: tick-field', () => {
     ).toBeGreaterThan(0);
   });
 
+  test('once revealed, the ticks of a tick-field stand 16px apart within a row, and its rows 22px apart: from one tick\'s left edge to the next one\'s in the same row, and from one row\'s top to the next row\'s top', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
+       to widen or light a tick. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-vide/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-vide.md),
+       320px high, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    await page.clock.runFor(16);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const width = fieldBox!.width;
+    const height = fieldBox!.height;
+
+    /* The ticks drawn in the middle half of the width, over the whole height: each one a
+       separate stroke, with its box. Ticks whose tops lie within 4px of one another belong
+       to the same row. */
+    const ZONE = { x: 0.25 * width, y: 0, width: 0.5 * width, height };
+    const ticks = await drawnStrokesInRectangle(tickField, await tickField.screenshot(), ZONE);
+    expect(ticks.length, `ticks drawn in the middle half of the tick-field (${Math.round(ZONE.x)}–${Math.round(ZONE.x + ZONE.width)}px)`).toBeGreaterThan(0);
+    const SAME_ROW_PX = 4;
+    const rows: Rectangle[][] = [];
+    for (const tick of [...ticks].sort((a, b) => a.y - b.y)) {
+      const row = rows[rows.length - 1];
+      if (row && tick.y - row[0].y <= SAME_ROW_PX) row.push(tick);
+      else rows.push([tick]);
+    }
+
+    /* From each tick's left edge to the next one's in the same row, and from each row's top
+       to the next row's top; their medians are the spacings, which a stroke cut short at an
+       anti-aliased end barely moves. */
+    const tickGaps = rows.flatMap((row) => {
+      const lefts = row.map((tick) => tick.x).sort((a, b) => a - b);
+      return lefts.slice(1).map((left, index) => left - lefts[index]);
+    });
+    const rowTops = rows.map((row) => Math.min(...row.map((tick) => tick.y)));
+    const rowGaps = rowTops.slice(1).map((top, index) => top - rowTops[index]);
+    expect(tickGaps.length, `pairs of neighbouring ticks in the same row, over ${rows.length} rows`).toBeGreaterThan(0);
+    expect(rowGaps.length, `pairs of neighbouring rows, among ${rows.length}`).toBeGreaterThan(0);
+    const median = (values: number[]): number => {
+      const sorted = [...values].sort((a, b) => a - b);
+      const middle = Math.floor(sorted.length / 2);
+      return sorted.length % 2 === 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+    };
+    expect(
+      { tickSpacing: median(tickGaps), rowSpacing: median(rowGaps) },
+      `spacings of the ticks drawn in the middle half of the ${Math.round(width)}px-wide tick-field, in CSS pixels, within half a pixel: median of ${tickGaps.length} gaps between neighbouring ticks of a row, and of ${rowGaps.length} gaps between neighbouring rows`,
+    ).toEqual({ tickSpacing: expect.closeTo(16, 0), rowSpacing: expect.closeTo(22, 0) });
+  });
+
   test('a tick-field reveals from left to right: 500 ms after load, every vertical band of its left part shows drawn pixels, while its right part still only shows its background', async ({ page, context }) => {
     await serveSite(context, CATALOG_SITE, siteDirectory);
     await stopClockBeforeLoad(page);
