@@ -348,6 +348,46 @@ test('on phone as on desktop, the hero tagline follows the design’s spacing: 2
   }
 });
 
+test('on phone as on desktop, the hero stack follows the design’s spacing: 14 px, letter-spaced by 0.56 px (0.04em) within 0.02 px, starting 20 px below the tagline within 1.5 px', async ({ page, isMobile }) => {
+  /* Design reference: stack in 14px, letter-spacing 0.04em (0.56 px at 14 px), margin-top
+     20px below the tagline. The design has no phone layout: the same values apply there.
+     Desktop projects are checked at a wide window and at 768 px wide, where the desktop
+     spacing starts; phone projects at their own size. */
+  const viewports = isMobile ? [page.viewportSize()!] : [{ width: 1280, height: 900 }, { width: 768, height: 1024 }];
+  for (const viewport of viewports) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await page.setViewportSize(viewport);
+    await page.goto('/fr/');
+    await page.evaluate(() => document.fonts.ready);
+    const main = page.getByRole('main');
+    /* The tagline: the element holding its first line, which holds the other two as well. */
+    const tagline = main.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.');
+    await expect(tagline).toBeVisible();
+    await expect(tagline).toContainText('de pendules et de montres anciennes.');
+    const stack = main.getByText('Laiton · Acier · Rubis · Émail', { exact: true });
+    await expect(stack).toBeVisible();
+
+    const style = await stack.evaluate((el) => {
+      const computed = getComputedStyle(el);
+      return {
+        fontSize: parseFloat(computed.fontSize),
+        rawLetterSpacing: computed.letterSpacing,
+        letterSpacing: parseFloat(computed.letterSpacing),
+      };
+    });
+    expect.soft(style.fontSize, `at ${size}, stack font size`).toBeCloseTo(14, 1);
+    /* Distance to 0.56 px; NaN while the letter spacing is `normal`. */
+    expect.soft(Math.abs(style.letterSpacing - 0.56), `at ${size}, stack letter spacing (${style.rawLetterSpacing}) differs from 0.56px by`).toBeLessThanOrEqual(0.02);
+
+    /* The gap between the bottom of the tagline's box and the top of the stack's box. */
+    const taglineBox = (await tagline.boundingBox())!;
+    const stackBox = (await stack.boundingBox())!;
+    const gap = stackBox.y - (taglineBox.y + taglineBox.height);
+    expect.soft(gap, `at ${size}, space between the bottom of the tagline and the top of the stack`).toBeGreaterThanOrEqual(20 - 1.5);
+    expect.soft(gap, `at ${size}, space between the bottom of the tagline and the top of the stack`).toBeLessThanOrEqual(20 + 1.5);
+  }
+});
+
 test('on the French home page, the hero heading decodes: right after load, its author name and professional title are scrambled, and 4 s later both are in clear', async ({ page }) => {
   /* Animations are allowed, and time stands still from before the page loads, until the
      test advances it: animation frames and timers then run as they would in 4 s. */
