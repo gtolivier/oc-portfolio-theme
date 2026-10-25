@@ -809,7 +809,7 @@ test('on phone as on desktop, each hero button offers a target of at least 24 ×
   }
 });
 
-test('on phone as on desktop, the hero is a tick field drawn across its whole width, behind its text: 2 s after load, every vertical band of the empty strip below its buttons, from the left edge to the right edge, shows pixels that changed since right after load, and at the middle of the heading, the tagline, the stack and each button, the element under the pointer is that element, so a click lands on the button', async ({ page }) => {
+test('on phone as on desktop, the hero is a tick field drawn across its whole width, behind its text, even where its ticks are faintest: 2 s after load, every vertical band of the empty strip below its buttons, from the left edge, whose bottom-left ticks are almost invisible, to the right edge, shows pixels that changed at all since right after load, and at the middle of the heading, the tagline, the stack and each button, the element under the pointer is that element, so a click lands on the button', async ({ page }) => {
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
   /* The hero is the main content region named by its main heading. */
@@ -834,15 +834,20 @@ test('on phone as on desktop, the hero is a tick field drawn across its whole wi
 
   /* The strip of the hero below its buttons, the last of its content, down to its bottom
      edge, across its whole width: no text shows there, and the heading's decoding does not
-     reach it, so a pixel that changed there shows the field. */
+     reach it, so a pixel that changed there shows the field. Its bottom-left corner is the
+     field's faintest, under the veil too: the ticks of the leftmost band change their pixels
+     by only a few colour levels, fewer in some renderings than the rounding error other
+     comparisons allow. Since the screenshots are lossless and only the field changes between
+     them there, any change at all counts as drawn. */
   const heroBox = (await hero.boundingBox())!;
   const buttonsBottom = await bottomOfButtons([elements['first button, "Voir les projets"'], elements['second button, "Contact"']]);
   const strip = { x: 0, y: buttonsBottom - heroBox.y + 4, width: heroBox.width, height: heroBox.y + heroBox.height - buttonsBottom - 4 };
   expect(strip.height, 'height of the empty strip of the hero below its buttons').toBeGreaterThanOrEqual(16);
-  const { columns, scale } = await pixelsChangedPerColumnInRectangle(hero, rightAfterLoad, twoSecondsLater, strip);
+  const ANY_CHANGE = 0;
+  const { columns, scale } = await pixelsChangedPerColumnInRectangle(hero, rightAfterLoad, twoSecondsLater, strip, ANY_CHANGE);
   expect(
     bandsWithoutDrawnPixels(columns, scale, heroBox.width),
-    `bands of the ${Math.round(heroBox.width)}px-wide hero, in the strip below its buttons, with no pixel changed since right after load`,
+    `bands of the ${Math.round(heroBox.width)}px-wide hero, in the strip below its buttons, with no pixel changed at all since right after load`,
   ).toEqual([]);
 
   /* Behind the text: at the middle of the first line box of each element (rather than of its

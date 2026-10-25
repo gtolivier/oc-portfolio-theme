@@ -408,21 +408,21 @@ export async function drawnPixelsClosestToColourInRectangles(
   );
 }
 
-/* Where two screenshots of the same element, taken at different times, differ by more than a
-   rounding error on a channel: for each column of the screenshots, from left to right, the
-   number of such pixels inside a rectangle of the element (CSS pixels, relative to its box).
-   For an element without a background colour of its own, whose background is whatever shows
-   through it. `scale` is the number of screenshot columns per CSS pixel of the element's
-   width. */
+/* Where two screenshots of the same element, taken at different times, differ by more than
+   `tolerance` levels (0–255) on a channel — by default a rounding error; 0 counts any change
+   at all: for each column of the screenshots, from left to right, the number of such pixels
+   inside a rectangle of the element (CSS pixels, relative to its box). For an element without
+   a background colour of its own, whose background is whatever shows through it. `scale` is
+   the number of screenshot columns per CSS pixel of the element's width. */
 export async function pixelsChangedPerColumnInRectangle(
   element: Locator,
   before: Buffer,
   after: Buffer,
   rectangle: Rectangle,
+  tolerance = 2,
 ): Promise<{ columns: number[]; scale: number }> {
   return element.evaluate(
-    async (el, [beforeBase64, afterBase64, zone]) => {
-      const TOLERANCE = 2;
+    async (el, [beforeBase64, afterBase64, zone, TOLERANCE]) => {
       const decode = async (base64: string): Promise<{ pixels: Uint8ClampedArray; width: number; height: number }> => {
         const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
         const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
@@ -454,7 +454,7 @@ export async function pixelsChangedPerColumnInRectangle(
       }
       return { columns, scale };
     },
-    [before.toString('base64'), after.toString('base64'), rectangle] as const,
+    [before.toString('base64'), after.toString('base64'), rectangle, tolerance] as const,
   );
 }
 
