@@ -1,11 +1,12 @@
 // The theme's TypeScript entry point, compiled by Hugo (js.Build).
 
-/* Shared with layouts/home.html, which delays the hero title until the name is decoded. */
-import scrambleTextTiming from './scramble-text-timing.json';
-
 const SIGNS = ['|', '/', '\\', '<', '>', '[', ']', '{', '}', '=', '+', '#', '·'];
 
 const TICK_MS = 25;
+
+const MIN_DECODE_DURATION_MS = 1500;
+const MAX_DECODE_DURATION_MS = 2000;
+const DECODE_DURATION_PER_LETTER_MS = 100;
 
 function randomSign(): string {
   return SIGNS[Math.floor(Math.random() * SIGNS.length)];
@@ -20,8 +21,10 @@ function reducedMotionQuery(): MediaQueryList {
 }
 
 function decodeDurationMs(letterCount: number): number {
-  const { minDurationMs, maxDurationMs, durationPerLetterMs } = scrambleTextTiming;
-  return Math.min(maxDurationMs, Math.max(minDurationMs, letterCount * durationPerLetterMs));
+  return Math.min(
+    MAX_DECODE_DURATION_MS,
+    Math.max(MIN_DECODE_DURATION_MS, letterCount * DECODE_DURATION_PER_LETTER_MS),
+  );
 }
 
 function scramble(text: string, clearCount = 0): string {

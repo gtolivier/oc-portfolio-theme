@@ -2,7 +2,7 @@
   {{- with .Params.hero }}
   {{- if not site.Params.author }}{{ errorf "hero : le paramètre author du site n’est pas renseigné" }}{{ end }}
   <tick-field class="hero" role="region" aria-labelledby="hero-heading">
-    {{- /* The hero decodes faster than the default pace: 40 ms per letter. The title starts decoding when the name is done. */}}
+    {{- /* The hero decodes faster than the default pace. The title starts decoding when the name is done. */}}
     {{- $heroLetterMs := 40 }}
     {{- $nameDecodeMs := mul (strings.RuneCount site.Params.author) $heroLetterMs }}
     <h1 id="hero-heading"><scramble-text duration="{{ $nameDecodeMs }}">{{ site.Params.author }}</scramble-text>
