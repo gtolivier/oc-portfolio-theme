@@ -103,6 +103,8 @@ h1 {
   letter-spacing: -0.64px;
   /* A word longer than the line breaks instead of overflowing. */
   overflow-wrap: anywhere;
+  /* The tagline's margin alone sets the space below the heading. */
+  margin-bottom: 0;
 }
 
 .hero-title {
@@ -140,6 +142,17 @@ h1 {
 
 .hero-tagline {
   color: rgb(var(--color-paper-channels) / 0.88);
+  font-size: 18px;
+  line-height: 1.55;
+  max-width: 600px;
+  margin-top: 40px;
+}
+
+@media (min-width: 768px) {
+  .hero-tagline {
+    font-size: 20px;
+    margin-top: 165px;
+  }
 }
 
 .hero-stack {
