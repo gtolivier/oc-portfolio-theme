@@ -335,7 +335,7 @@ class TickField extends HTMLElement {
   }
 
   private rippleColor(): string {
-    return this.themeColor('--color-paper');
+    return this.accentColor();
   }
 
   /* Brighter at the top. */
