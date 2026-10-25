@@ -480,6 +480,43 @@ test('on the French home page, the hero fills at least the full window height be
     .toBeGreaterThanOrEqual(viewportHeight - 1);
 });
 
+test('from 768 px wide, the hero’s text block is centred vertically in the hero, as in the design: at 1280 × 900 and at 768 × 1024, the space between its buttons and the bottom of the hero is the space between the top of the hero and its heading plus 40 px, within 4 px', async ({ page }) => {
+  /* Design reference: the text block (heading, tagline, stack, buttons) sits in the middle of
+     the hero, with 40 px of padding below it. Both windows are tall enough to leave the hero
+     free space around its text. */
+  for (const viewport of [{ width: 1280, height: 900 }, { width: 768, height: 1024 }]) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await page.setViewportSize(viewport);
+    await page.goto('/fr/');
+    await page.evaluate(() => document.fonts.ready);
+    /* The hero is the main content region named by its main heading. */
+    const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+    const heading = hero.getByRole('heading', { level: 1 });
+    const buttons = [hero.getByRole('link', { name: 'Voir les projets' }), hero.getByRole('link', { name: 'Contact' })];
+    await expect(heading, `heading at ${size}`).toBeVisible();
+    for (const button of buttons) await expect(button, `button at ${size}`).toBeVisible();
+
+    const heroBox = (await hero.boundingBox())!;
+    const headingBox = (await heading.boundingBox())!;
+    const buttonsBottom = Math.max(
+      ...(await Promise.all(buttons.map(async (button) => {
+        const box = (await button.boundingBox())!;
+        return box.y + box.height;
+      }))),
+    );
+    const spaceAbove = headingBox.y - heroBox.y;
+    const spaceBelow = heroBox.y + heroBox.height - buttonsBottom;
+    expect.soft(
+      spaceBelow - spaceAbove,
+      `at ${size}, space below the buttons (${Math.round(spaceBelow)} px) minus space above the heading (${Math.round(spaceAbove)} px)`,
+    ).toBeGreaterThanOrEqual(36);
+    expect.soft(
+      spaceBelow - spaceAbove,
+      `at ${size}, space below the buttons (${Math.round(spaceBelow)} px) minus space above the heading (${Math.round(spaceAbove)} px)`,
+    ).toBeLessThanOrEqual(44);
+  }
+});
+
 test('the hero content is aligned with the header logo: 16 px from the left edge on a phone, 48 px on desktop', async ({ page, isMobile }) => {
   await page.goto('/fr/');
   /* Design reference: 16 px side margin on a phone, 48 px on desktop, like the header. The
