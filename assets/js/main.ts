@@ -101,6 +101,10 @@ const FIELD_TICK_SPACING_PX = 8;
 
 const FIELD_TICK_WIDTH_PX = 1;
 
+const FIELD_TICK_HEIGHT_PX = 8;
+
+const FIELD_ROW_SPACING_PX = 16;
+
 const FIELD_MIN_ALPHA = 0.15;
 
 const FIELD_HOVER_RADIUS_PX = 40;
@@ -256,7 +260,9 @@ class TickField extends HTMLElement {
     const front = progress * canvas.width;
     for (let x = 0; x < front; x += FIELD_TICK_SPACING_PX) {
       context.globalAlpha = this.tickAlpha(x, canvas.width);
-      context.fillRect(x, 0, FIELD_TICK_WIDTH_PX, canvas.height);
+      for (let y = 0; y < canvas.height; y += FIELD_ROW_SPACING_PX) {
+        context.fillRect(x, y, FIELD_TICK_WIDTH_PX, FIELD_TICK_HEIGHT_PX);
+      }
       this.drawPointerTrail(context, x);
     }
     this.drawRipple(context);
