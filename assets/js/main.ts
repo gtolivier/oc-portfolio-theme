@@ -192,6 +192,12 @@ function fadeInAlpha(widthShare: number, progress: number): number {
   return Math.min(1, sinceFrontPassedMs / FIELD_TICK_FADE_IN_MS);
 }
 
+/* Slow at both ends, from 0 to 1 (smoothstep); a share outside 0–1 is clamped first. */
+function easeInOut(share: number): number {
+  const clamped = Math.min(1, Math.max(0, share));
+  return clamped * clamped * (3 - 2 * clamped);
+}
+
 /* A decorative canvas covering the whole box, behind the content. */
 class TickField extends HTMLElement {
   private canvas = document.createElement('canvas');
@@ -432,13 +438,11 @@ class TickField extends HTMLElement {
     context.fillRect(x, y - growthAtEachEnd, FIELD_TICK_WIDTH_PX, tickHeight + 2 * growthAtEachEnd);
   }
 
-  /* Set by the tick's place along the diagonal, eased in and out: brighter to the right and at the top. */
+  /* Set by the tick's place along the diagonal: brighter to the right and at the top. */
   private restingAlpha(x: number, y: number, width: number, height: number): number {
     const horizontal = FIELD_PLACE_HORIZONTAL_SHARE * (x / width);
     const vertical = (1 - FIELD_PLACE_HORIZONTAL_SHARE) * (1 - y / height);
-    const place = Math.min(1, Math.max(0, horizontal + vertical));
-    const eased = place * place * (3 - 2 * place);
-    return FIELD_MIN_ALPHA + (FIELD_MAX_ALPHA - FIELD_MIN_ALPHA) * eased;
+    return FIELD_MIN_ALPHA + (FIELD_MAX_ALPHA - FIELD_MIN_ALPHA) * easeInOut(horizontal + vertical);
   }
 
   /* Taller from left to right, and taller at the top. */
