@@ -163,6 +163,9 @@ type Point = { x: number; y: number };
 /* Where the pointer passed, and since when it lingers there. */
 type TrailPoint = Point & { at: number };
 
+/* A trail point as one drawing sees it: its alpha read once, at the drawing's time. */
+type LitPoint = Point & { alpha: number };
+
 /* Where a click started a ring, and when. */
 type Ripple = Point & { start: number };
 
@@ -179,6 +182,7 @@ type FieldDrawing = {
   width: number;
   height: number;
   litColor: string;
+  litTrail: LitPoint[];
 };
 
 /* How far along its line of the grid a column or row sits: 0 for the first, 1 for the last. */
@@ -278,10 +282,12 @@ class TickField extends HTMLElement {
     if (this.isAnimating()) this.requestDraw();
   }
 
-  /* Brings each animation to the current time; the reveal stands still while off screen. */
+  /* Brings each animation to the current time. The reveal's progress follows real time from
+     revealStart: no frame is requested for it while off screen, so it catches up once back. */
   private advanceAnimations(): void {
     if (this.isRevealing()) this.advanceReveal();
-    this.trail = this.trail.filter((point) => this.pointAlpha(point) > 0);
+    const now = performance.now();
+    this.trail = this.trail.filter((point) => this.pointAlpha(point, now) > 0);
     this.ripples = this.ripples.filter((ripple) => this.rippleAge(ripple) < FIELD_RIPPLE_DURATION_MS);
   }
 
@@ -334,9 +340,17 @@ class TickField extends HTMLElement {
   }
 
   /* The point under the pointer stays fully lit; the others fade with age. */
-  private pointAlpha(point: TrailPoint): number {
+  private pointAlpha(point: TrailPoint, now: number): number {
     if (this.isUnderPointer(point)) return 1;
-    return Math.max(0, 1 - (performance.now() - point.at) / FIELD_TRAIL_FADE_MS);
+    return Math.max(0, 1 - (now - point.at) / FIELD_TRAIL_FADE_MS);
+  }
+
+  /* Read once per drawing, not once per tick: a point that no longer lights anything is left out. */
+  private litTrail(): LitPoint[] {
+    const now = performance.now();
+    return this.trail
+      .map((point) => ({ x: point.x, y: point.y, alpha: this.pointAlpha(point, now) }))
+      .filter((point) => point.alpha > 0);
   }
 
   private isUnderPointer(point: TrailPoint): boolean {
@@ -361,7 +375,14 @@ class TickField extends HTMLElement {
     const colors = this.themeColors();
     context.fillStyle = this.tickGradient(context, width, height, colors);
     const front = this.progress * width;
-    const drawing = { context, layout: this.layout(width, height), width, height, litColor: colors.accent };
+    const drawing = {
+      context,
+      layout: this.layout(width, height),
+      width,
+      height,
+      litColor: colors.accent,
+      litTrail: this.litTrail(),
+    };
     for (let column = 0; column < drawing.layout.columns; column += 1) {
       const x = drawing.layout.left + column * FIELD_TICK_SPACING_PX;
       if (x >= front) break;
@@ -409,7 +430,7 @@ class TickField extends HTMLElement {
 
   private drawLighting(drawing: FieldDrawing, x: number, y: number, tickHeight: number): void {
     const tickColor = drawing.context.fillStyle;
-    const hover = this.hoverLighting(x, y, tickHeight);
+    const hover = this.hoverLighting(drawing.litTrail, x, y, tickHeight);
     const ripple = this.rippleLighting(x, y, tickHeight);
     this.drawGrownEnds(drawing, x, y, tickHeight, Math.max(hover, ripple));
     this.drawLitTick(drawing, x, y, tickHeight, hover);
@@ -452,19 +473,29 @@ class TickField extends HTMLElement {
   }
 
   /* A tick is lit near where the pointer passed. */
-  private hoverLighting(x: number, y: number, tickHeight: number): number {
+  private hoverLighting(litTrail: LitPoint[], x: number, y: number, tickHeight: number): number {
+    const centre = this.tickCentre(x, y, tickHeight);
     let lighting = 0;
-    for (const point of this.trail) {
-      const distance = this.distanceFromTick(x, y, tickHeight, point);
+    for (const point of litTrail) {
+      const dx = centre.x - point.x;
+      const dy = centre.y - point.y;
+      /* Outside the square around the radius, the point is out of reach: no need for the costlier distance. */
+      if (Math.abs(dx) >= FIELD_HOVER_RADIUS_PX || Math.abs(dy) >= FIELD_HOVER_RADIUS_PX) continue;
+      const distance = Math.hypot(dx, dy);
       if (distance >= FIELD_HOVER_RADIUS_PX) continue;
-      lighting = Math.max(lighting, this.pointAlpha(point) * (1 - distance / FIELD_HOVER_RADIUS_PX));
+      lighting = Math.max(lighting, point.alpha * (1 - distance / FIELD_HOVER_RADIUS_PX));
     }
     return lighting;
   }
 
   /* Measured from the tick's centre. */
   private distanceFromTick(x: number, y: number, tickHeight: number, point: Point): number {
-    return Math.hypot(x + FIELD_TICK_WIDTH_PX / 2 - point.x, y + tickHeight / 2 - point.y);
+    const centre = this.tickCentre(x, y, tickHeight);
+    return Math.hypot(centre.x - point.x, centre.y - point.y);
+  }
+
+  private tickCentre(x: number, y: number, tickHeight: number): Point {
+    return { x: x + FIELD_TICK_WIDTH_PX / 2, y: y + tickHeight / 2 };
   }
 
   /* Along the diagonal: green at the bottom left, accent in the middle, cream at the top right. */
