@@ -186,6 +186,8 @@ type FieldDrawing = {
   litColor: string;
   litTrail: LitPoint[];
   agedRipples: AgedRipple[];
+  /* Without a trail point or a ripple, no tick is lit: an idle field draws only its base ticks. */
+  hasLighting: boolean;
 };
 
 /* How far along its line of the grid a column or row sits: 0 for the first, 1 for the last. */
@@ -392,14 +394,17 @@ class TickField extends HTMLElement {
     const colors = this.themeColors();
     context.fillStyle = this.tickGradient(context, width, height, colors);
     const front = this.progress * width;
+    const litTrail = this.litTrail();
+    const agedRipples = this.agedRipples();
     const drawing = {
       context,
       layout: this.layout(width, height),
       width,
       height,
       litColor: colors.accent,
-      litTrail: this.litTrail(),
-      agedRipples: this.agedRipples(),
+      litTrail,
+      agedRipples,
+      hasLighting: litTrail.length > 0 || agedRipples.length > 0,
     };
     for (let column = 0; column < drawing.layout.columns; column += 1) {
       const x = drawing.layout.left + column * FIELD_TICK_SPACING_PX;
@@ -439,7 +444,7 @@ class TickField extends HTMLElement {
       const tickHeight = this.tickHeight(columnShare, gridShare(row, layout.rows));
       context.globalAlpha = fadeIn * this.restingAlpha(x, y, drawing.width, drawing.height);
       context.fillRect(x, y, FIELD_TICK_WIDTH_PX, tickHeight);
-      this.drawLighting(drawing, x, y, tickHeight);
+      if (drawing.hasLighting) this.drawLighting(drawing, x, y, tickHeight);
     }
   }
 
