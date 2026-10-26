@@ -1506,6 +1506,121 @@ test('on a phone, under 768 px wide, the hero’s tick field is coloured along t
   ).toEqual([]);
 });
 
+test('from 768 px wide, with a classic scrollbar that leaves the page less than 768 px, the hero’s tick field keeps its desktop version, like the rest of the page: at 768 × 1024, 775 × 1024 and 782 × 1024, with a 15 px scrollbar and the field still (reduced motion), the page is in its desktop layout, the hero’s text 48 px from its left edge, while the field leaves side margins of at least 24 px, is faintest at the bottom left and most opaque at the top right, green at the bottom left and cream at the top right', async ({ browser, baseURL, isMobile, hasTouch, deviceScaleFactor, userAgent }) => {
+  /* Windows from 768px wide, where the page switches to its desktop layout, whose width
+     includes the scrollbar, up to the widest a 15px scrollbar leaves under 768px of page. */
+  const SCROLLBAR_WIDTH = 15;
+  const VIEWPORTS = [
+    { width: 768, height: 1024 },
+    { width: 775, height: 1024 },
+    { width: 782, height: 1024 },
+  ];
+
+  /* The project's browser and device, with the scrollbars a desktop shows: Chromium is run
+     headless with its scrollbars hidden, which then take no width from the page. */
+  await using browserWithScrollbars = await browser.browserType().launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+  const context = await browserWithScrollbars.newContext({ baseURL, viewport: VIEWPORTS[0], isMobile, hasTouch, deviceScaleFactor, userAgent });
+  const page = await context.newPage();
+  const { hero, text } = await stillHero(page);
+
+  /* A classic scrollbar, which takes its width from the page, as on a desktop whose scrollbars
+     are always shown, rather than one laid over the page. The browser puts it in place on its
+     next rendering, which the stopped clock does not hold back. */
+  await page.addStyleTag({
+    content: `::-webkit-scrollbar { width: ${SCROLLBAR_WIDTH}px; } ::-webkit-scrollbar-thumb { background: grey; }`,
+  });
+  const scrollbarWidth = (): Promise<number> => page.evaluate(() => window.innerWidth - document.documentElement.clientWidth);
+  const scrollbarTakesWidth = await expect
+    .poll(scrollbarWidth, { timeout: 2000 })
+    .toBeGreaterThan(0)
+    .then(() => true, () => false);
+  test.skip(!scrollbarTakesWidth, 'this browser lays its scrollbar over the page or hides it: it takes no width from the page');
+  expect(await scrollbarWidth(), 'width the scrollbar takes from the page').toBe(SCROLLBAR_WIDTH);
+  await page.clock.runFor(100);
+
+  /* The heading, hidden from assistive technologies once only the field shows. */
+  const heading = hero.getByRole('heading', { level: 1, includeHidden: true });
+  await showOnlyTheField(hero, text);
+
+  /* The theme's three tick colours: green (--color-accent-dark), accent (--color-accent) and
+     cream (--color-paper), read through the same colour handling as the ticks. */
+  const themeColour = async (customProperty: string): Promise<Channels> =>
+    channelsOfColour(hero, await hero.evaluate((el, name) => getComputedStyle(el).getPropertyValue(name).trim(), customProperty));
+  const hues = {
+    green: await themeColour('--color-accent-dark'),
+    accent: await themeColour('--color-accent'),
+    cream: await themeColour('--color-paper'),
+  };
+  type Hue = keyof typeof hues;
+  const describeColour = (channels: Channels): string =>
+    `(${Math.round(channels.red)}, ${Math.round(channels.green)}, ${Math.round(channels.blue)})`;
+  const closestHue = (colour: Channels): Hue =>
+    (Object.keys(hues) as Hue[]).reduce((best, hue) => {
+      const distance = (other: Channels) => Math.hypot(colour.red - other.red, colour.green - other.green, colour.blue - other.blue);
+      return distance(hues[hue]) < distance(hues[best]) ? hue : best;
+    });
+
+  const problems: string[] = [];
+  const measured: string[] = [];
+  for (const viewport of VIEWPORTS) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await page.setViewportSize(viewport);
+    await page.clock.runFor(100);
+
+    /* The page is in its desktop layout, while the scrollbar leaves it less than 768px. */
+    const pageWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(pageWidth, `width the scrollbar leaves the page in a ${size}px window`).toBe(viewport.width - SCROLLBAR_WIDTH);
+    expect(pageWidth, `width the scrollbar leaves the page in a ${size}px window`).toBeLessThan(768);
+    const box = (await hero.boundingBox())!;
+    expect(box.width, `width of the hero in a ${size}px window`).toBeCloseTo(pageWidth, 0);
+    const headingBox = (await heading.boundingBox())!;
+    expect(headingBox.x - box.x, `distance from the hero’s left edge to its heading in a ${size}px window, 48px in the desktop layout, 16px on a phone`).toBeCloseTo(48, 0);
+
+    const screenshot = await hero.screenshot();
+    const { columns, firstRow, lastRow, tickWidth } = await cornerTicks(hero, screenshot, box.height, size);
+
+    /* The empty side margins, measured as in the phone test: from each side of the hero to the
+       nearest edge of its outermost columns of ticks. */
+    const extent = await extentOfDrawnTicks(hero, screenshot);
+    const [leftColumn, rightColumn] = await horizontalExtentOfDrawnStrokeInRectangles(hero, screenshot, [
+      { x: extent.left - 6, y: 0, width: 14, height: box.height },
+      { x: extent.right - 8, y: 0, width: 14, height: box.height },
+    ]);
+    const margins = { left: leftColumn.x, right: box.width - (rightColumn.x + rightColumn.width) };
+
+    /* A corner tick's opacity and colour, read as in the phone tests: of the points across the
+       tick, the reading where it covers a pixel most. */
+    const tick = async (x: number, y: number): Promise<{ opacity: number; colour: Channels }> => {
+      const measures = (await canvasOpacityOverBackgroundAt(hero, screenshot, pointsAcrossTick(x, y, tickWidth))).filter(({ opacity }) => !Number.isNaN(opacity));
+      expect(measures.length, `points of the tick at (${x.toFixed(1)}, ${y.toFixed(1)})px of the ${size}px hero drawn in a colour other than the background`).toBeGreaterThan(0);
+      return measures.reduce((best, measure) => (measure.opacity > best.opacity ? measure : best));
+    };
+    const corners = {
+      'top left': await tick(columns.left, firstRow),
+      'top right': await tick(columns.right, firstRow),
+      'bottom left': await tick(columns.left, lastRow),
+      'bottom right': await tick(columns.right, lastRow),
+    };
+    type Corner = keyof typeof corners;
+    const describe = `${size}px, page ${pageWidth}px: margins left ${margins.left.toFixed(2)}, right ${margins.right.toFixed(2)}; ${Object.entries(corners).map(([corner, { opacity, colour }]) => `${corner} ${(100 * opacity).toFixed(1)}% ${describeColour(colour)}`).join(', ')}`;
+    measured.push(describe);
+    if (Math.min(margins.left, margins.right) < 24) problems.push(`${describe}: a side margin is under 24px`);
+    const others = (corner: Corner): number[] =>
+      (Object.keys(corners) as Corner[]).filter((name) => name !== corner).map((name) => corners[name].opacity);
+    if (!others('bottom left').every((opacity) => corners['bottom left'].opacity < opacity)) {
+      problems.push(`${describe}: the bottom left tick is not the faintest`);
+    }
+    if (!others('top right').every((opacity) => corners['top right'].opacity > opacity)) {
+      problems.push(`${describe}: the top right tick is not the most opaque`);
+    }
+    for (const [corner, wanted] of [['bottom left', 'green'], ['top right', 'cream']] as [Corner, Hue][]) {
+      const hue = closestHue(corners[corner].colour);
+      if (hue !== wanted) problems.push(`${size}px: the ${corner} tick is closest to ${hue}, not ${wanted}`);
+    }
+  }
+  expect(problems, `the hero’s tick field beside a classic scrollbar (${measured.join(' | ')})`).toEqual([]);
+});
+
 test('served under /portfolio/, the first hero button of the French home page, "Voir les projets", leads to /portfolio/fr/projets/', async ({ page }) => {
   await page.goto('http://localhost:1315/portfolio/fr/');
   const firstButton = firstHeroButton(page);
