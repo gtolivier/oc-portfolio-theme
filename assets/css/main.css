@@ -95,8 +95,9 @@
     + var(--header-border-width)
   );
   /* Height of the sticky header; the hero subtracts it from the viewport
-     so it fills the space right below the header. The theme script
-     replaces it with the measured height when the menu wraps. The
+     so it fills the space right below the header. Once it runs, the theme
+     script replaces it with the measured height, which differs from the
+     estimate when the menu wraps. The
      header's own min-height reads the estimate instead, so a measured
      height never keeps the header tall after the window widens. */
   --header-height: var(--header-estimated-height);
@@ -115,13 +116,13 @@
 }
 
 /* Without a language switcher, the first row is as tall as the logo on a
-   phone. */
-:root:not(:has(.site-header [role="group"])) {
+   phone. The template marks the root element when the header has one. */
+:root:not(.has-language-switcher) {
   --header-first-row-height: var(--header-link-line-box);
 }
 
 @media (min-width: 768px) {
-  :root:not(:has(.site-header [role="group"])) {
+  :root:not(.has-language-switcher) {
     /* The nav links are the tallest items of the row. */
     --header-first-row-height: var(--header-nav-link-height);
   }
@@ -340,7 +341,7 @@ h1 {
 }
 
 /* Without a language switcher, the first row is only as tall as the logo. */
-.site-header:not(:has([role="group"])) {
+:root:not(.has-language-switcher) .site-header {
   min-height: 0;
 }
 

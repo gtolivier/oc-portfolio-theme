@@ -615,7 +615,7 @@ customElements.define('tick-field', TickField);
    menu wraps, the header is taller. Publish its real height. */
 const siteHeader = document.querySelector('.site-header');
 if (siteHeader) {
-  new ResizeObserver(() => {
-    document.documentElement.style.setProperty('--header-height', `${siteHeader.getBoundingClientRect().height}px`);
+  new ResizeObserver(([entry]) => {
+    document.documentElement.style.setProperty('--header-height', `${entry.borderBoxSize[0].blockSize}px`);
   }).observe(siteHeader, { box: 'border-box' });
 }

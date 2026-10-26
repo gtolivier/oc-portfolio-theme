@@ -1,13 +1,13 @@
 <a href="{{ site.Home.RelPermalink }}" aria-label="{{ site.Title }}">
-  {{ partial "logo.html" . -}}
+  {{ partial "logo.html" .page -}}
 </a>
 <nav>
-  {{- $page := . }}
+  {{- $page := .page }}
   {{- range site.Menus.main }}
   <a href="{{ .URL }}"{{ if eq .URL $page.RelPermalink }} aria-current="page"{{ end }}>{{ .Name }}</a>
   {{- end }}
 </nav>
-{{- if gt (len hugo.Sites) 1 }}
+{{- if .hasLanguageSwitcher }}
 <div role="group" aria-label="{{ i18n "language" }}">
   {{- $currentLang := site.Language.Lang }}
   {{- range hugo.Sites }}
