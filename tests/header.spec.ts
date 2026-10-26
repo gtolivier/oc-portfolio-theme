@@ -725,11 +725,15 @@ test.describe('without JavaScript', () => {
       for (const [name, item] of items) {
         await expect(item, `${name} at ${viewport.width} px`).toBeVisible();
         await expect(item, `${name} at ${viewport.width} px`).toBeEnabled();
-        /* A trial click only checks that a real click would land on the item, without navigating. */
+      }
+      /* Measured before the trial clicks: on WebKit without JavaScript, a trial click follows the link. */
+      const centres =
+        viewport.width < DESKTOP_MIN_WIDTH ? null : await verticalCentres([...items, ['language switcher', switcher]]);
+      for (const [, item] of items) {
+        /* A trial click only checks that a real click would land on the item. */
         await item.click({ trial: true, timeout: 2000 });
       }
-      if (viewport.width < DESKTOP_MIN_WIDTH) continue;
-      const centres = await verticalCentres([...items, ['language switcher', switcher]]);
+      if (centres === null) continue;
       const logoCentre = centres['logo'];
       /* Compared with a 1 px tolerance: rendered box positions may carry sub-pixel rounding. */
       expect(
