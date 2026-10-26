@@ -276,6 +276,15 @@ h1 {
   gap: 32px;
 }
 
+/* From 768 px, the nav goes back between the logo and the switcher, all on
+   a single row. */
+@media (min-width: 768px) {
+  .site-header nav {
+    order: 0;
+    flex-basis: auto;
+  }
+}
+
 .site-header nav a {
   letter-spacing: 0.08em;
 }
