@@ -422,6 +422,35 @@ test('the header logo is 16 px from the left edge of the window on a phone, 48 p
   expect(box.x).toBeCloseTo(isMobile ? 16 : 48, 0);
 });
 
+test('in a 320 px wide window, the header logo stays on a single line', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto('/fr/');
+  const logo = headerLogo(page);
+  await expect(logo).toHaveText('| E ||| | X |||');
+  /* The vertical position at which each visible character of the logo is rendered. */
+  const tops = await logo.evaluate((element) => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const values: number[] = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      const text = node.textContent!;
+      for (let index = 0; index < text.length; index++) {
+        if (text[index].trim() === '') continue;
+        const range = document.createRange();
+        range.setStart(node, index);
+        range.setEnd(node, index + 1);
+        values.push(range.getBoundingClientRect().top);
+      }
+    }
+    return values;
+  });
+  expect(tops).toHaveLength(10);
+  /* On a single line, every character shares the vertical position of the first one. */
+  expect(
+    tops.every((top) => Math.abs(top - tops[0]) <= 1),
+    `vertical positions: ${tops.join(', ')}`,
+  ).toBe(true);
+});
+
 test('the header is separated from the page by a 1 px solid paper-colored bottom border at 12% opacity', async ({ page }) => {
   await page.goto('/fr/');
   const header = page.locator('header');
