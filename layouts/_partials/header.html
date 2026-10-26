@@ -10,10 +10,11 @@
 {{- if gt (len hugo.Sites) 1 }}
 <div role="group" aria-label="{{ i18n "language" }}">
   {{- $currentLang := site.Language.Lang }}
-  <span lang="{{ $currentLang }}" aria-current="true">{{ upper $currentLang }}</span>
   {{- range hugo.Sites }}
   {{- $lang := .Language.Lang }}
-  {{- if ne $lang $currentLang }}
+  {{- if eq $lang $currentLang }}
+  <span lang="{{ $lang }}" aria-current="true">{{ upper $lang }}</span>
+  {{- else }}
   {{- $url := .Home.RelPermalink }}
   {{- with where $page.Translations "Language.Lang" $lang }}{{ $url = (index . 0).RelPermalink }}{{ end }}
   <a href="{{ $url }}" hreflang="{{ $lang }}" lang="{{ $lang }}">{{ upper $lang }}</a>
