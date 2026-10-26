@@ -358,7 +358,6 @@ h1 {
 .site-header [role="group"] {
   display: flex;
   gap: var(--header-switcher-gap);
-  width: fit-content;
   padding: var(--header-switcher-padding);
   border: var(--header-switcher-border-width) solid rgb(var(--color-paper-channels) / 0.35);
   font-family: var(--font-mono);
@@ -369,7 +368,7 @@ h1 {
 
 .site-header [role="group"] a,
 .site-header [role="group"] [aria-current] {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--header-switcher-entry-padding-block) var(--header-switcher-entry-padding-inline);
