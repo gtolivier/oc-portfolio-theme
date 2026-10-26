@@ -704,6 +704,38 @@ test('on the French home page, the hero fills at least the full window height be
     .toBeGreaterThanOrEqual(viewportHeight - 1);
 });
 
+test('in a window tall enough for its content, the hero ends exactly at the bottom of the window: its height is the window height minus the header height, within 1 px, on a phone as on desktop', async ({ page }) => {
+  /* Design reference: minimum height "100vh minus the header height". The header is two rows
+     on a phone and one row from 768 px wide: a tall phone window and the two desktop windows,
+     all tall enough to leave the hero free space around its text. */
+  for (const viewport of [{ width: 412, height: 1100 }, ...DESKTOP_VIEWPORTS]) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await openHomeAt(page, viewport);
+    /* The hero is the main content region named by its main heading. */
+    const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+    const heading = hero.getByRole('heading', { level: 1 });
+    const buttons = [hero.getByRole('link', { name: 'Voir les projets' }), hero.getByRole('link', { name: 'Contact' })];
+    await expect(heading, `heading at ${size}`).toBeVisible();
+    for (const button of buttons) await expect(button, `button at ${size}`).toBeVisible();
+
+    /* Page scrolled to the top: the hero starts right below the header. */
+    const headerBox = (await page.locator('header').boundingBox())!;
+    const expectedHeight = viewport.height - headerBox.height;
+    /* The window is tall enough: the hero's text, from the top of its heading to the bottom
+       of its buttons, leaves at least 150 px of free height, so the content does not set
+       the hero's height. */
+    const textHeight = (await bottomOfButtons(buttons)) - (await heading.boundingBox())!.y;
+    expect(textHeight, `at ${size}, height of the hero's text, against ${Math.round(expectedHeight)} px`)
+      .toBeLessThanOrEqual(expectedHeight - 150);
+
+    const heroBox = (await hero.boundingBox())!;
+    expect.soft(
+      Math.abs(heroBox.height - expectedHeight),
+      `at ${size}, hero height (${heroBox.height} px) against the window height minus the header height (${expectedHeight} px)`,
+    ).toBeLessThanOrEqual(1);
+  }
+});
+
 test('from 768 px wide, the hero’s text block is centred vertically in the hero, as in the design: at 1280 × 900 and at 768 × 1024, the space between its buttons and the bottom of the hero is the space between the top of the hero and its heading plus 40 px, within 4 px', async ({ page }) => {
   /* Design reference: the text block (heading, tagline, stack, buttons) sits in the middle of
      the hero, with 40 px of padding below it. Both windows are tall enough to leave the hero
