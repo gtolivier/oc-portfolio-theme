@@ -58,8 +58,8 @@
      IBM Plex Mono loads. */
   --header-link-line-height: 1.3;
   --header-link-line-box: calc(var(--header-font-size) * var(--header-link-line-height));
-  --header-current-link-padding-bottom: 3px;
-  --header-current-link-border-width: 2px;
+  --header-link-underline-offset: 3px;
+  --header-link-underline-width: 2px;
   --header-switcher-padding: 2px;
   --header-switcher-gap: 2px;
   --header-switcher-border-width: 1px;
@@ -77,12 +77,12 @@
   );
   --header-switcher-height: calc(2 * var(--header-switcher-border-width) + 2 * var(--header-switcher-padding) + var(--header-switcher-entry-height));
   /* On a phone, the nav wraps to a second row, below the switcher's: its
-     current link is the tallest item there. */
+     links, underline room included, are the tallest items there. */
   --header-nav-row-height: calc(
     var(--header-row-gap)
     + var(--header-link-line-box)
-    + var(--header-current-link-padding-bottom)
-    + var(--header-current-link-border-width)
+    + var(--header-link-underline-offset)
+    + var(--header-link-underline-width)
   );
   /* Height of the sticky header; the hero subtracts it from the viewport
      so it fills the space right below the header. The first row's tallest
@@ -329,8 +329,8 @@ h1 {
   letter-spacing: 0.08em;
   /* Every link reserves the room of the current link's underline, so the
      header has the same layout whichever link is current, or none. */
-  padding-bottom: var(--header-current-link-padding-bottom);
-  border-bottom: var(--header-current-link-border-width) solid transparent;
+  padding-bottom: var(--header-link-underline-offset);
+  border-bottom: var(--header-link-underline-width) solid transparent;
 }
 
 @media (hover: hover) {
