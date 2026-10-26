@@ -971,39 +971,48 @@ test.describe('site with a long menu', () => {
     expect(lineCount, `top edges of the links: ${linkTops.join(', ')}`).toBeGreaterThan(1);
   });
 
-  test('from 768 px wide, with a menu too long to fit beside the logo, at least 24 px still separate the logo from every link on its line, and no link overlaps it (at 768 and 900 px)', async ({ page, context }) => {
+  test('from 768 px wide, with a menu too long to fit on the header line, the links wrap between the logo and the language switcher: every link at least 24 px right of the logo and 32 px left of the switcher, the switcher 48 px from the right edge (every 8 px from 768 to 1280 px)', async ({ page, context }) => {
     await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
+    await page.setViewportSize(NARROW_DESKTOP_VIEWPORT);
+    await page.goto(`${SITE_WITH_A_LONG_MENU.origin}/fr/`);
+    const links = navigationLinks(page);
+    await expect(links).toHaveText(['Accueil', 'Projets', 'Parcours', 'Compétences', 'Publications', 'Contact']);
+    const logo = headerLogo(page);
+    const switcher = languageSwitcher(page, 'Langue');
+
     const problems: string[] = [];
-    for (const viewport of [NARROW_DESKTOP_VIEWPORT, { width: 900, height: 1024 }]) {
-      await page.setViewportSize(viewport);
-      await page.goto(`${SITE_WITH_A_LONG_MENU.origin}/fr/`);
-      const links = navigationLinks(page);
-      await expect(links).toHaveText(['Accueil', 'Projets', 'Parcours', 'Compétences', 'Publications', 'Contact']);
-      const logoBox = (await headerLogo(page).boundingBox())!;
-      const switcherBox = (await languageSwitcher(page, 'Langue').boundingBox())!;
+    for (let width = DESKTOP_MIN_WIDTH; width <= WIDE_DESKTOP_VIEWPORT.width; width += 8) {
+      /* Resized without reloading: the page lays itself out again at each width. */
+      await page.setViewportSize({ width, height: NARROW_DESKTOP_VIEWPORT.height });
+      const logoBox = (await logo.boundingBox())!;
+      const switcherBox = (await switcher.boundingBox())!;
       const linkBoxes = await boxesOf(links);
 
-      /* The row the menu is too long for: 48 px gutters, the logo, 24 px, the links 32 px apart,
-         32 px, the switcher. */
-      const rowWidth =
-        2 * 48 + logoBox.width + 24 + linkBoxes.reduce((sum, box) => sum + box.width, 0)
-        + 32 * (linkBoxes.length - 1) + 32 + switcherBox.width;
-      expect(rowWidth, `width the single row would need at ${viewport.width} px`).toBeGreaterThan(viewport.width);
+      if (width === DESKTOP_MIN_WIDTH) {
+        /* The row the menu is too long for: 48 px gutters, the logo, 24 px, the links 32 px apart,
+           32 px, the switcher. */
+        const rowWidth =
+          2 * 48 + logoBox.width + 24 + linkBoxes.reduce((sum, box) => sum + box.width, 0)
+          + 32 * (linkBoxes.length - 1) + 32 + switcherBox.width;
+        expect(rowWidth, `width the single row would need at ${width} px`).toBeGreaterThan(width);
+      }
 
+      /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+      const switcherToRightEdge = width - (switcherBox.x + switcherBox.width);
+      if (Math.abs(switcherToRightEdge - 48) > 0.5) {
+        problems.push(`at ${width} px, the switcher is ${switcherToRightEdge} px from the right edge`);
+      }
       for (const [index, box] of linkBoxes.entries()) {
-        const name = `navigation link ${index + 1} at ${viewport.width} px`;
-        /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
-        const sharesLogoLine = box.y < logoBox.y + logoBox.height - 0.5 && logoBox.y < box.y + box.height - 0.5;
-        const overlapsLogo =
-          sharesLogoLine && box.x < logoBox.x + logoBox.width - 0.5 && logoBox.x < box.x + box.width - 0.5;
-        if (overlapsLogo) problems.push(`${name} overlaps the logo: ${JSON.stringify({ logo: logoBox, link: box })}`);
-        if (!sharesLogoLine) continue;
+        const name = `at ${width} px, navigation link ${index + 1}`;
         /* The horizontal distance between the right edge of the logo and the left edge of the link. */
-        const gap = box.x - (logoBox.x + logoBox.width);
-        if (gap < 24 - 0.5) problems.push(`${name} is ${gap} px from the logo`);
+        const logoGap = box.x - (logoBox.x + logoBox.width);
+        if (logoGap < 24 - 0.5) problems.push(`${name} is ${logoGap} px right of the logo`);
+        /* The horizontal distance between the right edge of the link and the left edge of the switcher. */
+        const switcherGap = switcherBox.x - (box.x + box.width);
+        if (switcherGap < 32 - 0.5) problems.push(`${name} is ${switcherGap} px left of the switcher`);
       }
     }
-    expect(problems, 'links too close to the logo').toEqual([]);
+    expect(problems, 'links outside the space between the logo and the switcher').toEqual([]);
   });
 });
 
