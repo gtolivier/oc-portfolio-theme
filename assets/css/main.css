@@ -451,3 +451,9 @@ tick-field > canvas {
 .hero .veil {
   --veil-shape: ellipse 70% 60% at 38% 55%;
 }
+
+/* The footer logo looks like the header one. */
+footer [aria-hidden="true"] {
+  font-family: var(--font-mono);
+  font-size: var(--header-font-size);
+}
