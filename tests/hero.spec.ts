@@ -803,6 +803,37 @@ test('on a phone, under 768 px wide, the hero’s text block is centred vertical
   }
 });
 
+test('on a phone, under 768 px wide, when the hero’s content is taller than the room it has, its heading keeps its distance from the header: at 320 × 568 and at 667 × 375 (landscape), at least 40 px separate the bottom of the header from the top of the heading, and at least 40 px stay between the buttons and the bottom of the hero, within 1 px', async ({ page }) => {
+  /* The two phone windows, set here whatever the project's own window, are too short for the
+     hero's text: from the top of its heading to the bottom of its buttons, it is taller than
+     the window less the header, so the hero grows past the bottom of the window. */
+  const SHORT_PHONE_VIEWPORTS = [{ width: 320, height: 568 }, { width: 667, height: 375 }];
+  for (const viewport of SHORT_PHONE_VIEWPORTS) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await openHomeAt(page, viewport);
+    const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
+
+    /* Page scrolled to the top: the header sits above the hero. */
+    const headerBox = (await page.locator('header').boundingBox())!;
+    const headerBottom = headerBox.y + headerBox.height;
+    const room = viewport.height - headerBottom;
+    const headingBox = (await heading.boundingBox())!;
+    const buttonsBottom = await bottomOfButtons(buttons);
+    expect(buttonsBottom - headingBox.y, `at ${size}, height of the hero's text, against ${Math.round(room)} px of window below the header`)
+      .toBeGreaterThan(room);
+
+    const heroBox = (await hero.boundingBox())!;
+    expect.soft(
+      headingBox.y - headerBottom,
+      `at ${size}, space between the bottom of the header and the top of the heading`,
+    ).toBeGreaterThanOrEqual(39);
+    expect.soft(
+      heroBox.y + heroBox.height - buttonsBottom,
+      `at ${size}, space between the bottom of the buttons and the bottom of the hero`,
+    ).toBeGreaterThanOrEqual(39);
+  }
+});
+
 test('the hero content is aligned with the header logo: 16 px from the left edge on a phone, 48 px on desktop', async ({ page, isMobile }) => {
   await page.goto('/fr/');
   /* Design reference: 16 px side margin on a phone, 48 px on desktop, like the header. The
