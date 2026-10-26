@@ -501,14 +501,19 @@ class TickField extends HTMLElement {
     context.fillRect(x, y - growthAtEachEnd, FIELD_TICK_WIDTH_PX, tickHeight + 2 * growthAtEachEnd);
   }
 
-  /* Set by the tick's place along the diagonal: brighter to the right and at the top; on a phone, hero, to the right and at the bottom. */
+  /* Set by the tick's place along the diagonal: brighter to the right, and towards its bright edge. */
   private restingAlpha(x: number, y: number, width: number, height: number): number {
     const horizontal = FIELD_PLACE_HORIZONTAL_SHARE * (x / width);
-    const verticalPlace = this.isHeroOnPhone(width) ? y / height : 1 - y / height;
-    const vertical = (1 - FIELD_PLACE_HORIZONTAL_SHARE) * verticalPlace;
+    const vertical = (1 - FIELD_PLACE_HORIZONTAL_SHARE) * this.verticalPlace(y, width, height);
     return (
       FIELD_RESTING_MIN_ALPHA + (FIELD_RESTING_MAX_ALPHA - FIELD_RESTING_MIN_ALPHA) * easeInOut(horizontal + vertical)
     );
+  }
+
+  /* From 0 at the faint edge to 1 at the bright one: the bottom for the hero's field on a phone, the top elsewhere. */
+  private verticalPlace(y: number, width: number, height: number): number {
+    const downShare = y / height;
+    return this.isHeroOnPhone(width) ? downShare : 1 - downShare;
   }
 
   /* Taller from left to right, and taller at the top. */
