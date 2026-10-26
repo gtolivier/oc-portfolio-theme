@@ -349,6 +349,15 @@ test('the header logo is 16 px from the left edge of the window on a phone, 48 p
   expect(box.x).toBeCloseTo(isMobile ? 16 : 48, 0);
 });
 
+test('the header is separated from the page by a 1 px solid paper-colored bottom border at 12% opacity', async ({ page }) => {
+  await page.goto('/fr/');
+  const header = page.locator('header');
+  await expect(header).toBeVisible();
+  await expect(header).toHaveCSS('border-bottom-style', 'solid');
+  await expect(header).toHaveCSS('border-bottom-width', '1px');
+  await expect(header).toHaveCSS('border-bottom-color', 'rgba(227, 223, 204, 0.12)');
+});
+
 test('the header links are paper-colored and not underlined', async ({ page }) => {
   await page.goto('/fr/');
   /* The logo and the navigation links, without the language switch link. */
