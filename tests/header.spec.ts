@@ -18,6 +18,16 @@ test('the header logo displays the initials and leads to the home page', async (
   await expect(logo).toHaveAttribute('href', '/fr/');
 });
 
+test('for screen readers, the header logo link holds only the site name, without the visible initials and bars', async ({ page }) => {
+  await page.goto('/fr/');
+  /* "/children: equal" makes the match exact: any text child (such as "| E |||") fails it. */
+  await expect(headerLogo(page)).toMatchAriaSnapshot(`
+    - link "Exemple":
+      - /url: /fr/
+      - /children: equal
+  `);
+});
+
 test('the header navigation lists the entries of the site main menu', async ({ page }) => {
   await page.goto('/fr/');
   const links = page.locator('header nav').getByRole('link');
