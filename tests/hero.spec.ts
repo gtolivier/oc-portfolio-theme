@@ -1236,6 +1236,64 @@ test('on a phone, under 768 px wide, the hero’s tick field leaves side margins
   expect(problems, `empty side margins around the hero’s ticks, in CSS pixels (${measured.join('; ')})`).toEqual([]);
 });
 
+test('on a phone, under 768 px wide, the hero’s tick field leaves top and bottom margins of at least 9 px, not 18 px, its ticks centred: at 320 × 699, 375 × 801 and 412 × 849, with the field still (reduced motion), the empty margins at its top and bottom are equal within a pixel, each at least 9 px, and together under 40 px, so that no further row of ticks, 22 px apart, would fit between margins of 9 px, while a minimum of 18 px leaves at least 40 px at these heights', async ({ page }) => {
+  /* Phone windows, set whatever the project's own window. The hero is as high as the window
+     less the header, a height that leaves, at each of them, no room for another row of ticks
+     between margins of 9px, while margins of at least 18px drop a row and leave 40px or more.
+     Each leaves an even number of pixels around the rows, so that centred rows on whole pixels
+     leave the same margin at the top and at the bottom. */
+  const PHONE_VIEWPORTS = [
+    { width: 320, height: 699 },
+    { width: 375, height: 801 },
+    { width: 412, height: 849 },
+  ];
+  await page.setViewportSize(PHONE_VIEWPORTS[0]);
+  const { hero, text } = await stillHero(page);
+  /* Only the field shows: the text and the veil are hidden without moving anything, and the
+     hero is given the page's background colour, which shows through it, so that the pixels
+     that differ from the hero's background are the ticks'. */
+  const veil = hero.locator('.veil');
+  await expect(veil).toHaveCount(1);
+  for (const element of [...Object.values(text), veil]) {
+    await element.evaluate((el) => {
+      (el as HTMLElement).style.visibility = 'hidden';
+    });
+  }
+  await hero.evaluate((el) => {
+    (el as HTMLElement).style.backgroundColor = getComputedStyle(document.body).backgroundColor;
+  });
+
+  const problems: string[] = [];
+  const measured: string[] = [];
+  for (const viewport of PHONE_VIEWPORTS) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await page.setViewportSize(viewport);
+    await page.clock.runFor(100);
+    const box = (await hero.boundingBox())!;
+    expect(box.width, `width of the hero in a ${size}px window`).toBeCloseTo(viewport.width, 0);
+    /* The hero's height is the window's less the header's: the room the sizes were picked for. */
+    const headerBox = (await page.locator('header').boundingBox())!;
+    expect(
+      Math.abs(box.height - (viewport.height - headerBox.height)),
+      `at ${size}, hero height (${box.height}px) against the window height minus the header height (${viewport.height - headerBox.height}px)`,
+    ).toBeLessThanOrEqual(1);
+
+    /* The empty top and bottom margins, in CSS pixels, from the top and bottom of the hero to
+       the nearest edge of its first and last rows of ticks, measured as for any tick-field. */
+    const screenshot = await hero.screenshot();
+    const extent = await extentOfDrawnTicks(hero, screenshot);
+    expect(extent.top, `drawn ticks in the ${size}px hero`).not.toBeNaN();
+    const top = extent.top;
+    const bottom = box.height - extent.bottom;
+    const describe = `${size}px, hero ${box.height.toFixed(2)}px high: top ${top.toFixed(2)}, bottom ${bottom.toFixed(2)}`;
+    measured.push(describe);
+    if (Math.abs(top - bottom) > 1) problems.push(`${describe}: top and bottom margins differ by more than 1px`);
+    if (Math.min(top, bottom) < 9) problems.push(`${describe}: a top or bottom margin is under 9px`);
+    if (top + bottom >= 40) problems.push(`${describe}: the top and bottom margins add up to 40px or more, room for another row of ticks between margins of 9px`);
+  }
+  expect(problems, `empty top and bottom margins around the hero’s ticks, in CSS pixels (${measured.join('; ')})`).toEqual([]);
+});
+
 test('served under /portfolio/, the first hero button of the French home page, "Voir les projets", leads to /portfolio/fr/projets/', async ({ page }) => {
   await page.goto('http://localhost:1315/portfolio/fr/');
   const firstButton = firstHeroButton(page);
