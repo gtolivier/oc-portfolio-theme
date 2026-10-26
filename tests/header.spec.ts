@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { SITE_WITH_A_SINGLE_LANGUAGE, buildSite, serveSite, removeDirectory } from './helpers/built-site';
 import { characterWeights } from './helpers/character-weights';
+import { textPieceStyles } from './helpers/text-piece-styles';
 
 /* The logo is the header link named after the site title. */
 function headerLogo(page: Page): Locator {
@@ -371,14 +372,7 @@ test('the header logo text has a letter-spacing of 0.06em (0.84 px at 14 px)', a
   const logo = headerLogo(page);
   await expect(logo).toHaveText('| E ||| | X |||');
   /* The computed letter-spacing of every element that directly holds a piece of the logo text. */
-  const spacings = await logo.evaluate((element) => {
-    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-    const values: string[] = [];
-    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-      if (node.textContent!.trim() !== '') values.push(getComputedStyle(node.parentElement!).letterSpacing);
-    }
-    return values;
-  });
+  const spacings = (await textPieceStyles(logo)).map(({ letterSpacing }) => letterSpacing);
   expect(spacings.length).toBeGreaterThan(0);
   /* Compared numerically: browsers may serialize the value differently ("0.84px", "0.840000px"); "normal" gives NaN and fails. */
   expect(
