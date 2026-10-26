@@ -260,6 +260,11 @@ h1 {
   letter-spacing: 0.06em;
 }
 
+.site-header nav {
+  display: flex;
+  gap: 32px;
+}
+
 .site-header nav a {
   letter-spacing: 0.08em;
 }
