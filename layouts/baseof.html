@@ -3,7 +3,10 @@
   switcher, is read outside the header too (the hero, the anchor scroll
   margin). */ -}}
 {{ $hasLanguageSwitcher := gt (len hugo.Sites) 1 -}}
-<html lang="{{ site.Language.Locale }}" dir="{{ or site.Language.Direction `ltr` }}"{{ if $hasLanguageSwitcher }} class="has-language-switcher"{{ end }}>
+{{ $rootClasses := slice -}}
+{{ if $hasLanguageSwitcher }}{{ $rootClasses = $rootClasses | append "has-language-switcher" }}{{ end -}}
+{{ if not site.Menus.main }}{{ $rootClasses = $rootClasses | append "no-main-menu" }}{{ end -}}
+<html lang="{{ site.Language.Locale }}" dir="{{ or site.Language.Direction `ltr` }}"{{ with $rootClasses }} class="{{ delimit . ` ` }}"{{ end }}>
 <head>
   {{ partial "head.html" . }}
 </head>

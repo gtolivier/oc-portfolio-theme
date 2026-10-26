@@ -124,6 +124,11 @@
   --header-first-row-height: var(--header-link-line-box);
 }
 
+/* Without a main menu, the header has no nav row. */
+:root.no-main-menu {
+  --header-nav-row-height: 0px;
+}
+
 @media (min-width: 768px) {
   :root:not(.has-language-switcher) {
     /* The nav links are the tallest items of the row. */
