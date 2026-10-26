@@ -44,9 +44,9 @@
   --color-accent-dark: #1E6C58;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
   --font-sans: 'IBM Plex Sans', Helvetica, sans-serif;
-  /* Minimum height of the sticky header; the hero subtracts it from the
-     viewport so it fills the space right below the header. */
-  --header-height: 4rem;
+  /* Height of the sticky header (two rows on a phone); the hero subtracts
+     it from the viewport so it fills the space right below the header. */
+  --header-height: 86px;
   /* Space left above an anchor target so the sticky header does not
      hide it: the header's height, plus some breathing room. */
   --sticky-header-clearance: calc(var(--header-height) + 2rem);
@@ -63,6 +63,7 @@
 
 @media (min-width: 768px) {
   :root {
+    --header-height: 75px;
     --page-gutter: 48px;
   }
 }
