@@ -446,6 +446,7 @@ h1 {
   padding: var(--header-switcher-entry-padding-block) var(--header-switcher-entry-padding-inline);
   min-width: var(--min-target-size);
   min-height: var(--min-target-size);
+  line-height: 15px;
 }
 
 .site-header [role="group"] a {
