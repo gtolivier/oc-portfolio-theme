@@ -378,6 +378,12 @@ h1 {
     column-gap: var(--header-column-gap);
   }
 
+  /* The logo keeps its single line: only the nav gives up room. */
+  .site-header > a:first-child {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
   .site-header nav {
     order: 0;
     flex-basis: auto;
