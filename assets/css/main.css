@@ -148,6 +148,26 @@ h1 {
   padding-bottom: 40px;
 }
 
+/* On a phone, two spacers share the free room equally, which centres the
+   text; the top one never shrinks under 40 px, so the text keeps its
+   distance from the header when it is taller than the room. */
+.hero::before,
+.hero::after {
+  content: "";
+  flex: 1 1 0;
+}
+
+.hero::before {
+  min-height: 40px;
+}
+
+@media (min-width: 768px) {
+  .hero::before,
+  .hero::after {
+    display: none;
+  }
+}
+
 .hero h1 {
   /* Outer margins would unbalance the centring. */
   margin-top: 0;
