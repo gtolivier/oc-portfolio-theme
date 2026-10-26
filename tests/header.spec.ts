@@ -395,6 +395,34 @@ test('in the header language switcher, the current language has the same height 
   expect(frBox.height, 'height of the current language').toBeCloseTo(enBox.height, 0);
 });
 
+test('in the header language switcher, each entry has 4 px of padding at the top and bottom, 9 px on the left and right, and stays at least 24 px tall', async ({ page }) => {
+  await page.goto('/fr/');
+  const group = languageSwitcher(page, 'Langue');
+  const currentLanguage = group.getByText('FR', { exact: true });
+  const otherLanguage = group.getByRole('link', { name: 'EN', exact: true });
+  await expect(currentLanguage).toHaveAttribute('aria-current');
+  await expect(otherLanguage).toBeVisible();
+  const expected = { top: 4, right: 9, bottom: 4, left: 9 };
+  for (const [name, entry] of [['FR', currentLanguage], ['EN', otherLanguage]] as const) {
+    const paddings = await entry.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        top: parseFloat(style.paddingTop),
+        right: parseFloat(style.paddingRight),
+        bottom: parseFloat(style.paddingBottom),
+        left: parseFloat(style.paddingLeft),
+      };
+    });
+    /* Compared numerically, with a small tolerance: browsers may serialize lengths differently. */
+    expect.soft(
+      (Object.keys(expected) as (keyof typeof expected)[]).every((side) => Math.abs(paddings[side] - expected[side]) <= 0.01),
+      `${name} paddings: ${JSON.stringify(paddings)}`,
+    ).toBe(true);
+    const box = (await entry.boundingBox())!;
+    expect.soft(box.height, `${name} target height`).toBeGreaterThanOrEqual(24);
+  }
+});
+
 test('on desktop, a hovered navigation link is underlined in the accent color, the line offset below the text', async ({ page, hasTouch }) => {
   test.skip(hasTouch, 'mouse hover does not exist on a touch screen');
   await page.goto('/fr/');
