@@ -10,6 +10,7 @@ import {
   SITE_WITH_A_HERO_WITHOUT_AUTHOR,
   SITE_WITH_A_HERO_WITH_LONG_WORDS,
   SITE_WITH_A_HERO_WITHOUT_TITLE,
+  SITE_WITH_A_LONG_MENU,
   SITE_WITH_A_PAGE_REF_NOT_FOUND,
   SITE_WITH_A_SINGLE_LANGUAGE,
   buildSite,
@@ -1799,6 +1800,50 @@ test.describe('home page of a single-language site', () => {
         `at ${size}, hero height (${heroBox.height} px) against the window height minus the header height (${expectedHeight} px)`,
       ).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+test.describe('home page of a site with a long menu', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_LONG_MENU);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a phone, when the menu wraps onto two lines, in a window tall enough for its content, the hero still ends exactly at the bottom of the window: at 412 × 1100, its height is the window height minus the header height, within 1 px', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
+    const viewport = { width: 412, height: 1100 };
+    const size = `${viewport.width} × ${viewport.height}`;
+    await page.setViewportSize(viewport);
+    await page.goto(`${SITE_WITH_A_LONG_MENU.origin}/fr/`);
+    await page.evaluate(() => document.fonts.ready);
+
+    /* The menu is too long for a single line at 412 px: its links sit on two lines (three
+       at 320 px). */
+    const links = page.locator('header nav').getByRole('link');
+    await expect(links).toHaveText(['Accueil', 'Projets', 'Parcours', 'Compétences', 'Publications', 'Contact']);
+    const linkTops: number[] = [];
+    for (const link of await links.all()) linkTops.push((await link.boundingBox())!.y);
+    const lineCount = new Set(linkTops.map((top) => Math.round(top))).size;
+    expect(lineCount, `at ${size}, lines of the menu (top edges of its links: ${linkTops.join(', ')})`).toBe(2);
+
+    const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
+    /* Page scrolled to the top: the hero starts right below the header. */
+    const headerBox = (await page.locator('header').boundingBox())!;
+    const expectedHeight = viewport.height - headerBox.height;
+    /* The window is tall enough: the hero's text leaves at least 150 px of free height,
+       so the content does not set the hero's height. */
+    const textHeight = (await bottomOfButtons(buttons)) - (await heading.boundingBox())!.y;
+    expect(textHeight, `at ${size}, height of the hero's text, against ${Math.round(expectedHeight)} px`)
+      .toBeLessThanOrEqual(expectedHeight - 150);
+
+    const heroBox = (await hero.boundingBox())!;
+    expect(
+      Math.abs(heroBox.height - expectedHeight),
+      `at ${size}, hero height (${heroBox.height} px) against the window height minus the header height (${expectedHeight} px)`,
+    ).toBeLessThanOrEqual(1);
   });
 });
 
