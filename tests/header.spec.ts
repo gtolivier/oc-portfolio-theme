@@ -227,6 +227,31 @@ test('the border of the header language switcher surrounds only its FR and EN en
   expect(groupBox.width - (entriesRight - entriesLeft)).toBeLessThanOrEqual(10);
 });
 
+test('the header language switcher leaves 2 px between the inside of its border and its entries, on every side', async ({ page }) => {
+  await page.goto('/fr/');
+  const group = languageSwitcher(page, 'Langue');
+  const first = group.getByText('FR', { exact: true });
+  const last = group.getByRole('link', { name: 'EN', exact: true });
+  await expect(first).toHaveAttribute('aria-current');
+  await expect(last).toBeVisible();
+  const groupBox = (await group.boundingBox())!;
+  const firstBox = (await first.boundingBox())!;
+  const lastBox = (await last.boundingBox())!;
+  const border = 1;
+  /* The space between the inner edge of the 1 px border and the entries, side by side. */
+  const spaces = {
+    top: firstBox.y - groupBox.y - border,
+    bottom: groupBox.y + groupBox.height - (firstBox.y + firstBox.height) - border,
+    left: firstBox.x - groupBox.x - border,
+    right: groupBox.x + groupBox.width - (lastBox.x + lastBox.width) - border,
+  };
+  /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+  expect(
+    Object.values(spaces).every((space) => Math.abs(space - 2) <= 0.5),
+    `spaces: ${JSON.stringify(spaces)}`,
+  ).toBe(true);
+});
+
 test('the header language switcher is in IBM Plex Mono 12 px, weight 600', async ({ page }) => {
   await page.goto('/fr/');
   const group = languageSwitcher(page, 'Langue');
