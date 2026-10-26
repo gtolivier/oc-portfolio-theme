@@ -366,8 +366,9 @@ h1 {
   gap: var(--header-link-gap);
 }
 
-/* From 768 px, the nav goes back between the logo and the switcher, all on
-   a single row. The header's block padding grows too, through
+/* From 768 px, the nav goes back between the logo and the switcher, the
+   three on a single row; a menu too long for it wraps its links within
+   the nav. The header's block padding grows too, through
    --header-padding-block in :root, which --header-estimated-height also
    reads. */
 @media (min-width: 768px) {
