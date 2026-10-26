@@ -244,6 +244,27 @@ test('the header logo and the navigation links are in IBM Plex Mono 14 px', asyn
   expect(styles).toEqual([expected, expected, expected, expected]);
 });
 
+test('the header logo text has a letter-spacing of 0.06em (0.84 px at 14 px)', async ({ page }) => {
+  await page.goto('/fr/');
+  const logo = headerLogo(page);
+  await expect(logo).toHaveText('| E ||| | X |||');
+  /* The computed letter-spacing of every element that directly holds a piece of the logo text. */
+  const spacings = await logo.evaluate((element) => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const values: string[] = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      if (node.textContent!.trim() !== '') values.push(getComputedStyle(node.parentElement!).letterSpacing);
+    }
+    return values;
+  });
+  expect(spacings.length).toBeGreaterThan(0);
+  /* Compared numerically: browsers may serialize the value differently ("0.84px", "0.840000px"); "normal" gives NaN and fails. */
+  expect(
+    spacings.every((spacing) => Math.abs(parseFloat(spacing) - 0.84) <= 0.01),
+    `letter-spacings: ${spacings.join(', ')}`,
+  ).toBe(true);
+});
+
 test('in the header language switcher, the link to the other language offers a target of at least 24 × 24 px (WCAG 2.5.8)', async ({ page }) => {
   await page.goto('/fr/');
   const otherLanguage = languageSwitcher(page, 'Langue').getByRole('link', { name: 'EN', exact: true });
