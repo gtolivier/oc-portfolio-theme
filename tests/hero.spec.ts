@@ -1795,6 +1795,51 @@ test.describe('home page of a single-language site', () => {
       ).toBeLessThanOrEqual(1);
     }
   });
+
+  test.describe('without JavaScript and with the fallback font', () => {
+    /* Without JavaScript, the hero's height relies on CSS alone: the header's estimated
+       height, which must also hold when the web fonts never arrive. */
+    test.use({ javaScriptEnabled: false });
+
+    test('on a single-language site, without JavaScript and with the web font files blocked, in a window tall enough for its content, the hero ends exactly at the bottom of the window: its height is the window height minus the header height, within 1 px, on a phone as on desktop', async ({ page, context }) => {
+      await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
+      /* The font files are blocked: a page route takes precedence over the context route
+         that serves the site, so the browser renders the fallback fonts of the stacks. */
+      const blockedFonts: string[] = [];
+      await page.route(`${SITE_WITH_A_SINGLE_LANGUAGE.origin}/**/*.{woff,woff2,ttf,otf}`, async (route) => {
+        blockedFonts.push(route.request().url());
+        await route.abort();
+      });
+      for (const viewport of [{ width: 412, height: 1100 }, ...DESKTOP_VIEWPORTS]) {
+        const size = `${viewport.width} × ${viewport.height}`;
+        await openHomeAt(page, viewport, SITE_WITH_A_SINGLE_LANGUAGE.origin);
+        /* The fonts really were blocked: the page asked for IBM Plex Mono, used by the
+           header and the heading, and no web font ended up loaded. */
+        expect(blockedFonts.some((url) => /mono/i.test(url)), `blocked font requests at ${size}: ${blockedFonts.join(', ')}`).toBe(true);
+        const loadedFonts = await page.evaluate(() =>
+          [...document.fonts].filter((face) => face.status === 'loaded').map((face) => face.family));
+        expect(loadedFonts, `web fonts loaded at ${size}`).toEqual([]);
+        /* The site is single-language: the header shows no language switcher. */
+        await expect(page.locator('header').getByRole('group', { name: 'Langue' }), `language switcher at ${size}`).toHaveCount(0);
+        const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
+
+        /* Page scrolled to the top: the hero starts right below the header. */
+        const headerBox = (await page.locator('header').boundingBox())!;
+        const expectedHeight = viewport.height - headerBox.height;
+        /* The window is tall enough: the hero's text leaves at least 150 px of free height,
+           so the content does not set the hero's height. */
+        const textHeight = (await bottomOfButtons(buttons)) - (await heading.boundingBox())!.y;
+        expect(textHeight, `at ${size}, height of the hero's text, against ${Math.round(expectedHeight)} px`)
+          .toBeLessThanOrEqual(expectedHeight - 150);
+
+        const heroBox = (await hero.boundingBox())!;
+        expect.soft(
+          Math.abs(heroBox.height - expectedHeight),
+          `at ${size}, hero height (${heroBox.height} px) against the window height minus the header height (${expectedHeight} px)`,
+        ).toBeLessThanOrEqual(1);
+      }
+    });
+  });
 });
 
 /* The top edge of each link of the header menu, in document order, and the number of lines
