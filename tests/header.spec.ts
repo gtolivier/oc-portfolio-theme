@@ -664,6 +664,44 @@ test('from 768 px wide, the language switcher is the tallest item of the header,
   expect.soft(Math.abs(spaces.switcherToBottomBorder - 22), `spaces: ${JSON.stringify(spaces)}`).toBeLessThanOrEqual(0.5);
 });
 
+test.describe('without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('without JavaScript, the header is complete: logo, three links and language switcher visible and clickable, on a single row from 768 px wide', async ({ page }) => {
+    for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 1024 }, { width: 1280, height: 800 }]) {
+      await page.setViewportSize(viewport);
+      await page.goto('/fr/');
+      const links = page.locator('header nav').getByRole('link');
+      await expect(links, `navigation links at ${viewport.width} px`).toHaveText(['Accueil', 'Projets', 'Contact']);
+      const switcher = languageSwitcher(page, 'Langue');
+      await expect(switcher, `language switcher at ${viewport.width} px`).toBeVisible();
+      const items: [string, Locator][] = [
+        ['logo', headerLogo(page)],
+        ...(await links.all()).map((link, index): [string, Locator] => [`navigation link ${index + 1}`, link]),
+        ['language switch link', switcher.getByRole('link', { name: 'EN', exact: true })],
+      ];
+      for (const [name, item] of items) {
+        await expect(item, `${name} at ${viewport.width} px`).toBeVisible();
+        await expect(item, `${name} at ${viewport.width} px`).toBeEnabled();
+        /* A trial click only checks that a real click would land on the item, without navigating. */
+        await item.click({ trial: true, timeout: 2000 });
+      }
+      if (viewport.width < 768) continue;
+      const centres: Record<string, number> = {};
+      for (const [name, item] of [...items, ['language switcher', switcher] as [string, Locator]]) {
+        const box = (await item.boundingBox())!;
+        centres[name] = box.y + box.height / 2;
+      }
+      const logoCentre = centres['logo'];
+      /* Compared with a 1 px tolerance: rendered box positions may carry sub-pixel rounding. */
+      expect(
+        Object.values(centres).every((centre) => Math.abs(centre - logoCentre) <= 1),
+        `vertical centres at ${viewport.width} px: ${JSON.stringify(centres)}`,
+      ).toBe(true);
+    }
+  });
+});
+
 test('in a 320 px wide window, the header logo stays on a single line', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto('/fr/');
