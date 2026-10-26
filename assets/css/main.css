@@ -251,6 +251,7 @@ h1 {
 
 .site-header a {
   font-family: var(--font-mono);
+  font-size: 14px;
   color: var(--color-paper);
   text-decoration: none;
 }
@@ -280,6 +281,7 @@ h1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  font-size: inherit;
   min-width: var(--min-target-size);
   min-height: var(--min-target-size);
 }
