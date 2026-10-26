@@ -135,15 +135,21 @@ h1 {
   font-weight: 700;
 }
 
-/* flow-root keeps the heading and paragraph margins inside the section:
-   without it, they leak out and the section no longer fills the viewport. */
+/* A flex container keeps the heading and paragraph margins inside the
+   section: they do not leak out and the section fills the viewport. */
 .hero {
-  display: flow-root;
+  /* The text block is centred vertically, with 40px of padding below it. */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   min-height: calc(100vh - var(--header-height));
   padding-inline: var(--page-gutter);
+  padding-bottom: 40px;
 }
 
 .hero h1 {
+  /* Outer margins would unbalance the centring. */
+  margin-top: 0;
   text-transform: uppercase;
   font-size: clamp(44px, 6.4vw, 100px);
   line-height: 1.02;
@@ -189,22 +195,10 @@ h1 {
   flex-wrap: wrap;
   gap: 16px;
   margin-top: 44px;
+  margin-bottom: 0;
 }
 
 @media (min-width: 768px) {
-  /* The text block is centred vertically, with 40px of padding below it. */
-  .hero {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding-bottom: 40px;
-  }
-
-  /* Outer margins would unbalance the centring. */
-  .hero h1 {
-    margin-top: 0;
-  }
-
   .hero-title {
     margin-top: 36px;
   }
@@ -212,10 +206,6 @@ h1 {
   .hero-tagline {
     font-size: 20px;
     margin-top: 165px;
-  }
-
-  .hero-actions {
-    margin-bottom: 0;
   }
 }
 
