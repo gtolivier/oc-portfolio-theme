@@ -48,6 +48,9 @@
      --header-height below. */
   --header-padding-block: 12px;
   --header-row-gap: 8px;
+  /* Between two nav links, and from 768 px between the last one and the
+     switcher. */
+  --header-link-gap: 32px;
   --header-border-width: 1px;
   --header-font-size: 14px;
   /* Set on the nav links rather than left to the font's normal line height,
@@ -58,6 +61,7 @@
   --header-current-link-padding-bottom: 3px;
   --header-current-link-border-width: 2px;
   --header-switcher-padding: 2px;
+  --header-switcher-gap: 2px;
   --header-switcher-border-width: 1px;
   /* The switcher's entries are --min-target-size high: their own padding
      and text are smaller. */
@@ -291,9 +295,14 @@ h1 {
 
 .site-header a {
   font-family: var(--font-mono);
-  font-size: var(--header-font-size);
   color: var(--color-paper);
   text-decoration: none;
+}
+
+/* The language switcher keeps its own, smaller size. */
+.site-header > a,
+.site-header nav a {
+  font-size: var(--header-font-size);
 }
 
 .site-header > a {
@@ -307,7 +316,7 @@ h1 {
   order: 1;
   flex-basis: 100%;
   display: flex;
-  gap: 32px;
+  gap: var(--header-link-gap);
 }
 
 /* From 768 px, the nav goes back between the logo and the switcher, all on
@@ -317,9 +326,9 @@ h1 {
   .site-header nav {
     order: 0;
     flex-basis: auto;
-    /* Pushed against the switcher, 32 px from it. */
+    /* Pushed against the switcher, as far from it as from one another. */
     margin-left: auto;
-    margin-right: 32px;
+    margin-right: var(--header-link-gap);
   }
 }
 
@@ -343,7 +352,7 @@ h1 {
 
 .site-header [role="group"] {
   display: flex;
-  gap: 2px;
+  gap: var(--header-switcher-gap);
   width: fit-content;
   padding: var(--header-switcher-padding);
   border: var(--header-switcher-border-width) solid rgb(var(--color-paper-channels) / 0.35);
@@ -357,7 +366,6 @@ h1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: inherit;
   padding: 4px 9px;
   min-width: var(--min-target-size);
   min-height: var(--min-target-size);
