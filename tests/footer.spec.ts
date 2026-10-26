@@ -51,6 +51,27 @@ test('the footer logo is in IBM Plex Mono 14 px, like the header logo', async ({
   ]);
 });
 
+test('the footer logo text has a letter-spacing of 0.06em (0.84 px at 14 px), like the header logo', async ({ page }) => {
+  await page.goto('/fr/');
+  const logo = page.locator('footer [aria-hidden="true"]');
+  await expect(logo).toHaveText('| E ||| | X |||');
+  /* The computed letter-spacing of every element that directly holds a piece of the logo text, the bold bars included. */
+  const spacings = await logo.evaluate((element) => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const values: string[] = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      if (node.textContent!.trim() !== '') values.push(getComputedStyle(node.parentElement!).letterSpacing);
+    }
+    return values;
+  });
+  expect(spacings.length).toBeGreaterThan(0);
+  /* Compared numerically: browsers may serialize the value differently ("0.84px", "0.840000px"); "normal" gives NaN and fails. */
+  expect(
+    spacings.every((spacing) => Math.abs(parseFloat(spacing) - 0.84) <= 0.01),
+    `letter-spacings: ${spacings.join(', ')}`,
+  ).toBe(true);
+});
+
 test('the footer displays the site footer note in the page language',async ({ page }) => {
   await page.goto('/fr/');
   const frenchFooter = page.locator('footer');
