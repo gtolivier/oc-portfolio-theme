@@ -163,6 +163,8 @@ h1 {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  /* For browsers without svh, which drop the declaration below. */
+  min-height: calc(100vh - var(--header-height));
   /* svh: the height left when a phone browser shows its toolbars, so the
      buttons are not hidden under them on arrival. */
   min-height: calc(100svh - var(--header-height));

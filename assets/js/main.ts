@@ -121,9 +121,9 @@ const FIELD_ROW_SPACING_PX = 22;
 
 const FIELD_MIN_SIDE_MARGIN_PX = 24;
 
-/* On a phone, narrower than this (the stylesheet's breakpoint), the hero's field leaves smaller margins
-   and runs its diagonal down to the bottom right. */
-const FIELD_PHONE_MAX_WIDTH_PX = 768;
+/* The stylesheet's breakpoint: the first desktop width. On a phone, strictly narrower, the hero's field
+   leaves smaller margins and runs its diagonal down to the bottom right. */
+const DESKTOP_MIN_WIDTH_PX = 768;
 
 const FIELD_PHONE_MIN_SIDE_MARGIN_PX = 12;
 
@@ -222,9 +222,12 @@ function easeInOut(share: number): number {
   return clamped * clamped * (3 - 2 * clamped);
 }
 
-/* The stylesheet's own query, negated: it reads the window's width, which a scrollbar takes none of. */
+/* The stylesheet's own query: it reads the window's width, which a scrollbar takes none of.
+   Made once, since every frame reads it. */
+const desktopLayoutQuery = window.matchMedia(`(min-width: ${DESKTOP_MIN_WIDTH_PX}px)`);
+
 function isPhoneLayout(): boolean {
-  return !window.matchMedia(`(min-width: ${FIELD_PHONE_MAX_WIDTH_PX}px)`).matches;
+  return !desktopLayoutQuery.matches;
 }
 
 /* A decorative canvas covering the whole box, behind the content. */
@@ -614,5 +617,5 @@ const siteHeader = document.querySelector('.site-header');
 if (siteHeader) {
   new ResizeObserver(() => {
     document.documentElement.style.setProperty('--header-height', `${siteHeader.getBoundingClientRect().height}px`);
-  }).observe(siteHeader);
+  }).observe(siteHeader, { box: 'border-box' });
 }
