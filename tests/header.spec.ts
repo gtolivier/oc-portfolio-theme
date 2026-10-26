@@ -664,6 +664,30 @@ test('from 768 px wide, the language switcher is the tallest item of the header,
   expect.soft(Math.abs(spaces.switcherToBottomBorder - 22), `spaces: ${JSON.stringify(spaces)}`).toBeLessThanOrEqual(0.5);
 });
 
+test('from 768 px wide, at least 24 px separate the header logo from the first navigation link, in French and in English (at 768 and 1280 px)', async ({ page }) => {
+  const gaps: Record<string, number> = {};
+  for (const { url, menu } of [
+    { url: '/fr/', menu: ['Accueil', 'Projets', 'Contact'] },
+    { url: '/en/', menu: ['Home', 'Projects', 'Contact'] },
+  ]) {
+    for (const viewport of [{ width: 768, height: 1024 }, { width: 1280, height: 800 }]) {
+      await page.setViewportSize(viewport);
+      await page.goto(url);
+      const links = page.locator('header nav').getByRole('link');
+      await expect(links).toHaveText(menu);
+      const logoBox = (await headerLogo(page).boundingBox())!;
+      const firstLinkBox = (await links.first().boundingBox())!;
+      /* The horizontal distance between the right edge of the logo and the left edge of the first link. */
+      gaps[`${url} at ${viewport.width} px`] = firstLinkBox.x - (logoBox.x + logoBox.width);
+    }
+  }
+  /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+  expect(
+    Object.values(gaps).every((gap) => gap >= 24 - 0.5),
+    `gaps: ${JSON.stringify(gaps)}`,
+  ).toBe(true);
+});
+
 test.describe('without JavaScript', () => {
   test.use({ javaScriptEnabled: false });
 
