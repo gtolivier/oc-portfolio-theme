@@ -1,15 +1,56 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { SITE_WITH_A_SINGLE_LANGUAGE, buildSite, serveSite, removeDirectory } from './helpers/built-site';
+import { characterWeights } from './helpers/character-weights';
 
 /* The logo is the header link named after the site title. */
 function headerLogo(page: Page): Locator {
   return page.locator('header').getByRole('link', { name: 'Exemple', exact: true });
 }
 
+/* The links of the header navigation, in document order. */
+function navigationLinks(page: Page): Locator {
+  return page.locator('header nav').getByRole('link');
+}
+
 /* The language switcher is the header group named in the page language. */
 function languageSwitcher(page: Page, name: string): Locator {
   return page.locator('header').getByRole('group', { name: name, exact: true });
 }
+
+/* A header item, with the name assertion messages give it. */
+type NamedItem = [string, Locator];
+
+/* The header logo, then each navigation link, numbered from 1. */
+async function logoAndNavigationLinks(page: Page): Promise<NamedItem[]> {
+  return [
+    ['logo', headerLogo(page)],
+    ...(await navigationLinks(page).all()).map((link, index): NamedItem => [`navigation link ${index + 1}`, link]),
+  ];
+}
+
+/* The box of each element the locator matches, in document order. */
+async function boxesOf(elements: Locator): Promise<{ x: number; y: number; width: number; height: number }[]> {
+  return Promise.all((await elements.all()).map(async (element) => (await element.boundingBox())!));
+}
+
+/* The vertical centre of each item's box, by item name. */
+async function verticalCentres(items: NamedItem[]): Promise<Record<string, number>> {
+  const centres: Record<string, number> = {};
+  for (const [name, item] of items) {
+    const box = (await item.boundingBox())!;
+    centres[name] = box.y + box.height / 2;
+  }
+  return centres;
+}
+
+/* A phone window, narrower than the desktop breakpoint. */
+const PHONE_VIEWPORT = { width: 390, height: 844 };
+/* From this window width, the header lays out its items on a single row. */
+const DESKTOP_MIN_WIDTH = 768;
+/* A desktop window right at the breakpoint, and a wide one. */
+const NARROW_DESKTOP_VIEWPORT = { width: DESKTOP_MIN_WIDTH, height: 1024 };
+const WIDE_DESKTOP_VIEWPORT = { width: 1280, height: 800 };
+const DESKTOP_VIEWPORTS = [NARROW_DESKTOP_VIEWPORT, WIDE_DESKTOP_VIEWPORT];
 
 test('the header logo displays the initials and leads to the home page', async ({ page }) => {
   await page.goto('/fr/');
@@ -30,7 +71,7 @@ test('for screen readers, the header logo link holds only the site name, without
 
 test('the header navigation lists the entries of the site main menu', async ({ page }) => {
   await page.goto('/fr/');
-  const links = page.locator('header nav').getByRole('link');
+  const links = navigationLinks(page);
   await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
   await expect(links.nth(0)).toHaveAttribute('href', '/fr/');
   await expect(links.nth(1)).toHaveAttribute('href', '/fr/projets/');
@@ -86,7 +127,7 @@ test('the navigation link marked as the current page leaves 3 px between the bot
 
 test('in English, the header navigation lists the entries of the English main menu', async ({ page }) => {
   await page.goto('/en/');
-  const links = page.locator('header nav').getByRole('link');
+  const links = navigationLinks(page);
   await expect(links).toHaveText(['Home', 'Projects', 'Contact']);
   await expect(links.nth(0)).toHaveAttribute('href', '/en/');
   await expect(links.nth(1)).toHaveAttribute('href', '/en/projects/');
@@ -310,7 +351,7 @@ test('the header language switcher is in IBM Plex Mono 12 px, weight 600', async
 test('the header logo and the navigation links are in IBM Plex Mono 14 px', async ({ page }) => {
   await page.goto('/fr/');
   /* The logo and the navigation links, without the language switch link (12 px, tested above). */
-  const links = headerLogo(page).or(page.locator('header nav').getByRole('link'));
+  const links = headerLogo(page).or(navigationLinks(page));
   await expect(links).toHaveCount(4);
   const styles = await links.evaluateAll((elements) =>
     elements.map((element) => {
@@ -350,18 +391,7 @@ test('in the header logo, the first "|" of each initial is bold (700), every oth
   await page.goto('/fr/');
   const logo = headerLogo(page);
   await expect(logo).toHaveText('| E ||| | X |||');
-  /* Each visible character of the logo text, with the computed weight of the element that holds it. */
-  const characters = await logo.evaluate((element) => {
-    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-    const values: string[] = [];
-    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-      const weight = getComputedStyle(node.parentElement!).fontWeight;
-      for (const character of node.textContent!) {
-        if (character.trim() !== '') values.push(`${character} ${weight}`);
-      }
-    }
-    return values;
-  });
+  const characters = await characterWeights(logo);
   expect(characters).toEqual([
     '| 700', 'E 400', '| 400', '| 400', '| 400',
     '| 700', 'X 400', '| 400', '| 400', '| 400',
@@ -370,7 +400,7 @@ test('in the header logo, the first "|" of each initial is bold (700), every oth
 
 test('the header navigation links have a letter-spacing of 0.08em (1.12 px at 14 px)', async ({ page }) => {
   await page.goto('/fr/');
-  const links = page.locator('header nav').getByRole('link');
+  const links = navigationLinks(page);
   await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
   const spacings = await links.evaluateAll((elements) => elements.map((element) => getComputedStyle(element).letterSpacing));
   /* Compared numerically: browsers may serialize the value differently ("1.12px", "1.120000px"); "normal" gives NaN and fails. */
@@ -382,9 +412,9 @@ test('the header navigation links have a letter-spacing of 0.08em (1.12 px at 14
 
 test('the header navigation links are spaced 32 px apart', async ({ page }) => {
   await page.goto('/fr/');
-  const links = page.locator('header nav').getByRole('link');
+  const links = navigationLinks(page);
   await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
-  const boxes = await Promise.all((await links.all()).map(async (link) => (await link.boundingBox())!));
+  const boxes = await boxesOf(links);
   /* The horizontal distance between the right edge of each link and the left edge of the next one. */
   const gaps = boxes.slice(1).map((box, index) => box.x - (boxes[index].x + boxes[index].width));
   expect(gaps).toHaveLength(2);
@@ -547,24 +577,24 @@ test('the header logo is 16 px from the left edge of the window on a phone, 48 p
 });
 
 test('on a phone, the header logo and the language switcher share the first row, vertically centred, 16 px from the left and right edges', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize(PHONE_VIEWPORT);
   await page.goto('/fr/');
   const logoBox = (await headerLogo(page).boundingBox())!;
   const switcherBox = (await languageSwitcher(page, 'Langue').boundingBox())!;
 
   expect(logoBox.x, 'distance from the left edge to the logo').toBeCloseTo(16, 0);
-  expect(390 - (switcherBox.x + switcherBox.width), 'distance from the switcher to the right edge').toBeCloseTo(16, 0);
+  expect(PHONE_VIEWPORT.width - (switcherBox.x + switcherBox.width), 'distance from the switcher to the right edge').toBeCloseTo(16, 0);
   const logoCentre = logoBox.y + logoBox.height / 2;
   const switcherCentre = switcherBox.y + switcherBox.height / 2;
   expect(Math.abs(logoCentre - switcherCentre), 'gap between the vertical centres of the logo and the switcher').toBeLessThanOrEqual(1);
 });
 
 test('on a phone, the header navigation links sit on a second row, lined up on the left with the logo, 8 px below the first row', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize(PHONE_VIEWPORT);
   await page.goto('/fr/');
   const logoBox = (await headerLogo(page).boundingBox())!;
   const switcherBox = (await languageSwitcher(page, 'Langue').boundingBox())!;
-  const firstLinkBox = (await page.locator('header nav').getByRole('link').first().boundingBox())!;
+  const firstLinkBox = (await navigationLinks(page).first().boundingBox())!;
 
   expect(firstLinkBox.x, 'horizontal offset between the logo and the first link').toBeCloseTo(logoBox.x, 0);
   const firstRowBottom = Math.max(logoBox.y + logoBox.height, switcherBox.y + switcherBox.height);
@@ -572,14 +602,14 @@ test('on a phone, the header navigation links sit on a second row, lined up on t
 });
 
 test('on a phone, the header leaves 12 px above its first row and 12 px between its links row and its bottom border', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize(PHONE_VIEWPORT);
   await page.goto('/fr/');
   const headerBox = (await page.locator('header').boundingBox())!;
   const logoBox = (await headerLogo(page).boundingBox())!;
   const switcherBox = (await languageSwitcher(page, 'Langue').boundingBox())!;
-  const links = page.locator('header nav').getByRole('link');
+  const links = navigationLinks(page);
   await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
-  const linkBoxes = await Promise.all((await links.all()).map(async (link) => (await link.boundingBox())!));
+  const linkBoxes = await boxesOf(links);
 
   const firstRowTop = Math.min(logoBox.y, switcherBox.y);
   const secondRowBottom = Math.max(...linkBoxes.map((box) => box.y + box.height));
@@ -591,21 +621,13 @@ test('on a phone, the header leaves 12 px above its first row and 12 px between 
 });
 
 test('from 768 px wide, the header logo, navigation links and language switcher sit on a single row, vertically centred (at 768 and 1280 px)', async ({ page }) => {
-  for (const viewport of [{ width: 768, height: 1024 }, { width: 1280, height: 800 }]) {
+  for (const viewport of DESKTOP_VIEWPORTS) {
     await page.setViewportSize(viewport);
     await page.goto('/fr/');
-    const links = page.locator('header nav').getByRole('link');
+    const links = navigationLinks(page);
     await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
-    const items: [string, Locator][] = [
-      ['logo', headerLogo(page)],
-      ...(await links.all()).map((link, index): [string, Locator] => [`navigation link ${index + 1}`, link]),
-      ['language switcher', languageSwitcher(page, 'Langue')],
-    ];
-    const centres: Record<string, number> = {};
-    for (const [name, item] of items) {
-      const box = (await item.boundingBox())!;
-      centres[name] = box.y + box.height / 2;
-    }
+    const items: NamedItem[] = [...(await logoAndNavigationLinks(page)), ['language switcher', languageSwitcher(page, 'Langue')]];
+    const centres = await verticalCentres(items);
     const logoCentre = centres['logo'];
     /* Compared with a 1 px tolerance: rendered box positions may carry sub-pixel rounding. */
     expect(
@@ -616,9 +638,9 @@ test('from 768 px wide, the header logo, navigation links and language switcher 
 });
 
 test('from 768 px wide, the header logo sits on the left, the language switcher 48 px from the right edge, the navigation links right before it, 32 px from it', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.setViewportSize(WIDE_DESKTOP_VIEWPORT);
   await page.goto('/fr/');
-  const links = page.locator('header nav').getByRole('link');
+  const links = navigationLinks(page);
   await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
   const logoBox = (await headerLogo(page).boundingBox())!;
   const lastLinkBox = (await links.last().boundingBox())!;
@@ -626,7 +648,7 @@ test('from 768 px wide, the header logo sits on the left, the language switcher 
 
   const spaces = {
     leftEdgeToLogo: logoBox.x,
-    switcherToRightEdge: 1280 - (switcherBox.x + switcherBox.width),
+    switcherToRightEdge: WIDE_DESKTOP_VIEWPORT.width - (switcherBox.x + switcherBox.width),
     lastLinkToSwitcher: switcherBox.x - (lastLinkBox.x + lastLinkBox.width),
   };
   /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
@@ -636,16 +658,13 @@ test('from 768 px wide, the header logo sits on the left, the language switcher 
 });
 
 test('from 768 px wide, the language switcher is the tallest item of the header, 22 px below its top edge and 22 px above its bottom border', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.setViewportSize(WIDE_DESKTOP_VIEWPORT);
   await page.goto('/fr/');
   const headerBox = (await page.locator('header').boundingBox())!;
   const switcherBox = (await languageSwitcher(page, 'Langue').boundingBox())!;
-  const links = page.locator('header nav').getByRole('link');
+  const links = navigationLinks(page);
   await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
-  const items: [string, Locator][] = [
-    ['logo', headerLogo(page)],
-    ...(await links.all()).map((link, index): [string, Locator] => [`navigation link ${index + 1}`, link]),
-  ];
+  const items = await logoAndNavigationLinks(page);
 
   /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
   for (const [name, item] of items) {
@@ -670,10 +689,10 @@ test('from 768 px wide, at least 24 px separate the header logo from the first n
     { url: '/fr/', menu: ['Accueil', 'Projets', 'Contact'] },
     { url: '/en/', menu: ['Home', 'Projects', 'Contact'] },
   ]) {
-    for (const viewport of [{ width: 768, height: 1024 }, { width: 1280, height: 800 }]) {
+    for (const viewport of DESKTOP_VIEWPORTS) {
       await page.setViewportSize(viewport);
       await page.goto(url);
-      const links = page.locator('header nav').getByRole('link');
+      const links = navigationLinks(page);
       await expect(links).toHaveText(menu);
       const logoBox = (await headerLogo(page).boundingBox())!;
       const firstLinkBox = (await links.first().boundingBox())!;
@@ -692,16 +711,15 @@ test.describe('without JavaScript', () => {
   test.use({ javaScriptEnabled: false });
 
   test('without JavaScript, the header is complete: logo, three links and language switcher visible and clickable, on a single row from 768 px wide', async ({ page }) => {
-    for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 1024 }, { width: 1280, height: 800 }]) {
+    for (const viewport of [PHONE_VIEWPORT, ...DESKTOP_VIEWPORTS]) {
       await page.setViewportSize(viewport);
       await page.goto('/fr/');
-      const links = page.locator('header nav').getByRole('link');
+      const links = navigationLinks(page);
       await expect(links, `navigation links at ${viewport.width} px`).toHaveText(['Accueil', 'Projets', 'Contact']);
       const switcher = languageSwitcher(page, 'Langue');
       await expect(switcher, `language switcher at ${viewport.width} px`).toBeVisible();
-      const items: [string, Locator][] = [
-        ['logo', headerLogo(page)],
-        ...(await links.all()).map((link, index): [string, Locator] => [`navigation link ${index + 1}`, link]),
+      const items: NamedItem[] = [
+        ...(await logoAndNavigationLinks(page)),
         ['language switch link', switcher.getByRole('link', { name: 'EN', exact: true })],
       ];
       for (const [name, item] of items) {
@@ -710,12 +728,8 @@ test.describe('without JavaScript', () => {
         /* A trial click only checks that a real click would land on the item, without navigating. */
         await item.click({ trial: true, timeout: 2000 });
       }
-      if (viewport.width < 768) continue;
-      const centres: Record<string, number> = {};
-      for (const [name, item] of [...items, ['language switcher', switcher] as [string, Locator]]) {
-        const box = (await item.boundingBox())!;
-        centres[name] = box.y + box.height / 2;
-      }
+      if (viewport.width < DESKTOP_MIN_WIDTH) continue;
+      const centres = await verticalCentres([...items, ['language switcher', switcher]]);
       const logoCentre = centres['logo'];
       /* Compared with a 1 px tolerance: rendered box positions may carry sub-pixel rounding. */
       expect(
@@ -762,13 +776,9 @@ test('in a 320 px wide window, the header still fits: no horizontal scrolling, l
   const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(pageWidth, 'width of the page content').toBeLessThanOrEqual(320);
 
-  const links = page.locator('header nav').getByRole('link');
+  const links = navigationLinks(page);
   await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
-  const items: [string, Locator][] = [
-    ['logo', headerLogo(page)],
-    ...(await links.all()).map((link, index): [string, Locator] => [`navigation link ${index + 1}`, link]),
-    ['language switcher', languageSwitcher(page, 'Langue')],
-  ];
+  const items: NamedItem[] = [...(await logoAndNavigationLinks(page)), ['language switcher', languageSwitcher(page, 'Langue')]];
   for (const [name, item] of items) {
     await expect(item, name).toBeVisible();
     const box = (await item.boundingBox())!;
@@ -790,7 +800,7 @@ test('the header is separated from the page by a 1 px solid paper-colored bottom
 test('the header links are paper-colored and not underlined', async ({ page }) => {
   await page.goto('/fr/');
   /* The logo and the navigation links, without the language switch link. */
-  const links = headerLogo(page).or(page.locator('header nav').getByRole('link'));
+  const links = headerLogo(page).or(navigationLinks(page));
   await expect(links).toHaveCount(4);
   for (const link of await links.all()) {
     await expect(link).toHaveCSS('color', 'rgb(227, 223, 204)');

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { characterWeights } from './helpers/character-weights';
 
 test('the footer displays the site logo followed by "© <current year> <site author>"', async ({ page }) => {
   await page.goto('/fr/');
@@ -21,18 +22,7 @@ test('in the footer logo, the first "|" of each initial is bold (700), every oth
   await page.goto('/fr/');
   const logo = page.locator('footer [aria-hidden="true"]');
   await expect(logo).toHaveText('| E ||| | X |||');
-  /* Each visible character of the logo text, with the computed weight of the element that holds it. */
-  const characters = await logo.evaluate((element) => {
-    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-    const values: string[] = [];
-    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-      const weight = getComputedStyle(node.parentElement!).fontWeight;
-      for (const character of node.textContent!) {
-        if (character.trim() !== '') values.push(`${character} ${weight}`);
-      }
-    }
-    return values;
-  });
+  const characters = await characterWeights(logo);
   expect(characters).toEqual([
     '| 700', 'E 400', '| 400', '| 400', '| 400',
     '| 700', 'X 400', '| 400', '| 400', '| 400',
