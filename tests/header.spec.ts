@@ -559,6 +559,18 @@ test('on a phone, the header logo and the language switcher share the first row,
   expect(Math.abs(logoCentre - switcherCentre), 'gap between the vertical centres of the logo and the switcher').toBeLessThanOrEqual(1);
 });
 
+test('on a phone, the header navigation links sit on a second row, lined up on the left with the logo, 8 px below the first row', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/fr/');
+  const logoBox = (await headerLogo(page).boundingBox())!;
+  const switcherBox = (await languageSwitcher(page, 'Langue').boundingBox())!;
+  const firstLinkBox = (await page.locator('header nav').getByRole('link').first().boundingBox())!;
+
+  expect(firstLinkBox.x, 'horizontal offset between the logo and the first link').toBeCloseTo(logoBox.x, 0);
+  const firstRowBottom = Math.max(logoBox.y + logoBox.height, switcherBox.y + switcherBox.height);
+  expect(firstLinkBox.y - firstRowBottom, 'gap between the first row and the links row').toBeCloseTo(8, 0);
+});
+
 test('in a 320 px wide window, the header logo stays on a single line', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto('/fr/');
