@@ -619,6 +619,29 @@ test('in a 320 px wide window, the header logo stays on a single line', async ({
   ).toBe(true);
 });
 
+test('in a 320 px wide window, the header still fits: no horizontal scrolling, logo, links and language switcher fully visible', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto('/fr/');
+
+  const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(pageWidth, 'width of the page content').toBeLessThanOrEqual(320);
+
+  const links = page.locator('header nav').getByRole('link');
+  await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
+  const items: [string, Locator][] = [
+    ['logo', headerLogo(page)],
+    ...(await links.all()).map((link, index): [string, Locator] => [`navigation link ${index + 1}`, link]),
+    ['language switcher', languageSwitcher(page, 'Langue')],
+  ];
+  for (const [name, item] of items) {
+    await expect(item, name).toBeVisible();
+    const box = (await item.boundingBox())!;
+    /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+    expect(box.x, `left edge of the ${name}`).toBeGreaterThanOrEqual(-0.5);
+    expect(box.x + box.width, `right edge of the ${name}`).toBeLessThanOrEqual(320.5);
+  }
+});
+
 test('the header is separated from the page by a 1 px solid paper-colored bottom border at 12% opacity', async ({ page }) => {
   await page.goto('/fr/');
   const header = page.locator('header');
