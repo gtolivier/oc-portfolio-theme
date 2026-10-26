@@ -89,12 +89,16 @@
   --header-first-row-height: var(--header-switcher-height);
   /* Height of the sticky header; the hero subtracts it from the viewport
      so it fills the space right below the header. */
-  --header-height: calc(
+  --header-estimated-height: calc(
     2 * var(--header-padding-block)
     + var(--header-first-row-height)
     + var(--header-nav-row-height)
     + var(--header-border-width)
   );
+  /* The theme script replaces it with the measured height when the menu
+     wraps. The header's own min-height reads the estimate instead, so a
+     measured height never keeps the header tall after the window widens. */
+  --header-height: var(--header-estimated-height);
   /* Space left above an anchor target so the sticky header does not
      hide it: the header's height, plus some breathing room. */
   --sticky-header-clearance: calc(var(--header-height) + 2rem);
@@ -318,7 +322,7 @@ h1 {
 .site-header {
   position: sticky;
   top: 0;
-  min-height: var(--header-height);
+  min-height: var(--header-estimated-height);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
