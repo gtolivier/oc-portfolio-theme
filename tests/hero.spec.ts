@@ -1070,6 +1070,11 @@ async function heroWithAndWithoutVeil(
 }
 
 test('on phone as on desktop, the hero’s veil darkens its text zone: with the field still (reduced motion), compared with the same hero without its veil, the field behind the middle of the text zone keeps at most 0.8 times the share of its brightness it keeps in the same columns at the hero’s top edge, above the text', async ({ page }) => {
+  /* A window at least 800px high, the project's own when it already is (phones): the hero is
+     as high as the window less the header, and its vertically centred content needs room
+     above the heading for the strip along the hero's top edge measured below. */
+  const { width, height } = page.viewportSize()!;
+  await page.setViewportSize({ width, height: Math.max(height, 800) });
   const { hero, text } = await stillHero(page);
 
   /* The text zone: from the top of the heading to the bottom of the buttons, the last of the
