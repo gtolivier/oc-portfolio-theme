@@ -45,7 +45,7 @@
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
   --font-sans: 'IBM Plex Sans', Helvetica, sans-serif;
   /* Sizes of the sticky header, read both by its rules and by
-     --header-height below. */
+     --header-estimated-height below. */
   --header-padding-block: 12px;
   --header-row-gap: 8px;
   /* Between two nav links, and from 768 px between the last one and the
@@ -87,17 +87,18 @@
   --header-nav-row-height: calc(var(--header-row-gap) + var(--header-nav-link-height));
   /* The first row's tallest item is the switcher. */
   --header-first-row-height: var(--header-switcher-height);
-  /* Height of the sticky header; the hero subtracts it from the viewport
-     so it fills the space right below the header. */
+  /* Height of the sticky header, estimated for a menu on a single row. */
   --header-estimated-height: calc(
     2 * var(--header-padding-block)
     + var(--header-first-row-height)
     + var(--header-nav-row-height)
     + var(--header-border-width)
   );
-  /* The theme script replaces it with the measured height when the menu
-     wraps. The header's own min-height reads the estimate instead, so a
-     measured height never keeps the header tall after the window widens. */
+  /* Height of the sticky header; the hero subtracts it from the viewport
+     so it fills the space right below the header. The theme script
+     replaces it with the measured height when the menu wraps. The
+     header's own min-height reads the estimate instead, so a measured
+     height never keeps the header tall after the window widens. */
   --header-height: var(--header-estimated-height);
   /* Space left above an anchor target so the sticky header does not
      hide it: the header's height, plus some breathing room. */
@@ -361,7 +362,8 @@ h1 {
 
 /* From 768 px, the nav goes back between the logo and the switcher, all on
    a single row. The header's block padding grows too, through
-   --header-padding-block in :root, which --header-height also reads. */
+   --header-padding-block in :root, which --header-estimated-height also
+   reads. */
 @media (min-width: 768px) {
   .site-header nav {
     order: 0;
