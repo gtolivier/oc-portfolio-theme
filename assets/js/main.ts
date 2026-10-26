@@ -501,10 +501,11 @@ class TickField extends HTMLElement {
     context.fillRect(x, y - growthAtEachEnd, FIELD_TICK_WIDTH_PX, tickHeight + 2 * growthAtEachEnd);
   }
 
-  /* Set by the tick's place along the diagonal: brighter to the right and at the top. */
+  /* Set by the tick's place along the diagonal: brighter to the right and at the top; on a phone, hero, to the right and at the bottom. */
   private restingAlpha(x: number, y: number, width: number, height: number): number {
     const horizontal = FIELD_PLACE_HORIZONTAL_SHARE * (x / width);
-    const vertical = (1 - FIELD_PLACE_HORIZONTAL_SHARE) * (1 - y / height);
+    const verticalPlace = this.isHeroOnPhone(width) ? y / height : 1 - y / height;
+    const vertical = (1 - FIELD_PLACE_HORIZONTAL_SHARE) * verticalPlace;
     return (
       FIELD_RESTING_MIN_ALPHA + (FIELD_RESTING_MAX_ALPHA - FIELD_RESTING_MIN_ALPHA) * easeInOut(horizontal + vertical)
     );
