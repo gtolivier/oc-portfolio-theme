@@ -53,6 +53,8 @@
   --header-link-gap: 32px;
   --header-border-width: 1px;
   --header-font-size: 14px;
+  /* Shared by the header logo and the footer one. */
+  --logo-letter-spacing: 0.06em;
   /* Set on the nav links rather than left to the font's normal line height,
      which varies with the browser and with the fallback font shown while
      IBM Plex Mono loads. */
@@ -311,7 +313,7 @@ h1 {
 }
 
 .site-header > a {
-  letter-spacing: 0.06em;
+  letter-spacing: var(--logo-letter-spacing);
 }
 
 /* The nav comes between the logo and the language switcher in the markup:
@@ -456,5 +458,5 @@ tick-field > canvas {
 footer [aria-hidden="true"] {
   font-family: var(--font-mono);
   font-size: var(--header-font-size);
-  letter-spacing: 0.06em;
+  letter-spacing: var(--logo-letter-spacing);
 }
