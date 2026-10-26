@@ -125,6 +125,11 @@ const FIELD_MIN_SIDE_MARGIN_PX = 24;
    and runs its diagonal down to the bottom right. */
 const FIELD_PHONE_MAX_WIDTH_PX = 768;
 
+/* The stylesheet's own query, negated: it reads the window's width, which a scrollbar takes none of. */
+function isPhoneLayout(): boolean {
+  return !window.matchMedia(`(min-width: ${FIELD_PHONE_MAX_WIDTH_PX}px)`).matches;
+}
+
 const FIELD_PHONE_MIN_SIDE_MARGIN_PX = 12;
 
 const FIELD_MIN_VERTICAL_MARGIN_PX = 18;
@@ -459,9 +464,7 @@ class TickField extends HTMLElement {
   /* A phone's narrow screen spares little width: there, the hero's field gives more of it to ticks,
      and its diagonal runs down to the bottom right instead of up to the top right. */
   private fieldVariant(): FieldVariant {
-    /* The window's width, as the stylesheet's breakpoint sees it: a scrollbar takes none of it. */
-    const isPhoneLayout = window.matchMedia(`(max-width: ${FIELD_PHONE_MAX_WIDTH_PX - 0.02}px)`).matches;
-    const isHeroOnPhone = this.classList.contains('hero') && isPhoneLayout;
+    const isHeroOnPhone = this.classList.contains('hero') && isPhoneLayout();
     return isHeroOnPhone
       ? {
           minSideMargin: FIELD_PHONE_MIN_SIDE_MARGIN_PX,
