@@ -368,12 +368,20 @@ h1 {
    --header-padding-block in :root, which --header-estimated-height also
    reads. */
 @media (min-width: 768px) {
+  .site-header {
+    /* The nav shrinks and wraps its links between the logo and the
+       switcher instead of dropping to a row of its own. */
+    flex-wrap: nowrap;
+    column-gap: 24px;
+  }
+
   .site-header nav {
     order: 0;
     flex-basis: auto;
     /* Pushed against the switcher, as far from it as from one another. */
     margin-left: auto;
-    margin-right: var(--header-link-gap);
+    /* The header's column gap already puts 24 px between the nav and the switcher. */
+    margin-right: calc(var(--header-link-gap) - 24px);
   }
 }
 
