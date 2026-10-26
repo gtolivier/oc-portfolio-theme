@@ -74,6 +74,16 @@ test('the navigation link marked as the current page is underlined with an accen
   await expect(current).not.toHaveCSS('border-bottom-width', '0px');
 });
 
+test('the navigation link marked as the current page leaves 3 px between the bottom of its text and its accent underline', async ({ page }) => {
+  await page.goto('/fr/');
+  const current = page.locator('header nav').getByRole('link', { name: 'Accueil', exact: true });
+  await expect(current).toHaveAttribute('aria-current', 'page');
+  /* The gap between the bottom of the content box and the bottom border is the bottom padding. */
+  const paddingBottom = await current.evaluate((element) => getComputedStyle(element).paddingBottom);
+  /* Compared numerically: browsers may serialize the value differently ("3px", "3.000000px"). */
+  expect(Math.abs(parseFloat(paddingBottom) - 3), `padding-bottom: ${paddingBottom}`).toBeLessThanOrEqual(0.01);
+});
+
 test('in English, the header navigation lists the entries of the English main menu', async ({ page }) => {
   await page.goto('/en/');
   const links = page.locator('header nav').getByRole('link');
