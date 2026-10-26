@@ -327,6 +327,10 @@ h1 {
 .site-header nav a {
   line-height: var(--header-link-line-height);
   letter-spacing: 0.08em;
+  /* Every link reserves the room of the current link's underline, so the
+     header has the same layout whichever link is current, or none. */
+  padding-bottom: var(--header-current-link-padding-bottom);
+  border-bottom: var(--header-current-link-border-width) solid transparent;
 }
 
 @media (hover: hover) {
@@ -338,8 +342,7 @@ h1 {
 }
 
 .site-header nav a[aria-current="page"] {
-  padding-bottom: var(--header-current-link-padding-bottom);
-  border-bottom: var(--header-current-link-border-width) solid var(--color-accent);
+  border-bottom-color: var(--color-accent);
 }
 
 .site-header [role="group"] {
