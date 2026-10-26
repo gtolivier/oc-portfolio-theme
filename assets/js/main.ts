@@ -185,6 +185,9 @@ type FieldLayout = { columns: number; rows: number; left: number; top: number };
 /* What sets the hero's field on a phone apart from any other field: its margins and its diagonal's direction. */
 type FieldVariant = { minSideMargin: number; minVerticalMargin: number; isDiagonalDescending: boolean };
 
+/* Where a linear gradient starts and ends, in CSS pixels. */
+type GradientLine = [x0: number, y0: number, x1: number, y1: number];
+
 /* The theme's colours the field paints with. */
 type FieldColors = { green: string; accent: string; cream: string };
 
@@ -243,7 +246,7 @@ class TickField extends HTMLElement {
 
   private gradient: CanvasGradient | undefined;
 
-  /* The box size and colours the gradient was made for. */
+  /* The line and colours the gradient was made for. */
   private gradientKey = '';
 
   connectedCallback(): void {
@@ -559,23 +562,30 @@ class TickField extends HTMLElement {
     return { x: x + FIELD_TICK_WIDTH_PX / 2, y: y + tickHeight / 2 };
   }
 
-  /* Made again only when the box size or the theme colours change. */
+  /* Made again only when its line or the theme colours change: the key holds every input of createTickGradient. */
   private tickGradient(drawing: FieldDrawing, colors: FieldColors): CanvasGradient {
-    const key = [drawing.width, drawing.height, colors.green, colors.accent, colors.cream].join(' ');
+    const line = this.gradientLine(drawing);
+    const key = [...line, colors.green, colors.accent, colors.cream].join(' ');
     if (!this.gradient || key !== this.gradientKey) {
-      this.gradient = this.createTickGradient(drawing, colors);
+      this.gradient = this.createTickGradient(drawing.context, line, colors);
       this.gradientKey = key;
     }
     return this.gradient;
   }
 
-  /* Along the diagonal, from the green, faint corner to the cream, bright one: green at its start,
-     accent in the middle, cream at its end. */
-  private createTickGradient(drawing: FieldDrawing, colors: FieldColors): CanvasGradient {
-    const { context, width, height } = drawing;
-    const gradient = drawing.variant.isDiagonalDescending
-      ? context.createLinearGradient(0, 0, width, height)
-      : context.createLinearGradient(0, height, width, 0);
+  /* The field's diagonal, from its green, faint corner to its cream, bright one. */
+  private gradientLine(drawing: FieldDrawing): GradientLine {
+    const { width, height } = drawing;
+    return drawing.variant.isDiagonalDescending ? [0, 0, width, height] : [0, height, width, 0];
+  }
+
+  /* Along the line: green at its start, accent in the middle, cream at its end. */
+  private createTickGradient(
+    context: CanvasRenderingContext2D,
+    line: GradientLine,
+    colors: FieldColors,
+  ): CanvasGradient {
+    const gradient = context.createLinearGradient(...line);
     gradient.addColorStop(FIELD_GREEN_UNTIL, colors.green);
     gradient.addColorStop(FIELD_ACCENT_FROM, colors.accent);
     gradient.addColorStop(FIELD_ACCENT_UNTIL, colors.accent);
