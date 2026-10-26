@@ -348,6 +348,8 @@ h1 {
   order: 1;
   flex-basis: 100%;
   display: flex;
+  /* A menu too long for one line wraps onto another. */
+  flex-wrap: wrap;
   gap: var(--header-link-gap);
 }
 
