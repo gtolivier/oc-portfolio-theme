@@ -279,6 +279,10 @@ h1 {
 /* From 768 px, the nav goes back between the logo and the switcher, all on
    a single row. */
 @media (min-width: 768px) {
+  .site-header {
+    padding-block: 22px;
+  }
+
   .site-header nav {
     order: 0;
     flex-basis: auto;
