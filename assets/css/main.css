@@ -135,10 +135,10 @@ h1 {
   font-weight: 700;
 }
 
-/* A flex container keeps the heading and paragraph margins inside the
-   section: they do not leak out and the section fills the viewport. */
+/* The design centres the text block vertically. A flex container also keeps
+   the heading and paragraph margins inside the section: they do not leak
+   out and the section fills the viewport. */
 .hero {
-  /* The text block is centred vertically, with 40px of padding below it. */
   display: flex;
   flex-direction: column;
   justify-content: center;
