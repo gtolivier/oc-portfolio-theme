@@ -5,6 +5,7 @@ export interface TextPieceStyle {
   text: string;
   fontFamily: string;
   fontSize: string;
+  fontWeight: string;
   letterSpacing: string;
   color: string;
 }
@@ -23,6 +24,7 @@ export async function textPieceStyles(element: Locator): Promise<TextPieceStyle[
         text,
         fontFamily: style.fontFamily,
         fontSize: style.fontSize,
+        fontWeight: style.fontWeight,
         letterSpacing: style.letterSpacing,
         color: style.color,
       });
