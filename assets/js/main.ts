@@ -125,11 +125,6 @@ const FIELD_MIN_SIDE_MARGIN_PX = 24;
    and runs its diagonal down to the bottom right. */
 const FIELD_PHONE_MAX_WIDTH_PX = 768;
 
-/* The stylesheet's own query, negated: it reads the window's width, which a scrollbar takes none of. */
-function isPhoneLayout(): boolean {
-  return !window.matchMedia(`(min-width: ${FIELD_PHONE_MAX_WIDTH_PX}px)`).matches;
-}
-
 const FIELD_PHONE_MIN_SIDE_MARGIN_PX = 12;
 
 const FIELD_MIN_VERTICAL_MARGIN_PX = 18;
@@ -225,6 +220,11 @@ function fadeInAlpha(widthShare: number, progress: number): number {
 function easeInOut(share: number): number {
   const clamped = Math.min(1, Math.max(0, share));
   return clamped * clamped * (3 - 2 * clamped);
+}
+
+/* The stylesheet's own query, negated: it reads the window's width, which a scrollbar takes none of. */
+function isPhoneLayout(): boolean {
+  return !window.matchMedia(`(min-width: ${FIELD_PHONE_MAX_WIDTH_PX}px)`).matches;
 }
 
 /* A decorative canvas covering the whole box, behind the content. */
