@@ -635,6 +635,35 @@ test('from 768 px wide, the header logo sits on the left, the language switcher 
   expect.soft(Math.abs(spaces.lastLinkToSwitcher - 32), `spaces: ${JSON.stringify(spaces)}`).toBeLessThanOrEqual(0.5);
 });
 
+test('from 768 px wide, the language switcher is the tallest item of the header, 22 px below its top edge and 22 px above its bottom border', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/fr/');
+  const headerBox = (await page.locator('header').boundingBox())!;
+  const switcherBox = (await languageSwitcher(page, 'Langue').boundingBox())!;
+  const links = page.locator('header nav').getByRole('link');
+  await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
+  const items: [string, Locator][] = [
+    ['logo', headerLogo(page)],
+    ...(await links.all()).map((link, index): [string, Locator] => [`navigation link ${index + 1}`, link]),
+  ];
+
+  /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+  for (const [name, item] of items) {
+    const box = (await item.boundingBox())!;
+    expect.soft(box.y, `top of the ${name}, against the switcher top ${switcherBox.y}`).toBeGreaterThanOrEqual(switcherBox.y - 0.5);
+    expect.soft(box.y + box.height, `bottom of the ${name}, against the switcher bottom ${switcherBox.y + switcherBox.height}`)
+      .toBeLessThanOrEqual(switcherBox.y + switcherBox.height + 0.5);
+  }
+  /* The top edge of the 1 px bottom border. */
+  const borderTop = headerBox.y + headerBox.height - 1;
+  const spaces = {
+    headerTopToSwitcher: switcherBox.y - headerBox.y,
+    switcherToBottomBorder: borderTop - (switcherBox.y + switcherBox.height),
+  };
+  expect.soft(Math.abs(spaces.headerTopToSwitcher - 22), `spaces: ${JSON.stringify(spaces)}`).toBeLessThanOrEqual(0.5);
+  expect.soft(Math.abs(spaces.switcherToBottomBorder - 22), `spaces: ${JSON.stringify(spaces)}`).toBeLessThanOrEqual(0.5);
+});
+
 test('in a 320 px wide window, the header logo stays on a single line', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto('/fr/');
