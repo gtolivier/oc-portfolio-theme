@@ -349,7 +349,12 @@ h1 {
   font-size: var(--header-font-size);
 }
 
-/* Without a language switcher, the first row is only as tall as the logo. */
+/* --header-estimated-height is exact only when the switcher, whose height
+   is fixed, sets the first row. Without one, the estimate's first row is
+   the logo on a phone, which keeps the font's normal line height, and from
+   768 px the nav links, missing on a site without a main menu: the header
+   keeps the height of its content rather than an estimate that can exceed
+   it. */
 :root:not(.has-language-switcher) .site-header {
   min-height: 0;
 }
