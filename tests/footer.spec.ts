@@ -72,6 +72,29 @@ test('the footer logo text has a letter-spacing of 0.06em (0.84 px at 14 px), li
   ).toBe(true);
 });
 
+test('the footer logo text is the same cream color as the header logo', async ({ page }) => {
+  await page.goto('/fr/');
+  const headerLogo = page.locator('header').getByRole('link', { name: 'Exemple', exact: true });
+  await expect(headerLogo).toHaveCSS('color', 'rgb(227, 223, 204)');
+  const headerColor = await headerLogo.evaluate((element) => getComputedStyle(element).color);
+  const logo = page.locator('footer [aria-hidden="true"]');
+  await expect(logo).toHaveText('| E ||| | X |||');
+  /* The computed color of every element that directly holds a piece of the logo text, the bold bars included. */
+  const colors = await logo.evaluate((element) => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const values: string[] = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      if (node.textContent!.trim() === '') continue;
+      values.push(`${node.textContent!.trim()}: ${getComputedStyle(node.parentElement!).color}`);
+    }
+    return values;
+  });
+  expect(colors).toEqual([
+    `|: ${headerColor}`, `E |||: ${headerColor}`,
+    `|: ${headerColor}`, `X |||: ${headerColor}`,
+  ]);
+});
+
 test('the footer displays the site footer note in the page language',async ({ page }) => {
   await page.goto('/fr/');
   const frenchFooter = page.locator('footer');
