@@ -24,6 +24,8 @@ import {
   bandsWithoutDrawnPixels,
   meanLuminanceGainedInRectangle,
   brightnessKeptUnderLayerInRectangle,
+  extentOfDrawnTicks,
+  horizontalExtentOfDrawnStrokeInRectangles,
   pixelsChangedPerColumnInRectangle,
   pixelsNotOfBackgroundPerRow,
 } from './helpers/pixels';
@@ -1181,6 +1183,57 @@ test('on phone as on desktop, the hero’s veil spreads as wide as the design’
     kept,
     `share of the field’s brightness kept around (${Math.round(point.x)}, ${Math.round(point.y)})px, halfway from the veil’s densest point to the right edge of the ${Math.round(width)} × ${Math.round(height)}px hero`,
   ).toBeLessThanOrEqual(0.63);
+});
+
+test('on a phone, under 768 px wide, the hero’s tick field leaves side margins of at least 12 px, not 24 px, its ticks centred: at 320, 375 and 412 px wide, with the field still (reduced motion), the empty margins on its left and right are equal within a pixel, each at least 12 px, and together under 40 px, so that no further column of ticks, 16 px apart, would fit between margins of 12 px, while a minimum of 24 px leaves at least 48 px', async ({ page }) => {
+  /* Phone widths, set whatever the project's own window: the field leaves different room on
+     each side of its columns of ticks at each of them. */
+  const PHONE_WIDTHS = [320, 375, 412];
+  const HEIGHT = 800;
+  await page.setViewportSize({ width: PHONE_WIDTHS[0], height: HEIGHT });
+  const { hero, text } = await stillHero(page);
+  /* Only the field shows: the text and the veil are hidden without moving anything, and the
+     hero is given the page's background colour, which shows through it, so that the pixels
+     that differ from the hero's background are the ticks'. */
+  const veil = hero.locator('.veil');
+  await expect(veil).toHaveCount(1);
+  for (const element of [...Object.values(text), veil]) {
+    await element.evaluate((el) => {
+      (el as HTMLElement).style.visibility = 'hidden';
+    });
+  }
+  await hero.evaluate((el) => {
+    (el as HTMLElement).style.backgroundColor = getComputedStyle(document.body).backgroundColor;
+  });
+
+  const problems: string[] = [];
+  const measured: string[] = [];
+  for (const width of PHONE_WIDTHS) {
+    await page.setViewportSize({ width, height: HEIGHT });
+    await page.clock.runFor(100);
+    const box = (await hero.boundingBox())!;
+    expect(box.width, `width of the hero in a ${width}px-wide window`).toBeCloseTo(width, 0);
+
+    /* The empty side margins, in CSS pixels, from each side of the hero to the nearest edge of
+       its outermost columns of ticks, measured as for any tick-field: each column of ticks
+       taken in a band from 6px outside its edge to 8px inside it, summed over the hero's whole
+       height. */
+    const screenshot = await hero.screenshot();
+    const extent = await extentOfDrawnTicks(hero, screenshot);
+    expect(extent.left, `drawn ticks in the ${width}px-wide hero`).not.toBeNaN();
+    const [leftColumn, rightColumn] = await horizontalExtentOfDrawnStrokeInRectangles(hero, screenshot, [
+      { x: extent.left - 6, y: 0, width: 14, height: box.height },
+      { x: extent.right - 8, y: 0, width: 14, height: box.height },
+    ]);
+    const left = leftColumn.x;
+    const right = box.width - (rightColumn.x + rightColumn.width);
+    const describe = `${width}px: left ${left.toFixed(2)}, right ${right.toFixed(2)}`;
+    measured.push(describe);
+    if (Math.abs(left - right) > 1) problems.push(`${describe}: left and right margins differ by more than 1px`);
+    if (Math.min(left, right) < 12) problems.push(`${describe}: a side margin is under 12px`);
+    if (left + right >= 40) problems.push(`${describe}: the side margins add up to 40px or more, room for another column of ticks between margins of 12px`);
+  }
+  expect(problems, `empty side margins around the hero’s ticks, in CSS pixels (${measured.join('; ')})`).toEqual([]);
 });
 
 test('served under /portfolio/, the first hero button of the French home page, "Voir les projets", leads to /portfolio/fr/projets/', async ({ page }) => {
