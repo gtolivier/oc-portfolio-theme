@@ -786,6 +786,47 @@ test('from 768 px wide, the language switcher is the tallest item of the header,
   expect.soft(Math.abs(spaces.switcherToBottomBorder - 22), `spaces: ${JSON.stringify(spaces)}`).toBeLessThanOrEqual(0.5);
 });
 
+test('after the window is widened from 375 px to 1280 px on the same page, the header takes back its desktop height, the language switcher 22 px below its top edge and 22 px above its bottom border, and the hero still ends at the bottom of the window, within 1 px', async ({ page }) => {
+  /* 900 px high: tall enough for the hero's content at 375 px as at 1280 px, so the hero's
+     height is the window height minus the header height. */
+  const height = 900;
+  await page.setViewportSize({ width: 375, height });
+  await page.goto('/fr/');
+  await page.evaluate(() => document.fonts.ready);
+  const links = navigationLinks(page);
+  await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
+
+  /* Widened without reloading: the page lays itself out again. */
+  await page.setViewportSize({ width: WIDE_DESKTOP_VIEWPORT.width, height });
+  const header = page.locator('header');
+  const switcher = languageSwitcher(page, 'Langue');
+  /* The hero is the main content region named by its main heading. */
+  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  await expect(hero.getByRole('heading', { level: 1 })).toBeVisible();
+
+  /* What differs from a page loaded at 1280 px, beyond a sub-pixel rounding tolerance;
+     measured again until the layout settles. */
+  const problems = async (): Promise<string[]> => {
+    const headerBox = (await header.boundingBox())!;
+    const switcherBox = (await switcher.boundingBox())!;
+    const heroBox = (await hero.boundingBox())!;
+    const measures = {
+      'space between the header top and the switcher': switcherBox.y - headerBox.y,
+      'space between the switcher and the header bottom border': bottomBorderTop(headerBox) - (switcherBox.y + switcherBox.height),
+      'hero bottom against the window bottom': heroBox.y + heroBox.height - height,
+    };
+    const expected = {
+      'space between the header top and the switcher': { value: 22, tolerance: 0.5 },
+      'space between the switcher and the header bottom border': { value: 22, tolerance: 0.5 },
+      'hero bottom against the window bottom': { value: 0, tolerance: 1 },
+    };
+    return (Object.keys(expected) as (keyof typeof expected)[])
+      .filter((name) => !(Math.abs(measures[name] - expected[name].value) <= expected[name].tolerance))
+      .map((name) => `${name}: ${measures[name]} px, expected ${expected[name].value} px (header height ${headerBox.height} px)`);
+  };
+  await expect.poll(problems, { message: 'layout after widening the window to 1280 px' }).toEqual([]);
+});
+
 test('from 768 px wide, at least 24 px separate the header logo from the first navigation link, in French and in English (at 768 and 1280 px)', async ({ page }) => {
   const gaps: Record<string, number> = {};
   for (const { url, menu } of [
