@@ -63,13 +63,19 @@
   --header-switcher-padding: 2px;
   --header-switcher-gap: 2px;
   --header-switcher-border-width: 1px;
-  /* Set on the switcher for the same reason as --header-link-line-height.
-     At most (--min-target-size - 2 × 4 px of entry padding) / 12 px ≈ 1.33,
-     so that an entry's text and padding never outgrow --min-target-size. */
+  --header-switcher-font-size: 12px;
+  /* Set on the switcher for the same reason as --header-link-line-height. */
   --header-switcher-line-height: 1.3;
-  /* The switcher's entries are --min-target-size high: their own padding
-     and text, held by --header-switcher-line-height, are smaller. */
-  --header-switcher-height: calc(2 * var(--header-switcher-border-width) + 2 * var(--header-switcher-padding) + var(--min-target-size));
+  --header-switcher-entry-padding-block: 4px;
+  --header-switcher-entry-padding-inline: 9px;
+  /* An entry is at least --min-target-size high, taller if its text and
+     padding outgrow it. */
+  --header-switcher-entry-height: max(
+    var(--min-target-size),
+    var(--header-switcher-font-size) * var(--header-switcher-line-height)
+    + 2 * var(--header-switcher-entry-padding-block)
+  );
+  --header-switcher-height: calc(2 * var(--header-switcher-border-width) + 2 * var(--header-switcher-padding) + var(--header-switcher-entry-height));
   /* Height of the sticky header; the hero subtracts it from the viewport
      so it fills the space right below the header. On a phone, two rows:
      the switcher's, then the nav's, whose current link is the tallest. */
@@ -356,7 +362,7 @@ h1 {
   padding: var(--header-switcher-padding);
   border: var(--header-switcher-border-width) solid rgb(var(--color-paper-channels) / 0.35);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--header-switcher-font-size);
   line-height: var(--header-switcher-line-height);
   font-weight: 600;
 }
@@ -366,7 +372,7 @@ h1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 4px 9px;
+  padding: var(--header-switcher-entry-padding-block) var(--header-switcher-entry-padding-inline);
   min-width: var(--min-target-size);
   min-height: var(--min-target-size);
 }
