@@ -393,6 +393,11 @@ h1 {
     /* The header's column gap already separates the nav from the switcher. */
     margin-right: calc(var(--header-link-gap) - var(--header-column-gap));
   }
+
+  /* Without a switcher, the last link ends at the page gutter. */
+  :root:not(.has-language-switcher) .site-header nav {
+    margin-right: 0;
+  }
 }
 
 .site-header nav a {
