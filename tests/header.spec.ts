@@ -658,6 +658,35 @@ test('on a phone, the header leaves 12 px above its first row and 12 px between 
   expect(Math.abs(borderTop - secondRowBottom - 12), `space below the links row: ${borderTop - secondRowBottom}`).toBeLessThanOrEqual(0.5);
 });
 
+test('on a phone, on a page where no menu link is current, the header keeps the home page layout: same height, logo, language switcher and navigation links in the same place', async ({ page }) => {
+  await page.setViewportSize(PHONE_VIEWPORT);
+  /* The header height and the position of each item relative to the header's top-left corner. */
+  const layouts: Record<string, Record<string, number>> = {};
+  for (const url of ['/fr/', '/fr/page-longue/']) {
+    await page.goto(url);
+    const links = navigationLinks(page);
+    await expect(links, `navigation links on ${url}`).toHaveText(['Accueil', 'Projets', 'Contact']);
+    await expect(links.and(page.locator('[aria-current]')), `current navigation links on ${url}`)
+      .toHaveCount(url === '/fr/' ? 1 : 0);
+    const headerBox = (await page.locator('header').boundingBox())!;
+    const layout: Record<string, number> = { 'header height': headerBox.height };
+    const items: NamedItem[] = [...(await logoAndNavigationLinks(page)), ['language switcher', languageSwitcher(page, 'Langue')]];
+    for (const [name, item] of items) {
+      const box = (await item.boundingBox())!;
+      layout[`${name} x`] = box.x - headerBox.x;
+      layout[`${name} y`] = box.y - headerBox.y;
+    }
+    layouts[url] = layout;
+  }
+  const home = layouts['/fr/'];
+  const other = layouts['/fr/page-longue/'];
+  /* The measures that differ between the two pages, beyond a sub-pixel rounding tolerance. */
+  const differences = Object.keys(home)
+    .filter((measure) => !(Math.abs(other[measure] - home[measure]) <= 0.5))
+    .map((measure) => `${measure}: ${home[measure]} on /fr/, ${other[measure]} on /fr/page-longue/`);
+  expect(differences, 'measures that differ from the home page').toEqual([]);
+});
+
 test('from 768 px wide, the header logo, navigation links and language switcher sit on a single row, vertically centred (at 768 and 1280 px)', async ({ page }) => {
   for (const viewport of DESKTOP_VIEWPORTS) {
     await page.setViewportSize(viewport);
