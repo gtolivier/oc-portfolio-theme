@@ -121,6 +121,11 @@ const FIELD_ROW_SPACING_PX = 22;
 
 const FIELD_MIN_SIDE_MARGIN_PX = 24;
 
+/* On a phone, narrower than this, the field leaves smaller side margins. */
+const FIELD_PHONE_MAX_WIDTH_PX = 768;
+
+const FIELD_PHONE_MIN_SIDE_MARGIN_PX = 12;
+
 const FIELD_MIN_VERTICAL_MARGIN_PX = 18;
 
 const FIELD_RESTING_MIN_ALPHA = 0.06;
@@ -421,9 +426,12 @@ class TickField extends HTMLElement {
 
   /* The grid of ticks, centred in the box: as many columns and rows as leave the minimum margins. */
   private layout(width: number, height: number): FieldLayout {
+    /* Only the hero's field, on a phone, leaves the smaller margins. */
+    const isHeroOnPhone = this.classList.contains('hero') && width < FIELD_PHONE_MAX_WIDTH_PX;
+    const sideMargin = isHeroOnPhone ? FIELD_PHONE_MIN_SIDE_MARGIN_PX : FIELD_MIN_SIDE_MARGIN_PX;
     const columns = Math.max(
       1,
-      Math.floor((width - 2 * FIELD_MIN_SIDE_MARGIN_PX - FIELD_TICK_WIDTH_PX) / FIELD_TICK_SPACING_PX) + 1,
+      Math.floor((width - 2 * sideMargin - FIELD_TICK_WIDTH_PX) / FIELD_TICK_SPACING_PX) + 1,
     );
     const span = (columns - 1) * FIELD_TICK_SPACING_PX + FIELD_TICK_WIDTH_PX;
     /* On whole pixels, so the strokes stay crisp. */
