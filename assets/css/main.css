@@ -266,6 +266,9 @@ h1 {
   letter-spacing: 0.06em;
 }
 
+/* The nav comes between the logo and the language switcher in the markup:
+   order moves it after the switcher and the full basis puts it on a row of
+   its own, so the logo and the switcher share the first row. */
 .site-header nav {
   order: 1;
   flex-basis: 100%;
