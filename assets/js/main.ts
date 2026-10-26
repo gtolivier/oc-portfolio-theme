@@ -185,6 +185,18 @@ type FieldLayout = { columns: number; rows: number; left: number; top: number };
 /* What sets the hero's field on a phone apart from any other field: its margins and its diagonal's direction. */
 type FieldVariant = { minSideMargin: number; minVerticalMargin: number; isDiagonalDescending: boolean };
 
+const DEFAULT_FIELD_VARIANT: FieldVariant = {
+  minSideMargin: FIELD_MIN_SIDE_MARGIN_PX,
+  minVerticalMargin: FIELD_MIN_VERTICAL_MARGIN_PX,
+  isDiagonalDescending: false,
+};
+
+const HERO_ON_PHONE_FIELD_VARIANT: FieldVariant = {
+  minSideMargin: FIELD_PHONE_MIN_SIDE_MARGIN_PX,
+  minVerticalMargin: FIELD_PHONE_MIN_VERTICAL_MARGIN_PX,
+  isDiagonalDescending: true,
+};
+
 /* Where a linear gradient starts and ends, in CSS pixels. */
 type GradientLine = [x0: number, y0: number, x1: number, y1: number];
 
@@ -468,17 +480,7 @@ class TickField extends HTMLElement {
      and its diagonal runs down to the bottom right instead of up to the top right. */
   private fieldVariant(): FieldVariant {
     const isHeroOnPhone = this.classList.contains('hero') && isPhoneLayout();
-    return isHeroOnPhone
-      ? {
-          minSideMargin: FIELD_PHONE_MIN_SIDE_MARGIN_PX,
-          minVerticalMargin: FIELD_PHONE_MIN_VERTICAL_MARGIN_PX,
-          isDiagonalDescending: true,
-        }
-      : {
-          minSideMargin: FIELD_MIN_SIDE_MARGIN_PX,
-          minVerticalMargin: FIELD_MIN_VERTICAL_MARGIN_PX,
-          isDiagonalDescending: false,
-        };
+    return isHeroOnPhone ? HERO_ON_PHONE_FIELD_VARIANT : DEFAULT_FIELD_VARIANT;
   }
 
   private drawTickColumn(drawing: FieldDrawing, x: number, columnShare: number, fadeIn: number): void {
@@ -616,6 +618,8 @@ customElements.define('tick-field', TickField);
 const siteHeader = document.querySelector('.site-header');
 if (siteHeader) {
   new ResizeObserver(([entry]) => {
-    document.documentElement.style.setProperty('--header-height', `${entry.borderBoxSize[0].blockSize}px`);
+    /* Safari before 15.4 has no borderBoxSize, and older Firefox gives an object instead of an array. */
+    const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.target.getBoundingClientRect().height;
+    document.documentElement.style.setProperty('--header-height', `${height}px`);
   }).observe(siteHeader, { box: 'border-box' });
 }

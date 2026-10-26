@@ -2,9 +2,9 @@
 <a href="{{ site.Home.RelPermalink }}" aria-label="{{ site.Title }}">
   {{ partial "logo.html" $page -}}
 </a>
-{{- with site.Menus.main }}
+{{- if .hasMainMenu }}
 <nav>
-  {{- range . }}
+  {{- range site.Menus.main }}
   <a href="{{ .URL }}"{{ if eq .URL $page.RelPermalink }} aria-current="page"{{ end }}>{{ .Name }}</a>
   {{- end }}
 </nav>
