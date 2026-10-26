@@ -1,1 +1,5 @@
-{{- range site.Params.initials }}<span><b>|</b> {{ . }} |||</span> {{ end -}}
+{{- /* The initials and bars are decoration, hidden from screen readers:
+  a caller that needs a name gives it, as the header link's aria-label does. */ -}}
+<span aria-hidden="true">
+  {{- range site.Params.initials }}<span><b>|</b> {{ . }} |||</span> {{ end -}}
+</span>
