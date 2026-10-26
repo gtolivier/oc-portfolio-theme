@@ -319,6 +319,21 @@ test('the header navigation links have a letter-spacing of 0.08em (1.12 px at 14
   ).toBe(true);
 });
 
+test('the header navigation links are spaced 32 px apart', async ({ page }) => {
+  await page.goto('/fr/');
+  const links = page.locator('header nav').getByRole('link');
+  await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
+  const boxes = await Promise.all((await links.all()).map(async (link) => (await link.boundingBox())!));
+  /* The horizontal distance between the right edge of each link and the left edge of the next one. */
+  const gaps = boxes.slice(1).map((box, index) => box.x - (boxes[index].x + boxes[index].width));
+  expect(gaps).toHaveLength(2);
+  /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+  expect(
+    gaps.every((gap) => Math.abs(gap - 32) <= 0.5),
+    `gaps: ${gaps.join(', ')}`,
+  ).toBe(true);
+});
+
 test('in the header language switcher, the link to the other language offers a target of at least 24 × 24 px (WCAG 2.5.8)', async ({ page }) => {
   await page.goto('/fr/');
   const otherLanguage = languageSwitcher(page, 'Langue').getByRole('link', { name: 'EN', exact: true });
