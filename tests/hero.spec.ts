@@ -195,10 +195,11 @@ function mainContentHeading(page: Page): Locator {
    768 px wide, 768 × 1024, where the desktop spacing starts. */
 const DESKTOP_VIEWPORTS = [{ width: 1280, height: 900 }, { width: 768, height: 1024 }];
 
-/* Sizes the window to `viewport`, then opens the French home page and waits for its fonts. */
-async function openHomeAt(page: Page, viewport: { width: number; height: number }): Promise<void> {
+/* Sizes the window to `viewport`, then opens the French home page and waits for its fonts: that
+   of the example site, or of the test site served at `origin`. */
+async function openHomeAt(page: Page, viewport: { width: number; height: number }, origin = ''): Promise<void> {
   await page.setViewportSize(viewport);
-  await page.goto('/fr/');
+  await page.goto(`${origin}/fr/`);
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -1275,6 +1276,16 @@ async function showOnlyTheField(hero: Locator, text: Record<string, Locator>): P
   });
 }
 
+/* The bands the still field's leftmost and rightmost columns of ticks are measured in, as for
+   any tick-field: each from 6px outside the matching edge of the drawn ticks, `extent`, to 8px
+   inside it, over the `heroHeight` px high hero's whole height. */
+function outermostColumnBands(extent: { left: number; right: number }, heroHeight: number): { left: Rectangle; right: Rectangle } {
+  return {
+    left: { x: extent.left - 6, y: 0, width: 14, height: heroHeight },
+    right: { x: extent.right - 8, y: 0, width: 14, height: heroHeight },
+  };
+}
+
 test('on a phone, under 768 px wide, the hero’s tick field leaves side margins of at least 12 px, not 24 px, its ticks centred: at 320, 375 and 412 px wide, with the field still (reduced motion), the empty margins on its left and right are equal within a pixel, each at least 12 px, and together under 40 px, so that no further column of ticks, 16 px apart, would fit between margins of 12 px, while a minimum of 24 px leaves at least 48 px', async ({ page }) => {
   /* Phone widths, set whatever the project's own window: the field leaves different room on
      each side of its columns of ticks at each of them. */
@@ -1293,16 +1304,12 @@ test('on a phone, under 768 px wide, the hero’s tick field leaves side margins
     expect(box.width, `width of the hero in a ${width}px-wide window`).toBeCloseTo(width, 0);
 
     /* The empty side margins, in CSS pixels, from each side of the hero to the nearest edge of
-       its outermost columns of ticks, measured as for any tick-field: each column of ticks
-       taken in a band from 6px outside its edge to 8px inside it, summed over the hero's whole
-       height. */
+       its outermost columns of ticks, measured as for any tick-field. */
     const screenshot = await hero.screenshot();
     const extent = await extentOfDrawnTicks(hero, screenshot);
     expect(extent.left, `drawn ticks in the ${width}px-wide hero`).not.toBeNaN();
-    const [leftColumn, rightColumn] = await horizontalExtentOfDrawnStrokeInRectangles(hero, screenshot, [
-      { x: extent.left - 6, y: 0, width: 14, height: box.height },
-      { x: extent.right - 8, y: 0, width: 14, height: box.height },
-    ]);
+    const bands = outermostColumnBands(extent, box.height);
+    const [leftColumn, rightColumn] = await horizontalExtentOfDrawnStrokeInRectangles(hero, screenshot, [bands.left, bands.right]);
     const left = leftColumn.x;
     const right = box.width - (rightColumn.x + rightColumn.width);
     const describe = `${width}px: left ${left.toFixed(2)}, right ${right.toFixed(2)}`;
@@ -1383,7 +1390,7 @@ async function cornerTicks(
 ): Promise<{ columns: { left: number; right: number }; firstRow: number; lastRow: number; tickWidth: number }> {
   const extent = await extentOfDrawnTicks(hero, screenshot);
   expect(extent.left, `drawn ticks in the ${size}px hero`).not.toBeNaN();
-  const rightColumn = await drawnStrokesInRectangle(hero, screenshot, { x: extent.right - 8, y: 0, width: 14, height: heroHeight });
+  const rightColumn = await drawnStrokesInRectangle(hero, screenshot, outermostColumnBands(extent, heroHeight).right);
   expect(rightColumn.length, `ticks drawn whole in the rightmost column of the ${size}px hero`).toBeGreaterThanOrEqual(2);
   return {
     columns: { left: extent.left, right: rightColumn[0].x },
@@ -1399,6 +1406,32 @@ async function cornerTicks(
 function pointsAcrossTick(x: number, y: number, tickWidth: number): { x: number; y: number }[] {
   const STEP = 0.25;
   return Array.from({ length: Math.ceil(tickWidth / STEP) }, (_, step) => ({ x: x + (step + 0.5) * STEP, y: y + 2.5 }));
+}
+
+/* The theme's three tick colours. */
+type Hue = 'green' | 'accent' | 'cream';
+
+/* The theme's three tick colours, as the hero sees them: green (--color-accent-dark), accent
+   (--color-accent) and cream (--color-paper), read through the same colour handling as the ticks. */
+async function themeTickHues(hero: Locator): Promise<Record<Hue, Channels>> {
+  const themeColour = async (customProperty: string): Promise<Channels> =>
+    channelsOfColour(hero, await hero.evaluate((el, name) => getComputedStyle(el).getPropertyValue(name).trim(), customProperty));
+  return {
+    green: await themeColour('--color-accent-dark'),
+    accent: await themeColour('--color-accent'),
+    cream: await themeColour('--color-paper'),
+  };
+}
+
+/* A colour, as assertion messages show it: its channels rounded, "(red, green, blue)". */
+function describeColour(channels: Channels): string {
+  return `(${Math.round(channels.red)}, ${Math.round(channels.green)}, ${Math.round(channels.blue)})`;
+}
+
+/* Of the theme's tick colours `hues`, the one closest to `colour`. */
+function closestHue(colour: Channels, hues: Record<Hue, Channels>): Hue {
+  const distance = (other: Channels) => Math.hypot(colour.red - other.red, colour.green - other.green, colour.blue - other.blue);
+  return (Object.keys(hues) as Hue[]).reduce((best, hue) => (distance(hues[hue]) < distance(hues[best]) ? hue : best));
 }
 
 test('on a phone, under 768 px wide, the hero’s tick field is faintest at the top left and most opaque at the bottom right: at 320 × 699, 375 × 801, 412 × 849 and 767 × 1024, with the field still (reduced motion), of its four corner ticks, the top left one shows the least of its colour over the background, and the bottom right one the most', async ({ page }) => {
@@ -1450,24 +1483,7 @@ test('on a phone, under 768 px wide, the hero’s tick field is coloured along t
   await page.setViewportSize(CORNER_TICKS_PHONE_VIEWPORTS[0]);
   const { hero, text } = await stillHero(page);
   await showOnlyTheField(hero, text);
-
-  /* The theme's three tick colours: green (--color-accent-dark), accent (--color-accent) and
-     cream (--color-paper), read through the same colour handling as the ticks. */
-  const themeColour = async (customProperty: string): Promise<Channels> =>
-    channelsOfColour(hero, await hero.evaluate((el, name) => getComputedStyle(el).getPropertyValue(name).trim(), customProperty));
-  const hues = {
-    green: await themeColour('--color-accent-dark'),
-    accent: await themeColour('--color-accent'),
-    cream: await themeColour('--color-paper'),
-  };
-  type Hue = keyof typeof hues;
-  const describeColour = (channels: Channels): string =>
-    `(${Math.round(channels.red)}, ${Math.round(channels.green)}, ${Math.round(channels.blue)})`;
-  const closestHue = (colour: Channels): Hue =>
-    (Object.keys(hues) as Hue[]).reduce((best, hue) => {
-      const distance = (other: Channels) => Math.hypot(colour.red - other.red, colour.green - other.green, colour.blue - other.blue);
-      return distance(hues[hue]) < distance(hues[best]) ? hue : best;
-    });
+  const hues = await themeTickHues(hero);
 
   const problems: string[] = [];
   const measured: string[] = [];
@@ -1495,10 +1511,10 @@ test('on a phone, under 768 px wide, the hero’s tick field is coloured along t
       { name: 'top left', colour: await colourOfTick(columns.left, firstRow), wanted: 'green' },
       { name: 'bottom right', colour: await colourOfTick(columns.right, lastRow), wanted: 'cream' },
     ];
-    const describe = `${size}px: ${corners.map(({ name, colour }) => `${name} ${describeColour(colour)}, closest to ${closestHue(colour)}`).join('; ')}`;
+    const describe = `${size}px: ${corners.map(({ name, colour }) => `${name} ${describeColour(colour)}, closest to ${closestHue(colour, hues)}`).join('; ')}`;
     measured.push(describe);
     for (const { name, colour, wanted } of corners) {
-      if (closestHue(colour) !== wanted) problems.push(`${size}px: the ${name} tick, ${describeColour(colour)}, is closest to ${closestHue(colour)}, not ${wanted}`);
+      if (closestHue(colour, hues) !== wanted) problems.push(`${size}px: the ${name} tick, ${describeColour(colour)}, is closest to ${closestHue(colour, hues)}, not ${wanted}`);
     }
   }
   expect(
@@ -1542,24 +1558,7 @@ test('from 768 px wide, with a classic scrollbar that leaves the page less than 
   /* The heading, hidden from assistive technologies once only the field shows. */
   const heading = hero.getByRole('heading', { level: 1, includeHidden: true });
   await showOnlyTheField(hero, text);
-
-  /* The theme's three tick colours: green (--color-accent-dark), accent (--color-accent) and
-     cream (--color-paper), read through the same colour handling as the ticks. */
-  const themeColour = async (customProperty: string): Promise<Channels> =>
-    channelsOfColour(hero, await hero.evaluate((el, name) => getComputedStyle(el).getPropertyValue(name).trim(), customProperty));
-  const hues = {
-    green: await themeColour('--color-accent-dark'),
-    accent: await themeColour('--color-accent'),
-    cream: await themeColour('--color-paper'),
-  };
-  type Hue = keyof typeof hues;
-  const describeColour = (channels: Channels): string =>
-    `(${Math.round(channels.red)}, ${Math.round(channels.green)}, ${Math.round(channels.blue)})`;
-  const closestHue = (colour: Channels): Hue =>
-    (Object.keys(hues) as Hue[]).reduce((best, hue) => {
-      const distance = (other: Channels) => Math.hypot(colour.red - other.red, colour.green - other.green, colour.blue - other.blue);
-      return distance(hues[hue]) < distance(hues[best]) ? hue : best;
-    });
+  const hues = await themeTickHues(hero);
 
   const problems: string[] = [];
   const measured: string[] = [];
@@ -1582,11 +1581,8 @@ test('from 768 px wide, with a classic scrollbar that leaves the page less than 
 
     /* The empty side margins, measured as in the phone test: from each side of the hero to the
        nearest edge of its outermost columns of ticks. */
-    const extent = await extentOfDrawnTicks(hero, screenshot);
-    const [leftColumn, rightColumn] = await horizontalExtentOfDrawnStrokeInRectangles(hero, screenshot, [
-      { x: extent.left - 6, y: 0, width: 14, height: box.height },
-      { x: extent.right - 8, y: 0, width: 14, height: box.height },
-    ]);
+    const bands = outermostColumnBands(await extentOfDrawnTicks(hero, screenshot), box.height);
+    const [leftColumn, rightColumn] = await horizontalExtentOfDrawnStrokeInRectangles(hero, screenshot, [bands.left, bands.right]);
     const margins = { left: leftColumn.x, right: box.width - (rightColumn.x + rightColumn.width) };
 
     /* A corner tick's opacity and colour, read as in the phone tests: of the points across the
@@ -1615,7 +1611,7 @@ test('from 768 px wide, with a classic scrollbar that leaves the page less than 
       problems.push(`${describe}: the top right tick is not the most opaque`);
     }
     for (const [corner, wanted] of [['bottom left', 'green'], ['top right', 'cream']] as [Corner, Hue][]) {
-      const hue = closestHue(corners[corner].colour);
+      const hue = closestHue(corners[corner].colour, hues);
       if (hue !== wanted) problems.push(`${size}px: the ${corner} tick is closest to ${hue}, not ${wanted}`);
     }
   }
@@ -1778,9 +1774,7 @@ test.describe('home page of a single-language site', () => {
        switcher, is two rows on a phone and one row from 768 px wide. */
     for (const viewport of [{ width: 412, height: 1100 }, ...DESKTOP_VIEWPORTS]) {
       const size = `${viewport.width} × ${viewport.height}`;
-      await page.setViewportSize(viewport);
-      await page.goto(`${SITE_WITH_A_SINGLE_LANGUAGE.origin}/fr/`);
-      await page.evaluate(() => document.fonts.ready);
+      await openHomeAt(page, viewport, SITE_WITH_A_SINGLE_LANGUAGE.origin);
       /* The site is single-language: the header shows no language switcher. */
       await expect(page.locator('header').getByRole('group', { name: 'Langue' }), `language switcher at ${size}`).toHaveCount(0);
       const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
@@ -1803,6 +1797,14 @@ test.describe('home page of a single-language site', () => {
   });
 });
 
+/* The top edge of each link of the header menu, in document order, and the number of lines
+   they sit on: the distinct top edges, rounded to the pixel. */
+async function menuLines(links: Locator): Promise<{ linkTops: number[]; lineCount: number }> {
+  const linkTops: number[] = [];
+  for (const link of await links.all()) linkTops.push((await link.boundingBox())!.y);
+  return { linkTops, lineCount: new Set(linkTops.map((top) => Math.round(top))).size };
+}
+
 test.describe('home page of a site with a long menu', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
@@ -1816,17 +1818,13 @@ test.describe('home page of a site with a long menu', () => {
     await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
     const viewport = { width: 412, height: 1100 };
     const size = `${viewport.width} × ${viewport.height}`;
-    await page.setViewportSize(viewport);
-    await page.goto(`${SITE_WITH_A_LONG_MENU.origin}/fr/`);
-    await page.evaluate(() => document.fonts.ready);
+    await openHomeAt(page, viewport, SITE_WITH_A_LONG_MENU.origin);
 
     /* The menu is too long for a single line at 412 px: its links sit on two lines (three
        at 320 px). */
     const links = page.locator('header nav').getByRole('link');
     await expect(links).toHaveText(['Accueil', 'Projets', 'Parcours', 'Compétences', 'Publications', 'Contact']);
-    const linkTops: number[] = [];
-    for (const link of await links.all()) linkTops.push((await link.boundingBox())!.y);
-    const lineCount = new Set(linkTops.map((top) => Math.round(top))).size;
+    const { linkTops, lineCount } = await menuLines(links);
     expect(lineCount, `at ${size}, lines of the menu (top edges of its links: ${linkTops.join(', ')})`).toBe(2);
 
     const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
@@ -1850,17 +1848,13 @@ test.describe('home page of a site with a long menu', () => {
     await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
     const viewport = { width: 768, height: 1024 };
     const size = `${viewport.width} × ${viewport.height}`;
-    await page.setViewportSize(viewport);
-    await page.goto(`${SITE_WITH_A_LONG_MENU.origin}/fr/`);
-    await page.evaluate(() => document.fonts.ready);
+    await openHomeAt(page, viewport, SITE_WITH_A_LONG_MENU.origin);
 
     /* At 768 px the menu does not fit beside the logo: its links sit on two lines, and the
        header is taller than its usual single row. */
     const links = page.locator('header nav').getByRole('link');
     await expect(links).toHaveText(['Accueil', 'Projets', 'Parcours', 'Compétences', 'Publications', 'Contact']);
-    const linkTops: number[] = [];
-    for (const link of await links.all()) linkTops.push((await link.boundingBox())!.y);
-    const lineCount = new Set(linkTops.map((top) => Math.round(top))).size;
+    const { linkTops, lineCount } = await menuLines(links);
     expect(lineCount, `at ${size}, lines of the menu (top edges of its links: ${linkTops.join(', ')})`).toBe(2);
 
     const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);

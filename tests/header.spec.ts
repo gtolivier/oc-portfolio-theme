@@ -45,9 +45,19 @@ async function logoAndNavigationLinks(page: Page): Promise<NamedItem[]> {
   ];
 }
 
+/* Every header item: the logo, each navigation link, then the language switcher of a French page. */
+async function headerItems(page: Page): Promise<NamedItem[]> {
+  return [...(await logoAndNavigationLinks(page)), ['language switcher', languageSwitcher(page, 'Langue')]];
+}
+
 /* The box of each element the locator matches, in document order. */
 async function boxesOf(elements: Locator): Promise<{ x: number; y: number; width: number; height: number }[]> {
   return Promise.all((await elements.all()).map(async (element) => (await element.boundingBox())!));
+}
+
+/* The top edge of the header's 1 px bottom border, given the header's box. */
+function bottomBorderTop(headerBox: { y: number; height: number }): number {
+  return headerBox.y + headerBox.height - 1;
 }
 
 /* The vertical centre of each item's box, by item name. */
@@ -306,8 +316,7 @@ test.describe('single-language site', () => {
     const firstRowBottom = logoBox.y + logoBox.height;
     const secondRowTop = Math.min(...linkBoxes.map((box) => box.y));
     const secondRowBottom = Math.max(...linkBoxes.map((box) => box.y + box.height));
-    /* The top edge of the 1 px bottom border. */
-    const borderTop = headerBox.y + headerBox.height - 1;
+    const borderTop = bottomBorderTop(headerBox);
     /* The three gaps, by name, so a failure shows all of them. */
     const gaps: Record<string, number> = {
       'space above the logo row': firstRowTop - headerBox.y,
@@ -688,8 +697,7 @@ test('on a phone, the header leaves 12 px above its first row and 12 px between 
 
   const firstRowTop = Math.min(logoBox.y, switcherBox.y);
   const secondRowBottom = Math.max(...linkBoxes.map((box) => box.y + box.height));
-  /* The top edge of the 1 px bottom border. */
-  const borderTop = headerBox.y + headerBox.height - 1;
+  const borderTop = bottomBorderTop(headerBox);
   /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
   expect(Math.abs(firstRowTop - headerBox.y - 12), `space above the first row: ${firstRowTop - headerBox.y}`).toBeLessThanOrEqual(0.5);
   expect(Math.abs(borderTop - secondRowBottom - 12), `space below the links row: ${borderTop - secondRowBottom}`).toBeLessThanOrEqual(0.5);
@@ -707,8 +715,7 @@ test('on a phone, on a page where no menu link is current, the header keeps the 
       .toHaveCount(url === '/fr/' ? 1 : 0);
     const headerBox = (await page.locator('header').boundingBox())!;
     const layout: Record<string, number> = { 'header height': headerBox.height };
-    const items: NamedItem[] = [...(await logoAndNavigationLinks(page)), ['language switcher', languageSwitcher(page, 'Langue')]];
-    for (const [name, item] of items) {
+    for (const [name, item] of await headerItems(page)) {
       const box = (await item.boundingBox())!;
       layout[`${name} x`] = box.x - headerBox.x;
       layout[`${name} y`] = box.y - headerBox.y;
@@ -730,8 +737,7 @@ test('from 768 px wide, the header logo, navigation links and language switcher 
     await page.goto('/fr/');
     const links = navigationLinks(page);
     await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
-    const items: NamedItem[] = [...(await logoAndNavigationLinks(page)), ['language switcher', languageSwitcher(page, 'Langue')]];
-    expectCentredOnLogo(await verticalCentres(items), viewport.width);
+    expectCentredOnLogo(await verticalCentres(await headerItems(page)), viewport.width);
   }
 });
 
@@ -771,8 +777,7 @@ test('from 768 px wide, the language switcher is the tallest item of the header,
     expect.soft(box.y + box.height, `bottom of the ${name}, against the switcher bottom ${switcherBox.y + switcherBox.height}`)
       .toBeLessThanOrEqual(switcherBox.y + switcherBox.height + 0.5);
   }
-  /* The top edge of the 1 px bottom border. */
-  const borderTop = headerBox.y + headerBox.height - 1;
+  const borderTop = bottomBorderTop(headerBox);
   const spaces = {
     headerTopToSwitcher: switcherBox.y - headerBox.y,
     switcherToBottomBorder: borderTop - (switcherBox.y + switcherBox.height),
@@ -875,8 +880,7 @@ test('in a 320 px wide window, the header still fits: no horizontal scrolling, l
 
   const links = navigationLinks(page);
   await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
-  const items: NamedItem[] = [...(await logoAndNavigationLinks(page)), ['language switcher', languageSwitcher(page, 'Langue')]];
-  for (const [name, item] of items) {
+  for (const [name, item] of await headerItems(page)) {
     await expect(item, name).toBeVisible();
     const box = (await item.boundingBox())!;
     /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
@@ -905,8 +909,7 @@ test.describe('site with a long menu', () => {
     const links = navigationLinks(page);
     await expect(links).toHaveText(['Accueil', 'Projets', 'Parcours', 'Compétences', 'Publications', 'Contact']);
     const headerBox = (await page.locator('header').boundingBox())!;
-    /* The top edge of the 1 px bottom border. */
-    const borderTop = headerBox.y + headerBox.height - 1;
+    const borderTop = bottomBorderTop(headerBox);
     /* Inside the header, between its 16 px side gutters. */
     const contentLeft = headerBox.x + 16;
     const contentRight = headerBox.x + headerBox.width - 16;
