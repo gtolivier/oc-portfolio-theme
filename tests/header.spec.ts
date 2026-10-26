@@ -75,6 +75,15 @@ async function characterTops(element: Locator): Promise<number[]> {
   });
 }
 
+/* The bottom edge of the element's text as rendered: the bottom of a Range over its contents. */
+async function textBottom(element: Locator): Promise<number> {
+  return element.evaluate((root) => {
+    const range = document.createRange();
+    range.selectNodeContents(root);
+    return range.getBoundingClientRect().bottom;
+  });
+}
+
 /* The top edge of the header's 1 px bottom border, given the header's box. */
 function bottomBorderTop(headerBox: { y: number; height: number }): number {
   return headerBox.y + headerBox.height - 1;
@@ -175,14 +184,25 @@ test('the navigation link marked as the current page is underlined with an accen
   await expect(current).not.toHaveCSS('border-bottom-width', '0px');
 });
 
-test('the navigation link marked as the current page leaves 3 px between the bottom of its text and its accent underline', async ({ page }) => {
-  await page.goto('/fr/');
-  const current = page.locator('header nav').getByRole('link', { name: 'Accueil', exact: true });
-  await expect(current).toHaveAttribute('aria-current', 'page');
-  /* The gap between the bottom of the content box and the bottom border is the bottom padding. */
-  const paddingBottom = await current.evaluate((element) => getComputedStyle(element).paddingBottom);
-  /* Compared numerically: browsers may serialize the value differently ("3px", "3.000000px"). */
-  expect(Math.abs(parseFloat(paddingBottom) - 3), `padding-bottom: ${paddingBottom}`).toBeLessThanOrEqual(0.01);
+test('the accent underline of the navigation link marked as the current page starts 3 px below the bottom of its text as displayed, measured on the text itself (on a phone and at 1280 px)', async ({ page }) => {
+  /* The space between the bottom of the rendered text and the top of the accent underline, by window width. */
+  const gaps: Record<string, number> = {};
+  for (const viewport of [PHONE_VIEWPORT, WIDE_DESKTOP_VIEWPORT]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/fr/');
+    await page.evaluate(() => document.fonts.ready);
+    const current = page.locator('header nav').getByRole('link', { name: 'Accueil', exact: true });
+    await expect(current).toHaveAttribute('aria-current', 'page');
+    const box = (await current.boundingBox())!;
+    const borderWidth = await current.evaluate((element) => parseFloat(getComputedStyle(element).borderBottomWidth));
+    const underlineTop = box.y + box.height - borderWidth;
+    gaps[`at ${viewport.width} px`] = underlineTop - (await textBottom(current));
+  }
+  /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+  expect(
+    Object.values(gaps).every((gap) => Math.abs(gap - 3) <= 0.5),
+    `gaps between the text bottom and the underline: ${JSON.stringify(gaps)}`,
+  ).toBe(true);
 });
 
 test('in English, the header navigation lists the entries of the English main menu', async ({ page }) => {
