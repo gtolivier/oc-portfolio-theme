@@ -246,6 +246,7 @@ h1 {
   z-index: var(--layer-sticky-header);
   background: var(--color-ink);
   padding-inline: var(--page-gutter);
+  border-bottom: 1px solid rgb(var(--color-paper-channels) / 0.12);
 }
 
 .site-header a {
