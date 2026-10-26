@@ -226,6 +226,24 @@ test('the header language switcher is in IBM Plex Mono 12 px, weight 600', async
   expect(styles).toEqual([expected, expected]);
 });
 
+test('the header logo and the navigation links are in IBM Plex Mono 14 px', async ({ page }) => {
+  await page.goto('/fr/');
+  /* The logo and the navigation links, without the language switch link (12 px, tested above). */
+  const links = headerLogo(page).or(page.locator('header nav').getByRole('link'));
+  await expect(links).toHaveCount(4);
+  const styles = await links.evaluateAll((elements) =>
+    elements.map((element) => {
+      const style = getComputedStyle(element);
+      return {
+        family: style.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
+        size: style.fontSize,
+      };
+    }),
+  );
+  const expected = { family: 'IBM Plex Mono', size: '14px' };
+  expect(styles).toEqual([expected, expected, expected, expected]);
+});
+
 test('in the header language switcher, the link to the other language offers a target of at least 24 × 24 px (WCAG 2.5.8)', async ({ page }) => {
   await page.goto('/fr/');
   const otherLanguage = languageSwitcher(page, 'Langue').getByRole('link', { name: 'EN', exact: true });
