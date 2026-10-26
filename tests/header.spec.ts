@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import {
+  SITE_WITH_A_LONG_MENU,
   SITE_WITH_A_SINGLE_LANGUAGE,
   SITE_WITH_ENGLISH_BY_DEFAULT,
   buildSite,
@@ -882,6 +883,49 @@ test('in a 320 px wide window, the header still fits: no horizontal scrolling, l
     expect(box.x, `left edge of the ${name}`).toBeGreaterThanOrEqual(-0.5);
     expect(box.x + box.width, `right edge of the ${name}`).toBeLessThanOrEqual(320.5);
   }
+});
+
+test.describe('site with a long menu', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_LONG_MENU);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('in a 320 px wide window, a menu too long for a single line wraps onto another line: no link goes past the header, no horizontal scrolling', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
+    await page.setViewportSize(NARROWEST_PHONE_VIEWPORT);
+    await page.goto(`${SITE_WITH_A_LONG_MENU.origin}/fr/`);
+
+    const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(pageWidth, 'width of the page content').toBeLessThanOrEqual(NARROWEST_PHONE_VIEWPORT.width);
+
+    const links = navigationLinks(page);
+    await expect(links).toHaveText(['Accueil', 'Projets', 'Parcours', 'Compétences', 'Publications', 'Contact']);
+    const headerBox = (await page.locator('header').boundingBox())!;
+    /* The top edge of the 1 px bottom border. */
+    const borderTop = headerBox.y + headerBox.height - 1;
+    /* Inside the header, between its 16 px side gutters. */
+    const contentLeft = headerBox.x + 16;
+    const contentRight = headerBox.x + headerBox.width - 16;
+    const linkTops: number[] = [];
+    for (const [index, link] of (await links.all()).entries()) {
+      const name = `navigation link ${index + 1}`;
+      await expect(link, name).toBeVisible();
+      const box = (await link.boundingBox())!;
+      linkTops.push(box.y);
+      /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+      expect(box.x, `left edge of the ${name}`).toBeGreaterThanOrEqual(contentLeft - 0.5);
+      expect(box.x + box.width, `right edge of the ${name}`).toBeLessThanOrEqual(contentRight + 0.5);
+      expect(box.y, `top edge of the ${name}`).toBeGreaterThanOrEqual(headerBox.y - 0.5);
+      expect(box.y + box.height, `bottom edge of the ${name}`).toBeLessThanOrEqual(borderTop + 0.5);
+    }
+    /* Wrapped: the links sit on more than one line. */
+    const lineCount = new Set(linkTops.map((top) => Math.round(top))).size;
+    expect(lineCount, `top edges of the links: ${linkTops.join(', ')}`).toBeGreaterThan(1);
+  });
 });
 
 test('the header is separated from the page by a 1 px solid paper-colored bottom border at 12% opacity', async ({ page }) => {

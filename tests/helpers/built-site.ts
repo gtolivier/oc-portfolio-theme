@@ -148,6 +148,13 @@ export const SITE_WITH_A_HERO_WITHOUT_TITLE = testSite('untitled-hero');
    fr = 1 and en = 2, so that the default language is the heaviest one. */
 export const SITE_WITH_ENGLISH_BY_DEFAULT = testSite('english-by-default');
 
+/* The example site's French main menu has three short links, which fit on a
+   single line even in a 320 px wide window: this site replaces that menu
+   with six links, "Accueil", "Projets", "Parcours", "Compétences",
+   "Publications" and "Contact", too long for a single line at 320 px (see
+   tests/fixtures/long-menu/hugo.toml). */
+export const SITE_WITH_A_LONG_MENU = testSite('long-menu');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
