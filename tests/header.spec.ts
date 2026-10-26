@@ -84,6 +84,16 @@ async function textBottom(element: Locator): Promise<number> {
   });
 }
 
+/* The box of the element's text as rendered: the rectangle of a Range over its contents. */
+async function textBox(element: Locator): Promise<{ top: number; right: number; bottom: number; left: number }> {
+  return element.evaluate((root) => {
+    const range = document.createRange();
+    range.selectNodeContents(root);
+    const { top, right, bottom, left } = range.getBoundingClientRect();
+    return { top, right, bottom, left };
+  });
+}
+
 /* The top edge of the header's 1 px bottom border, given the header's box. */
 function bottomBorderTop(headerBox: { y: number; height: number }): number {
   return headerBox.y + headerBox.height - 1;
@@ -589,31 +599,34 @@ test('in the header language switcher, the current language has the same height 
   expect(frBox.height, 'height of the current language').toBeCloseTo(enBox.height, 0);
 });
 
-test('in the header language switcher, each entry has 4 px of padding at the top and bottom, 9 px on the left and right, and stays at least 24 px tall', async ({ page }) => {
-  await page.goto('/fr/');
-  const group = languageSwitcher(page, 'Langue');
-  const currentLanguage = group.getByText('FR', { exact: true });
-  const otherLanguage = group.getByRole('link', { name: 'EN', exact: true });
-  await expect(currentLanguage).toHaveAttribute('aria-current');
-  await expect(otherLanguage).toBeVisible();
+test('in the header language switcher, the text of each entry as displayed, measured on the text itself, has 4 px above and below it and 9 px left and right of it up to the edge of the entry, and the entry stays at least 24 px tall (on a phone and at 1280 px)', async ({ page }) => {
   const expected = { top: 4, right: 9, bottom: 4, left: 9 };
-  for (const [name, entry] of [['FR', currentLanguage], ['EN', otherLanguage]] as const) {
-    const paddings = await entry.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return {
-        top: parseFloat(style.paddingTop),
-        right: parseFloat(style.paddingRight),
-        bottom: parseFloat(style.paddingBottom),
-        left: parseFloat(style.paddingLeft),
+  for (const viewport of [PHONE_VIEWPORT, WIDE_DESKTOP_VIEWPORT]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/fr/');
+    await page.evaluate(() => document.fonts.ready);
+    const group = languageSwitcher(page, 'Langue');
+    const currentLanguage = group.getByText('FR', { exact: true });
+    const otherLanguage = group.getByRole('link', { name: 'EN', exact: true });
+    await expect(currentLanguage).toHaveAttribute('aria-current');
+    await expect(otherLanguage).toBeVisible();
+    for (const [name, entry] of [['FR', currentLanguage], ['EN', otherLanguage]] as const) {
+      const box = (await entry.boundingBox())!;
+      const text = await textBox(entry);
+      /* The space between each edge of the displayed text and the same edge of the entry's box. */
+      const spaces = {
+        top: text.top - box.y,
+        right: box.x + box.width - text.right,
+        bottom: box.y + box.height - text.bottom,
+        left: text.left - box.x,
       };
-    });
-    /* Compared numerically, with a small tolerance: browsers may serialize lengths differently. */
-    expect.soft(
-      (Object.keys(expected) as (keyof typeof expected)[]).every((side) => Math.abs(paddings[side] - expected[side]) <= 0.01),
-      `${name} paddings: ${JSON.stringify(paddings)}`,
-    ).toBe(true);
-    const box = (await entry.boundingBox())!;
-    expect.soft(box.height, `${name} target height`).toBeGreaterThanOrEqual(24);
+      /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+      expect.soft(
+        (Object.keys(expected) as (keyof typeof expected)[]).every((side) => Math.abs(spaces[side] - expected[side]) <= 0.5),
+        `${name} spaces around its text at ${viewport.width} px: ${JSON.stringify(spaces)}`,
+      ).toBe(true);
+      expect.soft(box.height, `${name} target height at ${viewport.width} px`).toBeGreaterThanOrEqual(24);
+    }
   }
 });
 
