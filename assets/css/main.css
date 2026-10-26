@@ -299,6 +299,7 @@ h1 {
   align-items: center;
   justify-content: center;
   font-size: inherit;
+  padding: 4px 9px;
   min-width: var(--min-target-size);
   min-height: var(--min-target-size);
 }
