@@ -288,6 +288,42 @@ test.describe('single-language site', () => {
     await expect(languageSwitcher(page, 'Langue')).toHaveCount(0);
     await expect(page.locator('header').getByText('FR', { exact: true })).toHaveCount(0);
   });
+
+  test('on a phone, on a single-language site, the header leaves 12 px above the logo row, 8 px between the logo and the links row, and 12 px between the links row and its bottom border', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
+    await page.setViewportSize(PHONE_VIEWPORT);
+    await page.goto(`${SITE_WITH_A_SINGLE_LANGUAGE.origin}/fr/`);
+    await expect(languageSwitcher(page, 'Langue')).toHaveCount(0);
+    const headerBox = (await page.locator('header').boundingBox())!;
+    const logoBox = (await headerLogo(page).boundingBox())!;
+    const links = navigationLinks(page);
+    await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
+    const linkBoxes = await boxesOf(links);
+
+    /* The first row holds the logo alone. */
+    const firstRowTop = logoBox.y;
+    const firstRowBottom = logoBox.y + logoBox.height;
+    const secondRowTop = Math.min(...linkBoxes.map((box) => box.y));
+    const secondRowBottom = Math.max(...linkBoxes.map((box) => box.y + box.height));
+    /* The top edge of the 1 px bottom border. */
+    const borderTop = headerBox.y + headerBox.height - 1;
+    /* The three gaps, by name, so a failure shows all of them. */
+    const gaps: Record<string, number> = {
+      'space above the logo row': firstRowTop - headerBox.y,
+      'gap between the logo row and the links row': secondRowTop - firstRowBottom,
+      'space below the links row': borderTop - secondRowBottom,
+    };
+    const expected: Record<string, number> = {
+      'space above the logo row': 12,
+      'gap between the logo row and the links row': 8,
+      'space below the links row': 12,
+    };
+    /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+    expect(
+      Object.keys(expected).every((name) => Math.abs(gaps[name] - expected[name]) <= 0.5),
+      `gaps: ${JSON.stringify(gaps)}`,
+    ).toBe(true);
+  });
 });
 
 test('in the header language switcher, the current language is ink text on a paper background', async ({ page }) => {
