@@ -100,9 +100,9 @@
   /* Height of the sticky header; the hero subtracts it from the viewport
      so it fills the space right below the header. Once it runs, the theme
      script replaces it with the measured height, which differs from the
-     estimate when the menu wraps. The
-     header's own min-height reads the estimate instead, so a measured
-     height never keeps the header tall after the window widens. */
+     estimate when the menu wraps. The header's own min-height reads the
+     estimate instead, so a measured height never keeps the header tall
+     after the window widens. */
   --header-height: var(--header-estimated-height);
   /* Space left above an anchor target so the sticky header does not
      hide it: the header's height, plus some breathing room. */
@@ -373,8 +373,7 @@ h1 {
 }
 
 /* From 768 px, the nav goes back between the logo and the switcher, the
-   three on a single row; a menu too long for it wraps its links within
-   the nav. The header's block padding grows too, through
+   three on a single row. The header's block padding grows too, through
    --header-padding-block in :root, which --header-estimated-height also
    reads. */
 @media (min-width: 768px) {

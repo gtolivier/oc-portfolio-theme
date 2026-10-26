@@ -1,7 +1,7 @@
+{{- $page := .page -}}
 <a href="{{ site.Home.RelPermalink }}" aria-label="{{ site.Title }}">
-  {{ partial "logo.html" .page -}}
+  {{ partial "logo.html" $page -}}
 </a>
-{{- $page := .page }}
 {{- with site.Menus.main }}
 <nav>
   {{- range . }}

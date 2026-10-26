@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 {{/* Marked on the root element: the header's height, which depends on the
   switcher and the main menu, is read outside the header too (the hero, the
-  anchor scroll margin). */ -}}
+  anchor scroll padding). */ -}}
 {{ $hasLanguageSwitcher := gt (len hugo.Sites) 1 -}}
 {{ $rootClasses := slice -}}
 {{ if $hasLanguageSwitcher }}{{ $rootClasses = $rootClasses | append "has-language-switcher" }}{{ end -}}
