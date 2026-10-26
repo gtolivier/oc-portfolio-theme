@@ -24,6 +24,15 @@ function languageSwitcher(page: Page, name: string): Locator {
   return page.locator('header').getByRole('group', { name: name, exact: true });
 }
 
+/* Checks that the language switcher of the page at `url` shows FR then EN, in reading order
+   (its entries, in document order) as in visual order (FR's box left of EN's box). */
+async function expectFrThenEn(group: Locator, url: string): Promise<void> {
+  await expect(group.getByText(/^(FR|EN)$/), `reading order on ${url}`).toHaveText(['FR', 'EN']);
+  const frBox = (await group.getByText('FR', { exact: true }).boundingBox())!;
+  const enBox = (await group.getByText('EN', { exact: true }).boundingBox())!;
+  expect(frBox.x + frBox.width, `FR left of EN on ${url}`).toBeLessThanOrEqual(enBox.x + 0.5);
+}
+
 /* A header item, with the name assertion messages give it. */
 type NamedItem = [string, Locator];
 
@@ -50,8 +59,21 @@ async function verticalCentres(items: NamedItem[]): Promise<Record<string, numbe
   return centres;
 }
 
+/* Checks that the vertical centre of every item lies within 1 px of the logo's, in a window
+   `width` px wide: the items are vertically centred on a single row. */
+function expectCentredOnLogo(centres: Record<string, number>, width: number): void {
+  const logoCentre = centres['logo'];
+  /* Compared with a 1 px tolerance: rendered box positions may carry sub-pixel rounding. */
+  expect(
+    Object.values(centres).every((centre) => Math.abs(centre - logoCentre) <= 1),
+    `vertical centres at ${width} px: ${JSON.stringify(centres)}`,
+  ).toBe(true);
+}
+
 /* A phone window, narrower than the desktop breakpoint. */
 const PHONE_VIEWPORT = { width: 390, height: 844 };
+/* The narrowest phone window the header must still fit in. */
+const NARROWEST_PHONE_VIEWPORT = { width: 320, height: 640 };
 /* From this window width, the header lays out its items on a single row. */
 const DESKTOP_MIN_WIDTH = 768;
 /* A desktop window right at the breakpoint, and a wide one. */
@@ -217,14 +239,9 @@ test('the header language switcher shows the languages in the site order, FR the
   ]) {
     await page.goto(url);
     const group = languageSwitcher(page, name);
-    /* Reading order: the entries, in document order. */
-    await expect(group.getByText(/^(FR|EN)$/), `reading order on ${url}`).toHaveText(['FR', 'EN']);
+    await expectFrThenEn(group, url);
     const fr = group.getByText('FR', { exact: true });
     const en = group.getByText('EN', { exact: true });
-    /* Visual order: FR's box is left of EN's box. */
-    const frBox = (await fr.boundingBox())!;
-    const enBox = (await en.boundingBox())!;
-    expect(frBox.x + frBox.width, `FR left of EN on ${url}`).toBeLessThanOrEqual(enBox.x + 0.5);
     /* The entry of the page language is still the highlighted one. */
     await expect(current === 'FR' ? fr : en).toHaveAttribute('aria-current');
     await expect(current === 'FR' ? en : fr).not.toHaveAttribute('aria-current');
@@ -247,13 +264,7 @@ test.describe('site whose default language has the greatest weight', () => {
       { url: '/fr/', name: 'Langue' },
     ]) {
       await page.goto(`${SITE_WITH_ENGLISH_BY_DEFAULT.origin}${url}`);
-      const group = languageSwitcher(page, name);
-      /* Reading order: the entries, in document order. */
-      await expect(group.getByText(/^(FR|EN)$/), `reading order on ${url}`).toHaveText(['FR', 'EN']);
-      /* Visual order: FR's box is left of EN's box. */
-      const frBox = (await group.getByText('FR', { exact: true }).boundingBox())!;
-      const enBox = (await group.getByText('EN', { exact: true }).boundingBox())!;
-      expect(frBox.x + frBox.width, `FR left of EN on ${url}`).toBeLessThanOrEqual(enBox.x + 0.5);
+      await expectFrThenEn(languageSwitcher(page, name), url);
     }
   });
 });
@@ -654,13 +665,7 @@ test('from 768 px wide, the header logo, navigation links and language switcher 
     const links = navigationLinks(page);
     await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
     const items: NamedItem[] = [...(await logoAndNavigationLinks(page)), ['language switcher', languageSwitcher(page, 'Langue')]];
-    const centres = await verticalCentres(items);
-    const logoCentre = centres['logo'];
-    /* Compared with a 1 px tolerance: rendered box positions may carry sub-pixel rounding. */
-    expect(
-      Object.values(centres).every((centre) => Math.abs(centre - logoCentre) <= 1),
-      `vertical centres at ${viewport.width} px: ${JSON.stringify(centres)}`,
-    ).toBe(true);
+    expectCentredOnLogo(await verticalCentres(items), viewport.width);
   }
 });
 
@@ -761,18 +766,13 @@ test.describe('without JavaScript', () => {
         await item.click({ trial: true, timeout: 2000 });
       }
       if (centres === null) continue;
-      const logoCentre = centres['logo'];
-      /* Compared with a 1 px tolerance: rendered box positions may carry sub-pixel rounding. */
-      expect(
-        Object.values(centres).every((centre) => Math.abs(centre - logoCentre) <= 1),
-        `vertical centres at ${viewport.width} px: ${JSON.stringify(centres)}`,
-      ).toBe(true);
+      expectCentredOnLogo(centres, viewport.width);
     }
   });
 });
 
 test('in a 320 px wide window, the header logo stays on a single line', async ({ page }) => {
-  await page.setViewportSize({ width: 320, height: 640 });
+  await page.setViewportSize(NARROWEST_PHONE_VIEWPORT);
   await page.goto('/fr/');
   const logo = headerLogo(page);
   await expect(logo).toHaveText('| E ||| | X |||');
@@ -801,7 +801,7 @@ test('in a 320 px wide window, the header logo stays on a single line', async ({
 });
 
 test('in a 320 px wide window, the header still fits: no horizontal scrolling, logo, links and language switcher fully visible', async ({ page }) => {
-  await page.setViewportSize({ width: 320, height: 640 });
+  await page.setViewportSize(NARROWEST_PHONE_VIEWPORT);
   await page.goto('/fr/');
 
   const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);

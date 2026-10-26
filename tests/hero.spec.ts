@@ -210,6 +210,17 @@ async function bottomOfButtons(buttons: Locator[]): Promise<number> {
   );
 }
 
+/* The open home page's hero, the main content region named by its main heading, with that
+   heading and its two buttons, all three checked visible in the window of the given `size`. */
+async function heroHeadingAndButtons(page: Page, size: string): Promise<{ hero: Locator; heading: Locator; buttons: Locator[] }> {
+  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  const heading = hero.getByRole('heading', { level: 1 });
+  const buttons = [hero.getByRole('link', { name: 'Voir les projets' }), hero.getByRole('link', { name: 'Contact' })];
+  await expect(heading, `heading at ${size}`).toBeVisible();
+  for (const button of buttons) await expect(button, `button at ${size}`).toBeVisible();
+  return { hero, heading, buttons };
+}
+
 test('on the French home page, the main heading starts with the site author name', async ({ page }) => {
   await page.goto('/fr/');
   const mainHeading = mainContentHeading(page);
@@ -717,12 +728,7 @@ test('in a window tall enough for its content, the hero ends exactly at the bott
   for (const viewport of [{ width: 412, height: 1100 }, ...DESKTOP_VIEWPORTS]) {
     const size = `${viewport.width} × ${viewport.height}`;
     await openHomeAt(page, viewport);
-    /* The hero is the main content region named by its main heading. */
-    const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
-    const heading = hero.getByRole('heading', { level: 1 });
-    const buttons = [hero.getByRole('link', { name: 'Voir les projets' }), hero.getByRole('link', { name: 'Contact' })];
-    await expect(heading, `heading at ${size}`).toBeVisible();
-    for (const button of buttons) await expect(button, `button at ${size}`).toBeVisible();
+    const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
 
     /* Page scrolled to the top: the hero starts right below the header. */
     const headerBox = (await page.locator('header').boundingBox())!;
@@ -749,12 +755,7 @@ test('from 768 px wide, the hero’s text block is centred vertically in the her
   for (const viewport of DESKTOP_VIEWPORTS) {
     const size = `${viewport.width} × ${viewport.height}`;
     await openHomeAt(page, viewport);
-    /* The hero is the main content region named by its main heading. */
-    const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
-    const heading = hero.getByRole('heading', { level: 1 });
-    const buttons = [hero.getByRole('link', { name: 'Voir les projets' }), hero.getByRole('link', { name: 'Contact' })];
-    await expect(heading, `heading at ${size}`).toBeVisible();
-    for (const button of buttons) await expect(button, `button at ${size}`).toBeVisible();
+    const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
 
     const heroBox = (await hero.boundingBox())!;
     const headingBox = (await heading.boundingBox())!;
@@ -781,12 +782,7 @@ test('on a phone, under 768 px wide, the hero’s text block is centred vertical
   for (const viewport of PHONE_VIEWPORTS) {
     const size = `${viewport.width} × ${viewport.height}`;
     await openHomeAt(page, viewport);
-    /* The hero is the main content region named by its main heading. */
-    const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
-    const heading = hero.getByRole('heading', { level: 1 });
-    const buttons = [hero.getByRole('link', { name: 'Voir les projets' }), hero.getByRole('link', { name: 'Contact' })];
-    await expect(heading, `heading at ${size}`).toBeVisible();
-    for (const button of buttons) await expect(button, `button at ${size}`).toBeVisible();
+    const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
 
     const heroBox = (await hero.boundingBox())!;
     const headingBox = (await heading.boundingBox())!;
@@ -1224,16 +1220,10 @@ test('on phone as on desktop, the hero’s veil spreads as wide as the design’
   ).toBeLessThanOrEqual(0.63);
 });
 
-test('on a phone, under 768 px wide, the hero’s tick field leaves side margins of at least 12 px, not 24 px, its ticks centred: at 320, 375 and 412 px wide, with the field still (reduced motion), the empty margins on its left and right are equal within a pixel, each at least 12 px, and together under 40 px, so that no further column of ticks, 16 px apart, would fit between margins of 12 px, while a minimum of 24 px leaves at least 48 px', async ({ page }) => {
-  /* Phone widths, set whatever the project's own window: the field leaves different room on
-     each side of its columns of ticks at each of them. */
-  const PHONE_WIDTHS = [320, 375, 412];
-  const HEIGHT = 800;
-  await page.setViewportSize({ width: PHONE_WIDTHS[0], height: HEIGHT });
-  const { hero, text } = await stillHero(page);
-  /* Only the field shows: the text and the veil are hidden without moving anything, and the
-     hero is given the page's background colour, which shows through it, so that the pixels
-     that differ from the hero's background are the ticks'. */
+/* Leaves only the still hero's field showing: its text and its veil are hidden without moving
+   anything, and the hero is given the page's background colour, which shows through it, so
+   that the pixels that differ from the hero's background are the ticks'. */
+async function showOnlyTheField(hero: Locator, text: Record<string, Locator>): Promise<void> {
   const veil = hero.locator('.veil');
   await expect(veil).toHaveCount(1);
   for (const element of [...Object.values(text), veil]) {
@@ -1244,6 +1234,16 @@ test('on a phone, under 768 px wide, the hero’s tick field leaves side margins
   await hero.evaluate((el) => {
     (el as HTMLElement).style.backgroundColor = getComputedStyle(document.body).backgroundColor;
   });
+}
+
+test('on a phone, under 768 px wide, the hero’s tick field leaves side margins of at least 12 px, not 24 px, its ticks centred: at 320, 375 and 412 px wide, with the field still (reduced motion), the empty margins on its left and right are equal within a pixel, each at least 12 px, and together under 40 px, so that no further column of ticks, 16 px apart, would fit between margins of 12 px, while a minimum of 24 px leaves at least 48 px', async ({ page }) => {
+  /* Phone widths, set whatever the project's own window: the field leaves different room on
+     each side of its columns of ticks at each of them. */
+  const PHONE_WIDTHS = [320, 375, 412];
+  const HEIGHT = 800;
+  await page.setViewportSize({ width: PHONE_WIDTHS[0], height: HEIGHT });
+  const { hero, text } = await stillHero(page);
+  await showOnlyTheField(hero, text);
 
   const problems: string[] = [];
   const measured: string[] = [];
@@ -1288,19 +1288,7 @@ test('on a phone, under 768 px wide, the hero’s tick field leaves top and bott
   ];
   await page.setViewportSize(PHONE_VIEWPORTS[0]);
   const { hero, text } = await stillHero(page);
-  /* Only the field shows: the text and the veil are hidden without moving anything, and the
-     hero is given the page's background colour, which shows through it, so that the pixels
-     that differ from the hero's background are the ticks'. */
-  const veil = hero.locator('.veil');
-  await expect(veil).toHaveCount(1);
-  for (const element of [...Object.values(text), veil]) {
-    await element.evaluate((el) => {
-      (el as HTMLElement).style.visibility = 'hidden';
-    });
-  }
-  await hero.evaluate((el) => {
-    (el as HTMLElement).style.backgroundColor = getComputedStyle(document.body).backgroundColor;
-  });
+  await showOnlyTheField(hero, text);
 
   const problems: string[] = [];
   const measured: string[] = [];
@@ -1333,33 +1321,55 @@ test('on a phone, under 768 px wide, the hero’s tick field leaves top and bott
   expect(problems, `empty top and bottom margins around the hero’s ticks, in CSS pixels (${measured.join('; ')})`).toEqual([]);
 });
 
+/* The phone windows the field's corner ticks are checked at, set whatever the project's own
+   window, up to the widest under 768px. */
+const CORNER_TICKS_PHONE_VIEWPORTS = [
+  { width: 320, height: 699 },
+  { width: 375, height: 801 },
+  { width: 412, height: 849 },
+  { width: 767, height: 1024 },
+];
+
+/* Where the corner ticks of the still field are, in `screenshot` of the `heroHeight` px high
+   hero, at the window `size`. The field's ticks, measured as for any tick-field, give the
+   left edge of its leftmost column. Its rightmost column, whose ticks are among the most
+   opaque at the top as at the bottom, is found tick by tick in a band from 6px outside its
+   edge to 8px inside it: its first and last ticks give the field's first and last rows, the
+   ticks of a row all starting at the same height. */
+async function cornerTicks(
+  hero: Locator,
+  screenshot: Buffer,
+  heroHeight: number,
+  size: string,
+): Promise<{ columns: { left: number; right: number }; firstRow: number; lastRow: number; tickWidth: number }> {
+  const extent = await extentOfDrawnTicks(hero, screenshot);
+  expect(extent.left, `drawn ticks in the ${size}px hero`).not.toBeNaN();
+  const rightColumn = await drawnStrokesInRectangle(hero, screenshot, { x: extent.right - 8, y: 0, width: 14, height: heroHeight });
+  expect(rightColumn.length, `ticks drawn whole in the rightmost column of the ${size}px hero`).toBeGreaterThanOrEqual(2);
+  return {
+    columns: { left: extent.left, right: rightColumn[0].x },
+    firstRow: rightColumn[0].y,
+    lastRow: rightColumn[rightColumn.length - 1].y,
+    tickWidth: rightColumn[0].width,
+  };
+}
+
+/* The points a corner tick is read at, the tick `tickWidth` px wide and its top left corner at
+   (x, y): 2px down the tick, inside even the shortest, across it every quarter of a CSS pixel,
+   so that at least one falls on a pixel the tick covers fully. */
+function pointsAcrossTick(x: number, y: number, tickWidth: number): { x: number; y: number }[] {
+  const STEP = 0.25;
+  return Array.from({ length: Math.ceil(tickWidth / STEP) }, (_, step) => ({ x: x + (step + 0.5) * STEP, y: y + 2.5 }));
+}
+
 test('on a phone, under 768 px wide, the hero’s tick field is faintest at the top left and most opaque at the bottom right: at 320 × 699, 375 × 801, 412 × 849 and 767 × 1024, with the field still (reduced motion), of its four corner ticks, the top left one shows the least of its colour over the background, and the bottom right one the most', async ({ page }) => {
-  /* Phone windows, set whatever the project's own window, up to the widest under 768px. */
-  const PHONE_VIEWPORTS = [
-    { width: 320, height: 699 },
-    { width: 375, height: 801 },
-    { width: 412, height: 849 },
-    { width: 767, height: 1024 },
-  ];
-  await page.setViewportSize(PHONE_VIEWPORTS[0]);
+  await page.setViewportSize(CORNER_TICKS_PHONE_VIEWPORTS[0]);
   const { hero, text } = await stillHero(page);
-  /* Only the field shows: the text and the veil are hidden without moving anything, and the
-     hero is given the page's background colour, which shows through it, so that the pixels
-     that differ from the hero's background are the ticks'. */
-  const veil = hero.locator('.veil');
-  await expect(veil).toHaveCount(1);
-  for (const element of [...Object.values(text), veil]) {
-    await element.evaluate((el) => {
-      (el as HTMLElement).style.visibility = 'hidden';
-    });
-  }
-  await hero.evaluate((el) => {
-    (el as HTMLElement).style.backgroundColor = getComputedStyle(document.body).backgroundColor;
-  });
+  await showOnlyTheField(hero, text);
 
   const problems: string[] = [];
   const measured: string[] = [];
-  for (const viewport of PHONE_VIEWPORTS) {
+  for (const viewport of CORNER_TICKS_PHONE_VIEWPORTS) {
     const size = `${viewport.width} × ${viewport.height}`;
     await page.setViewportSize(viewport);
     await page.clock.runFor(100);
@@ -1367,28 +1377,14 @@ test('on a phone, under 768 px wide, the hero’s tick field is faintest at the 
     expect(box.width, `width of the hero in a ${size}px window`).toBeCloseTo(viewport.width, 0);
     const screenshot = await hero.screenshot();
 
-    /* Where the corner ticks are. The field's ticks, measured as for any tick-field, give the
-       left edge of its leftmost column. Its rightmost column, whose ticks are among the most
-       opaque at the top as at the bottom, is found tick by tick in a band from 6px outside its
-       edge to 8px inside it: its first and last ticks give the field's first and last rows, the
-       ticks of a row all starting at the same height. */
-    const extent = await extentOfDrawnTicks(hero, screenshot);
-    expect(extent.left, `drawn ticks in the ${size}px hero`).not.toBeNaN();
-    const rightColumn = await drawnStrokesInRectangle(hero, screenshot, { x: extent.right - 8, y: 0, width: 14, height: box.height });
-    expect(rightColumn.length, `ticks drawn whole in the rightmost column of the ${size}px hero`).toBeGreaterThanOrEqual(2);
-    const firstRow = rightColumn[0].y;
-    const lastRow = rightColumn[rightColumn.length - 1].y;
-    const tickWidth = rightColumn[0].width;
-    const columns = { left: extent.left, right: rightColumn[0].x };
+    const { columns, firstRow, lastRow, tickWidth } = await cornerTicks(hero, screenshot, box.height, size);
 
     /* A tick's opacity, read as in the opacity test of any tick-field: a pixel the tick covers
        fully shows the background plus the tick's opacity times (its colour − the background),
-       whichever colour the tick has. 2px down the tick, inside even the shortest, across it
-       every quarter of a CSS pixel, the most opaque reading is that of a fully covered pixel. */
-    const STEP = 0.25;
+       whichever colour the tick has. Of the points across the tick, the most opaque reading is
+       that of a fully covered pixel. */
     const opacityOfTick = async (x: number, y: number): Promise<number> => {
-      const points = Array.from({ length: Math.ceil(tickWidth / STEP) }, (_, step) => ({ x: x + (step + 0.5) * STEP, y: y + 2.5 }));
-      const measures = await canvasOpacityOverBackgroundAt(hero, screenshot, points);
+      const measures = await canvasOpacityOverBackgroundAt(hero, screenshot, pointsAcrossTick(x, y, tickWidth));
       return Math.max(...measures.map(({ opacity }) => opacity).filter((opacity) => !Number.isNaN(opacity)));
     };
     const corners = {
@@ -1412,28 +1408,9 @@ test('on a phone, under 768 px wide, the hero’s tick field is faintest at the 
 });
 
 test('on a phone, under 768 px wide, the hero’s tick field is coloured along the same diagonal as its opacity: green at the top left, cream at the bottom right: at 320 × 699, 375 × 801, 412 × 849 and 767 × 1024, with the field still (reduced motion), its top left corner tick is drawn in the colour closest to the theme’s green, of green, accent and cream, and its bottom right corner tick in the colour closest to the cream', async ({ page }) => {
-  /* Phone windows, set whatever the project's own window, up to the widest under 768px. */
-  const PHONE_VIEWPORTS = [
-    { width: 320, height: 699 },
-    { width: 375, height: 801 },
-    { width: 412, height: 849 },
-    { width: 767, height: 1024 },
-  ];
-  await page.setViewportSize(PHONE_VIEWPORTS[0]);
+  await page.setViewportSize(CORNER_TICKS_PHONE_VIEWPORTS[0]);
   const { hero, text } = await stillHero(page);
-  /* Only the field shows: the text and the veil are hidden without moving anything, and the
-     hero is given the page's background colour, which shows through it, so that the pixels
-     that differ from the hero's background are the ticks'. */
-  const veil = hero.locator('.veil');
-  await expect(veil).toHaveCount(1);
-  for (const element of [...Object.values(text), veil]) {
-    await element.evaluate((el) => {
-      (el as HTMLElement).style.visibility = 'hidden';
-    });
-  }
-  await hero.evaluate((el) => {
-    (el as HTMLElement).style.backgroundColor = getComputedStyle(document.body).backgroundColor;
-  });
+  await showOnlyTheField(hero, text);
 
   /* The theme's three tick colours: green (--color-accent-dark), accent (--color-accent) and
      cream (--color-paper), read through the same colour handling as the ticks. */
@@ -1455,7 +1432,7 @@ test('on a phone, under 768 px wide, the hero’s tick field is coloured along t
 
   const problems: string[] = [];
   const measured: string[] = [];
-  for (const viewport of PHONE_VIEWPORTS) {
+  for (const viewport of CORNER_TICKS_PHONE_VIEWPORTS) {
     const size = `${viewport.width} × ${viewport.height}`;
     await page.setViewportSize(viewport);
     await page.clock.runFor(100);
@@ -1463,26 +1440,14 @@ test('on a phone, under 768 px wide, the hero’s tick field is coloured along t
     expect(box.width, `width of the hero in a ${size}px window`).toBeCloseTo(viewport.width, 0);
     const screenshot = await hero.screenshot();
 
-    /* Where the corner ticks are, found as in the opacity test above: the field's ticks,
-       measured as for any tick-field, give the left edge of its leftmost column; its rightmost
-       column, found tick by tick in a band from 6px outside its edge to 8px inside it, gives
-       the field's first and last rows. */
-    const extent = await extentOfDrawnTicks(hero, screenshot);
-    expect(extent.left, `drawn ticks in the ${size}px hero`).not.toBeNaN();
-    const rightColumn = await drawnStrokesInRectangle(hero, screenshot, { x: extent.right - 8, y: 0, width: 14, height: box.height });
-    expect(rightColumn.length, `ticks drawn whole in the rightmost column of the ${size}px hero`).toBeGreaterThanOrEqual(2);
-    const firstRow = rightColumn[0].y;
-    const lastRow = rightColumn[rightColumn.length - 1].y;
-    const tickWidth = rightColumn[0].width;
-    const columns = { left: extent.left, right: rightColumn[0].x };
+    const { columns, firstRow, lastRow, tickWidth } = await cornerTicks(hero, screenshot, box.height, size);
 
-    /* A tick's colour, whatever its opacity: the colour the field holds where it covers a pixel
-       most, 2px down the tick, inside even the shortest, read across it every quarter of a CSS
-       pixel. The top left tick is the field's faintest: only its own colour, not what it adds
-       over the background, stands far enough above rounding errors to tell its hue. */
-    const STEP = 0.25;
+    /* A tick's colour, whatever its opacity: the colour the field holds where, of the points
+       across the tick, it covers a pixel most. The top left tick is the field's faintest: only
+       its own colour, not what it adds over the background, stands far enough above rounding
+       errors to tell its hue. */
     const colourOfTick = async (x: number, y: number): Promise<Channels> => {
-      const points = Array.from({ length: Math.ceil(tickWidth / STEP) }, (_, step) => ({ x: x + (step + 0.5) * STEP, y: y + 2.5 }));
+      const points = pointsAcrossTick(x, y, tickWidth);
       const measures = (await canvasOpacityOverBackgroundAt(hero, screenshot, points)).filter(({ opacity }) => !Number.isNaN(opacity));
       expect(measures.length, `points of the tick at (${x.toFixed(1)}, ${y.toFixed(1)})px of the ${size}px hero drawn in a colour other than the background`).toBeGreaterThan(0);
       return measures.reduce((best, measure) => (measure.opacity > best.opacity ? measure : best)).colour;
