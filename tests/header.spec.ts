@@ -615,6 +615,26 @@ test('from 768 px wide, the header logo, navigation links and language switcher 
   }
 });
 
+test('from 768 px wide, the header logo sits on the left, the language switcher 48 px from the right edge, the navigation links right before it, 32 px from it', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/fr/');
+  const links = page.locator('header nav').getByRole('link');
+  await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
+  const logoBox = (await headerLogo(page).boundingBox())!;
+  const lastLinkBox = (await links.last().boundingBox())!;
+  const switcherBox = (await languageSwitcher(page, 'Langue').boundingBox())!;
+
+  const spaces = {
+    leftEdgeToLogo: logoBox.x,
+    switcherToRightEdge: 1280 - (switcherBox.x + switcherBox.width),
+    lastLinkToSwitcher: switcherBox.x - (lastLinkBox.x + lastLinkBox.width),
+  };
+  /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+  expect.soft(Math.abs(spaces.leftEdgeToLogo - 48), `spaces: ${JSON.stringify(spaces)}`).toBeLessThanOrEqual(0.5);
+  expect.soft(Math.abs(spaces.switcherToRightEdge - 48), `spaces: ${JSON.stringify(spaces)}`).toBeLessThanOrEqual(0.5);
+  expect.soft(Math.abs(spaces.lastLinkToSwitcher - 32), `spaces: ${JSON.stringify(spaces)}`).toBeLessThanOrEqual(0.5);
+});
+
 test('in a 320 px wide window, the header logo stays on a single line', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto('/fr/');
