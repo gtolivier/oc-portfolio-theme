@@ -590,6 +590,31 @@ test('on a phone, the header leaves 12 px above its first row and 12 px between 
   expect(Math.abs(borderTop - secondRowBottom - 12), `space below the links row: ${borderTop - secondRowBottom}`).toBeLessThanOrEqual(0.5);
 });
 
+test('from 768 px wide, the header logo, navigation links and language switcher sit on a single row, vertically centred (at 768 and 1280 px)', async ({ page }) => {
+  for (const viewport of [{ width: 768, height: 1024 }, { width: 1280, height: 800 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/fr/');
+    const links = page.locator('header nav').getByRole('link');
+    await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
+    const items: [string, Locator][] = [
+      ['logo', headerLogo(page)],
+      ...(await links.all()).map((link, index): [string, Locator] => [`navigation link ${index + 1}`, link]),
+      ['language switcher', languageSwitcher(page, 'Langue')],
+    ];
+    const centres: Record<string, number> = {};
+    for (const [name, item] of items) {
+      const box = (await item.boundingBox())!;
+      centres[name] = box.y + box.height / 2;
+    }
+    const logoCentre = centres['logo'];
+    /* Compared with a 1 px tolerance: rendered box positions may carry sub-pixel rounding. */
+    expect(
+      Object.values(centres).every((centre) => Math.abs(centre - logoCentre) <= 1),
+      `vertical centres at ${viewport.width} px: ${JSON.stringify(centres)}`,
+    ).toBe(true);
+  }
+});
+
 test('in a 320 px wide window, the header logo stays on a single line', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto('/fr/');
