@@ -87,9 +87,10 @@
   /* Height of the sticky header; the hero subtracts it from the viewport
      so it fills the space right below the header. The first row's tallest
      item is the switcher. */
+  --header-first-row-height: var(--header-switcher-height);
   --header-height: calc(
     2 * var(--header-padding-block)
-    + var(--header-switcher-height)
+    + var(--header-first-row-height)
     + var(--header-nav-row-height)
     + var(--header-border-width)
   );
@@ -107,7 +108,22 @@
   --page-gutter: 16px;
 }
 
+/* Without a language switcher, the first row is as tall as the logo on a
+   phone. */
+:root:not(:has(.site-header [role="group"])) {
+  --header-first-row-height: var(--header-link-line-box);
+}
+
 @media (min-width: 768px) {
+  :root:not(:has(.site-header [role="group"])) {
+    /* The nav links are the tallest items of the row. */
+    --header-first-row-height: calc(
+      var(--header-link-line-box)
+      + var(--header-link-underline-offset)
+      + var(--header-link-underline-width)
+    );
+  }
+
   :root {
     --header-padding-block: 22px;
     /* A single row: the nav shares the switcher's. */
