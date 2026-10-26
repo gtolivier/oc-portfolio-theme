@@ -53,8 +53,6 @@
   --header-link-gap: 32px;
   --header-border-width: 1px;
   --header-font-size: 14px;
-  /* Shared by the header logo and the footer one. */
-  --logo-letter-spacing: 0.06em;
   /* Set on the nav links rather than left to the font's normal line height,
      which varies with the browser and with the fallback font shown while
      IBM Plex Mono loads. */
@@ -312,10 +310,6 @@ h1 {
   text-decoration: none;
 }
 
-.site-header > a {
-  letter-spacing: var(--logo-letter-spacing);
-}
-
 /* The nav comes between the logo and the language switcher in the markup:
    order moves it after the switcher and the full basis puts it on a row of
    its own, so the logo and the switcher share the first row. */
@@ -454,9 +448,18 @@ tick-field > canvas {
   --veil-shape: ellipse 70% 60% at 38% 55%;
 }
 
-/* The footer logo looks like the header one. */
-footer [aria-hidden="true"] {
+/* The site logo looks the same wherever it is used. A context may only
+   resize it, by setting --logo-size on an ancestor: everything else is in
+   em, so it follows the size. */
+.logo {
   font-family: var(--font-mono);
-  font-size: var(--header-font-size);
-  letter-spacing: var(--logo-letter-spacing);
+  font-size: var(--logo-size, 14px);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--color-paper);
+}
+
+/* The first bar of each initial. */
+.logo b {
+  font-weight: 700;
 }
