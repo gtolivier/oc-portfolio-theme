@@ -353,6 +353,25 @@ test.describe('single-language site', () => {
       `gaps: ${JSON.stringify(gaps)}`,
     ).toBe(true);
   });
+
+  test('from 768 px wide, on a single-language site, the last navigation link ends 48 px from the right edge, where the language switcher ends on a bilingual site (at 768 and 1280 px)', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
+    const spaces: Record<string, number> = {};
+    for (const viewport of DESKTOP_VIEWPORTS) {
+      await page.setViewportSize(viewport);
+      await page.goto(`${SITE_WITH_A_SINGLE_LANGUAGE.origin}/fr/`);
+      await expect(languageSwitcher(page, 'Langue')).toHaveCount(0);
+      const links = navigationLinks(page);
+      await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
+      const lastLinkBox = (await links.last().boundingBox())!;
+      spaces[`last link to right edge at ${viewport.width} px`] = viewport.width - (lastLinkBox.x + lastLinkBox.width);
+    }
+    /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+    expect(
+      Object.values(spaces).every((space) => Math.abs(space - 48) <= 0.5),
+      `spaces: ${JSON.stringify(spaces)}`,
+    ).toBe(true);
+  });
 });
 
 test('in the header language switcher, the current language is ink text on a paper background', async ({ page }) => {
