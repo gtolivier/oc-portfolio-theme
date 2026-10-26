@@ -162,6 +162,27 @@ test('in English, the header language switcher is a group named "Language"', asy
   await expect(group.getByRole('link', { name: 'FR', exact: true })).toHaveAttribute('href', '/fr/');
 });
 
+test('the header language switcher shows the languages in the site order, FR then EN, on a French page as on an English page, the current one highlighted', async ({ page }) => {
+  for (const { url, name, current } of [
+    { url: '/fr/', name: 'Langue', current: 'FR' },
+    { url: '/en/', name: 'Language', current: 'EN' },
+  ]) {
+    await page.goto(url);
+    const group = languageSwitcher(page, name);
+    /* Reading order: the entries, in document order. */
+    await expect(group.getByText(/^(FR|EN)$/), `reading order on ${url}`).toHaveText(['FR', 'EN']);
+    const fr = group.getByText('FR', { exact: true });
+    const en = group.getByText('EN', { exact: true });
+    /* Visual order: FR's box is left of EN's box. */
+    const frBox = (await fr.boundingBox())!;
+    const enBox = (await en.boundingBox())!;
+    expect(frBox.x + frBox.width, `FR left of EN on ${url}`).toBeLessThanOrEqual(enBox.x + 0.5);
+    /* The entry of the page language is still the highlighted one. */
+    await expect(current === 'FR' ? fr : en).toHaveAttribute('aria-current');
+    await expect(current === 'FR' ? en : fr).not.toHaveAttribute('aria-current');
+  }
+});
+
 test.describe('single-language site', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
