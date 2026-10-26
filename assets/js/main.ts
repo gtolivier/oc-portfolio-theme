@@ -607,3 +607,12 @@ class TickField extends HTMLElement {
 }
 
 customElements.define('tick-field', TickField);
+
+/* The CSS estimates the header's height for a menu on a single row; when the
+   menu wraps, the header is taller. Publish its real height. */
+const siteHeader = document.querySelector('.site-header');
+if (siteHeader) {
+  new ResizeObserver(() => {
+    document.documentElement.style.setProperty('--header-height', `${siteHeader.getBoundingClientRect().height}px`);
+  }).observe(siteHeader);
+}
