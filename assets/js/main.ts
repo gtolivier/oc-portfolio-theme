@@ -570,7 +570,9 @@ class TickField extends HTMLElement {
     height: number,
     colors: FieldColors,
   ): CanvasGradient {
-    const gradient = context.createLinearGradient(0, height, width, 0);
+    const gradient = this.isHeroOnPhone(width)
+      ? context.createLinearGradient(0, 0, width, height)
+      : context.createLinearGradient(0, height, width, 0);
     gradient.addColorStop(FIELD_GREEN_UNTIL, colors.green);
     gradient.addColorStop(FIELD_ACCENT_FROM, colors.accent);
     gradient.addColorStop(FIELD_ACCENT_UNTIL, colors.accent);
