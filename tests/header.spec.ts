@@ -265,6 +265,18 @@ test('the header logo text has a letter-spacing of 0.06em (0.84 px at 14 px)', a
   ).toBe(true);
 });
 
+test('the header navigation links have a letter-spacing of 0.08em (1.12 px at 14 px)', async ({ page }) => {
+  await page.goto('/fr/');
+  const links = page.locator('header nav').getByRole('link');
+  await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
+  const spacings = await links.evaluateAll((elements) => elements.map((element) => getComputedStyle(element).letterSpacing));
+  /* Compared numerically: browsers may serialize the value differently ("1.12px", "1.120000px"); "normal" gives NaN and fails. */
+  expect(
+    spacings.every((spacing) => Math.abs(parseFloat(spacing) - 1.12) <= 0.01),
+    `letter-spacings: ${spacings.join(', ')}`,
+  ).toBe(true);
+});
+
 test('in the header language switcher, the link to the other language offers a target of at least 24 × 24 px (WCAG 2.5.8)', async ({ page }) => {
   await page.goto('/fr/');
   const otherLanguage = languageSwitcher(page, 'Langue').getByRole('link', { name: 'EN', exact: true });
