@@ -124,8 +124,9 @@
   --header-first-row-height: var(--header-link-line-box);
 }
 
-/* Without a main menu, the header has no nav row. */
-:root.no-main-menu {
+/* Without a main menu, the header has no nav row. The template marks the
+   root element when the header has one. */
+:root:not(.has-main-menu) {
   --header-nav-row-height: 0px;
 }
 
