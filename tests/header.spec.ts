@@ -75,15 +75,6 @@ async function characterTops(element: Locator): Promise<number[]> {
   });
 }
 
-/* The bottom edge of the element's text as rendered: the bottom of a Range over its contents. */
-async function textBottom(element: Locator): Promise<number> {
-  return element.evaluate((root) => {
-    const range = document.createRange();
-    range.selectNodeContents(root);
-    return range.getBoundingClientRect().bottom;
-  });
-}
-
 /* The box of the element's text as rendered: the rectangle of a Range over its contents. */
 async function textBox(element: Locator): Promise<{ top: number; right: number; bottom: number; left: number }> {
   return element.evaluate((root) => {
@@ -130,6 +121,11 @@ const DESKTOP_MIN_WIDTH = 768;
 const NARROW_DESKTOP_VIEWPORT = { width: DESKTOP_MIN_WIDTH, height: 1024 };
 const WIDE_DESKTOP_VIEWPORT = { width: 1280, height: 800 };
 const DESKTOP_VIEWPORTS = [NARROW_DESKTOP_VIEWPORT, WIDE_DESKTOP_VIEWPORT];
+/* Every 8 px from the breakpoint to the wide desktop window's width, both included. */
+const DESKTOP_WIDTHS_EVERY_8_PX = Array.from(
+  { length: (WIDE_DESKTOP_VIEWPORT.width - DESKTOP_MIN_WIDTH) / 8 + 1 },
+  (_, index) => DESKTOP_MIN_WIDTH + 8 * index,
+);
 
 test('the header logo displays the initials and leads to the home page', async ({ page }) => {
   await page.goto('/fr/');
@@ -206,7 +202,7 @@ test('the accent underline of the navigation link marked as the current page sta
     const box = (await current.boundingBox())!;
     const borderWidth = await current.evaluate((element) => parseFloat(getComputedStyle(element).borderBottomWidth));
     const underlineTop = box.y + box.height - borderWidth;
-    gaps[`at ${viewport.width} px`] = underlineTop - (await textBottom(current));
+    gaps[`at ${viewport.width} px`] = underlineTop - (await textBox(current)).bottom;
   }
   /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
   expect(
@@ -960,22 +956,7 @@ test('in a 320 px wide window, the header logo stays on a single line', async ({
   await page.goto('/fr/');
   const logo = headerLogo(page);
   await expect(logo).toHaveText('| E ||| | X |||');
-  /* The vertical position at which each visible character of the logo is rendered. */
-  const tops = await logo.evaluate((element) => {
-    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-    const values: number[] = [];
-    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-      const text = node.textContent!;
-      for (let index = 0; index < text.length; index++) {
-        if (text[index].trim() === '') continue;
-        const range = document.createRange();
-        range.setStart(node, index);
-        range.setEnd(node, index + 1);
-        values.push(range.getBoundingClientRect().top);
-      }
-    }
-    return values;
-  });
+  const tops = await characterTops(logo);
   expect(tops).toHaveLength(10);
   /* On a single line, every character shares the vertical position of the first one. */
   expect(
@@ -1053,7 +1034,7 @@ test.describe('site with a long menu', () => {
     const switcher = languageSwitcher(page, 'Langue');
 
     const problems: string[] = [];
-    for (let width = DESKTOP_MIN_WIDTH; width <= WIDE_DESKTOP_VIEWPORT.width; width += 8) {
+    for (const width of DESKTOP_WIDTHS_EVERY_8_PX) {
       /* Resized without reloading: the page lays itself out again at each width. */
       await page.setViewportSize({ width, height: NARROW_DESKTOP_VIEWPORT.height });
       const logoBox = (await logo.boundingBox())!;
@@ -1096,7 +1077,7 @@ test.describe('site with a long menu', () => {
     await expect(logo).toHaveText('| E ||| | X |||');
 
     const problems: string[] = [];
-    for (let width = DESKTOP_MIN_WIDTH; width <= WIDE_DESKTOP_VIEWPORT.width; width += 8) {
+    for (const width of DESKTOP_WIDTHS_EVERY_8_PX) {
       /* Resized without reloading: the page lays itself out again at each width. */
       await page.setViewportSize({ width, height: NARROW_DESKTOP_VIEWPORT.height });
       const tops = await characterTops(logo);

@@ -195,6 +195,10 @@ function mainContentHeading(page: Page): Locator {
    768 px wide, 768 × 1024, where the desktop spacing starts. */
 const DESKTOP_VIEWPORTS = [{ width: 1280, height: 900 }, { width: 768, height: 1024 }];
 
+/* The windows tall enough to leave the hero free space around its text, where its height is
+   checked against the header's: a tall phone window, 412 × 1100, and the two desktop windows. */
+const TALL_VIEWPORTS = [{ width: 412, height: 1100 }, ...DESKTOP_VIEWPORTS];
+
 /* Sizes the window to `viewport`, then opens the French home page and waits for its fonts: that
    of the example site, or of the test site served at `origin`. */
 async function openHomeAt(page: Page, viewport: { width: number; height: number }, origin = ''): Promise<void> {
@@ -222,6 +226,38 @@ async function heroHeadingAndButtons(page: Page, size: string): Promise<{ hero: 
   await expect(heading, `heading at ${size}`).toBeVisible();
   for (const button of buttons) await expect(button, `button at ${size}`).toBeVisible();
   return { hero, heading, buttons };
+}
+
+/* The height the open home page's hero must have in a window of `viewport` tall enough for its
+   content, the window height minus the header height, with that header height. Page scrolled
+   to the top: the hero starts right below the header. Checks first that the window is tall
+   enough: the hero's text, from the top of its `heading` to the bottom of its `buttons`,
+   leaves at least 150 px of free height, so the content does not set the hero's height. */
+async function heightBelowHeader(
+  page: Page,
+  viewport: { width: number; height: number },
+  { heading, buttons }: { heading: Locator; buttons: Locator[] },
+  size: string,
+): Promise<{ expectedHeight: number; headerHeight: number }> {
+  const headerBox = (await page.locator('header').boundingBox())!;
+  const expectedHeight = viewport.height - headerBox.height;
+  const textHeight = (await bottomOfButtons(buttons)) - (await heading.boundingBox())!.y;
+  expect(textHeight, `at ${size}, height of the hero's text, against ${Math.round(expectedHeight)} px`)
+    .toBeLessThanOrEqual(expectedHeight - 150);
+  return { expectedHeight, headerHeight: headerBox.height };
+}
+
+/* Checks that the open home page's hero, in a window of `viewport` tall enough for its content,
+   ends exactly at the bottom of the window: its height is the window height minus the header
+   height, within 1 px. */
+async function expectHeroToEndAtWindowBottom(page: Page, viewport: { width: number; height: number }, size: string): Promise<void> {
+  const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
+  const { expectedHeight } = await heightBelowHeader(page, viewport, { heading, buttons }, size);
+  const heroBox = (await hero.boundingBox())!;
+  expect.soft(
+    Math.abs(heroBox.height - expectedHeight),
+    `at ${size}, hero height (${heroBox.height} px) against the window height minus the header height (${expectedHeight} px)`,
+  ).toBeLessThanOrEqual(1);
 }
 
 test('on the French home page, the main heading starts with the site author name', async ({ page }) => {
@@ -726,28 +762,12 @@ test('on the French home page, the hero fills at least the full window height be
 
 test('in a window tall enough for its content, the hero ends exactly at the bottom of the window: its height is the window height minus the header height, within 1 px, on a phone as on desktop', async ({ page }) => {
   /* Design reference: minimum height "100vh minus the header height". The header is two rows
-     on a phone and one row from 768 px wide: a tall phone window and the two desktop windows,
-     all tall enough to leave the hero free space around its text. */
-  for (const viewport of [{ width: 412, height: 1100 }, ...DESKTOP_VIEWPORTS]) {
+     on a phone and one row from 768 px wide: checked at a phone window and at both desktop
+     ones. */
+  for (const viewport of TALL_VIEWPORTS) {
     const size = `${viewport.width} × ${viewport.height}`;
     await openHomeAt(page, viewport);
-    const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
-
-    /* Page scrolled to the top: the hero starts right below the header. */
-    const headerBox = (await page.locator('header').boundingBox())!;
-    const expectedHeight = viewport.height - headerBox.height;
-    /* The window is tall enough: the hero's text, from the top of its heading to the bottom
-       of its buttons, leaves at least 150 px of free height, so the content does not set
-       the hero's height. */
-    const textHeight = (await bottomOfButtons(buttons)) - (await heading.boundingBox())!.y;
-    expect(textHeight, `at ${size}, height of the hero's text, against ${Math.round(expectedHeight)} px`)
-      .toBeLessThanOrEqual(expectedHeight - 150);
-
-    const heroBox = (await hero.boundingBox())!;
-    expect.soft(
-      Math.abs(heroBox.height - expectedHeight),
-      `at ${size}, hero height (${heroBox.height} px) against the window height minus the header height (${expectedHeight} px)`,
-    ).toBeLessThanOrEqual(1);
+    await expectHeroToEndAtWindowBottom(page, viewport, size);
   }
 });
 
@@ -1759,6 +1779,18 @@ test.describe('home page without a hero', () => {
   });
 });
 
+/* Blocks the font files of the site served at `origin`: a page route takes precedence over the
+   context route that serves the site, so the browser renders the fallback fonts of the stacks.
+   Returns the list, filled as the page asks for them, of the blocked font URLs. */
+async function blockFontFiles(page: Page, origin: string): Promise<string[]> {
+  const blockedFonts: string[] = [];
+  await page.route(`${origin}/**/*.{woff,woff2,ttf,otf}`, async (route) => {
+    blockedFonts.push(route.request().url());
+    await route.abort();
+  });
+  return blockedFonts;
+}
+
 test.describe('home page of a single-language site', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
@@ -1772,27 +1804,12 @@ test.describe('home page of a single-language site', () => {
     await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
     /* Same windows as on the bilingual example site: the header, without its language
        switcher, is two rows on a phone and one row from 768 px wide. */
-    for (const viewport of [{ width: 412, height: 1100 }, ...DESKTOP_VIEWPORTS]) {
+    for (const viewport of TALL_VIEWPORTS) {
       const size = `${viewport.width} × ${viewport.height}`;
       await openHomeAt(page, viewport, SITE_WITH_A_SINGLE_LANGUAGE.origin);
       /* The site is single-language: the header shows no language switcher. */
       await expect(page.locator('header').getByRole('group', { name: 'Langue' }), `language switcher at ${size}`).toHaveCount(0);
-      const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
-
-      /* Page scrolled to the top: the hero starts right below the header. */
-      const headerBox = (await page.locator('header').boundingBox())!;
-      const expectedHeight = viewport.height - headerBox.height;
-      /* The window is tall enough: the hero's text leaves at least 150 px of free height,
-         so the content does not set the hero's height. */
-      const textHeight = (await bottomOfButtons(buttons)) - (await heading.boundingBox())!.y;
-      expect(textHeight, `at ${size}, height of the hero's text, against ${Math.round(expectedHeight)} px`)
-        .toBeLessThanOrEqual(expectedHeight - 150);
-
-      const heroBox = (await hero.boundingBox())!;
-      expect.soft(
-        Math.abs(heroBox.height - expectedHeight),
-        `at ${size}, hero height (${heroBox.height} px) against the window height minus the header height (${expectedHeight} px)`,
-      ).toBeLessThanOrEqual(1);
+      await expectHeroToEndAtWindowBottom(page, viewport, size);
     }
   });
 
@@ -1803,14 +1820,8 @@ test.describe('home page of a single-language site', () => {
 
     test('on a single-language site, without JavaScript and with the web font files blocked, in a window tall enough for its content, the hero ends exactly at the bottom of the window: its height is the window height minus the header height, within 1 px, on a phone as on desktop', async ({ page, context }) => {
       await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
-      /* The font files are blocked: a page route takes precedence over the context route
-         that serves the site, so the browser renders the fallback fonts of the stacks. */
-      const blockedFonts: string[] = [];
-      await page.route(`${SITE_WITH_A_SINGLE_LANGUAGE.origin}/**/*.{woff,woff2,ttf,otf}`, async (route) => {
-        blockedFonts.push(route.request().url());
-        await route.abort();
-      });
-      for (const viewport of [{ width: 412, height: 1100 }, ...DESKTOP_VIEWPORTS]) {
+      const blockedFonts = await blockFontFiles(page, SITE_WITH_A_SINGLE_LANGUAGE.origin);
+      for (const viewport of TALL_VIEWPORTS) {
         const size = `${viewport.width} × ${viewport.height}`;
         await openHomeAt(page, viewport, SITE_WITH_A_SINGLE_LANGUAGE.origin);
         /* The fonts really were blocked: the page asked for IBM Plex Mono, used by the
@@ -1821,22 +1832,7 @@ test.describe('home page of a single-language site', () => {
         expect(loadedFonts, `web fonts loaded at ${size}`).toEqual([]);
         /* The site is single-language: the header shows no language switcher. */
         await expect(page.locator('header').getByRole('group', { name: 'Langue' }), `language switcher at ${size}`).toHaveCount(0);
-        const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
-
-        /* Page scrolled to the top: the hero starts right below the header. */
-        const headerBox = (await page.locator('header').boundingBox())!;
-        const expectedHeight = viewport.height - headerBox.height;
-        /* The window is tall enough: the hero's text leaves at least 150 px of free height,
-           so the content does not set the hero's height. */
-        const textHeight = (await bottomOfButtons(buttons)) - (await heading.boundingBox())!.y;
-        expect(textHeight, `at ${size}, height of the hero's text, against ${Math.round(expectedHeight)} px`)
-          .toBeLessThanOrEqual(expectedHeight - 150);
-
-        const heroBox = (await hero.boundingBox())!;
-        expect.soft(
-          Math.abs(heroBox.height - expectedHeight),
-          `at ${size}, hero height (${heroBox.height} px) against the window height minus the header height (${expectedHeight} px)`,
-        ).toBeLessThanOrEqual(1);
+        await expectHeroToEndAtWindowBottom(page, viewport, size);
       }
     });
   });
@@ -1873,15 +1869,7 @@ test.describe('home page of a site with a long menu', () => {
     expect(lineCount, `at ${size}, lines of the menu (top edges of its links: ${linkTops.join(', ')})`).toBe(2);
 
     const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
-    /* Page scrolled to the top: the hero starts right below the header. */
-    const headerBox = (await page.locator('header').boundingBox())!;
-    const expectedHeight = viewport.height - headerBox.height;
-    /* The window is tall enough: the hero's text leaves at least 150 px of free height,
-       so the content does not set the hero's height. */
-    const textHeight = (await bottomOfButtons(buttons)) - (await heading.boundingBox())!.y;
-    expect(textHeight, `at ${size}, height of the hero's text, against ${Math.round(expectedHeight)} px`)
-      .toBeLessThanOrEqual(expectedHeight - 150);
-
+    const { expectedHeight } = await heightBelowHeader(page, viewport, { heading, buttons }, size);
     const heroBox = (await hero.boundingBox())!;
     expect(
       Math.abs(heroBox.height - expectedHeight),
@@ -1908,17 +1896,9 @@ test.describe('home page of a site with a long menu', () => {
       if (lineCount > 1) multiLineWidths.push(width);
 
       const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
-      /* Page scrolled to the top: the hero starts right below the header. */
-      const headerBox = (await page.locator('header').boundingBox())!;
-      const expectedHeight = viewport.height - headerBox.height;
-      /* The window is tall enough: the hero's text leaves at least 150 px of free height,
-         so the content does not set the hero's height. */
-      const textHeight = (await bottomOfButtons(buttons)) - (await heading.boundingBox())!.y;
-      expect(textHeight, `at ${size}, height of the hero's text, against ${Math.round(expectedHeight)} px`)
-        .toBeLessThanOrEqual(expectedHeight - 150);
-
+      const { expectedHeight, headerHeight } = await heightBelowHeader(page, viewport, { heading, buttons }, size);
       const heroBox = (await hero.boundingBox())!;
-      const describe = `${size}: menu on ${lineCount} line(s), header ${headerBox.height.toFixed(2)} px, hero ${heroBox.height.toFixed(2)} px, expected ${expectedHeight.toFixed(2)} px`;
+      const describe = `${size}: menu on ${lineCount} line(s), header ${headerHeight.toFixed(2)} px, hero ${heroBox.height.toFixed(2)} px, expected ${expectedHeight.toFixed(2)} px`;
       measured.push(describe);
       if (Math.abs(heroBox.height - expectedHeight) > 1) {
         problems.push(`${describe}: the hero height is not the window height minus the header height, within 1 px`);
