@@ -546,6 +546,19 @@ test('the header logo is 16 px from the left edge of the window on a phone, 48 p
   expect(box.x).toBeCloseTo(isMobile ? 16 : 48, 0);
 });
 
+test('on a phone, the header logo and the language switcher share the first row, vertically centred, 16 px from the left and right edges', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/fr/');
+  const logoBox = (await headerLogo(page).boundingBox())!;
+  const switcherBox = (await languageSwitcher(page, 'Langue').boundingBox())!;
+
+  expect(logoBox.x, 'distance from the left edge to the logo').toBeCloseTo(16, 0);
+  expect(390 - (switcherBox.x + switcherBox.width), 'distance from the switcher to the right edge').toBeCloseTo(16, 0);
+  const logoCentre = logoBox.y + logoBox.height / 2;
+  const switcherCentre = switcherBox.y + switcherBox.height / 2;
+  expect(Math.abs(logoCentre - switcherCentre), 'gap between the vertical centres of the logo and the switcher').toBeLessThanOrEqual(1);
+});
+
 test('in a 320 px wide window, the header logo stays on a single line', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto('/fr/');
