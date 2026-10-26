@@ -1,0 +1,4 @@
+# Configuration added to exampleSite/hugo.toml by the tests of a site whose
+# default language is English: the languages keep their weights, fr = 1 and
+# en = 2, so the default language is the one with the greatest weight.
+defaultContentLanguage = 'en'

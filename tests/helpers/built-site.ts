@@ -142,6 +142,12 @@ export const CATALOG_SITE = testSite('catalog');
    title, so that its main heading holds the author name only. */
 export const SITE_WITH_A_HERO_WITHOUT_TITLE = testSite('untitled-hero');
 
+/* The example site's default language is French, which also has the
+   smallest weight: this site makes English the default language (see
+   tests/fixtures/english-by-default/hugo.toml), while keeping the weights
+   fr = 1 and en = 2, so that the default language is the heaviest one. */
+export const SITE_WITH_ENGLISH_BY_DEFAULT = testSite('english-by-default');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

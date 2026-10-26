@@ -1,5 +1,11 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import { SITE_WITH_A_SINGLE_LANGUAGE, buildSite, serveSite, removeDirectory } from './helpers/built-site';
+import {
+  SITE_WITH_A_SINGLE_LANGUAGE,
+  SITE_WITH_ENGLISH_BY_DEFAULT,
+  buildSite,
+  serveSite,
+  removeDirectory,
+} from './helpers/built-site';
 import { characterWeights } from './helpers/character-weights';
 import { textPieceStyles } from './helpers/text-piece-styles';
 
@@ -223,6 +229,33 @@ test('the header language switcher shows the languages in the site order, FR the
     await expect(current === 'FR' ? fr : en).toHaveAttribute('aria-current');
     await expect(current === 'FR' ? en : fr).not.toHaveAttribute('aria-current');
   }
+});
+
+test.describe('site whose default language has the greatest weight', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_ENGLISH_BY_DEFAULT);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a site in English by default, with fr of weight 1 and en of weight 2, the header language switcher shows FR then EN', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_ENGLISH_BY_DEFAULT, siteDirectory);
+    for (const { url, name } of [
+      { url: '/en/', name: 'Language' },
+      { url: '/fr/', name: 'Langue' },
+    ]) {
+      await page.goto(`${SITE_WITH_ENGLISH_BY_DEFAULT.origin}${url}`);
+      const group = languageSwitcher(page, name);
+      /* Reading order: the entries, in document order. */
+      await expect(group.getByText(/^(FR|EN)$/), `reading order on ${url}`).toHaveText(['FR', 'EN']);
+      /* Visual order: FR's box is left of EN's box. */
+      const frBox = (await group.getByText('FR', { exact: true }).boundingBox())!;
+      const enBox = (await group.getByText('EN', { exact: true }).boundingBox())!;
+      expect(frBox.x + frBox.width, `FR left of EN on ${url}`).toBeLessThanOrEqual(enBox.x + 0.5);
+    }
+  });
 });
 
 test.describe('single-language site', () => {
