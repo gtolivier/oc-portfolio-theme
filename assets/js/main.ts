@@ -407,7 +407,7 @@ class TickField extends HTMLElement {
     context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     context.setTransform(scale, 0, 0, scale, 0, 0);
     const colors = this.themeColors();
-    const variant = this.fieldVariant(width);
+    const variant = this.fieldVariant();
     const litTrail = this.litTrail();
     const agedRipples = this.agedRipples();
     const drawing = {
@@ -458,8 +458,10 @@ class TickField extends HTMLElement {
 
   /* A phone's narrow screen spares little width: there, the hero's field gives more of it to ticks,
      and its diagonal runs down to the bottom right instead of up to the top right. */
-  private fieldVariant(width: number): FieldVariant {
-    const isHeroOnPhone = this.classList.contains('hero') && width < FIELD_PHONE_MAX_WIDTH_PX;
+  private fieldVariant(): FieldVariant {
+    /* The window's width, as the stylesheet's breakpoint sees it: a scrollbar takes none of it. */
+    const isPhoneLayout = window.matchMedia(`(max-width: ${FIELD_PHONE_MAX_WIDTH_PX - 0.02}px)`).matches;
+    const isHeroOnPhone = this.classList.contains('hero') && isPhoneLayout;
     return isHeroOnPhone
       ? {
           minSideMargin: FIELD_PHONE_MIN_SIDE_MARGIN_PX,
