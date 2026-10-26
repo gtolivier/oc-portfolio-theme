@@ -20,11 +20,13 @@ import { stopClockBeforeLoad } from './helpers/clock';
 import { tabUntilFocused } from './helpers/keyboard';
 import { clickOrTap } from './helpers/pointer';
 import {
+  type Channels,
   type Rectangle,
   bandsWithoutDrawnPixels,
   meanLuminanceGainedInRectangle,
   brightnessKeptUnderLayerInRectangle,
   canvasOpacityOverBackgroundAt,
+  channelsOfColour,
   drawnStrokesInRectangle,
   extentOfDrawnTicks,
   horizontalExtentOfDrawnStrokeInRectangles,
@@ -1372,6 +1374,98 @@ test('on a phone, under 768 px wide, the hero’s tick field is faintest at the 
     }
   }
   expect(problems, `share of its colour each corner tick of the hero shows over the background (${measured.join('; ')})`).toEqual([]);
+});
+
+test('on a phone, under 768 px wide, the hero’s tick field is coloured along the same diagonal as its opacity: green at the top left, cream at the bottom right: at 320 × 699, 375 × 801, 412 × 849 and 767 × 1024, with the field still (reduced motion), its top left corner tick is drawn in the colour closest to the theme’s green, of green, accent and cream, and its bottom right corner tick in the colour closest to the cream', async ({ page }) => {
+  /* Phone windows, set whatever the project's own window, up to the widest under 768px. */
+  const PHONE_VIEWPORTS = [
+    { width: 320, height: 699 },
+    { width: 375, height: 801 },
+    { width: 412, height: 849 },
+    { width: 767, height: 1024 },
+  ];
+  await page.setViewportSize(PHONE_VIEWPORTS[0]);
+  const { hero, text } = await stillHero(page);
+  /* Only the field shows: the text and the veil are hidden without moving anything, and the
+     hero is given the page's background colour, which shows through it, so that the pixels
+     that differ from the hero's background are the ticks'. */
+  const veil = hero.locator('.veil');
+  await expect(veil).toHaveCount(1);
+  for (const element of [...Object.values(text), veil]) {
+    await element.evaluate((el) => {
+      (el as HTMLElement).style.visibility = 'hidden';
+    });
+  }
+  await hero.evaluate((el) => {
+    (el as HTMLElement).style.backgroundColor = getComputedStyle(document.body).backgroundColor;
+  });
+
+  /* The theme's three tick colours: green (--color-accent-dark), accent (--color-accent) and
+     cream (--color-paper), read through the same colour handling as the ticks. */
+  const themeColour = async (customProperty: string): Promise<Channels> =>
+    channelsOfColour(hero, await hero.evaluate((el, name) => getComputedStyle(el).getPropertyValue(name).trim(), customProperty));
+  const hues = {
+    green: await themeColour('--color-accent-dark'),
+    accent: await themeColour('--color-accent'),
+    cream: await themeColour('--color-paper'),
+  };
+  type Hue = keyof typeof hues;
+  const describeColour = (channels: Channels): string =>
+    `(${Math.round(channels.red)}, ${Math.round(channels.green)}, ${Math.round(channels.blue)})`;
+  const closestHue = (colour: Channels): Hue =>
+    (Object.keys(hues) as Hue[]).reduce((best, hue) => {
+      const distance = (other: Channels) => Math.hypot(colour.red - other.red, colour.green - other.green, colour.blue - other.blue);
+      return distance(hues[hue]) < distance(hues[best]) ? hue : best;
+    });
+
+  const problems: string[] = [];
+  const measured: string[] = [];
+  for (const viewport of PHONE_VIEWPORTS) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await page.setViewportSize(viewport);
+    await page.clock.runFor(100);
+    const box = (await hero.boundingBox())!;
+    expect(box.width, `width of the hero in a ${size}px window`).toBeCloseTo(viewport.width, 0);
+    const screenshot = await hero.screenshot();
+
+    /* Where the corner ticks are, found as in the opacity test above: the field's ticks,
+       measured as for any tick-field, give the left edge of its leftmost column; its rightmost
+       column, found tick by tick in a band from 6px outside its edge to 8px inside it, gives
+       the field's first and last rows. */
+    const extent = await extentOfDrawnTicks(hero, screenshot);
+    expect(extent.left, `drawn ticks in the ${size}px hero`).not.toBeNaN();
+    const rightColumn = await drawnStrokesInRectangle(hero, screenshot, { x: extent.right - 8, y: 0, width: 14, height: box.height });
+    expect(rightColumn.length, `ticks drawn whole in the rightmost column of the ${size}px hero`).toBeGreaterThanOrEqual(2);
+    const firstRow = rightColumn[0].y;
+    const lastRow = rightColumn[rightColumn.length - 1].y;
+    const tickWidth = rightColumn[0].width;
+    const columns = { left: extent.left, right: rightColumn[0].x };
+
+    /* A tick's colour, whatever its opacity: the colour the field holds where it covers a pixel
+       most, 2px down the tick, inside even the shortest, read across it every quarter of a CSS
+       pixel. The top left tick is the field's faintest: only its own colour, not what it adds
+       over the background, stands far enough above rounding errors to tell its hue. */
+    const STEP = 0.25;
+    const colourOfTick = async (x: number, y: number): Promise<Channels> => {
+      const points = Array.from({ length: Math.ceil(tickWidth / STEP) }, (_, step) => ({ x: x + (step + 0.5) * STEP, y: y + 2.5 }));
+      const measures = (await canvasOpacityOverBackgroundAt(hero, screenshot, points)).filter(({ opacity }) => !Number.isNaN(opacity));
+      expect(measures.length, `points of the tick at (${x.toFixed(1)}, ${y.toFixed(1)})px of the ${size}px hero drawn in a colour other than the background`).toBeGreaterThan(0);
+      return measures.reduce((best, measure) => (measure.opacity > best.opacity ? measure : best)).colour;
+    };
+    const corners: { name: string; colour: Channels; wanted: Hue }[] = [
+      { name: 'top left', colour: await colourOfTick(columns.left, firstRow), wanted: 'green' },
+      { name: 'bottom right', colour: await colourOfTick(columns.right, lastRow), wanted: 'cream' },
+    ];
+    const describe = `${size}px: ${corners.map(({ name, colour }) => `${name} ${describeColour(colour)}, closest to ${closestHue(colour)}`).join('; ')}`;
+    measured.push(describe);
+    for (const { name, colour, wanted } of corners) {
+      if (closestHue(colour) !== wanted) problems.push(`${size}px: the ${name} tick, ${describeColour(colour)}, is closest to ${closestHue(colour)}, not ${wanted}`);
+    }
+  }
+  expect(
+    problems,
+    `colour of the hero’s corner ticks, against green ${describeColour(hues.green)}, accent ${describeColour(hues.accent)} and cream ${describeColour(hues.cream)} (${measured.join(' | ')})`,
+  ).toEqual([]);
 });
 
 test('served under /portfolio/, the first hero button of the French home page, "Voir les projets", leads to /portfolio/fr/projets/', async ({ page }) => {
