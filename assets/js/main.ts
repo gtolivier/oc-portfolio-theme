@@ -510,10 +510,16 @@ class TickField extends HTMLElement {
     );
   }
 
-  /* From 0 at the faint edge to 1 at the bright one: the bottom for the hero's field on a phone, the top elsewhere. */
+  /* From 0 at the faint edge to 1 at the bright one, the edge the diagonal ends on. */
   private verticalPlace(y: number, width: number, height: number): number {
     const downShare = y / height;
-    return this.isHeroOnPhone(width) ? downShare : 1 - downShare;
+    return this.isDiagonalDescending(width) ? downShare : 1 - downShare;
+  }
+
+  /* The diagonal runs from the green, faint corner to the cream, bright one: down to the bottom right
+     for the hero's field on a phone, up to the top right elsewhere. */
+  private isDiagonalDescending(width: number): boolean {
+    return this.isHeroOnPhone(width);
   }
 
   /* Taller from left to right, and taller at the top. */
@@ -563,14 +569,14 @@ class TickField extends HTMLElement {
     return this.gradient;
   }
 
-  /* Along the diagonal: green at the bottom left, accent in the middle, cream at the top right. */
+  /* Along the diagonal: green at its start, accent in the middle, cream at its end. */
   private createTickGradient(
     context: CanvasRenderingContext2D,
     width: number,
     height: number,
     colors: FieldColors,
   ): CanvasGradient {
-    const gradient = this.isHeroOnPhone(width)
+    const gradient = this.isDiagonalDescending(width)
       ? context.createLinearGradient(0, 0, width, height)
       : context.createLinearGradient(0, height, width, 0);
     gradient.addColorStop(FIELD_GREEN_UNTIL, colors.green);
