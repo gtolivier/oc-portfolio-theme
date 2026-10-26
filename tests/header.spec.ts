@@ -252,6 +252,21 @@ test('the header language switcher leaves 2 px between the inside of its border 
   ).toBe(true);
 });
 
+test('in the header language switcher, the FR and EN entries are 2 px apart', async ({ page }) => {
+  await page.goto('/fr/');
+  const group = languageSwitcher(page, 'Langue');
+  const first = group.getByText('FR', { exact: true });
+  const second = group.getByRole('link', { name: 'EN', exact: true });
+  await expect(first).toHaveAttribute('aria-current');
+  await expect(second).toBeVisible();
+  const firstBox = (await first.boundingBox())!;
+  const secondBox = (await second.boundingBox())!;
+  /* The horizontal distance between the right edge of the first entry and the left edge of the second one. */
+  const gap = secondBox.x - (firstBox.x + firstBox.width);
+  /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+  expect(Math.abs(gap - 2), `gap: ${gap}`).toBeLessThanOrEqual(0.5);
+});
+
 test('the header language switcher is in IBM Plex Mono 12 px, weight 600', async ({ page }) => {
   await page.goto('/fr/');
   const group = languageSwitcher(page, 'Langue');
