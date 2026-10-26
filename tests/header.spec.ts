@@ -926,6 +926,41 @@ test.describe('site with a long menu', () => {
     const lineCount = new Set(linkTops.map((top) => Math.round(top))).size;
     expect(lineCount, `top edges of the links: ${linkTops.join(', ')}`).toBeGreaterThan(1);
   });
+
+  test('from 768 px wide, with a menu too long to fit beside the logo, at least 24 px still separate the logo from every link on its line, and no link overlaps it (at 768 and 900 px)', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
+    const problems: string[] = [];
+    for (const viewport of [NARROW_DESKTOP_VIEWPORT, { width: 900, height: 1024 }]) {
+      await page.setViewportSize(viewport);
+      await page.goto(`${SITE_WITH_A_LONG_MENU.origin}/fr/`);
+      const links = navigationLinks(page);
+      await expect(links).toHaveText(['Accueil', 'Projets', 'Parcours', 'Compétences', 'Publications', 'Contact']);
+      const logoBox = (await headerLogo(page).boundingBox())!;
+      const switcherBox = (await languageSwitcher(page, 'Langue').boundingBox())!;
+      const linkBoxes = await boxesOf(links);
+
+      /* The row the menu is too long for: 48 px gutters, the logo, 24 px, the links 32 px apart,
+         32 px, the switcher. */
+      const rowWidth =
+        2 * 48 + logoBox.width + 24 + linkBoxes.reduce((sum, box) => sum + box.width, 0)
+        + 32 * (linkBoxes.length - 1) + 32 + switcherBox.width;
+      expect(rowWidth, `width the single row would need at ${viewport.width} px`).toBeGreaterThan(viewport.width);
+
+      for (const [index, box] of linkBoxes.entries()) {
+        const name = `navigation link ${index + 1} at ${viewport.width} px`;
+        /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+        const sharesLogoLine = box.y < logoBox.y + logoBox.height - 0.5 && logoBox.y < box.y + box.height - 0.5;
+        const overlapsLogo =
+          sharesLogoLine && box.x < logoBox.x + logoBox.width - 0.5 && logoBox.x < box.x + box.width - 0.5;
+        if (overlapsLogo) problems.push(`${name} overlaps the logo: ${JSON.stringify({ logo: logoBox, link: box })}`);
+        if (!sharesLogoLine) continue;
+        /* The horizontal distance between the right edge of the logo and the left edge of the link. */
+        const gap = box.x - (logoBox.x + logoBox.width);
+        if (gap < 24 - 0.5) problems.push(`${name} is ${gap} px from the logo`);
+      }
+    }
+    expect(problems, 'links too close to the logo').toEqual([]);
+  });
 });
 
 test('the header is separated from the page by a 1 px solid paper-colored bottom border at 12% opacity', async ({ page }) => {
