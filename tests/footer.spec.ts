@@ -17,6 +17,28 @@ test('screen readers do not read the decorative bars of the footer logo', async 
   expect(accessibilityTree).not.toContain('|');
 });
 
+test('in the footer logo, the first "|" of each initial is bold (700), every other character stays at weight 400', async ({ page }) => {
+  await page.goto('/fr/');
+  const logo = page.locator('footer [aria-hidden="true"]');
+  await expect(logo).toHaveText('| E ||| | X |||');
+  /* Each visible character of the logo text, with the computed weight of the element that holds it. */
+  const characters = await logo.evaluate((element) => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const values: string[] = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      const weight = getComputedStyle(node.parentElement!).fontWeight;
+      for (const character of node.textContent!) {
+        if (character.trim() !== '') values.push(`${character} ${weight}`);
+      }
+    }
+    return values;
+  });
+  expect(characters).toEqual([
+    '| 700', 'E 400', '| 400', '| 400', '| 400',
+    '| 700', 'X 400', '| 400', '| 400', '| 400',
+  ]);
+});
+
 test('the footer displays the site footer note in the page language', async ({ page }) => {
   await page.goto('/fr/');
   const frenchFooter = page.locator('footer');
