@@ -29,7 +29,29 @@ test('in the footer logo, the first "|" of each initial is bold (700), every oth
   ]);
 });
 
-test('the footer displays the site footer note in the page language', async ({ page }) => {
+test('the footer logo is in IBM Plex Mono 14 px, like the header logo', async ({ page }) => {
+  await page.goto('/fr/');
+  const logo = page.locator('footer [aria-hidden="true"]');
+  await expect(logo).toHaveText('| E ||| | X |||');
+  /* The computed family and size of every element that directly holds a piece of the logo text, the bold bars included. */
+  const styles = await logo.evaluate((element) => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const values: string[] = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      if (node.textContent!.trim() === '') continue;
+      const style = getComputedStyle(node.parentElement!);
+      const family = style.fontFamily.split(',')[0].trim().replace(/["']/g, '');
+      values.push(`${node.textContent!.trim()}: ${family} ${style.fontSize}`);
+    }
+    return values;
+  });
+  expect(styles).toEqual([
+    '|: IBM Plex Mono 14px', 'E |||: IBM Plex Mono 14px',
+    '|: IBM Plex Mono 14px', 'X |||: IBM Plex Mono 14px',
+  ]);
+});
+
+test('the footer displays the site footer note in the page language',async ({ page }) => {
   await page.goto('/fr/');
   const frenchFooter = page.locator('footer');
   await expect(frenchFooter).toContainText('Horloger de démonstration');
