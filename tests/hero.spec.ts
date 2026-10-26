@@ -11,6 +11,7 @@ import {
   SITE_WITH_A_HERO_WITH_LONG_WORDS,
   SITE_WITH_A_HERO_WITHOUT_TITLE,
   SITE_WITH_A_PAGE_REF_NOT_FOUND,
+  SITE_WITH_A_SINGLE_LANGUAGE,
   buildSite,
   removeDirectory,
   serveSite,
@@ -1643,6 +1644,46 @@ test.describe('home page without a hero', () => {
       );
     }
     expect(errors).toEqual([]);
+  });
+});
+
+test.describe('home page of a single-language site', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_SINGLE_LANGUAGE);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a single-language site, in a window tall enough for its content, the hero ends exactly at the bottom of the window: its height is the window height minus the header height, within 1 px, on a phone as on desktop', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
+    /* Same windows as on the bilingual example site: the header, without its language
+       switcher, is two rows on a phone and one row from 768 px wide. */
+    for (const viewport of [{ width: 412, height: 1100 }, ...DESKTOP_VIEWPORTS]) {
+      const size = `${viewport.width} × ${viewport.height}`;
+      await page.setViewportSize(viewport);
+      await page.goto(`${SITE_WITH_A_SINGLE_LANGUAGE.origin}/fr/`);
+      await page.evaluate(() => document.fonts.ready);
+      /* The site is single-language: the header shows no language switcher. */
+      await expect(page.locator('header').getByRole('group', { name: 'Langue' }), `language switcher at ${size}`).toHaveCount(0);
+      const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
+
+      /* Page scrolled to the top: the hero starts right below the header. */
+      const headerBox = (await page.locator('header').boundingBox())!;
+      const expectedHeight = viewport.height - headerBox.height;
+      /* The window is tall enough: the hero's text leaves at least 150 px of free height,
+         so the content does not set the hero's height. */
+      const textHeight = (await bottomOfButtons(buttons)) - (await heading.boundingBox())!.y;
+      expect(textHeight, `at ${size}, height of the hero's text, against ${Math.round(expectedHeight)} px`)
+        .toBeLessThanOrEqual(expectedHeight - 150);
+
+      const heroBox = (await hero.boundingBox())!;
+      expect.soft(
+        Math.abs(heroBox.height - expectedHeight),
+        `at ${size}, hero height (${heroBox.height} px) against the window height minus the header height (${expectedHeight} px)`,
+      ).toBeLessThanOrEqual(1);
+    }
   });
 });
 
