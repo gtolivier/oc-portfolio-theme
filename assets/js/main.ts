@@ -128,6 +128,8 @@ const FIELD_PHONE_MIN_SIDE_MARGIN_PX = 12;
 
 const FIELD_MIN_VERTICAL_MARGIN_PX = 18;
 
+const FIELD_PHONE_MIN_VERTICAL_MARGIN_PX = 9;
+
 const FIELD_RESTING_MIN_ALPHA = 0.06;
 
 const FIELD_RESTING_MAX_ALPHA = 0.61;
@@ -434,19 +436,27 @@ class TickField extends HTMLElement {
     const span = (columns - 1) * FIELD_TICK_SPACING_PX + FIELD_TICK_WIDTH_PX;
     /* On whole pixels, so the strokes stay crisp. */
     const left = Math.round((width - span) / 2);
-    let rows = Math.max(1, Math.floor((height - 2 * FIELD_MIN_VERTICAL_MARGIN_PX) / FIELD_ROW_SPACING_PX) + 1);
+    const verticalMargin = this.minVerticalMargin(width);
+    let rows = Math.max(1, Math.floor((height - 2 * verticalMargin) / FIELD_ROW_SPACING_PX) + 1);
     for (;; rows -= 1) {
       /* The tallest tick of the last row is the one in the last column. */
       const bottom = (rows - 1) * FIELD_ROW_SPACING_PX + this.tickHeight(1, 1);
       const top = Math.round((height - bottom) / 2);
-      if (top >= FIELD_MIN_VERTICAL_MARGIN_PX || rows <= 1) return { columns, rows, left, top };
+      if (top >= verticalMargin || rows <= 1) return { columns, rows, left, top };
     }
   }
 
   /* A phone's narrow screen spares little width: there, the hero's field gives more of it to ticks. */
   private minSideMargin(width: number): number {
-    const isHeroOnPhone = this.classList.contains('hero') && width < FIELD_PHONE_MAX_WIDTH_PX;
-    return isHeroOnPhone ? FIELD_PHONE_MIN_SIDE_MARGIN_PX : FIELD_MIN_SIDE_MARGIN_PX;
+    return this.isHeroOnPhone(width) ? FIELD_PHONE_MIN_SIDE_MARGIN_PX : FIELD_MIN_SIDE_MARGIN_PX;
+  }
+
+  private minVerticalMargin(width: number): number {
+    return this.isHeroOnPhone(width) ? FIELD_PHONE_MIN_VERTICAL_MARGIN_PX : FIELD_MIN_VERTICAL_MARGIN_PX;
+  }
+
+  private isHeroOnPhone(width: number): boolean {
+    return this.classList.contains('hero') && width < FIELD_PHONE_MAX_WIDTH_PX;
   }
 
   private drawTickColumn(drawing: FieldDrawing, x: number, columnShare: number, fadeIn: number): void {
