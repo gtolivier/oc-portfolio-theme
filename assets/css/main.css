@@ -456,4 +456,5 @@ tick-field > canvas {
 footer [aria-hidden="true"] {
   font-family: var(--font-mono);
   font-size: var(--header-font-size);
+  letter-spacing: 0.06em;
 }
