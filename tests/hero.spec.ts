@@ -1844,34 +1844,43 @@ test.describe('home page of a site with a long menu', () => {
     ).toBeLessThanOrEqual(1);
   });
 
-  test('from 768 px wide, when the menu wraps onto two lines, in a window tall enough for its content, the hero still ends exactly at the bottom of the window: at 768 × 1024, its height is the window height minus the header height, within 1 px', async ({ page, context }) => {
+  test('from 768 px wide, with a menu too long for its line, in a window tall enough for its content, the hero ends exactly at the bottom of the window at every width from 768 to 1280 px, in steps of 16 px: its height is the window height minus the header height, within 1 px, and at one of these widths at least the menu wraps onto several lines', async ({ page, context }) => {
     await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
-    const viewport = { width: 768, height: 1024 };
-    const size = `${viewport.width} × ${viewport.height}`;
-    await openHomeAt(page, viewport, SITE_WITH_A_LONG_MENU.origin);
+    /* How many lines the menu takes at a given width depends on the platform's text
+       rendering: the test only requires that some width of the range wraps it, so that a
+       header taller than its usual single row is exercised. */
+    const problems: string[] = [];
+    const measured: string[] = [];
+    const multiLineWidths: number[] = [];
+    for (let width = 768; width <= 1280; width += 16) {
+      const viewport = { width, height: 1024 };
+      const size = `${viewport.width} × ${viewport.height}`;
+      await openHomeAt(page, viewport, SITE_WITH_A_LONG_MENU.origin);
 
-    /* At 768 px the menu does not fit beside the logo: its links sit on two lines, and the
-       header is taller than its usual single row. */
-    const links = page.locator('header nav').getByRole('link');
-    await expect(links).toHaveText(['Accueil', 'Projets', 'Parcours', 'Compétences', 'Publications', 'Contact']);
-    const { linkTops, lineCount } = await menuLines(links);
-    expect(lineCount, `at ${size}, lines of the menu (top edges of its links: ${linkTops.join(', ')})`).toBe(2);
+      const links = page.locator('header nav').getByRole('link');
+      await expect(links, `menu links at ${size}`).toHaveText(['Accueil', 'Projets', 'Parcours', 'Compétences', 'Publications', 'Contact']);
+      const { lineCount } = await menuLines(links);
+      if (lineCount > 1) multiLineWidths.push(width);
 
-    const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
-    /* Page scrolled to the top: the hero starts right below the header. */
-    const headerBox = (await page.locator('header').boundingBox())!;
-    const expectedHeight = viewport.height - headerBox.height;
-    /* The window is tall enough: the hero's text leaves at least 150 px of free height,
-       so the content does not set the hero's height. */
-    const textHeight = (await bottomOfButtons(buttons)) - (await heading.boundingBox())!.y;
-    expect(textHeight, `at ${size}, height of the hero's text, against ${Math.round(expectedHeight)} px`)
-      .toBeLessThanOrEqual(expectedHeight - 150);
+      const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
+      /* Page scrolled to the top: the hero starts right below the header. */
+      const headerBox = (await page.locator('header').boundingBox())!;
+      const expectedHeight = viewport.height - headerBox.height;
+      /* The window is tall enough: the hero's text leaves at least 150 px of free height,
+         so the content does not set the hero's height. */
+      const textHeight = (await bottomOfButtons(buttons)) - (await heading.boundingBox())!.y;
+      expect(textHeight, `at ${size}, height of the hero's text, against ${Math.round(expectedHeight)} px`)
+        .toBeLessThanOrEqual(expectedHeight - 150);
 
-    const heroBox = (await hero.boundingBox())!;
-    expect(
-      Math.abs(heroBox.height - expectedHeight),
-      `at ${size}, hero height (${heroBox.height} px) against the window height minus the header height (${expectedHeight} px)`,
-    ).toBeLessThanOrEqual(1);
+      const heroBox = (await hero.boundingBox())!;
+      const describe = `${size}: menu on ${lineCount} line(s), header ${headerBox.height.toFixed(2)} px, hero ${heroBox.height.toFixed(2)} px, expected ${expectedHeight.toFixed(2)} px`;
+      measured.push(describe);
+      if (Math.abs(heroBox.height - expectedHeight) > 1) {
+        problems.push(`${describe}: the hero height is not the window height minus the header height, within 1 px`);
+      }
+    }
+    if (multiLineWidths.length === 0) problems.push('the menu sits on a single line at every width from 768 to 1280 px: no taller header was exercised');
+    expect(problems, `hero height against the window height minus the header height (${measured.join(' | ')})`).toEqual([]);
   });
 });
 
