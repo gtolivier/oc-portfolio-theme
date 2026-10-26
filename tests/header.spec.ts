@@ -3,6 +3,7 @@ import {
   SITE_WITH_A_LONG_MENU,
   SITE_WITH_A_SINGLE_LANGUAGE,
   SITE_WITH_ENGLISH_BY_DEFAULT,
+  SITE_WITHOUT_MENU,
   buildSite,
   serveSite,
   removeDirectory,
@@ -1073,6 +1074,44 @@ test.describe('site with a long menu', () => {
       }
     }
     expect(problems, 'widths at which the logo does not stay on a single line').toEqual([]);
+  });
+});
+
+test.describe('site without a main menu', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITHOUT_MENU);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a phone, on a multilingual site without a main menu, the header has a single row: 12 px above the logo and language switcher row, 12 px between that row and its bottom border', async ({ page, context }) => {
+    await serveSite(context, SITE_WITHOUT_MENU, siteDirectory);
+    await page.setViewportSize(PHONE_VIEWPORT);
+    await page.goto(`${SITE_WITHOUT_MENU.origin}/fr/`);
+    /* A multilingual site, with a language switcher, but no navigation link. */
+    const switcher = languageSwitcher(page, 'Langue');
+    await expect(switcher).toBeVisible();
+    await expect(navigationLinks(page)).toHaveCount(0);
+    const headerBox = (await page.locator('header').boundingBox())!;
+    const logoBox = (await headerLogo(page).boundingBox())!;
+    const switcherBox = (await switcher.boundingBox())!;
+
+    /* The only row holds the logo and the switcher. */
+    const rowTop = Math.min(logoBox.y, switcherBox.y);
+    const rowBottom = Math.max(logoBox.y + logoBox.height, switcherBox.y + switcherBox.height);
+    const borderTop = bottomBorderTop(headerBox);
+    /* The two spaces, by name, so a failure shows both of them. */
+    const spaces: Record<string, number> = {
+      'space above the row': rowTop - headerBox.y,
+      'space below the row': borderTop - rowBottom,
+    };
+    /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+    expect(
+      Object.values(spaces).every((space) => Math.abs(space - 12) <= 0.5),
+      `spaces: ${JSON.stringify(spaces)}`,
+    ).toBe(true);
   });
 });
 
