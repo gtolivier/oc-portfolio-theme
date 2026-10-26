@@ -317,6 +317,11 @@ h1 {
   font-size: var(--header-font-size);
 }
 
+/* Without a language switcher, the first row is only as tall as the logo. */
+.site-header:not(:has([role="group"])) {
+  min-height: 0;
+}
+
 .site-header a {
   font-family: var(--font-mono);
   color: var(--color-paper);
