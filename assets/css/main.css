@@ -76,18 +76,19 @@
     + 2 * var(--header-switcher-entry-padding-block)
   );
   --header-switcher-height: calc(2 * var(--header-switcher-border-width) + 2 * var(--header-switcher-padding) + var(--header-switcher-entry-height));
-  /* On a phone, the nav wraps to a second row, below the switcher's: its
-     links, underline room included, are the tallest items there. */
-  --header-nav-row-height: calc(
-    var(--header-row-gap)
-    + var(--header-link-line-box)
+  /* A nav link, underline room included. */
+  --header-nav-link-height: calc(
+    var(--header-link-line-box)
     + var(--header-link-underline-offset)
     + var(--header-link-underline-width)
   );
-  /* Height of the sticky header; the hero subtracts it from the viewport
-     so it fills the space right below the header. The first row's tallest
-     item is the switcher. */
+  /* On a phone, the nav wraps to a second row, below the switcher's: its
+     links are the tallest items there. */
+  --header-nav-row-height: calc(var(--header-row-gap) + var(--header-nav-link-height));
+  /* The first row's tallest item is the switcher. */
   --header-first-row-height: var(--header-switcher-height);
+  /* Height of the sticky header; the hero subtracts it from the viewport
+     so it fills the space right below the header. */
   --header-height: calc(
     2 * var(--header-padding-block)
     + var(--header-first-row-height)
@@ -117,11 +118,7 @@
 @media (min-width: 768px) {
   :root:not(:has(.site-header [role="group"])) {
     /* The nav links are the tallest items of the row. */
-    --header-first-row-height: calc(
-      var(--header-link-line-box)
-      + var(--header-link-underline-offset)
-      + var(--header-link-underline-width)
-    );
+    --header-first-row-height: var(--header-nav-link-height);
   }
 
   :root {
