@@ -76,16 +76,21 @@
     + 2 * var(--header-switcher-entry-padding-block)
   );
   --header-switcher-height: calc(2 * var(--header-switcher-border-width) + 2 * var(--header-switcher-padding) + var(--header-switcher-entry-height));
-  /* Height of the sticky header; the hero subtracts it from the viewport
-     so it fills the space right below the header. On a phone, two rows:
-     the switcher's, then the nav's, whose current link is the tallest. */
-  --header-height: calc(
-    2 * var(--header-padding-block)
-    + var(--header-switcher-height)
-    + var(--header-row-gap)
+  /* On a phone, the nav wraps to a second row, below the switcher's: its
+     current link is the tallest item there. */
+  --header-nav-row-height: calc(
+    var(--header-row-gap)
     + var(--header-link-line-box)
     + var(--header-current-link-padding-bottom)
     + var(--header-current-link-border-width)
+  );
+  /* Height of the sticky header; the hero subtracts it from the viewport
+     so it fills the space right below the header. The first row's tallest
+     item is the switcher. */
+  --header-height: calc(
+    2 * var(--header-padding-block)
+    + var(--header-switcher-height)
+    + var(--header-nav-row-height)
     + var(--header-border-width)
   );
   /* Space left above an anchor target so the sticky header does not
@@ -105,12 +110,8 @@
 @media (min-width: 768px) {
   :root {
     --header-padding-block: 22px;
-    /* A single row, whose tallest item is the switcher. */
-    --header-height: calc(
-      2 * var(--header-padding-block)
-      + var(--header-switcher-height)
-      + var(--header-border-width)
-    );
+    /* A single row: the nav shares the switcher's. */
+    --header-nav-row-height: 0px;
     --page-gutter: 48px;
   }
 }

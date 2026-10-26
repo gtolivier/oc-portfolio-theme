@@ -121,7 +121,8 @@ const FIELD_ROW_SPACING_PX = 22;
 
 const FIELD_MIN_SIDE_MARGIN_PX = 24;
 
-/* On a phone, narrower than this, the hero's field leaves smaller side, top and bottom margins. */
+/* On a phone, narrower than this (the stylesheet's breakpoint), the hero's field leaves smaller margins
+   and runs its diagonal down to the bottom right. */
 const FIELD_PHONE_MAX_WIDTH_PX = 768;
 
 const FIELD_PHONE_MIN_SIDE_MARGIN_PX = 12;
