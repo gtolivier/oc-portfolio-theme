@@ -256,6 +256,10 @@ h1 {
   text-decoration: none;
 }
 
+.site-header > a {
+  letter-spacing: 0.06em;
+}
+
 @media (hover: hover) {
   .site-header nav a:not([aria-current="page"]):hover {
     text-decoration: underline;
