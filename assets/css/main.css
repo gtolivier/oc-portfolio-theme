@@ -273,6 +273,7 @@ h1 {
 }
 
 .site-header nav a[aria-current="page"] {
+  padding-bottom: 3px;
   border-bottom: 2px solid var(--color-accent);
 }
 
