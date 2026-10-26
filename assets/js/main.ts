@@ -426,9 +426,7 @@ class TickField extends HTMLElement {
 
   /* The grid of ticks, centred in the box: as many columns and rows as leave the minimum margins. */
   private layout(width: number, height: number): FieldLayout {
-    /* Only the hero's field, on a phone, leaves the smaller margins. */
-    const isHeroOnPhone = this.classList.contains('hero') && width < FIELD_PHONE_MAX_WIDTH_PX;
-    const sideMargin = isHeroOnPhone ? FIELD_PHONE_MIN_SIDE_MARGIN_PX : FIELD_MIN_SIDE_MARGIN_PX;
+    const sideMargin = this.minSideMargin(width);
     const columns = Math.max(
       1,
       Math.floor((width - 2 * sideMargin - FIELD_TICK_WIDTH_PX) / FIELD_TICK_SPACING_PX) + 1,
@@ -443,6 +441,12 @@ class TickField extends HTMLElement {
       const top = Math.round((height - bottom) / 2);
       if (top >= FIELD_MIN_VERTICAL_MARGIN_PX || rows <= 1) return { columns, rows, left, top };
     }
+  }
+
+  /* A phone's narrow screen spares little width: there, the hero's field gives more of it to ticks. */
+  private minSideMargin(width: number): number {
+    const isHeroOnPhone = this.classList.contains('hero') && width < FIELD_PHONE_MAX_WIDTH_PX;
+    return isHeroOnPhone ? FIELD_PHONE_MIN_SIDE_MARGIN_PX : FIELD_MIN_SIDE_MARGIN_PX;
   }
 
   private drawTickColumn(drawing: FieldDrawing, x: number, columnShare: number, fadeIn: number): void {
