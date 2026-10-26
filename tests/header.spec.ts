@@ -55,6 +55,25 @@ async function boxesOf(elements: Locator): Promise<{ x: number; y: number; width
   return Promise.all((await elements.all()).map(async (element) => (await element.boundingBox())!));
 }
 
+/* The vertical position at which each visible character of the element is rendered. */
+async function characterTops(element: Locator): Promise<number[]> {
+  return element.evaluate((root) => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const values: number[] = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      const text = node.textContent!;
+      for (let index = 0; index < text.length; index++) {
+        if (text[index].trim() === '') continue;
+        const range = document.createRange();
+        range.setStart(node, index);
+        range.setEnd(node, index + 1);
+        values.push(range.getBoundingClientRect().top);
+      }
+    }
+    return values;
+  });
+}
+
 /* The top edge of the header's 1 px bottom border, given the header's box. */
 function bottomBorderTop(headerBox: { y: number; height: number }): number {
   return headerBox.y + headerBox.height - 1;
@@ -1013,6 +1032,28 @@ test.describe('site with a long menu', () => {
       }
     }
     expect(problems, 'links outside the space between the logo and the switcher').toEqual([]);
+  });
+
+  test('from 768 px wide, with a menu too long to fit on the header line, the header logo stays on a single line (every 8 px from 768 to 1280 px)', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
+    await page.setViewportSize(NARROW_DESKTOP_VIEWPORT);
+    await page.goto(`${SITE_WITH_A_LONG_MENU.origin}/fr/`);
+    await expect(navigationLinks(page)).toHaveText(['Accueil', 'Projets', 'Parcours', 'Compétences', 'Publications', 'Contact']);
+    const logo = headerLogo(page);
+    await expect(logo).toHaveText('| E ||| | X |||');
+
+    const problems: string[] = [];
+    for (let width = DESKTOP_MIN_WIDTH; width <= WIDE_DESKTOP_VIEWPORT.width; width += 8) {
+      /* Resized without reloading: the page lays itself out again at each width. */
+      await page.setViewportSize({ width, height: NARROW_DESKTOP_VIEWPORT.height });
+      const tops = await characterTops(logo);
+      if (tops.length !== 10) problems.push(`at ${width} px, the logo renders ${tops.length} characters`);
+      /* On a single line, every character shares the vertical position of the first one. */
+      if (!tops.every((top) => Math.abs(top - tops[0]) <= 1)) {
+        problems.push(`at ${width} px, the logo characters sit at ${tops.join(', ')}`);
+      }
+    }
+    expect(problems, 'widths at which the logo does not stay on a single line').toEqual([]);
   });
 });
 
