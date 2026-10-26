@@ -44,9 +44,36 @@
   --color-accent-dark: #1E6C58;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
   --font-sans: 'IBM Plex Sans', Helvetica, sans-serif;
-  /* Height of the sticky header (two rows on a phone); the hero subtracts
-     it from the viewport so it fills the space right below the header. */
-  --header-height: 86px;
+  /* Sizes of the sticky header, read both by its rules and by
+     --header-height below. */
+  --header-padding-block: 12px;
+  --header-row-gap: 8px;
+  --header-border-width: 1px;
+  --header-font-size: 14px;
+  /* Set on the nav links rather than left to the font's normal line height,
+     which varies with the browser and with the fallback font shown while
+     IBM Plex Mono loads. */
+  --header-link-line-height: 1.3;
+  --header-link-line-box: calc(var(--header-font-size) * var(--header-link-line-height));
+  --header-current-link-padding-bottom: 3px;
+  --header-current-link-border-width: 2px;
+  --header-switcher-padding: 2px;
+  --header-switcher-border-width: 1px;
+  /* The switcher's entries are --min-target-size high: their own padding
+     and text are smaller. */
+  --header-switcher-height: calc(2 * var(--header-switcher-border-width) + 2 * var(--header-switcher-padding) + var(--min-target-size));
+  /* Height of the sticky header; the hero subtracts it from the viewport
+     so it fills the space right below the header. On a phone, two rows:
+     the switcher's, then the nav's, whose current link is the tallest. */
+  --header-height: calc(
+    2 * var(--header-padding-block)
+    + var(--header-switcher-height)
+    + var(--header-row-gap)
+    + var(--header-link-line-box)
+    + var(--header-current-link-padding-bottom)
+    + var(--header-current-link-border-width)
+    + var(--header-border-width)
+  );
   /* Space left above an anchor target so the sticky header does not
      hide it: the header's height, plus some breathing room. */
   --sticky-header-clearance: calc(var(--header-height) + 2rem);
@@ -63,7 +90,13 @@
 
 @media (min-width: 768px) {
   :root {
-    --header-height: 75px;
+    --header-padding-block: 22px;
+    /* A single row, whose tallest item is the switcher. */
+    --header-height: calc(
+      2 * var(--header-padding-block)
+      + var(--header-switcher-height)
+      + var(--header-border-width)
+    );
     --page-gutter: 48px;
   }
 }
@@ -248,17 +281,17 @@ h1 {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  row-gap: 8px;
-  padding-block: 12px;
+  row-gap: var(--header-row-gap);
+  padding-block: var(--header-padding-block);
   z-index: var(--layer-sticky-header);
   background: var(--color-ink);
   padding-inline: var(--page-gutter);
-  border-bottom: 1px solid rgb(var(--color-paper-channels) / 0.12);
+  border-bottom: var(--header-border-width) solid rgb(var(--color-paper-channels) / 0.12);
 }
 
 .site-header a {
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: var(--header-font-size);
   color: var(--color-paper);
   text-decoration: none;
 }
@@ -278,12 +311,9 @@ h1 {
 }
 
 /* From 768 px, the nav goes back between the logo and the switcher, all on
-   a single row. */
+   a single row. The header's block padding grows too, through
+   --header-padding-block in :root, which --header-height also reads. */
 @media (min-width: 768px) {
-  .site-header {
-    padding-block: 22px;
-  }
-
   .site-header nav {
     order: 0;
     flex-basis: auto;
@@ -294,6 +324,7 @@ h1 {
 }
 
 .site-header nav a {
+  line-height: var(--header-link-line-height);
   letter-spacing: 0.08em;
 }
 
@@ -306,16 +337,16 @@ h1 {
 }
 
 .site-header nav a[aria-current="page"] {
-  padding-bottom: 3px;
-  border-bottom: 2px solid var(--color-accent);
+  padding-bottom: var(--header-current-link-padding-bottom);
+  border-bottom: var(--header-current-link-border-width) solid var(--color-accent);
 }
 
 .site-header [role="group"] {
   display: flex;
   gap: 2px;
   width: fit-content;
-  padding: 2px;
-  border: 1px solid rgb(var(--color-paper-channels) / 0.35);
+  padding: var(--header-switcher-padding);
+  border: var(--header-switcher-border-width) solid rgb(var(--color-paper-channels) / 0.35);
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
