@@ -571,6 +571,25 @@ test('on a phone, the header navigation links sit on a second row, lined up on t
   expect(firstLinkBox.y - firstRowBottom, 'gap between the first row and the links row').toBeCloseTo(8, 0);
 });
 
+test('on a phone, the header leaves 12 px above its first row and 12 px between its links row and its bottom border', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/fr/');
+  const headerBox = (await page.locator('header').boundingBox())!;
+  const logoBox = (await headerLogo(page).boundingBox())!;
+  const switcherBox = (await languageSwitcher(page, 'Langue').boundingBox())!;
+  const links = page.locator('header nav').getByRole('link');
+  await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
+  const linkBoxes = await Promise.all((await links.all()).map(async (link) => (await link.boundingBox())!));
+
+  const firstRowTop = Math.min(logoBox.y, switcherBox.y);
+  const secondRowBottom = Math.max(...linkBoxes.map((box) => box.y + box.height));
+  /* The top edge of the 1 px bottom border. */
+  const borderTop = headerBox.y + headerBox.height - 1;
+  /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+  expect(Math.abs(firstRowTop - headerBox.y - 12), `space above the first row: ${firstRowTop - headerBox.y}`).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(borderTop - secondRowBottom - 12), `space below the links row: ${borderTop - secondRowBottom}`).toBeLessThanOrEqual(0.5);
+});
+
 test('in a 320 px wide window, the header logo stays on a single line', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto('/fr/');
