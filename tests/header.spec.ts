@@ -265,6 +265,28 @@ test('the header logo text has a letter-spacing of 0.06em (0.84 px at 14 px)', a
   ).toBe(true);
 });
 
+test('in the header logo, the first "|" of each initial is bold (700), every other character stays at weight 400', async ({ page }) => {
+  await page.goto('/fr/');
+  const logo = headerLogo(page);
+  await expect(logo).toHaveText('| E ||| | X |||');
+  /* Each visible character of the logo text, with the computed weight of the element that holds it. */
+  const characters = await logo.evaluate((element) => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const values: string[] = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      const weight = getComputedStyle(node.parentElement!).fontWeight;
+      for (const character of node.textContent!) {
+        if (character.trim() !== '') values.push(`${character} ${weight}`);
+      }
+    }
+    return values;
+  });
+  expect(characters).toEqual([
+    '| 700', 'E 400', '| 400', '| 400', '| 400',
+    '| 700', 'X 400', '| 400', '| 400', '| 400',
+  ]);
+});
+
 test('the header navigation links have a letter-spacing of 0.08em (1.12 px at 14 px)', async ({ page }) => {
   await page.goto('/fr/');
   const links = page.locator('header nav').getByRole('link');
