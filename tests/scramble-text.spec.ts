@@ -52,6 +52,17 @@ async function visibleCharacterBoxes(element: Locator): Promise<{ left: number; 
   });
 }
 
+/* Moves an element as a page script would when it reorders a list: removes it from the page,
+   then inserts it again at the same place. */
+async function removeAndInsertAgain(element: Locator): Promise<void> {
+  await element.evaluate((node) => {
+    const parent = node.parentNode as Node;
+    const next = node.nextSibling;
+    node.remove();
+    parent.insertBefore(node, next);
+  });
+}
+
 test.describe('catalog: scramble-text', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
@@ -530,14 +541,7 @@ test.describe('catalog: scramble-text', () => {
     const word = 'Échappement';
     await page.clock.runFor(1500);
     expect(await textOnScreen(scrambleText), 'before it is moved, the text is in clear').toBe(word);
-    /* A page script moves it: removes it from the page, then inserts it again at the same
-       place, as when a list is reordered. */
-    await scrambleText.evaluate((element) => {
-      const parent = element.parentNode as Node;
-      const next = element.nextSibling;
-      element.remove();
-      parent.insertBefore(element, next);
-    });
+    await removeAndInsertAgain(scrambleText);
     await expect(scrambleText).toHaveCount(1);
     /* Right after it is inserted again, time still standing, then once 2 s have passed,
        longer than any decoding: the visitor sees "Échappement", once, and assistive
@@ -567,14 +571,7 @@ test.describe('catalog: scramble-text', () => {
       Array.from(midway).some((character) => SIGNS.includes(character)),
       `at 750 ms, before it is moved, "${midway}" still shows signs in place of some letters`,
     ).toBe(true);
-    /* A page script moves it: removes it from the page, then inserts it again at the same
-       place, as when a list is reordered. */
-    await scrambleText.evaluate((element) => {
-      const parent = element.parentNode as Node;
-      const next = element.nextSibling;
-      element.remove();
-      parent.insertBefore(element, next);
-    });
+    await removeAndInsertAgain(scrambleText);
     await expect(scrambleText).toHaveCount(1);
     /* 2 s after it is inserted again, longer than any decoding: the visitor sees
        "Échappement", once, and assistive technologies name the heading "Échappement". */

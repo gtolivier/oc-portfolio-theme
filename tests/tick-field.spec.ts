@@ -68,6 +68,30 @@ async function verticalExtentOfTick(
   return { top: top / scale, bottom: (bottom + 1) / scale };
 }
 
+/* Moves a tick-field, without changing the layout around it, from wherever it lies onto whole
+   CSS pixels from the left and top of the page, so that its screenshot is not shifted by up to
+   a pixel against its box. */
+async function moveOntoWholePixels(tickField: Locator): Promise<void> {
+  await tickField.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    const left = box.left + window.scrollX;
+    const top = box.top + window.scrollY;
+    element.style.left = `${Math.round(left) - left}px`;
+    element.style.top = `${Math.round(top) - top}px`;
+  });
+}
+
+/* The bands, left then right, that hold the outermost columns of ticks of a tick-field
+   `fieldHeight` high whose drawn ticks span from `extent.left` to `extent.right`: each over the
+   whole height, from 6px outside the column's outer edge to 8px inside it, which holds its
+   anti-aliased edges and none of the next column, 16px away. */
+function outermostColumnBands(extent: { left: number; right: number }, fieldHeight: number): [Rectangle, Rectangle] {
+  return [
+    { x: extent.left - 6, y: 0, width: 14, height: fieldHeight },
+    { x: extent.right - 8, y: 0, width: 14, height: fieldHeight },
+  ];
+}
+
 test.describe('catalog: tick-field', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
@@ -77,20 +101,30 @@ test.describe('catalog: tick-field', () => {
     removeDirectory(siteDirectory);
   });
 
-  /* Serves the catalog and opens tick-field-empty, the visitor's motion preference emulated
-     when `reducedMotion` is given, and time standing still from before the page loads, until
-     the test advances it. Returns the only tick-field of the page, once visible
-     (tests/fixtures/catalog/content/tick-field-empty.md): 320px high, as wide as the page,
-     with no content and a solid background, followed by a paragraph. */
+  /* Serves the catalog and opens its French page `slug`, the visitor's motion preference
+     emulated when `reducedMotion` is given, and time standing still from before the page loads,
+     until the test advances it. */
+  const openCatalogPage = async (
+    page: Page,
+    context: BrowserContext,
+    slug: string,
+    reducedMotion?: 'reduce' | 'no-preference',
+  ): Promise<void> => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    if (reducedMotion) await page.emulateMedia({ reducedMotion });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/${slug}/`);
+  };
+
+  /* Opens tick-field-empty like openCatalogPage. Returns the only tick-field of the page, once
+     visible (tests/fixtures/catalog/content/tick-field-empty.md): 320px high, as wide as the
+     page, with no content and a solid background, followed by a paragraph. */
   const openEmptyTickField = async (
     page: Page,
     context: BrowserContext,
     reducedMotion?: 'reduce' | 'no-preference',
   ): Promise<Locator> => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
-    if (reducedMotion) await page.emulateMedia({ reducedMotion });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-empty/`);
+    await openCatalogPage(page, context, 'tick-field-empty', reducedMotion);
     const tickField = page.getByRole('main').locator('tick-field');
     await expect(tickField).toHaveCount(1);
     await expect(tickField).toBeVisible();
@@ -343,16 +377,8 @@ test.describe('catalog: tick-field', () => {
       { width: 287, height: 331 },
       { width: 297, height: 343 },
     ];
-    /* The text above the field can leave it at a fraction of a pixel from the top of the page,
-       which would shift its screenshot by up to a pixel against its box: the field is moved,
-       without changing the layout around it, onto whole CSS pixels. */
-    await tickField.evaluate((element) => {
-      const box = element.getBoundingClientRect();
-      const left = box.left + window.scrollX;
-      const top = box.top + window.scrollY;
-      element.style.left = `${Math.round(left) - left}px`;
-      element.style.top = `${Math.round(top) - top}px`;
-    });
+    /* The text above the field can leave it at a fraction of a pixel from the top of the page. */
+    await moveOntoWholePixels(tickField);
     const problems: string[] = [];
     const measured: string[] = [];
     for (const size of SIZES) {
@@ -377,13 +403,12 @@ test.describe('catalog: tick-field', () => {
       /* Across, the edges of the outermost columns of ticks are measured by how much of each
          screenshot column the ticks cover, summed over the field's whole height, and nothing
          else: every tick of a column spans the same screenshot columns, whatever its colour and
-         opacity, so neither decides where the column starts and ends. Each column of ticks is
-         taken in a band from 6px outside its edge to 8px inside it, which holds its
-         anti-aliased edges and none of the next column, 16px away. */
-      const [leftColumn, rightColumn] = await horizontalExtentOfDrawnStrokeInRectangles(tickField, screenshot, [
-        { x: extent.left - 6, y: 0, width: 14, height: box!.height },
-        { x: extent.right - 8, y: 0, width: 14, height: box!.height },
-      ]);
+         opacity, so neither decides where the column starts and ends. */
+      const [leftColumn, rightColumn] = await horizontalExtentOfDrawnStrokeInRectangles(
+        tickField,
+        screenshot,
+        outermostColumnBands(extent, box!.height),
+      );
       const margins = {
         left: leftColumn.x,
         right: box!.width - (rightColumn.x + rightColumn.width),
@@ -401,12 +426,9 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('a minimum side margin a stylesheet gives a tick-field in rem is honoured in pixels: with --tick-field-min-side-margin set to 3rem, the empty margins on the left and right of its drawn ticks are at least 48px', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
        to light or lengthen a tick. */
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-rem-margin/`);
+    await openCatalogPage(page, context, 'tick-field-rem-margin', 'reduce');
     /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-rem-margin.md),
        320px high, as wide as the page, with no content and a solid background, whose style
        sets --tick-field-min-side-margin to 3rem: 48px, the root font size being 16px. */
@@ -416,29 +438,22 @@ test.describe('catalog: tick-field', () => {
     const rootFontSize = await page.evaluate(() => Number.parseFloat(getComputedStyle(document.documentElement).fontSize));
     expect(rootFontSize, 'root font size, in CSS pixels').toBe(16);
     /* The text above the field can leave it at a fraction of a pixel from the left or top of
-       the page, which would shift its screenshot by up to a pixel against its box: the field is
-       moved, without changing the layout around it, onto whole CSS pixels. */
-    await tickField.evaluate((element) => {
-      const box = element.getBoundingClientRect();
-      const left = box.left + window.scrollX;
-      const top = box.top + window.scrollY;
-      element.style.left = `${Math.round(left) - left}px`;
-      element.style.top = `${Math.round(top) - top}px`;
-    });
+       the page. */
+    await moveOntoWholePixels(tickField);
     await page.clock.runFor(100);
     const box = await tickField.boundingBox();
     expect(box, 'the tick-field has a box on screen').not.toBeNull();
 
     /* The side margins, in CSS pixels, measured as in the test of the centred field: from each
-       side of the box to the outer edge of the outermost column of ticks, taken in a band from
-       6px outside its edge to 8px inside it. */
+       side of the box to the outer edge of the outermost column of ticks. */
     const screenshot = await tickField.screenshot();
     const extent = await extentOfDrawnTicks(tickField, screenshot);
     expect(extent.left, `drawn ticks in the ${Math.round(box!.width)}px-wide tick-field`).not.toBeNaN();
-    const [leftColumn, rightColumn] = await horizontalExtentOfDrawnStrokeInRectangles(tickField, screenshot, [
-      { x: extent.left - 6, y: 0, width: 14, height: box!.height },
-      { x: extent.right - 8, y: 0, width: 14, height: box!.height },
-    ]);
+    const [leftColumn, rightColumn] = await horizontalExtentOfDrawnStrokeInRectangles(
+      tickField,
+      screenshot,
+      outermostColumnBands(extent, box!.height),
+    );
     const margins = { left: leftColumn.x, right: box!.width - (rightColumn.x + rightColumn.width) };
     expect(
       Math.min(margins.left, margins.right),
@@ -447,12 +462,9 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('a minimum margin a stylesheet gives a tick-field as a calc() expression is honoured: with --tick-field-min-vertical-margin set to calc(2rem + 8px), the empty margins at the top and bottom of its drawn ticks are at least 40px', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
        to light or lengthen a tick. */
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-calc-margin/`);
+    await openCatalogPage(page, context, 'tick-field-calc-margin', 'reduce');
     /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-calc-margin.md),
        320px high, as wide as the page, with no content and a solid background, whose style
        sets --tick-field-min-vertical-margin to calc(2rem + 8px): 40px, the root font size
@@ -463,15 +475,8 @@ test.describe('catalog: tick-field', () => {
     const rootFontSize = await page.evaluate(() => Number.parseFloat(getComputedStyle(document.documentElement).fontSize));
     expect(rootFontSize, 'root font size, in CSS pixels').toBe(16);
     /* The text above the field can leave it at a fraction of a pixel from the left or top of
-       the page, which would shift its screenshot by up to a pixel against its box: the field is
-       moved, without changing the layout around it, onto whole CSS pixels. */
-    await tickField.evaluate((element) => {
-      const box = element.getBoundingClientRect();
-      const left = box.left + window.scrollX;
-      const top = box.top + window.scrollY;
-      element.style.left = `${Math.round(left) - left}px`;
-      element.style.top = `${Math.round(top) - top}px`;
-    });
+       the page. */
+    await moveOntoWholePixels(tickField);
     await page.clock.runFor(100);
     const box = await tickField.boundingBox();
     expect(box, 'the tick-field has a box on screen').not.toBeNull();
@@ -489,15 +494,12 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('a tick-field placed inside the hero keeps the default values on a phone: in a 375 × 800 window, with the field still (reduced motion), the empty margins on the left and right of its drawn ticks are at least 24px, those at its top and bottom at least 18px, and its diagonal ascends: of its four corner ticks, the bottom left one shows the least of its colour over the background, and the top right one the most', async ({ page, context }) => {
-    await serveSite(context, CATALOG_SITE, siteDirectory);
     /* A phone window, under 768px wide, where the hero's own field takes its phone values,
        set whatever the project's own window. */
     await page.setViewportSize({ width: 375, height: 800 });
     /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
        to light or lengthen a tick. */
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await stopClockBeforeLoad(page);
-    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-in-hero/`);
+    await openCatalogPage(page, context, 'tick-field-in-hero', 'reduce');
     /* The tick-field nested in the page's hero (tests/fixtures/catalog/content/tick-field-in-hero.md),
        320px high, as wide as the hero's content, with no content and a solid background. */
     const tickField = page.getByRole('main').locator('tick-field.hero tick-field');
@@ -512,16 +514,8 @@ test.describe('catalog: tick-field', () => {
     await heroCanvas.evaluate((element) => {
       (element as HTMLElement).style.visibility = 'hidden';
     });
-    /* The hero can leave the field at a fraction of a pixel from the left or top of the page,
-       which would shift its screenshot by up to a pixel against its box: the field is moved,
-       without changing the layout around it, onto whole CSS pixels. */
-    await tickField.evaluate((element) => {
-      const box = element.getBoundingClientRect();
-      const left = box.left + window.scrollX;
-      const top = box.top + window.scrollY;
-      element.style.left = `${Math.round(left) - left}px`;
-      element.style.top = `${Math.round(top) - top}px`;
-    });
+    /* The hero can leave the field at a fraction of a pixel from the left or top of the page. */
+    await moveOntoWholePixels(tickField);
     await page.clock.runFor(100);
     const box = await tickField.boundingBox();
     expect(box, 'the tick-field has a box on screen').not.toBeNull();
@@ -529,14 +523,13 @@ test.describe('catalog: tick-field', () => {
 
     /* The empty margins, in CSS pixels, measured as in the test of the centred field: from the
        top and bottom of the box to the nearest edge of a drawn tick, and from each side of the
-       box to the outer edge of the outermost column of ticks, taken in a band from 6px outside
-       its edge to 8px inside it. */
+       box to the outer edge of the outermost column of ticks. */
     const screenshot = await tickField.screenshot();
     const extent = await extentOfDrawnTicks(tickField, screenshot);
     expect(extent.left, `drawn ticks in the ${size} tick-field`).not.toBeNaN();
-    const rightColumnBand = { x: extent.right - 8, y: 0, width: 14, height: box!.height };
+    const [leftColumnBand, rightColumnBand] = outermostColumnBands(extent, box!.height);
     const [leftColumn, rightColumn] = await horizontalExtentOfDrawnStrokeInRectangles(tickField, screenshot, [
-      { x: extent.left - 6, y: 0, width: 14, height: box!.height },
+      leftColumnBand,
       rightColumnBand,
     ]);
     const margins = {
