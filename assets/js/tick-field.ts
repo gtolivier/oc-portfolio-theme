@@ -127,15 +127,6 @@ function remPx(): number {
   return Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || DEFAULT_ROOT_FONT_SIZE_PX;
 }
 
-/* A custom property the stylesheet sets in px, in rem or as a calc() expression, in CSS pixels. A missing or
-   unreadable one counts as 0: NaN would keep the layout's search for the number of rows from ever ending. */
-function customPropertyPx(host: HTMLElement, style: CSSStyleDeclaration, name: string): number {
-  const value = customProperty(style, name);
-  if (value.startsWith('calc(')) return calcPx(host, value);
-  const length = Number.parseFloat(value) || 0;
-  return value.endsWith('rem') ? length * remPx() : length;
-}
-
 /* A calc() expression, in CSS pixels, resolved by the browser on a throwaway element. */
 function calcPx(host: HTMLElement, expression: string): number {
   const probe = document.createElement('div');
@@ -166,8 +157,6 @@ class TickField extends HTMLElement {
 
   private pressedInside = false;
 
-  private hasPointerListeners = false;
-
   private ripples: Ripple[] = [];
 
   private gradient: CanvasGradient | undefined;
@@ -175,21 +164,29 @@ class TickField extends HTMLElement {
   /* The line and colours the gradient was made for. */
   private gradientKey = '';
 
+  /* The calc() expressions already resolved, in CSS pixels, valid for the lengths in calcLengthsKey. */
+  private resolvedCalcs = new Map<string, number>();
+
+  /* The lengths a calc() expression can depend on, as they were when resolvedCalcs was filled. */
+  private calcLengthsKey = '';
+
+  /* Listening from the constructor, not on connection: a field moved in the page is connected again, and a
+     second set of listeners would start a second ripple per click. */
+  constructor() {
+    super();
+    this.listenToPointer();
+  }
+
   connectedCallback(): void {
     this.canvas.setAttribute('aria-hidden', 'true');
     this.prepend(this.canvas);
-    this.listenToPointer();
     this.revealStart = performance.now();
     this.trackOnScreen();
     this.requestDraw();
     new ResizeObserver(() => this.draw()).observe(this);
   }
 
-  /* Once only: a field moved in the page is connected again, and a second set of listeners
-     would start a second ripple per click. */
   private listenToPointer(): void {
-    if (this.hasPointerListeners) return;
-    this.hasPointerListeners = true;
     this.addEventListener('pointermove', (event) => {
       if (reducedMotionQuery().matches) return;
       const { x, y } = this.localPoint(event);
@@ -396,10 +393,40 @@ class TickField extends HTMLElement {
      more of the narrow width to ticks, and its diagonal runs down to the bottom right. */
   private fieldVariant(style: CSSStyleDeclaration): FieldVariant {
     return {
-      minSideMargin: customPropertyPx(this, style, '--tick-field-min-side-margin'),
-      minVerticalMargin: customPropertyPx(this, style, '--tick-field-min-vertical-margin'),
+      minSideMargin: this.customPropertyPx(style, '--tick-field-min-side-margin'),
+      minVerticalMargin: this.customPropertyPx(style, '--tick-field-min-vertical-margin'),
       isDiagonalDescending: customProperty(style, '--tick-field-diagonal') === 'descending',
     };
+  }
+
+  /* A custom property the stylesheet sets in px, in rem or as a calc() expression, in CSS pixels. A missing or
+     unreadable one counts as 0: NaN would keep the layout's search for the number of rows from ever ending. */
+  private customPropertyPx(style: CSSStyleDeclaration, name: string): number {
+    const value = customProperty(style, name);
+    if (value.startsWith('calc(')) return this.resolvedCalcPx(style, value);
+    const length = Number.parseFloat(value) || 0;
+    return value.endsWith('rem') ? length * remPx() : length;
+  }
+
+  /* Resolving a calc() expression forces a layout, and the field draws every frame while it animates: each one
+     is resolved again only when a length it can depend on changes — the root's font size, the field's own, its
+     box or the viewport. */
+  private resolvedCalcPx(style: CSSStyleDeclaration, expression: string): number {
+    const lengthsKey = [
+      remPx(),
+      style.fontSize,
+      this.clientWidth,
+      this.clientHeight,
+      window.innerWidth,
+      window.innerHeight,
+    ].join(' ');
+    if (lengthsKey !== this.calcLengthsKey) {
+      this.resolvedCalcs.clear();
+      this.calcLengthsKey = lengthsKey;
+    }
+    const resolved = this.resolvedCalcs.get(expression) ?? calcPx(this, expression);
+    this.resolvedCalcs.set(expression, resolved);
+    return resolved;
   }
 
   private drawTickColumn(drawing: FieldDrawing, x: number, columnShare: number, fadeIn: number): void {
