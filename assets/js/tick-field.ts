@@ -23,18 +23,6 @@ const FIELD_TICK_HEIGHT_COLUMN_SHARE = 0.7;
 
 const FIELD_ROW_SPACING_PX = 22;
 
-const FIELD_MIN_SIDE_MARGIN_PX = 24;
-
-/* The stylesheet's breakpoint: the first desktop width. On a phone, strictly narrower, the hero's field
-   leaves smaller margins and runs its diagonal down to the bottom right. */
-const DESKTOP_MIN_WIDTH_PX = 768;
-
-const FIELD_PHONE_MIN_SIDE_MARGIN_PX = 12;
-
-const FIELD_MIN_VERTICAL_MARGIN_PX = 18;
-
-const FIELD_PHONE_MIN_VERTICAL_MARGIN_PX = 9;
-
 const FIELD_RESTING_MIN_ALPHA = 0.06;
 
 const FIELD_RESTING_MAX_ALPHA = 0.61;
@@ -86,20 +74,9 @@ type AgedRipple = Point & { age: number };
 /* How many columns and rows of ticks, and where the first one sits. */
 type FieldLayout = { columns: number; rows: number; left: number; top: number };
 
-/* What sets the hero's field on a phone apart from any other field: its margins and its diagonal's direction. */
+/* What the stylesheet sets for a field, through its --tick-field-* custom properties: its least margins,
+   in CSS pixels, and its diagonal's direction. */
 type FieldVariant = { minSideMargin: number; minVerticalMargin: number; isDiagonalDescending: boolean };
-
-const DEFAULT_FIELD_VARIANT: FieldVariant = {
-  minSideMargin: FIELD_MIN_SIDE_MARGIN_PX,
-  minVerticalMargin: FIELD_MIN_VERTICAL_MARGIN_PX,
-  isDiagonalDescending: false,
-};
-
-const HERO_ON_PHONE_FIELD_VARIANT: FieldVariant = {
-  minSideMargin: FIELD_PHONE_MIN_SIDE_MARGIN_PX,
-  minVerticalMargin: FIELD_PHONE_MIN_VERTICAL_MARGIN_PX,
-  isDiagonalDescending: true,
-};
 
 /* Where a linear gradient starts and ends, in CSS pixels. */
 type GradientLine = [x0: number, y0: number, x1: number, y1: number];
@@ -138,12 +115,14 @@ function easeInOut(share: number): number {
   return clamped * clamped * (3 - 2 * clamped);
 }
 
-/* The stylesheet's own query: it reads the window's width, which a scrollbar takes none of.
-   Made once, since every frame reads it. */
-const desktopLayoutQuery = window.matchMedia(`(min-width: ${DESKTOP_MIN_WIDTH_PX}px)`);
+function customProperty(style: CSSStyleDeclaration, name: string): string {
+  return style.getPropertyValue(name).trim();
+}
 
-function isPhoneLayout(): boolean {
-  return !desktopLayoutQuery.matches;
+/* A custom property the stylesheet sets in px. A missing or unreadable one counts as 0: NaN would keep
+   the layout's search for the number of rows from ever ending. */
+function customPropertyPx(style: CSSStyleDeclaration, name: string): number {
+  return Number.parseFloat(customProperty(style, name)) || 0;
 }
 
 /* A decorative canvas covering the whole box, behind the content. */
@@ -330,8 +309,10 @@ class TickField extends HTMLElement {
     context.resetTransform();
     context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     context.setTransform(scale, 0, 0, scale, 0, 0);
-    const colors = this.themeColors();
-    const variant = this.fieldVariant();
+    /* Read once per drawing: the computed style is costly. */
+    const style = getComputedStyle(this);
+    const colors = this.themeColors(style);
+    const variant = this.fieldVariant(style);
     const litTrail = this.litTrail();
     const agedRipples = this.agedRipples();
     const drawing = {
@@ -380,11 +361,14 @@ class TickField extends HTMLElement {
     }
   }
 
-  /* A phone's narrow screen spares little width: there, the hero's field gives more of it to ticks,
-     and its diagonal runs down to the bottom right instead of up to the top right. */
-  private fieldVariant(): FieldVariant {
-    const isHeroOnPhone = this.classList.contains('hero') && isPhoneLayout();
-    return isHeroOnPhone ? HERO_ON_PHONE_FIELD_VARIANT : DEFAULT_FIELD_VARIANT;
+  /* The stylesheet sets them, and can change them at a breakpoint: on a phone, the hero's field gives
+     more of the narrow width to ticks, and its diagonal runs down to the bottom right. */
+  private fieldVariant(style: CSSStyleDeclaration): FieldVariant {
+    return {
+      minSideMargin: customPropertyPx(style, '--tick-field-min-side-margin'),
+      minVerticalMargin: customPropertyPx(style, '--tick-field-min-vertical-margin'),
+      isDiagonalDescending: customProperty(style, '--tick-field-diagonal') === 'descending',
+    };
   }
 
   private drawTickColumn(drawing: FieldDrawing, x: number, columnShare: number, fadeIn: number): void {
@@ -507,10 +491,8 @@ class TickField extends HTMLElement {
     return gradient;
   }
 
-  /* Read once per drawing: the computed style is costly. */
-  private themeColors(): FieldColors {
-    const style = getComputedStyle(this);
-    const color = (customProperty: string): string => style.getPropertyValue(customProperty).trim();
+  private themeColors(style: CSSStyleDeclaration): FieldColors {
+    const color = (name: string): string => customProperty(style, name);
     return { green: color('--color-accent-dark'), accent: color('--color-accent'), cream: color('--color-paper') };
   }
 }
