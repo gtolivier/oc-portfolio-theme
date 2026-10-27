@@ -1792,6 +1792,24 @@ async function blockFontFiles(page: Page, origin: string): Promise<string[]> {
   return blockedFonts;
 }
 
+/* Sizes the window to `viewport`, then opens the French home page of the test site served at
+   `origin`, JavaScript off, and waits for its fonts. Not through `document.fonts.ready`: with
+   JavaScript off, Firefox can leave it pending, whether the font files are served or blocked.
+   Waits instead until the page has asked for IBM Plex Mono and none of its web fonts is still
+   loading: each one ended loaded or in error, and the fonts displayed are the final ones. */
+async function openHomeWithoutScriptAt(page: Page, viewport: { width: number; height: number }, origin: string): Promise<void> {
+  const size = `${viewport.width} × ${viewport.height}`;
+  await page.setViewportSize(viewport);
+  await page.goto(`${origin}/fr/`);
+  await expect.poll(() => page.evaluate(() => {
+    const faces = [...document.fonts];
+    return {
+      monoAskedFor: faces.some((face) => /mono/i.test(face.family) && face.status !== 'unloaded'),
+      stillLoading: faces.filter((face) => face.status === 'loading').map((face) => face.family),
+    };
+  }), { message: `web fonts settled at ${size}`, timeout: 10_000 }).toEqual({ monoAskedFor: true, stillLoading: [] });
+}
+
 test.describe('home page of a single-language site', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
@@ -1824,7 +1842,7 @@ test.describe('home page of a single-language site', () => {
       const blockedFonts = await blockFontFiles(page, SITE_WITH_A_SINGLE_LANGUAGE.origin);
       for (const viewport of TALL_VIEWPORTS) {
         const size = `${viewport.width} × ${viewport.height}`;
-        await openHomeAt(page, viewport, SITE_WITH_A_SINGLE_LANGUAGE.origin);
+        await openHomeWithoutScriptAt(page, viewport, SITE_WITH_A_SINGLE_LANGUAGE.origin);
         /* The fonts really were blocked: the page asked for IBM Plex Mono, used by the
            header and the heading, and no web font ended up loaded. */
         expect(blockedFonts.some((url) => /mono/i.test(url)), `blocked font requests at ${size}: ${blockedFonts.join(', ')}`).toBe(true);
@@ -1845,7 +1863,7 @@ test.describe('home page of a single-language site', () => {
       const replacedFonts = await replacePlexMonoFiles(page, SITE_WITH_A_SINGLE_LANGUAGE.origin, { ascent: 0.8, descent: 0.2 });
       const viewport = { width: 412, height: 1100 };
       const size = `${viewport.width} × ${viewport.height}`;
-      await openHomeAt(page, viewport, SITE_WITH_A_SINGLE_LANGUAGE.origin);
+      await openHomeWithoutScriptAt(page, viewport, SITE_WITH_A_SINGLE_LANGUAGE.origin);
       /* The replaced font really is the one displayed: the page asked for IBM Plex Mono and
          loaded it. */
       expect(replacedFonts.some((url) => /mono/i.test(url)), `replaced font requests: ${replacedFonts.join(', ')}`).toBe(true);
