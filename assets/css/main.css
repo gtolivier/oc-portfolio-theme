@@ -56,9 +56,9 @@
   --header-column-gap: 24px;
   --header-border-width: 1px;
   --header-font-size: 14px;
-  /* Set on the nav links rather than left to the font's normal line height,
-     which varies with the browser and with the fallback font shown while
-     IBM Plex Mono loads. */
+  /* Set on the logo and the nav links rather than left to the font's
+     normal line height, which varies with the browser and with the
+     fallback font shown while IBM Plex Mono loads. */
   --header-link-line-height: 1.3;
   --header-link-line-box: calc(var(--header-font-size) * var(--header-link-line-height));
   --header-link-underline-offset: 3px;
@@ -350,11 +350,10 @@ h1 {
 }
 
 /* --header-estimated-height is exact only when the switcher, whose height
-   is fixed, sets the first row. Without one, the estimate's first row is
-   the logo on a phone, which keeps the font's normal line height, and from
-   768 px the nav links, missing on a site without a main menu: the header
-   keeps the height of its content rather than an estimate that can exceed
-   it. */
+   is fixed, sets the first row. Without one, from 768 px, the estimate's
+   first row is the nav links, missing on a site without a main menu: the
+   header keeps the height of its content rather than an estimate that can
+   exceed it. */
 :root:not(.has-language-switcher) .site-header {
   min-height: 0;
 }
