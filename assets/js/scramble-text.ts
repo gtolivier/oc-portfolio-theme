@@ -49,7 +49,10 @@ class ScrambleText extends HTMLElement {
 
   private tickTimer: ReturnType<typeof setInterval> | undefined;
 
+  private inClear = false;
+
   connectedCallback(): void {
+    if (this.inClear) return;
     const text = this.textContent ?? '';
     this.setAttribute('role', 'text');
     this.setAttribute('aria-label', text);
@@ -73,6 +76,7 @@ class ScrambleText extends HTMLElement {
     clearTimeout(this.startTimer);
     clearInterval(this.tickTimer);
     this.textContent = text;
+    this.inClear = true;
   }
 
   private revealLeftToRight(text: string): void {
