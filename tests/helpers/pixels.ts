@@ -1060,6 +1060,79 @@ export async function extentOfDrawnTicks(
   );
 }
 
+/* Where the ink drawn on an element lies within the element's box, as the visitor sees it: the
+   space, in CSS pixels, between each edge of the element's box and the nearest screen pixel
+   that differs from the background behind the ink by more than a rounding error on a channel.
+   Only the screen pixels that lie wholly inside the box, one screen pixel away from its edges,
+   count, so that the edge of the box, or what lies around it, is not taken for ink; the first
+   of them, at the box's
+   top-left corner, stands for the background, whether the element paints it or lets an
+   ancestor's show through, and must therefore carry no ink itself. Measured on the pixels,
+   not on the boxes the browser lays out for the text, so that the result does not depend on
+   the font metrics each platform gives the text. Null when no pixel differs. The element must
+   lie within the window. Decoded in the page, as the other helpers of this file do. */
+export async function inkMargins(
+  element: Locator,
+): Promise<{ top: number; right: number; bottom: number; left: number } | null> {
+  const box = (await element.boundingBox())!;
+  /* The screenshot covers whole CSS pixels around the box, so that its origin is known exactly. */
+  const clip = {
+    x: Math.floor(box.x),
+    y: Math.floor(box.y),
+    width: Math.ceil(box.x + box.width) - Math.floor(box.x),
+    height: Math.ceil(box.y + box.height) - Math.floor(box.y),
+  };
+  const screenshot = await element.page().screenshot({ clip });
+  return element.page().evaluate(
+    async ([base64, area, inner]) => {
+      const TOLERANCE = 2;
+      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const scale = image.width / area.width;
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true })!;
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      /* The screen pixels wholly inside the box, from `fromColumn` and `fromRow` included to
+         `toColumn` and `toRow` excluded, less one more on each side: the browser snaps the
+         painted edges of a box at a fractional position to whole screen pixels. */
+      const fromColumn = Math.ceil((inner.x - area.x) * scale) + 1;
+      const toColumn = Math.floor((inner.x + inner.width - area.x) * scale) - 1;
+      const fromRow = Math.ceil((inner.y - area.y) * scale) + 1;
+      const toRow = Math.floor((inner.y + inner.height - area.y) * scale) - 1;
+      const background = (fromRow * image.width + fromColumn) * 4;
+      let top = Infinity;
+      let bottom = -Infinity;
+      let left = Infinity;
+      let right = -Infinity;
+      for (let row = fromRow; row < toRow; row++) {
+        for (let column = fromColumn; column < toColumn; column++) {
+          const i = (row * image.width + column) * 4;
+          for (let channel = 0; channel < 3; channel++) {
+            if (Math.abs(pixels[i + channel] - pixels[background + channel]) > TOLERANCE) {
+              top = Math.min(top, row);
+              bottom = Math.max(bottom, row + 1);
+              left = Math.min(left, column);
+              right = Math.max(right, column + 1);
+              break;
+            }
+          }
+        }
+      }
+      if (top === Infinity) return null;
+      return {
+        top: area.y + top / scale - inner.y,
+        right: inner.x + inner.width - (area.x + right / scale),
+        bottom: inner.y + inner.height - (area.y + bottom / scale),
+        left: area.x + left / scale - inner.x,
+      };
+    },
+    [screenshot.toString('base64'), clip, box] as const,
+  );
+}
+
 /* Number of pixels of the screenshot of an element that differ from the element's background
    colour by more than a rounding error on a channel. */
 export async function countPixelsNotOfBackground(element: Locator, screenshot: Buffer): Promise<number> {

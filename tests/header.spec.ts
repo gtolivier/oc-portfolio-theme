@@ -9,6 +9,7 @@ import {
   removeDirectory,
 } from './helpers/built-site';
 import { characterWeights } from './helpers/character-weights';
+import { inkMargins } from './helpers/pixels';
 import { textPieceStyles } from './helpers/text-piece-styles';
 
 /* The logo is the header link named after the site title. */
@@ -595,8 +596,7 @@ test('in the header language switcher, the current language has the same height 
   expect(frBox.height, 'height of the current language').toBeCloseTo(enBox.height, 0);
 });
 
-test('in the header language switcher, the text of each entry as displayed, measured on the text itself, has 4 px above and below it and 9 px left and right of it up to the edge of the entry, and the entry stays at least 24 px tall (on a phone and at 1280 px)', async ({ page }) => {
-  const expected = { top: 4, right: 9, bottom: 4, left: 9 };
+test('in the header language switcher, the text of each entry, measured on its pixels, is vertically centred in the entry within 1 px and has 9 px left and right of it up to the edge of the entry, and the entry stays at least 24 px tall (on a phone and at 1280 px)', async ({ page }) => {
   for (const viewport of [PHONE_VIEWPORT, WIDE_DESKTOP_VIEWPORT]) {
     await page.setViewportSize(viewport);
     await page.goto('/fr/');
@@ -608,18 +608,26 @@ test('in the header language switcher, the text of each entry as displayed, meas
     await expect(otherLanguage).toBeVisible();
     for (const [name, entry] of [['FR', currentLanguage], ['EN', otherLanguage]] as const) {
       const box = (await entry.boundingBox())!;
-      const text = await textBox(entry);
-      /* The space between each edge of the displayed text and the same edge of the entry's box. */
-      const spaces = {
-        top: text.top - box.y,
-        right: box.x + box.width - text.right,
-        bottom: box.y + box.height - text.bottom,
-        left: text.left - box.x,
-      };
-      /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+      /* Measured on the glyphs as drawn: the box the browser gives the text depends on how
+         each platform handles the font's metrics (Chromium on Linux makes it taller than the
+         line for the same layout), the drawn glyphs do not. */
+      const measured = await inkMargins(entry);
+      expect(measured, `${name} shows its text at ${viewport.width} px`).not.toBeNull();
+      const ink = measured!;
+      /* How far the middle of the drawn text sits below the middle of the entry. */
+      const offCentre = (ink.top - ink.bottom) / 2;
+      /* Compared within 1 px: the font does not centre the ink of capitals on the line, and
+         anti-aliasing spreads it to whole screen pixels. */
       expect.soft(
-        (Object.keys(expected) as (keyof typeof expected)[]).every((side) => Math.abs(spaces[side] - expected[side]) <= 0.5),
-        `${name} spaces around its text at ${viewport.width} px: ${JSON.stringify(spaces)}`,
+        Math.abs(offCentre) <= 1,
+        `${name} text off the vertical centre at ${viewport.width} px: ${JSON.stringify({ offCentre, ...ink })}`,
+      ).toBe(true);
+      /* Compared within 1.5 px: the ink of a letter starts and ends a little inside the
+         advance the font gives it (its side bearings, up to about 0.9 px here), and the
+         platform's anti-aliasing and hinting may move an edge by a screen pixel. */
+      expect.soft(
+        [ink.left, ink.right].every((space) => Math.abs(space - 9) <= 1.5),
+        `${name} spaces left and right of its text at ${viewport.width} px: ${JSON.stringify(ink)}`,
       ).toBe(true);
       expect.soft(box.height, `${name} target height at ${viewport.width} px`).toBeGreaterThanOrEqual(24);
     }
