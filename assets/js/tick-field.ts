@@ -166,7 +166,7 @@ class TickField extends HTMLElement {
 
   private pressedInside = false;
 
-  private listening = false;
+  private hasPointerListeners = false;
 
   private ripples: Ripple[] = [];
 
@@ -188,8 +188,8 @@ class TickField extends HTMLElement {
   /* Once only: a field moved in the page is connected again, and a second set of listeners
      would start a second ripple per click. */
   private listenToPointer(): void {
-    if (this.listening) return;
-    this.listening = true;
+    if (this.hasPointerListeners) return;
+    this.hasPointerListeners = true;
     this.addEventListener('pointermove', (event) => {
       if (reducedMotionQuery().matches) return;
       const { x, y } = this.localPoint(event);
