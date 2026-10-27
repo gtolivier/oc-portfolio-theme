@@ -209,6 +209,14 @@ h1 {
   min-height: var(--hero-edge-space);
 }
 
+/* A field nested in the hero keeps the defaults of the root element, not
+   the hero's own phone values it would inherit. */
+.hero tick-field {
+  --tick-field-min-side-margin: 24px;
+  --tick-field-min-vertical-margin: 18px;
+  --tick-field-diagonal: ascending;
+}
+
 @media (min-width: 768px) {
   .hero::before,
   .hero::after {
