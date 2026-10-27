@@ -1,19 +1,22 @@
+{{- $page := .page -}}
 <a href="{{ site.Home.RelPermalink }}" aria-label="{{ site.Title }}">
-  {{- partial "logo.html" . -}}
+  {{ partial "logo.html" $page -}}
 </a>
+{{- if .hasMainMenu }}
 <nav>
-  {{- $page := . }}
   {{- range site.Menus.main }}
   <a href="{{ .URL }}"{{ if eq .URL $page.RelPermalink }} aria-current="page"{{ end }}>{{ .Name }}</a>
   {{- end }}
 </nav>
-{{- if gt (len hugo.Sites) 1 }}
+{{- end }}
+{{- if .hasLanguageSwitcher }}
 <div role="group" aria-label="{{ i18n "language" }}">
   {{- $currentLang := site.Language.Lang }}
-  <span lang="{{ $currentLang }}" aria-current="true">{{ upper $currentLang }}</span>
   {{- range hugo.Sites }}
   {{- $lang := .Language.Lang }}
-  {{- if ne $lang $currentLang }}
+  {{- if eq $lang $currentLang }}
+  <span lang="{{ $lang }}" aria-current="true">{{ upper $lang }}</span>
+  {{- else }}
   {{- $url := .Home.RelPermalink }}
   {{- with where $page.Translations "Language.Lang" $lang }}{{ $url = (index . 0).RelPermalink }}{{ end }}
   <a href="{{ $url }}" hreflang="{{ $lang }}" lang="{{ $lang }}">{{ upper $lang }}</a>

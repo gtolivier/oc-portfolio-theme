@@ -10,20 +10,29 @@ import {
   SITE_WITH_A_HERO_WITHOUT_AUTHOR,
   SITE_WITH_A_HERO_WITH_LONG_WORDS,
   SITE_WITH_A_HERO_WITHOUT_TITLE,
+  SITE_WITH_A_LONG_MENU,
   SITE_WITH_A_PAGE_REF_NOT_FOUND,
+  SITE_WITH_A_SINGLE_LANGUAGE,
   buildSite,
   removeDirectory,
   serveSite,
   tryToBuildSite,
 } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
+import { replacePlexMonoFiles } from './helpers/fonts';
 import { tabUntilFocused } from './helpers/keyboard';
 import { clickOrTap } from './helpers/pointer';
 import {
+  type Channels,
   type Rectangle,
   bandsWithoutDrawnPixels,
   meanLuminanceGainedInRectangle,
   brightnessKeptUnderLayerInRectangle,
+  canvasOpacityOverBackgroundAt,
+  channelsOfColour,
+  drawnStrokesInRectangle,
+  extentOfDrawnTicks,
+  horizontalExtentOfDrawnStrokeInRectangles,
   pixelsChangedPerColumnInRectangle,
   pixelsNotOfBackgroundPerRow,
 } from './helpers/pixels';
@@ -187,10 +196,15 @@ function mainContentHeading(page: Page): Locator {
    768 px wide, 768 × 1024, where the desktop spacing starts. */
 const DESKTOP_VIEWPORTS = [{ width: 1280, height: 900 }, { width: 768, height: 1024 }];
 
-/* Sizes the window to `viewport`, then opens the French home page and waits for its fonts. */
-async function openHomeAt(page: Page, viewport: { width: number; height: number }): Promise<void> {
+/* The windows tall enough to leave the hero free space around its text, where its height is
+   checked against the header's: a tall phone window, 412 × 1100, and the two desktop windows. */
+const TALL_VIEWPORTS = [{ width: 412, height: 1100 }, ...DESKTOP_VIEWPORTS];
+
+/* Sizes the window to `viewport`, then opens the French home page and waits for its fonts: that
+   of the example site, or of the test site served at `origin`. */
+async function openHomeAt(page: Page, viewport: { width: number; height: number }, origin = ''): Promise<void> {
   await page.setViewportSize(viewport);
-  await page.goto('/fr/');
+  await page.goto(`${origin}/fr/`);
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -202,6 +216,49 @@ async function bottomOfButtons(buttons: Locator[]): Promise<number> {
       return box.y + box.height;
     }))),
   );
+}
+
+/* The open home page's hero, the main content region named by its main heading, with that
+   heading and its two buttons, all three checked visible in the window of the given `size`. */
+async function heroHeadingAndButtons(page: Page, size: string): Promise<{ hero: Locator; heading: Locator; buttons: Locator[] }> {
+  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  const heading = hero.getByRole('heading', { level: 1 });
+  const buttons = [hero.getByRole('link', { name: 'Voir les projets' }), hero.getByRole('link', { name: 'Contact' })];
+  await expect(heading, `heading at ${size}`).toBeVisible();
+  for (const button of buttons) await expect(button, `button at ${size}`).toBeVisible();
+  return { hero, heading, buttons };
+}
+
+/* The height the open home page's hero must have in a window of `viewport` tall enough for its
+   content, the window height minus the header height, with that header height. Page scrolled
+   to the top: the hero starts right below the header. Checks first that the window is tall
+   enough: the hero's text, from the top of its `heading` to the bottom of its `buttons`,
+   leaves at least 150 px of free height, so the content does not set the hero's height. */
+async function heightBelowHeader(
+  page: Page,
+  viewport: { width: number; height: number },
+  { heading, buttons }: { heading: Locator; buttons: Locator[] },
+  size: string,
+): Promise<{ expectedHeight: number; headerHeight: number }> {
+  const headerBox = (await page.locator('header').boundingBox())!;
+  const expectedHeight = viewport.height - headerBox.height;
+  const textHeight = (await bottomOfButtons(buttons)) - (await heading.boundingBox())!.y;
+  expect(textHeight, `at ${size}, height of the hero's text, against ${Math.round(expectedHeight)} px`)
+    .toBeLessThanOrEqual(expectedHeight - 150);
+  return { expectedHeight, headerHeight: headerBox.height };
+}
+
+/* Checks that the open home page's hero, in a window of `viewport` tall enough for its content,
+   ends exactly at the bottom of the window: its height is the window height minus the header
+   height, within 1 px. */
+async function expectHeroToEndAtWindowBottom(page: Page, viewport: { width: number; height: number }, size: string): Promise<void> {
+  const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
+  const { expectedHeight } = await heightBelowHeader(page, viewport, { heading, buttons }, size);
+  const heroBox = (await hero.boundingBox())!;
+  expect.soft(
+    Math.abs(heroBox.height - expectedHeight),
+    `at ${size}, hero height (${heroBox.height} px) against the window height minus the header height (${expectedHeight} px)`,
+  ).toBeLessThanOrEqual(1);
 }
 
 test('on the French home page, the main heading starts with the site author name', async ({ page }) => {
@@ -704,6 +761,17 @@ test('on the French home page, the hero fills at least the full window height be
     .toBeGreaterThanOrEqual(viewportHeight - 1);
 });
 
+test('in a window tall enough for its content, the hero ends exactly at the bottom of the window: its height is the window height minus the header height, within 1 px, on a phone as on desktop', async ({ page }) => {
+  /* Design reference: minimum height "100vh minus the header height". The header is two rows
+     on a phone and one row from 768 px wide: checked at a phone window and at both desktop
+     ones. */
+  for (const viewport of TALL_VIEWPORTS) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await openHomeAt(page, viewport);
+    await expectHeroToEndAtWindowBottom(page, viewport, size);
+  }
+});
+
 test('from 768 px wide, the hero’s text block is centred vertically in the hero, as in the design: at 1280 × 900 and at 768 × 1024, the space between its buttons and the bottom of the hero is the space between the top of the hero and its heading plus 40 px, within 4 px', async ({ page }) => {
   /* Design reference: the text block (heading, tagline, stack, buttons) sits in the middle of
      the hero, with 40 px of padding below it. Both windows are tall enough to leave the hero
@@ -711,12 +779,7 @@ test('from 768 px wide, the hero’s text block is centred vertically in the her
   for (const viewport of DESKTOP_VIEWPORTS) {
     const size = `${viewport.width} × ${viewport.height}`;
     await openHomeAt(page, viewport);
-    /* The hero is the main content region named by its main heading. */
-    const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
-    const heading = hero.getByRole('heading', { level: 1 });
-    const buttons = [hero.getByRole('link', { name: 'Voir les projets' }), hero.getByRole('link', { name: 'Contact' })];
-    await expect(heading, `heading at ${size}`).toBeVisible();
-    for (const button of buttons) await expect(button, `button at ${size}`).toBeVisible();
+    const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
 
     const heroBox = (await hero.boundingBox())!;
     const headingBox = (await heading.boundingBox())!;
@@ -731,6 +794,67 @@ test('from 768 px wide, the hero’s text block is centred vertically in the her
       spaceBelow - spaceAbove,
       `at ${size}, space below the buttons (${Math.round(spaceBelow)} px) minus space above the heading (${Math.round(spaceAbove)} px)`,
     ).toBeLessThanOrEqual(44);
+  }
+});
+
+test('on a phone, under 768 px wide, the hero’s text block is centred vertically in the hero, as from 768 px: at 375 × 1000, 412 × 1100 and 767 × 1024, the space between its buttons and the bottom of the hero is the space between the top of the hero and its heading plus 40 px, within 4 px', async ({ page }) => {
+  /* Design reference: the text block (heading, tagline, stack, buttons) sits in the middle of
+     the hero, with 40 px of padding below it. The three phone windows, set here whatever the
+     project's own window, are tall enough to leave the hero at least 150 px of free height
+     around its text, so the centring shows. */
+  const PHONE_VIEWPORTS = [{ width: 375, height: 1000 }, { width: 412, height: 1100 }, { width: 767, height: 1024 }];
+  for (const viewport of PHONE_VIEWPORTS) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await openHomeAt(page, viewport);
+    const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
+
+    const heroBox = (await hero.boundingBox())!;
+    const headingBox = (await heading.boundingBox())!;
+    const buttonsBottom = await bottomOfButtons(buttons);
+    expect(buttonsBottom - headingBox.y, `at ${size}, height of the hero's text, against a ${Math.round(heroBox.height)} px hero`)
+      .toBeLessThanOrEqual(heroBox.height - 150);
+
+    const spaceAbove = headingBox.y - heroBox.y;
+    const spaceBelow = heroBox.y + heroBox.height - buttonsBottom;
+    expect.soft(
+      spaceBelow - spaceAbove,
+      `at ${size}, space below the buttons (${Math.round(spaceBelow)} px) minus space above the heading (${Math.round(spaceAbove)} px)`,
+    ).toBeGreaterThanOrEqual(36);
+    expect.soft(
+      spaceBelow - spaceAbove,
+      `at ${size}, space below the buttons (${Math.round(spaceBelow)} px) minus space above the heading (${Math.round(spaceAbove)} px)`,
+    ).toBeLessThanOrEqual(44);
+  }
+});
+
+test('on a phone, under 768 px wide, when the hero’s content is taller than the room it has, its heading keeps its distance from the header: at 320 × 568 and at 667 × 375 (landscape), at least 40 px separate the bottom of the header from the top of the heading, and at least 40 px stay between the buttons and the bottom of the hero, within 1 px', async ({ page }) => {
+  /* The two phone windows, set here whatever the project's own window, are too short for the
+     hero's text: from the top of its heading to the bottom of its buttons, it is taller than
+     the window less the header, so the hero grows past the bottom of the window. */
+  const SHORT_PHONE_VIEWPORTS = [{ width: 320, height: 568 }, { width: 667, height: 375 }];
+  for (const viewport of SHORT_PHONE_VIEWPORTS) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await openHomeAt(page, viewport);
+    const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
+
+    /* Page scrolled to the top: the header sits above the hero. */
+    const headerBox = (await page.locator('header').boundingBox())!;
+    const headerBottom = headerBox.y + headerBox.height;
+    const room = viewport.height - headerBottom;
+    const headingBox = (await heading.boundingBox())!;
+    const buttonsBottom = await bottomOfButtons(buttons);
+    expect(buttonsBottom - headingBox.y, `at ${size}, height of the hero's text, against ${Math.round(room)} px of window below the header`)
+      .toBeGreaterThan(room);
+
+    const heroBox = (await hero.boundingBox())!;
+    expect.soft(
+      headingBox.y - headerBottom,
+      `at ${size}, space between the bottom of the header and the top of the heading`,
+    ).toBeGreaterThanOrEqual(39);
+    expect.soft(
+      heroBox.y + heroBox.height - buttonsBottom,
+      `at ${size}, space between the bottom of the buttons and the bottom of the hero`,
+    ).toBeGreaterThanOrEqual(39);
   }
 });
 
@@ -1038,6 +1162,11 @@ async function heroWithAndWithoutVeil(
 }
 
 test('on phone as on desktop, the hero’s veil darkens its text zone: with the field still (reduced motion), compared with the same hero without its veil, the field behind the middle of the text zone keeps at most 0.8 times the share of its brightness it keeps in the same columns at the hero’s top edge, above the text', async ({ page }) => {
+  /* A window at least 800px high, the project's own when it already is (phones): the hero is
+     as high as the window less the header, and its vertically centred content needs room
+     above the heading for the strip along the hero's top edge measured below. */
+  const { width, height } = page.viewportSize()!;
+  await page.setViewportSize({ width, height: Math.max(height, 800) });
   const { hero, text } = await stillHero(page);
 
   /* The text zone: from the top of the heading to the bottom of the buttons, the last of the
@@ -1144,6 +1273,370 @@ test('on phone as on desktop, the hero’s veil spreads as wide as the design’
     kept,
     `share of the field’s brightness kept around (${Math.round(point.x)}, ${Math.round(point.y)})px, halfway from the veil’s densest point to the right edge of the ${Math.round(width)} × ${Math.round(height)}px hero`,
   ).toBeLessThanOrEqual(0.63);
+});
+
+/* Leaves only the still hero's field showing: its text and its veil are hidden without moving
+   anything, and the hero is given the page's background colour, which shows through it, so
+   that the pixels that differ from the hero's background are the ticks'. The site header is
+   hidden too, still without moving anything: the hero starts right below it at a fractional
+   position, and a screenshot of the hero rounded out to whole device pixels (WebKit at a
+   device pixel ratio of 3) holds the header's bottom border on its first row, which would
+   look like ticks drawn in every column. */
+async function showOnlyTheField(hero: Locator, text: Record<string, Locator>): Promise<void> {
+  const veil = hero.locator('.veil');
+  await expect(veil).toHaveCount(1);
+  const header = hero.page().locator('.site-header');
+  await expect(header).toHaveCount(1);
+  for (const element of [...Object.values(text), veil, header]) {
+    await element.evaluate((el) => {
+      (el as HTMLElement).style.visibility = 'hidden';
+    });
+  }
+  await hero.evaluate((el) => {
+    (el as HTMLElement).style.backgroundColor = getComputedStyle(document.body).backgroundColor;
+  });
+}
+
+/* The bands the still field's leftmost and rightmost columns of ticks are measured in, as for
+   any tick-field: each from 6px outside the matching edge of the drawn ticks, `extent`, to 8px
+   inside it, over the `heroHeight` px high hero's whole height. */
+function outermostColumnBands(extent: { left: number; right: number }, heroHeight: number): { left: Rectangle; right: Rectangle } {
+  return {
+    left: { x: extent.left - 6, y: 0, width: 14, height: heroHeight },
+    right: { x: extent.right - 8, y: 0, width: 14, height: heroHeight },
+  };
+}
+
+test('on a phone, under 768 px wide, the hero’s tick field leaves side margins of at least 12 px, not 24 px, its ticks centred: at 320, 375 and 412 px wide, with the field still (reduced motion), the empty margins on its left and right are equal within a pixel, each at least 12 px, and together under 40 px, so that no further column of ticks, 16 px apart, would fit between margins of 12 px, while a minimum of 24 px leaves at least 48 px', async ({ page }) => {
+  /* Phone widths, set whatever the project's own window: the field leaves different room on
+     each side of its columns of ticks at each of them. */
+  const PHONE_WIDTHS = [320, 375, 412];
+  const HEIGHT = 800;
+  await page.setViewportSize({ width: PHONE_WIDTHS[0], height: HEIGHT });
+  const { hero, text } = await stillHero(page);
+  await showOnlyTheField(hero, text);
+
+  const problems: string[] = [];
+  const measured: string[] = [];
+  for (const width of PHONE_WIDTHS) {
+    await page.setViewportSize({ width, height: HEIGHT });
+    await page.clock.runFor(100);
+    const box = (await hero.boundingBox())!;
+    expect(box.width, `width of the hero in a ${width}px-wide window`).toBeCloseTo(width, 0);
+
+    /* The empty side margins, in CSS pixels, from each side of the hero to the nearest edge of
+       its outermost columns of ticks, measured as for any tick-field. */
+    const screenshot = await hero.screenshot();
+    const extent = await extentOfDrawnTicks(hero, screenshot);
+    expect(extent.left, `drawn ticks in the ${width}px-wide hero`).not.toBeNaN();
+    const bands = outermostColumnBands(extent, box.height);
+    const [leftColumn, rightColumn] = await horizontalExtentOfDrawnStrokeInRectangles(hero, screenshot, [bands.left, bands.right]);
+    const left = leftColumn.x;
+    const right = box.width - (rightColumn.x + rightColumn.width);
+    const describe = `${width}px: left ${left.toFixed(2)}, right ${right.toFixed(2)}`;
+    measured.push(describe);
+    if (Math.abs(left - right) > 1) problems.push(`${describe}: left and right margins differ by more than 1px`);
+    if (Math.min(left, right) < 12) problems.push(`${describe}: a side margin is under 12px`);
+    if (left + right >= 40) problems.push(`${describe}: the side margins add up to 40px or more, room for another column of ticks between margins of 12px`);
+  }
+  expect(problems, `empty side margins around the hero’s ticks, in CSS pixels (${measured.join('; ')})`).toEqual([]);
+});
+
+test('on a phone, under 768 px wide, the hero’s tick field leaves top and bottom margins of at least 9 px, not 18 px, its ticks centred: at 320 × 699, 375 × 801 and 412 × 849, with the field still (reduced motion), the empty margins at its top and bottom are equal within a pixel, each at least 9 px, and together under 40 px, so that no further row of ticks, 22 px apart, would fit between margins of 9 px, while a minimum of 18 px leaves at least 40 px at these heights', async ({ page }) => {
+  /* Phone windows, set whatever the project's own window. The hero is as high as the window
+     less the header, a height that leaves, at each of them, no room for another row of ticks
+     between margins of 9px, while margins of at least 18px drop a row and leave 40px or more.
+     Each leaves an even number of pixels around the rows, so that centred rows on whole pixels
+     leave the same margin at the top and at the bottom. */
+  const PHONE_VIEWPORTS = [
+    { width: 320, height: 699 },
+    { width: 375, height: 801 },
+    { width: 412, height: 849 },
+  ];
+  await page.setViewportSize(PHONE_VIEWPORTS[0]);
+  const { hero, text } = await stillHero(page);
+  await showOnlyTheField(hero, text);
+
+  const problems: string[] = [];
+  const measured: string[] = [];
+  for (const viewport of PHONE_VIEWPORTS) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await page.setViewportSize(viewport);
+    await page.clock.runFor(100);
+    const box = (await hero.boundingBox())!;
+    expect(box.width, `width of the hero in a ${size}px window`).toBeCloseTo(viewport.width, 0);
+    /* The hero's height is the window's less the header's: the room the sizes were picked for. */
+    const headerBox = (await page.locator('header').boundingBox())!;
+    expect(
+      Math.abs(box.height - (viewport.height - headerBox.height)),
+      `at ${size}, hero height (${box.height}px) against the window height minus the header height (${viewport.height - headerBox.height}px)`,
+    ).toBeLessThanOrEqual(1);
+
+    /* The empty top and bottom margins, in CSS pixels, from the top and bottom of the hero to
+       the nearest edge of its first and last rows of ticks, measured as for any tick-field. */
+    const screenshot = await hero.screenshot();
+    const extent = await extentOfDrawnTicks(hero, screenshot);
+    expect(extent.top, `drawn ticks in the ${size}px hero`).not.toBeNaN();
+    const top = extent.top;
+    const bottom = box.height - extent.bottom;
+    const describe = `${size}px, hero ${box.height.toFixed(2)}px high: top ${top.toFixed(2)}, bottom ${bottom.toFixed(2)}`;
+    measured.push(describe);
+    if (Math.abs(top - bottom) > 1) problems.push(`${describe}: top and bottom margins differ by more than 1px`);
+    if (Math.min(top, bottom) < 9) problems.push(`${describe}: a top or bottom margin is under 9px`);
+    if (top + bottom >= 40) problems.push(`${describe}: the top and bottom margins add up to 40px or more, room for another row of ticks between margins of 9px`);
+  }
+  expect(problems, `empty top and bottom margins around the hero’s ticks, in CSS pixels (${measured.join('; ')})`).toEqual([]);
+});
+
+/* The phone windows the field's corner ticks are checked at, set whatever the project's own
+   window, up to the widest under 768px. */
+const CORNER_TICKS_PHONE_VIEWPORTS = [
+  { width: 320, height: 699 },
+  { width: 375, height: 801 },
+  { width: 412, height: 849 },
+  { width: 767, height: 1024 },
+];
+
+/* Where the corner ticks of the still field are, in `screenshot` of the `heroHeight` px high
+   hero, at the window `size`. The field's ticks, measured as for any tick-field, give the
+   left edge of its leftmost column. Its rightmost column, whose ticks are among the most
+   opaque at the top as at the bottom, is found tick by tick in a band from 6px outside its
+   edge to 8px inside it: its first and last ticks give the field's first and last rows, the
+   ticks of a row all starting at the same height. */
+async function cornerTicks(
+  hero: Locator,
+  screenshot: Buffer,
+  heroHeight: number,
+  size: string,
+): Promise<{ columns: { left: number; right: number }; firstRow: number; lastRow: number; tickWidth: number }> {
+  const extent = await extentOfDrawnTicks(hero, screenshot);
+  expect(extent.left, `drawn ticks in the ${size}px hero`).not.toBeNaN();
+  const rightColumn = await drawnStrokesInRectangle(hero, screenshot, outermostColumnBands(extent, heroHeight).right);
+  expect(rightColumn.length, `ticks drawn whole in the rightmost column of the ${size}px hero`).toBeGreaterThanOrEqual(2);
+  return {
+    columns: { left: extent.left, right: rightColumn[0].x },
+    firstRow: rightColumn[0].y,
+    lastRow: rightColumn[rightColumn.length - 1].y,
+    tickWidth: rightColumn[0].width,
+  };
+}
+
+/* The points a corner tick is read at, the tick `tickWidth` px wide and its top left corner at
+   (x, y): 2px down the tick, inside even the shortest, across it every quarter of a CSS pixel,
+   so that at least one falls on a pixel the tick covers fully. */
+function pointsAcrossTick(x: number, y: number, tickWidth: number): { x: number; y: number }[] {
+  const STEP = 0.25;
+  return Array.from({ length: Math.ceil(tickWidth / STEP) }, (_, step) => ({ x: x + (step + 0.5) * STEP, y: y + 2.5 }));
+}
+
+/* The theme's three tick colours. */
+type Hue = 'green' | 'accent' | 'cream';
+
+/* The theme's three tick colours, as the hero sees them: green (--color-accent-dark), accent
+   (--color-accent) and cream (--color-paper), read through the same colour handling as the ticks. */
+async function themeTickHues(hero: Locator): Promise<Record<Hue, Channels>> {
+  const themeColour = async (customProperty: string): Promise<Channels> =>
+    channelsOfColour(hero, await hero.evaluate((el, name) => getComputedStyle(el).getPropertyValue(name).trim(), customProperty));
+  return {
+    green: await themeColour('--color-accent-dark'),
+    accent: await themeColour('--color-accent'),
+    cream: await themeColour('--color-paper'),
+  };
+}
+
+/* A colour, as assertion messages show it: its channels rounded, "(red, green, blue)". */
+function describeColour(channels: Channels): string {
+  return `(${Math.round(channels.red)}, ${Math.round(channels.green)}, ${Math.round(channels.blue)})`;
+}
+
+/* Of the theme's tick colours `hues`, the one closest to `colour`. */
+function closestHue(colour: Channels, hues: Record<Hue, Channels>): Hue {
+  const distance = (other: Channels) => Math.hypot(colour.red - other.red, colour.green - other.green, colour.blue - other.blue);
+  return (Object.keys(hues) as Hue[]).reduce((best, hue) => (distance(hues[hue]) < distance(hues[best]) ? hue : best));
+}
+
+test('on a phone, under 768 px wide, the hero’s tick field is faintest at the top left and most opaque at the bottom right: at 320 × 699, 375 × 801, 412 × 849 and 767 × 1024, with the field still (reduced motion), of its four corner ticks, the top left one shows the least of its colour over the background, and the bottom right one the most', async ({ page }) => {
+  await page.setViewportSize(CORNER_TICKS_PHONE_VIEWPORTS[0]);
+  const { hero, text } = await stillHero(page);
+  await showOnlyTheField(hero, text);
+
+  const problems: string[] = [];
+  const measured: string[] = [];
+  for (const viewport of CORNER_TICKS_PHONE_VIEWPORTS) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await page.setViewportSize(viewport);
+    await page.clock.runFor(100);
+    const box = (await hero.boundingBox())!;
+    expect(box.width, `width of the hero in a ${size}px window`).toBeCloseTo(viewport.width, 0);
+    const screenshot = await hero.screenshot();
+
+    const { columns, firstRow, lastRow, tickWidth } = await cornerTicks(hero, screenshot, box.height, size);
+
+    /* A tick's opacity, read as in the opacity test of any tick-field: a pixel the tick covers
+       fully shows the background plus the tick's opacity times (its colour − the background),
+       whichever colour the tick has. Of the points across the tick, the most opaque reading is
+       that of a fully covered pixel. */
+    const opacityOfTick = async (x: number, y: number): Promise<number> => {
+      const measures = await canvasOpacityOverBackgroundAt(hero, screenshot, pointsAcrossTick(x, y, tickWidth));
+      return Math.max(...measures.map(({ opacity }) => opacity).filter((opacity) => !Number.isNaN(opacity)));
+    };
+    const corners = {
+      'top left': await opacityOfTick(columns.left, firstRow),
+      'top right': await opacityOfTick(columns.right, firstRow),
+      'bottom left': await opacityOfTick(columns.left, lastRow),
+      'bottom right': await opacityOfTick(columns.right, lastRow),
+    };
+    const describe = `${size}px: ${Object.entries(corners).map(([corner, opacity]) => `${corner} ${(100 * opacity).toFixed(1)}%`).join(', ')}`;
+    measured.push(describe);
+    const others = (corner: keyof typeof corners): number[] =>
+      Object.entries(corners).filter(([name]) => name !== corner).map(([, opacity]) => opacity);
+    if (!others('top left').every((opacity) => corners['top left'] < opacity)) {
+      problems.push(`${describe}: the top left tick is not the faintest`);
+    }
+    if (!others('bottom right').every((opacity) => corners['bottom right'] > opacity)) {
+      problems.push(`${describe}: the bottom right tick is not the most opaque`);
+    }
+  }
+  expect(problems, `share of its colour each corner tick of the hero shows over the background (${measured.join('; ')})`).toEqual([]);
+});
+
+test('on a phone, under 768 px wide, the hero’s tick field is coloured along the same diagonal as its opacity: green at the top left, cream at the bottom right: at 320 × 699, 375 × 801, 412 × 849 and 767 × 1024, with the field still (reduced motion), its top left corner tick is drawn in the colour closest to the theme’s green, of green, accent and cream, and its bottom right corner tick in the colour closest to the cream', async ({ page }) => {
+  await page.setViewportSize(CORNER_TICKS_PHONE_VIEWPORTS[0]);
+  const { hero, text } = await stillHero(page);
+  await showOnlyTheField(hero, text);
+  const hues = await themeTickHues(hero);
+
+  const problems: string[] = [];
+  const measured: string[] = [];
+  for (const viewport of CORNER_TICKS_PHONE_VIEWPORTS) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await page.setViewportSize(viewport);
+    await page.clock.runFor(100);
+    const box = (await hero.boundingBox())!;
+    expect(box.width, `width of the hero in a ${size}px window`).toBeCloseTo(viewport.width, 0);
+    const screenshot = await hero.screenshot();
+
+    const { columns, firstRow, lastRow, tickWidth } = await cornerTicks(hero, screenshot, box.height, size);
+
+    /* A tick's colour, whatever its opacity: the colour the field holds where, of the points
+       across the tick, it covers a pixel most. The top left tick is the field's faintest: only
+       its own colour, not what it adds over the background, stands far enough above rounding
+       errors to tell its hue. */
+    const colourOfTick = async (x: number, y: number): Promise<Channels> => {
+      const points = pointsAcrossTick(x, y, tickWidth);
+      const measures = (await canvasOpacityOverBackgroundAt(hero, screenshot, points)).filter(({ opacity }) => !Number.isNaN(opacity));
+      expect(measures.length, `points of the tick at (${x.toFixed(1)}, ${y.toFixed(1)})px of the ${size}px hero drawn in a colour other than the background`).toBeGreaterThan(0);
+      return measures.reduce((best, measure) => (measure.opacity > best.opacity ? measure : best)).colour;
+    };
+    const corners: { name: string; colour: Channels; wanted: Hue }[] = [
+      { name: 'top left', colour: await colourOfTick(columns.left, firstRow), wanted: 'green' },
+      { name: 'bottom right', colour: await colourOfTick(columns.right, lastRow), wanted: 'cream' },
+    ];
+    const describe = `${size}px: ${corners.map(({ name, colour }) => `${name} ${describeColour(colour)}, closest to ${closestHue(colour, hues)}`).join('; ')}`;
+    measured.push(describe);
+    for (const { name, colour, wanted } of corners) {
+      if (closestHue(colour, hues) !== wanted) problems.push(`${size}px: the ${name} tick, ${describeColour(colour)}, is closest to ${closestHue(colour, hues)}, not ${wanted}`);
+    }
+  }
+  expect(
+    problems,
+    `colour of the hero’s corner ticks, against green ${describeColour(hues.green)}, accent ${describeColour(hues.accent)} and cream ${describeColour(hues.cream)} (${measured.join(' | ')})`,
+  ).toEqual([]);
+});
+
+test('from 768 px wide, with a classic scrollbar that leaves the page less than 768 px, the hero’s tick field keeps its desktop version, like the rest of the page: at 768 × 1024, 775 × 1024 and 782 × 1024, with a 15 px scrollbar and the field still (reduced motion), the page is in its desktop layout, the hero’s text 48 px from its left edge, while the field leaves side margins of at least 24 px, is faintest at the bottom left and most opaque at the top right, green at the bottom left and cream at the top right', async ({ browser, baseURL, isMobile, hasTouch, deviceScaleFactor, userAgent }) => {
+  /* Windows from 768px wide, where the page switches to its desktop layout, whose width
+     includes the scrollbar, up to the widest a 15px scrollbar leaves under 768px of page. */
+  const SCROLLBAR_WIDTH = 15;
+  const VIEWPORTS = [
+    { width: 768, height: 1024 },
+    { width: 775, height: 1024 },
+    { width: 782, height: 1024 },
+  ];
+
+  /* The project's browser and device, with the scrollbars a desktop shows: Chromium is run
+     headless with its scrollbars hidden, which then take no width from the page. */
+  await using browserWithScrollbars = await browser.browserType().launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+  const context = await browserWithScrollbars.newContext({ baseURL, viewport: VIEWPORTS[0], isMobile, hasTouch, deviceScaleFactor, userAgent });
+  const page = await context.newPage();
+  const { hero, text } = await stillHero(page);
+
+  /* A classic scrollbar, which takes its width from the page, as on a desktop whose scrollbars
+     are always shown, rather than one laid over the page. The browser puts it in place on its
+     next rendering, which the stopped clock does not hold back. */
+  await page.addStyleTag({
+    content: `::-webkit-scrollbar { width: ${SCROLLBAR_WIDTH}px; } ::-webkit-scrollbar-thumb { background: grey; }`,
+  });
+  const scrollbarWidth = (): Promise<number> => page.evaluate(() => window.innerWidth - document.documentElement.clientWidth);
+  const scrollbarTakesWidth = await expect
+    .poll(scrollbarWidth, { timeout: 2000 })
+    .toBeGreaterThan(0)
+    .then(() => true, () => false);
+  test.skip(!scrollbarTakesWidth, 'this browser lays its scrollbar over the page or hides it: it takes no width from the page');
+  expect(await scrollbarWidth(), 'width the scrollbar takes from the page').toBe(SCROLLBAR_WIDTH);
+  await page.clock.runFor(100);
+
+  /* The heading, hidden from assistive technologies once only the field shows. */
+  const heading = hero.getByRole('heading', { level: 1, includeHidden: true });
+  await showOnlyTheField(hero, text);
+  const hues = await themeTickHues(hero);
+
+  const problems: string[] = [];
+  const measured: string[] = [];
+  for (const viewport of VIEWPORTS) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await page.setViewportSize(viewport);
+    await page.clock.runFor(100);
+
+    /* The page is in its desktop layout, while the scrollbar leaves it less than 768px. */
+    const pageWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(pageWidth, `width the scrollbar leaves the page in a ${size}px window`).toBe(viewport.width - SCROLLBAR_WIDTH);
+    expect(pageWidth, `width the scrollbar leaves the page in a ${size}px window`).toBeLessThan(768);
+    const box = (await hero.boundingBox())!;
+    expect(box.width, `width of the hero in a ${size}px window`).toBeCloseTo(pageWidth, 0);
+    const headingBox = (await heading.boundingBox())!;
+    expect(headingBox.x - box.x, `distance from the hero’s left edge to its heading in a ${size}px window, 48px in the desktop layout, 16px on a phone`).toBeCloseTo(48, 0);
+
+    const screenshot = await hero.screenshot();
+    const { columns, firstRow, lastRow, tickWidth } = await cornerTicks(hero, screenshot, box.height, size);
+
+    /* The empty side margins, measured as in the phone test: from each side of the hero to the
+       nearest edge of its outermost columns of ticks. */
+    const bands = outermostColumnBands(await extentOfDrawnTicks(hero, screenshot), box.height);
+    const [leftColumn, rightColumn] = await horizontalExtentOfDrawnStrokeInRectangles(hero, screenshot, [bands.left, bands.right]);
+    const margins = { left: leftColumn.x, right: box.width - (rightColumn.x + rightColumn.width) };
+
+    /* A corner tick's opacity and colour, read as in the phone tests: of the points across the
+       tick, the reading where it covers a pixel most. */
+    const tick = async (x: number, y: number): Promise<{ opacity: number; colour: Channels }> => {
+      const measures = (await canvasOpacityOverBackgroundAt(hero, screenshot, pointsAcrossTick(x, y, tickWidth))).filter(({ opacity }) => !Number.isNaN(opacity));
+      expect(measures.length, `points of the tick at (${x.toFixed(1)}, ${y.toFixed(1)})px of the ${size}px hero drawn in a colour other than the background`).toBeGreaterThan(0);
+      return measures.reduce((best, measure) => (measure.opacity > best.opacity ? measure : best));
+    };
+    const corners = {
+      'top left': await tick(columns.left, firstRow),
+      'top right': await tick(columns.right, firstRow),
+      'bottom left': await tick(columns.left, lastRow),
+      'bottom right': await tick(columns.right, lastRow),
+    };
+    type Corner = keyof typeof corners;
+    const describe = `${size}px, page ${pageWidth}px: margins left ${margins.left.toFixed(2)}, right ${margins.right.toFixed(2)}; ${Object.entries(corners).map(([corner, { opacity, colour }]) => `${corner} ${(100 * opacity).toFixed(1)}% ${describeColour(colour)}`).join(', ')}`;
+    measured.push(describe);
+    if (Math.min(margins.left, margins.right) < 24) problems.push(`${describe}: a side margin is under 24px`);
+    const others = (corner: Corner): number[] =>
+      (Object.keys(corners) as Corner[]).filter((name) => name !== corner).map((name) => corners[name].opacity);
+    if (!others('bottom left').every((opacity) => corners['bottom left'].opacity < opacity)) {
+      problems.push(`${describe}: the bottom left tick is not the faintest`);
+    }
+    if (!others('top right').every((opacity) => corners['top right'].opacity > opacity)) {
+      problems.push(`${describe}: the top right tick is not the most opaque`);
+    }
+    for (const [corner, wanted] of [['bottom left', 'green'], ['top right', 'cream']] as [Corner, Hue][]) {
+      const hue = closestHue(corners[corner].colour, hues);
+      if (hue !== wanted) problems.push(`${size}px: the ${corner} tick is closest to ${hue}, not ${wanted}`);
+    }
+  }
+  expect(problems, `the hero’s tick field beside a classic scrollbar (${measured.join(' | ')})`).toEqual([]);
 });
 
 test('served under /portfolio/, the first hero button of the French home page, "Voir les projets", leads to /portfolio/fr/projets/', async ({ page }) => {
@@ -1284,6 +1777,189 @@ test.describe('home page without a hero', () => {
       );
     }
     expect(errors).toEqual([]);
+  });
+});
+
+/* Blocks the font files of the site served at `origin`: a page route takes precedence over the
+   context route that serves the site, so the browser renders the fallback fonts of the stacks.
+   Returns the list, filled as the page asks for them, of the blocked font URLs. */
+async function blockFontFiles(page: Page, origin: string): Promise<string[]> {
+  const blockedFonts: string[] = [];
+  await page.route(`${origin}/**/*.{woff,woff2,ttf,otf}`, async (route) => {
+    blockedFonts.push(route.request().url());
+    await route.abort();
+  });
+  return blockedFonts;
+}
+
+/* Sizes the window to `viewport`, then opens the French home page of the test site served at
+   `origin`, JavaScript off, and waits for its fonts. Not through `document.fonts.ready`: with
+   JavaScript off, Firefox can leave it pending, whether the font files are served or blocked.
+   Waits instead until the page has asked for IBM Plex Mono and none of its web fonts is still
+   loading: each one ended loaded or in error, and the fonts displayed are the final ones. */
+async function openHomeWithoutScriptAt(page: Page, viewport: { width: number; height: number }, origin: string): Promise<void> {
+  const size = `${viewport.width} × ${viewport.height}`;
+  await page.setViewportSize(viewport);
+  await page.goto(`${origin}/fr/`);
+  await expect.poll(() => page.evaluate(() => {
+    const faces = [...document.fonts];
+    return {
+      monoAskedFor: faces.some((face) => /mono/i.test(face.family) && face.status !== 'unloaded'),
+      stillLoading: faces.filter((face) => face.status === 'loading').map((face) => face.family),
+    };
+  }), { message: `web fonts settled at ${size}`, timeout: 10_000 }).toEqual({ monoAskedFor: true, stillLoading: [] });
+}
+
+test.describe('home page of a single-language site', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_SINGLE_LANGUAGE);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a single-language site, in a window tall enough for its content, the hero ends exactly at the bottom of the window: its height is the window height minus the header height, within 1 px, on a phone as on desktop', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
+    /* Same windows as on the bilingual example site: the header, without its language
+       switcher, is two rows on a phone and one row from 768 px wide. */
+    for (const viewport of TALL_VIEWPORTS) {
+      const size = `${viewport.width} × ${viewport.height}`;
+      await openHomeAt(page, viewport, SITE_WITH_A_SINGLE_LANGUAGE.origin);
+      /* The site is single-language: the header shows no language switcher. */
+      await expect(page.locator('header').getByRole('group', { name: 'Langue' }), `language switcher at ${size}`).toHaveCount(0);
+      await expectHeroToEndAtWindowBottom(page, viewport, size);
+    }
+  });
+
+  test.describe('without JavaScript and with the fallback font', () => {
+    /* Without JavaScript, the hero's height relies on CSS alone: the header's estimated
+       height, which must also hold when the web fonts never arrive. */
+    test.use({ javaScriptEnabled: false });
+
+    test('on a single-language site, without JavaScript and with the web font files blocked, in a window tall enough for its content, the hero ends exactly at the bottom of the window: its height is the window height minus the header height, within 1 px, on a phone as on desktop', async ({ page, context }) => {
+      await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
+      const blockedFonts = await blockFontFiles(page, SITE_WITH_A_SINGLE_LANGUAGE.origin);
+      for (const viewport of TALL_VIEWPORTS) {
+        const size = `${viewport.width} × ${viewport.height}`;
+        await openHomeWithoutScriptAt(page, viewport, SITE_WITH_A_SINGLE_LANGUAGE.origin);
+        /* The fonts really were blocked: the page asked for IBM Plex Mono, used by the
+           header and the heading, and no web font ended up loaded. */
+        expect(blockedFonts.some((url) => /mono/i.test(url)), `blocked font requests at ${size}: ${blockedFonts.join(', ')}`).toBe(true);
+        const loadedFonts = await page.evaluate(() =>
+          [...document.fonts].filter((face) => face.status === 'loaded').map((face) => face.family));
+        expect(loadedFonts, `web fonts loaded at ${size}`).toEqual([]);
+        /* The site is single-language: the header shows no language switcher. */
+        await expect(page.locator('header').getByRole('group', { name: 'Langue' }), `language switcher at ${size}`).toHaveCount(0);
+        await expectHeroToEndAtWindowBottom(page, viewport, size);
+      }
+    });
+
+    test('on a single-language site, without JavaScript and with a monospace font whose normal line height is 1 em instead of 1.3, the header logo sits on a line 18.2 px tall, like the menu links, and the hero ends exactly at the bottom of the window, within 1 px, on a phone', async ({ page, context }) => {
+      await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
+      /* IBM Plex Mono's normal line height is 1.3 em, the header's estimated height's: served
+         with an ascent of 0.8 em and a descent of 0.2 em, the same on every machine, it stands
+         for a fallback font whose normal line height differs from it. */
+      const replacedFonts = await replacePlexMonoFiles(page, SITE_WITH_A_SINGLE_LANGUAGE.origin, { ascent: 0.8, descent: 0.2 });
+      const viewport = { width: 412, height: 1100 };
+      const size = `${viewport.width} × ${viewport.height}`;
+      await openHomeWithoutScriptAt(page, viewport, SITE_WITH_A_SINGLE_LANGUAGE.origin);
+      /* The replaced font really is the one displayed: the page asked for IBM Plex Mono and
+         loaded it. */
+      expect(replacedFonts.some((url) => /mono/i.test(url)), `replaced font requests: ${replacedFonts.join(', ')}`).toBe(true);
+      const loadedFonts = await page.evaluate(() =>
+        [...document.fonts].filter((face) => face.status === 'loaded').map((face) => face.family.replace(/["']/g, '')));
+      expect(loadedFonts, 'web fonts loaded').toContain('IBM Plex Mono');
+      /* The site is single-language: the header shows no language switcher. */
+      await expect(page.locator('header').getByRole('group', { name: 'Langue' })).toHaveCount(0);
+      /* The logo's line: 14 px × 1.3, whatever the font's normal line height. */
+      const logoBox = (await page.locator('header').getByRole('link', { name: 'Exemple', exact: true }).boundingBox())!;
+      expect.soft(Math.abs(logoBox.height - 18.2), `logo height (${logoBox.height} px) against 18.2 px`).toBeLessThanOrEqual(0.5);
+      await expectHeroToEndAtWindowBottom(page, viewport, size);
+    });
+  });
+});
+
+/* The top edge of each link of the header menu, in document order, and the number of lines
+   they sit on: the distinct top edges, rounded to the pixel. All the links are measured in a
+   single round trip to the page, which keeps a measure taken at many widths fast on every
+   browser. */
+async function menuLines(links: Locator): Promise<{ linkTops: number[]; lineCount: number }> {
+  const linkTops = await links.evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().y));
+  return { linkTops, lineCount: new Set(linkTops.map((top) => Math.round(top))).size };
+}
+
+test.describe('home page of a site with a long menu', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_LONG_MENU);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a phone, when the menu wraps onto two lines, in a window tall enough for its content, the hero still ends exactly at the bottom of the window: at 412 × 1100, its height is the window height minus the header height, within 1 px', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
+    const viewport = { width: 412, height: 1100 };
+    const size = `${viewport.width} × ${viewport.height}`;
+    await openHomeAt(page, viewport, SITE_WITH_A_LONG_MENU.origin);
+
+    /* The menu is too long for a single line at 412 px: its links sit on two lines (three
+       at 320 px). */
+    const links = page.locator('header nav').getByRole('link');
+    await expect(links).toHaveText(['Accueil', 'Projets', 'Parcours', 'Compétences', 'Publications', 'Contact']);
+    const { linkTops, lineCount } = await menuLines(links);
+    expect(lineCount, `at ${size}, lines of the menu (top edges of its links: ${linkTops.join(', ')})`).toBe(2);
+
+    const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
+    const { expectedHeight } = await heightBelowHeader(page, viewport, { heading, buttons }, size);
+    const heroBox = (await hero.boundingBox())!;
+    expect(
+      Math.abs(heroBox.height - expectedHeight),
+      `at ${size}, hero height (${heroBox.height} px) against the window height minus the header height (${expectedHeight} px)`,
+    ).toBeLessThanOrEqual(1);
+  });
+
+  test('from 768 px wide, with a menu too long for its line, in a window tall enough for its content, the hero ends exactly at the bottom of the window at every width from 768 to 1280 px, in steps of 16 px: its height is the window height minus the header height, within 1 px, and at one of these widths at least the menu wraps onto several lines', async ({ page, context, browserName }) => {
+    /* 33 page loads, each measured: on the CI's WebKit, several times slower than the other
+       browsers there, the default time limit is too short for them. */
+    test.slow(browserName === 'webkit', '33 page loads, slow on WebKit in CI');
+    await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
+    /* How many lines the menu takes at a given width depends on the platform's text
+       rendering: the test only requires that some width of the range wraps it, so that a
+       header taller than its usual single row is exercised. */
+    const problems: string[] = [];
+    const measured: string[] = [];
+    const multiLineWidths: number[] = [];
+    for (let width = 768; width <= 1280; width += 16) {
+      const viewport = { width, height: 1024 };
+      const size = `${viewport.width} × ${viewport.height}`;
+      await openHomeAt(page, viewport, SITE_WITH_A_LONG_MENU.origin);
+
+      const links = page.locator('header nav').getByRole('link');
+      await expect(links, `menu links at ${size}`).toHaveText(['Accueil', 'Projets', 'Parcours', 'Compétences', 'Publications', 'Contact']);
+      const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
+
+      /* The page sizes the hero to the header once the header is laid out: a measure taken
+         before that, while the hero is still sized for a single-row header, is taken again,
+         in a single round trip each time. A width where the hero never matches within 2 s is
+         measured as it stands, and reported below. */
+      await expect.poll(() => hero.evaluate((element, windowHeight) =>
+        Math.abs(element.getBoundingClientRect().height - (windowHeight - document.querySelector('header')!.getBoundingClientRect().height)),
+      viewport.height), { message: `hero settled to the header height at ${size}`, timeout: 2_000 }).toBeLessThanOrEqual(1).catch(() => {});
+
+      const { lineCount } = await menuLines(links);
+      if (lineCount > 1) multiLineWidths.push(width);
+      const { expectedHeight, headerHeight } = await heightBelowHeader(page, viewport, { heading, buttons }, size);
+      const heroBox = (await hero.boundingBox())!;
+      const describe = `${size}: menu on ${lineCount} line(s), header ${headerHeight.toFixed(2)} px, hero ${heroBox.height.toFixed(2)} px, expected ${expectedHeight.toFixed(2)} px`;
+      measured.push(describe);
+      if (Math.abs(heroBox.height - expectedHeight) > 1) {
+        problems.push(`${describe}: the hero height is not the window height minus the header height, within 1 px`);
+      }
+    }
+    if (multiLineWidths.length === 0) problems.push('the menu sits on a single line at every width from 768 to 1280 px: no taller header was exercised');
+    expect(problems, `hero height against the window height minus the header height (${measured.join(' | ')})`).toEqual([]);
   });
 });
 

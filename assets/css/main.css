@@ -44,9 +44,66 @@
   --color-accent-dark: #1E6C58;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
   --font-sans: 'IBM Plex Sans', Helvetica, sans-serif;
-  /* Minimum height of the sticky header; the hero subtracts it from the
-     viewport so it fills the space right below the header. */
-  --header-height: 4rem;
+  /* Sizes of the sticky header, read both by its rules and by
+     --header-estimated-height below. */
+  --header-padding-block: 12px;
+  --header-row-gap: 8px;
+  /* Between two nav links, and from 768 px between the last one and the
+     switcher. */
+  --header-link-gap: 32px;
+  /* From 768 px, between the header's items: the logo, the nav and the
+     switcher. */
+  --header-column-gap: 24px;
+  --header-border-width: 1px;
+  --header-font-size: 14px;
+  /* Set on the logo and the nav links rather than left to the font's
+     normal line height, which varies with the browser and with the
+     fallback font shown while IBM Plex Mono loads. */
+  --header-link-line-height: 1.3;
+  --header-link-line-box: calc(var(--header-font-size) * var(--header-link-line-height));
+  --header-link-underline-offset: 3px;
+  --header-link-underline-width: 2px;
+  --header-switcher-padding: 2px;
+  --header-switcher-gap: 2px;
+  --header-switcher-border-width: 1px;
+  --header-switcher-font-size: 12px;
+  /* Set on the switcher for the same reason as --header-link-line-height. */
+  --header-switcher-line-height: 1.25;
+  --header-switcher-entry-padding-block: 4px;
+  --header-switcher-entry-padding-inline: 9px;
+  /* An entry is at least --min-target-size high, taller if its text and
+     padding outgrow it. */
+  --header-switcher-entry-height: max(
+    var(--min-target-size),
+    var(--header-switcher-font-size) * var(--header-switcher-line-height)
+    + 2 * var(--header-switcher-entry-padding-block)
+  );
+  --header-switcher-height: calc(2 * var(--header-switcher-border-width) + 2 * var(--header-switcher-padding) + var(--header-switcher-entry-height));
+  /* A nav link, underline room included. */
+  --header-nav-link-height: calc(
+    var(--header-link-line-box)
+    + var(--header-link-underline-offset)
+    + var(--header-link-underline-width)
+  );
+  /* On a phone, the nav wraps to a second row, below the switcher's: its
+     links are the tallest items there. */
+  --header-nav-row-height: calc(var(--header-row-gap) + var(--header-nav-link-height));
+  /* The first row's tallest item is the switcher. */
+  --header-first-row-height: var(--header-switcher-height);
+  /* Height of the sticky header, estimated for a menu on a single row. */
+  --header-estimated-height: calc(
+    2 * var(--header-padding-block)
+    + var(--header-first-row-height)
+    + var(--header-nav-row-height)
+    + var(--header-border-width)
+  );
+  /* Height of the sticky header; the hero subtracts it from the viewport
+     so it fills the space right below the header. Once it runs, the theme
+     script replaces it with the measured height, which differs from the
+     estimate when the menu wraps. The header's own min-height reads the
+     estimate instead, so a measured height never keeps the header tall
+     after the window widens. */
+  --header-height: var(--header-estimated-height);
   /* Space left above an anchor target so the sticky header does not
      hide it: the header's height, plus some breathing room. */
   --sticky-header-clearance: calc(var(--header-height) + 2rem);
@@ -61,8 +118,28 @@
   --page-gutter: 16px;
 }
 
+/* Without a language switcher, the first row is as tall as the logo on a
+   phone. The template marks the root element when the header has one. */
+:root:not(.has-language-switcher) {
+  --header-first-row-height: var(--header-link-line-box);
+}
+
+/* Without a main menu, the header has no nav row. The template marks the
+   root element when the header has one. */
+:root:not(.has-main-menu) {
+  --header-nav-row-height: 0px;
+}
+
 @media (min-width: 768px) {
+  :root:not(.has-language-switcher) {
+    /* The nav links are the tallest items of the row. */
+    --header-first-row-height: var(--header-nav-link-height);
+  }
+
   :root {
+    --header-padding-block: 22px;
+    /* A single row: the nav shares the switcher's. */
+    --header-nav-row-height: 0px;
     --page-gutter: 48px;
   }
 }
@@ -87,15 +164,47 @@ h1 {
   font-weight: 700;
 }
 
-/* flow-root keeps the heading and paragraph margins inside the section:
-   without it, they leak out and the section no longer fills the viewport. */
+/* The design centres the text block vertically. A flex container also keeps
+   the heading and paragraph margins inside the section: they do not leak
+   out and the section fills the viewport. */
 .hero {
-  display: flow-root;
+  /* Least space kept above the text (on a phone) and below it. */
+  --hero-edge-space: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  /* For browsers without svh, which drop the declaration below. */
   min-height: calc(100vh - var(--header-height));
+  /* svh: the height left when a phone browser shows its toolbars, so the
+     buttons are not hidden under them on arrival. */
+  min-height: calc(100svh - var(--header-height));
   padding-inline: var(--page-gutter);
+  padding-bottom: var(--hero-edge-space);
+}
+
+/* On a phone, two spacers share the free room equally, which centres the
+   text; the top one never shrinks under --hero-edge-space, so the text
+   keeps its distance from the header when it is taller than the room. */
+.hero::before,
+.hero::after {
+  content: "";
+  flex: 1 1 0;
+}
+
+.hero::before {
+  min-height: var(--hero-edge-space);
+}
+
+@media (min-width: 768px) {
+  .hero::before,
+  .hero::after {
+    display: none;
+  }
 }
 
 .hero h1 {
+  /* Outer margins would unbalance the centring. */
+  margin-top: 0;
   text-transform: uppercase;
   font-size: clamp(44px, 6.4vw, 100px);
   line-height: 1.02;
@@ -141,22 +250,10 @@ h1 {
   flex-wrap: wrap;
   gap: 16px;
   margin-top: 44px;
+  margin-bottom: 0;
 }
 
 @media (min-width: 768px) {
-  /* The text block is centred vertically, with 40px of padding below it. */
-  .hero {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding-bottom: 40px;
-  }
-
-  /* Outer margins would unbalance the centring. */
-  .hero h1 {
-    margin-top: 0;
-  }
-
   .hero-title {
     margin-top: 36px;
   }
@@ -164,10 +261,6 @@ h1 {
   .hero-tagline {
     font-size: 20px;
     margin-top: 165px;
-  }
-
-  .hero-actions {
-    margin-bottom: 0;
   }
 }
 
@@ -242,16 +335,93 @@ h1 {
 .site-header {
   position: sticky;
   top: 0;
-  min-height: var(--header-height);
+  min-height: var(--header-estimated-height);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  row-gap: var(--header-row-gap);
+  padding-block: var(--header-padding-block);
   z-index: var(--layer-sticky-header);
   background: var(--color-ink);
   padding-inline: var(--page-gutter);
+  border-bottom: var(--header-border-width) solid rgb(var(--color-paper-channels) / 0.12);
+  font-size: var(--header-font-size);
+}
+
+/* --header-estimated-height is exact only when the switcher, whose height
+   is fixed, sets the first row. Without one, from 768 px, the estimate's
+   first row is the nav links, missing on a site without a main menu: the
+   header keeps the height of its content rather than an estimate that can
+   exceed it. */
+:root:not(.has-language-switcher) .site-header {
+  min-height: 0;
 }
 
 .site-header a {
   font-family: var(--font-mono);
   color: var(--color-paper);
   text-decoration: none;
+}
+
+/* The logo's line is as tall as the menu links', whatever the font's
+   normal line height. */
+.site-header > a:first-child {
+  line-height: var(--header-link-line-height);
+}
+
+/* The nav comes between the logo and the language switcher in the markup:
+   order moves it after the switcher and the full basis puts it on a row of
+   its own, so the logo and the switcher share the first row. */
+.site-header nav {
+  order: 1;
+  flex-basis: 100%;
+  display: flex;
+  /* A menu too long for one line wraps onto another. */
+  flex-wrap: wrap;
+  gap: var(--header-link-gap);
+}
+
+/* From 768 px, the nav goes back between the logo and the switcher, the
+   three on a single row. The header's block padding grows too, through
+   --header-padding-block in :root, which --header-estimated-height also
+   reads. */
+@media (min-width: 768px) {
+  .site-header {
+    /* The nav shrinks and wraps its links between the logo and the
+       switcher instead of dropping to a row of its own. */
+    flex-wrap: nowrap;
+    column-gap: var(--header-column-gap);
+  }
+
+  /* The logo keeps its single line: only the nav gives up room. */
+  .site-header > a:first-child {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .site-header nav {
+    order: 0;
+    flex-basis: auto;
+    /* Pushed against the switcher, as far from it as from one another. */
+    margin-left: auto;
+    /* The header's column gap already separates the nav from the switcher. */
+    margin-right: calc(var(--header-link-gap) - var(--header-column-gap));
+  }
+
+  /* Without a switcher, the last link ends at the page gutter. */
+  :root:not(.has-language-switcher) .site-header nav {
+    margin-right: 0;
+  }
+}
+
+.site-header nav a {
+  line-height: var(--header-link-line-height);
+  letter-spacing: 0.08em;
+  /* Every link reserves the room of the current link's underline, so the
+     header has the same layout whichever link is current, or none. */
+  padding-bottom: var(--header-link-underline-offset);
+  border-bottom: var(--header-link-underline-width) solid transparent;
 }
 
 @media (hover: hover) {
@@ -263,22 +433,26 @@ h1 {
 }
 
 .site-header nav a[aria-current="page"] {
-  border-bottom: 2px solid var(--color-accent);
+  border-bottom-color: var(--color-accent);
 }
 
 .site-header [role="group"] {
-  width: fit-content;
-  border: 1px solid rgb(var(--color-paper-channels) / 0.35);
+  display: flex;
+  gap: var(--header-switcher-gap);
+  padding: var(--header-switcher-padding);
+  border: var(--header-switcher-border-width) solid rgb(var(--color-paper-channels) / 0.35);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--header-switcher-font-size);
+  line-height: var(--header-switcher-line-height);
   font-weight: 600;
 }
 
 .site-header [role="group"] a,
 .site-header [role="group"] [aria-current] {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
+  padding: var(--header-switcher-entry-padding-block) var(--header-switcher-entry-padding-inline);
   min-width: var(--min-target-size);
   min-height: var(--min-target-size);
 }
@@ -357,4 +531,20 @@ tick-field > canvas {
    hero's centre. */
 .hero .veil {
   --veil-shape: ellipse 70% 60% at 38% 55%;
+}
+
+/* The site logo looks the same wherever it is used. A context may only
+   resize it, by setting --logo-size on an ancestor: everything else is in
+   em, so it follows the size. */
+.logo {
+  font-family: var(--font-mono);
+  font-size: var(--logo-size, 14px);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--color-paper);
+}
+
+/* The first bar of each initial. */
+.logo b {
+  font-weight: 700;
 }

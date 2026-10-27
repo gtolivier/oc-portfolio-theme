@@ -1,0 +1,27 @@
+# Configuration added to exampleSite/hugo.toml by the tests of a site whose
+# French main menu is too long for a single line on a 320 px wide phone:
+# six links, some with long labels, replace the example site's three.
+[[languages.fr.menus.main]]
+  name = 'Accueil'
+  pageRef = '/'
+  weight = 10
+[[languages.fr.menus.main]]
+  name = 'Projets'
+  pageRef = '/projets'
+  weight = 20
+[[languages.fr.menus.main]]
+  name = 'Parcours'
+  url = '/fr/#parcours'
+  weight = 30
+[[languages.fr.menus.main]]
+  name = 'Compétences'
+  url = '/fr/#competences'
+  weight = 40
+[[languages.fr.menus.main]]
+  name = 'Publications'
+  url = '/fr/#publications'
+  weight = 50
+[[languages.fr.menus.main]]
+  name = 'Contact'
+  url = '/fr/#contact'
+  weight = 60

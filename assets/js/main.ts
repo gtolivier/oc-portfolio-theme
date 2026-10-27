@@ -121,7 +121,15 @@ const FIELD_ROW_SPACING_PX = 22;
 
 const FIELD_MIN_SIDE_MARGIN_PX = 24;
 
+/* The stylesheet's breakpoint: the first desktop width. On a phone, strictly narrower, the hero's field
+   leaves smaller margins and runs its diagonal down to the bottom right. */
+const DESKTOP_MIN_WIDTH_PX = 768;
+
+const FIELD_PHONE_MIN_SIDE_MARGIN_PX = 12;
+
 const FIELD_MIN_VERTICAL_MARGIN_PX = 18;
+
+const FIELD_PHONE_MIN_VERTICAL_MARGIN_PX = 9;
 
 const FIELD_RESTING_MIN_ALPHA = 0.06;
 
@@ -174,12 +182,31 @@ type AgedRipple = Point & { age: number };
 /* How many columns and rows of ticks, and where the first one sits. */
 type FieldLayout = { columns: number; rows: number; left: number; top: number };
 
+/* What sets the hero's field on a phone apart from any other field: its margins and its diagonal's direction. */
+type FieldVariant = { minSideMargin: number; minVerticalMargin: number; isDiagonalDescending: boolean };
+
+const DEFAULT_FIELD_VARIANT: FieldVariant = {
+  minSideMargin: FIELD_MIN_SIDE_MARGIN_PX,
+  minVerticalMargin: FIELD_MIN_VERTICAL_MARGIN_PX,
+  isDiagonalDescending: false,
+};
+
+const HERO_ON_PHONE_FIELD_VARIANT: FieldVariant = {
+  minSideMargin: FIELD_PHONE_MIN_SIDE_MARGIN_PX,
+  minVerticalMargin: FIELD_PHONE_MIN_VERTICAL_MARGIN_PX,
+  isDiagonalDescending: true,
+};
+
+/* Where a linear gradient starts and ends, in CSS pixels. */
+type GradientLine = [x0: number, y0: number, x1: number, y1: number];
+
 /* The theme's colours the field paints with. */
 type FieldColors = { green: string; accent: string; cream: string };
 
 /* What every tick of one drawing of the field shares; the width and height are the box's, in CSS pixels. */
 type FieldDrawing = {
   context: CanvasRenderingContext2D;
+  variant: FieldVariant;
   layout: FieldLayout;
   width: number;
   height: number;
@@ -207,6 +234,14 @@ function easeInOut(share: number): number {
   return clamped * clamped * (3 - 2 * clamped);
 }
 
+/* The stylesheet's own query: it reads the window's width, which a scrollbar takes none of.
+   Made once, since every frame reads it. */
+const desktopLayoutQuery = window.matchMedia(`(min-width: ${DESKTOP_MIN_WIDTH_PX}px)`);
+
+function isPhoneLayout(): boolean {
+  return !desktopLayoutQuery.matches;
+}
+
 /* A decorative canvas covering the whole box, behind the content. */
 class TickField extends HTMLElement {
   private canvas = document.createElement('canvas');
@@ -231,7 +266,7 @@ class TickField extends HTMLElement {
 
   private gradient: CanvasGradient | undefined;
 
-  /* The box size and colours the gradient was made for. */
+  /* The line and colours the gradient was made for. */
   private gradientKey = '';
 
   connectedCallback(): void {
@@ -392,13 +427,13 @@ class TickField extends HTMLElement {
     context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     context.setTransform(scale, 0, 0, scale, 0, 0);
     const colors = this.themeColors();
-    context.fillStyle = this.tickGradient(context, width, height, colors);
-    const front = this.progress * width;
+    const variant = this.fieldVariant();
     const litTrail = this.litTrail();
     const agedRipples = this.agedRipples();
     const drawing = {
       context,
-      layout: this.layout(width, height),
+      variant,
+      layout: this.layout(width, height, variant),
       width,
       height,
       litColor: colors.accent,
@@ -406,6 +441,8 @@ class TickField extends HTMLElement {
       agedRipples,
       hasLighting: litTrail.length > 0 || agedRipples.length > 0,
     };
+    context.fillStyle = this.tickGradient(drawing, colors);
+    const front = this.progress * width;
     for (let column = 0; column < drawing.layout.columns; column += 1) {
       const x = drawing.layout.left + column * FIELD_TICK_SPACING_PX;
       if (x >= front) break;
@@ -420,21 +457,30 @@ class TickField extends HTMLElement {
   }
 
   /* The grid of ticks, centred in the box: as many columns and rows as leave the minimum margins. */
-  private layout(width: number, height: number): FieldLayout {
+  private layout(width: number, height: number, variant: FieldVariant): FieldLayout {
+    const sideMargin = variant.minSideMargin;
     const columns = Math.max(
       1,
-      Math.floor((width - 2 * FIELD_MIN_SIDE_MARGIN_PX - FIELD_TICK_WIDTH_PX) / FIELD_TICK_SPACING_PX) + 1,
+      Math.floor((width - 2 * sideMargin - FIELD_TICK_WIDTH_PX) / FIELD_TICK_SPACING_PX) + 1,
     );
     const span = (columns - 1) * FIELD_TICK_SPACING_PX + FIELD_TICK_WIDTH_PX;
     /* On whole pixels, so the strokes stay crisp. */
     const left = Math.round((width - span) / 2);
-    let rows = Math.max(1, Math.floor((height - 2 * FIELD_MIN_VERTICAL_MARGIN_PX) / FIELD_ROW_SPACING_PX) + 1);
+    const verticalMargin = variant.minVerticalMargin;
+    let rows = Math.max(1, Math.floor((height - 2 * verticalMargin) / FIELD_ROW_SPACING_PX) + 1);
     for (;; rows -= 1) {
       /* The tallest tick of the last row is the one in the last column. */
       const bottom = (rows - 1) * FIELD_ROW_SPACING_PX + this.tickHeight(1, 1);
       const top = Math.round((height - bottom) / 2);
-      if (top >= FIELD_MIN_VERTICAL_MARGIN_PX || rows <= 1) return { columns, rows, left, top };
+      if (top >= verticalMargin || rows <= 1) return { columns, rows, left, top };
     }
+  }
+
+  /* A phone's narrow screen spares little width: there, the hero's field gives more of it to ticks,
+     and its diagonal runs down to the bottom right instead of up to the top right. */
+  private fieldVariant(): FieldVariant {
+    const isHeroOnPhone = this.classList.contains('hero') && isPhoneLayout();
+    return isHeroOnPhone ? HERO_ON_PHONE_FIELD_VARIANT : DEFAULT_FIELD_VARIANT;
   }
 
   private drawTickColumn(drawing: FieldDrawing, x: number, columnShare: number, fadeIn: number): void {
@@ -442,7 +488,7 @@ class TickField extends HTMLElement {
     for (let row = 0; row < layout.rows; row += 1) {
       const y = layout.top + row * FIELD_ROW_SPACING_PX;
       const tickHeight = this.tickHeight(columnShare, gridShare(row, layout.rows));
-      context.globalAlpha = fadeIn * this.restingAlpha(x, y, drawing.width, drawing.height);
+      context.globalAlpha = fadeIn * this.restingAlpha(drawing, x, y);
       context.fillRect(x, y, FIELD_TICK_WIDTH_PX, tickHeight);
       if (drawing.hasLighting) this.drawLighting(drawing, x, y, tickHeight);
     }
@@ -479,13 +525,19 @@ class TickField extends HTMLElement {
     context.fillRect(x, y - growthAtEachEnd, FIELD_TICK_WIDTH_PX, tickHeight + 2 * growthAtEachEnd);
   }
 
-  /* Set by the tick's place along the diagonal: brighter to the right and at the top. */
-  private restingAlpha(x: number, y: number, width: number, height: number): number {
-    const horizontal = FIELD_PLACE_HORIZONTAL_SHARE * (x / width);
-    const vertical = (1 - FIELD_PLACE_HORIZONTAL_SHARE) * (1 - y / height);
+  /* Set by the tick's place along the diagonal: brighter to the right, and towards its bright edge. */
+  private restingAlpha(drawing: FieldDrawing, x: number, y: number): number {
+    const horizontal = FIELD_PLACE_HORIZONTAL_SHARE * (x / drawing.width);
+    const vertical = (1 - FIELD_PLACE_HORIZONTAL_SHARE) * this.verticalPlace(drawing, y);
     return (
       FIELD_RESTING_MIN_ALPHA + (FIELD_RESTING_MAX_ALPHA - FIELD_RESTING_MIN_ALPHA) * easeInOut(horizontal + vertical)
     );
+  }
+
+  /* From 0 at the faint edge to 1 at the bright one, the edge the diagonal ends on. */
+  private verticalPlace(drawing: FieldDrawing, y: number): number {
+    const downShare = y / drawing.height;
+    return drawing.variant.isDiagonalDescending ? downShare : 1 - downShare;
   }
 
   /* Taller from left to right, and taller at the top. */
@@ -520,29 +572,30 @@ class TickField extends HTMLElement {
     return { x: x + FIELD_TICK_WIDTH_PX / 2, y: y + tickHeight / 2 };
   }
 
-  /* Made again only when the box size or the theme colours change. */
-  private tickGradient(
-    context: CanvasRenderingContext2D,
-    width: number,
-    height: number,
-    colors: FieldColors,
-  ): CanvasGradient {
-    const key = [width, height, colors.green, colors.accent, colors.cream].join(' ');
+  /* Made again only when its line or the theme colours change: the key holds every input of createTickGradient. */
+  private tickGradient(drawing: FieldDrawing, colors: FieldColors): CanvasGradient {
+    const line = this.gradientLine(drawing);
+    const key = [...line, colors.green, colors.accent, colors.cream].join(' ');
     if (!this.gradient || key !== this.gradientKey) {
-      this.gradient = this.createTickGradient(context, width, height, colors);
+      this.gradient = this.createTickGradient(drawing.context, line, colors);
       this.gradientKey = key;
     }
     return this.gradient;
   }
 
-  /* Along the diagonal: green at the bottom left, accent in the middle, cream at the top right. */
+  /* The field's diagonal, from its green, faint corner to its cream, bright one. */
+  private gradientLine(drawing: FieldDrawing): GradientLine {
+    const { width, height } = drawing;
+    return drawing.variant.isDiagonalDescending ? [0, 0, width, height] : [0, height, width, 0];
+  }
+
+  /* Along the line: green at its start, accent in the middle, cream at its end. */
   private createTickGradient(
     context: CanvasRenderingContext2D,
-    width: number,
-    height: number,
+    line: GradientLine,
     colors: FieldColors,
   ): CanvasGradient {
-    const gradient = context.createLinearGradient(0, height, width, 0);
+    const gradient = context.createLinearGradient(...line);
     gradient.addColorStop(FIELD_GREEN_UNTIL, colors.green);
     gradient.addColorStop(FIELD_ACCENT_FROM, colors.accent);
     gradient.addColorStop(FIELD_ACCENT_UNTIL, colors.accent);
@@ -559,3 +612,14 @@ class TickField extends HTMLElement {
 }
 
 customElements.define('tick-field', TickField);
+
+/* The CSS estimates the header's height for a menu on a single row; when the
+   menu wraps, the header is taller. Publish its real height. */
+const siteHeader = document.querySelector('.site-header');
+if (siteHeader) {
+  new ResizeObserver(([entry]) => {
+    /* Safari before 15.4 has no borderBoxSize, and older Firefox gives an object instead of an array. */
+    const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.target.getBoundingClientRect().height;
+    document.documentElement.style.setProperty('--header-height', `${height}px`);
+  }).observe(siteHeader, { box: 'border-box' });
+}

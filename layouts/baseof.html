@@ -1,5 +1,14 @@
 <!DOCTYPE html>
-<html lang="{{ site.Language.Locale }}" dir="{{ or site.Language.Direction `ltr` }}">
+{{/* Marked on the root element: the header's height, which depends on the
+  switcher and the main menu, is read outside the header too (the hero, the
+  anchor scroll padding). */ -}}
+{{ $hasLanguageSwitcher := gt (len hugo.Sites) 1 -}}
+{{ $hasMainMenu := false -}}
+{{ with site.Menus.main }}{{ $hasMainMenu = true }}{{ end -}}
+{{ $rootClasses := slice -}}
+{{ if $hasLanguageSwitcher }}{{ $rootClasses = $rootClasses | append "has-language-switcher" }}{{ end -}}
+{{ if $hasMainMenu }}{{ $rootClasses = $rootClasses | append "has-main-menu" }}{{ end -}}
+<html lang="{{ site.Language.Locale }}" dir="{{ or site.Language.Direction `ltr` }}"{{ with $rootClasses }} class="{{ delimit . ` ` }}"{{ end }}>
 <head>
   {{ partial "head.html" . }}
 </head>
@@ -7,7 +16,7 @@
   {{- $mainContentId := "contenu" }}
   <a class="skip-link" href="#{{ $mainContentId }}">{{ i18n "skipToContent" }}</a>
   <header class="site-header">
-    {{ partial "header.html" . }}
+    {{ partial "header.html" (dict "page" . "hasLanguageSwitcher" $hasLanguageSwitcher "hasMainMenu" $hasMainMenu) }}
   </header>
   <main id="{{ $mainContentId }}" tabindex="-1">
     {{ block "main" . }}{{ end }}
