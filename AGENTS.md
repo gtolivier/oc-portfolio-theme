@@ -70,7 +70,8 @@ The roadmap (one conversation per feature) lives in the private repository
     when they drive the fake clock (a scramble-text decoding).
 - **Mobile first**: base styles target phones; wider screens are enhanced
   through `@media (min-width: …)`. The Playwright projects `mobile-chrome`
-  and `mobile-safari` check every behavior on a phone.
+  and `mobile-safari` check every behavior on a phone, except the `@pixels`
+  tests, which run on `mobile-chrome` only.
 - **Static site**: no JavaScript required to read the content. Animations
   are an enhancement and respect `prefers-reduced-motion`.
 - **Deterministic tools**: go through the CLIs (`hugo`, `npm`, `npx`, `git`,
