@@ -49,9 +49,29 @@ The roadmap (one conversation per feature) lives in the private repository
   implementation detail. Only exception: a content error (badly filled
   front matter) that must make the site build fail is tested through the
   failure of `hugo build` and its message, since no page results from it.
+- **Test granularity**: keep the suite short and stable.
+  - One test per behavior a visitor would see break: content, links,
+    navigation, languages, accessibility, no horizontal overflow, the
+    phone and desktop layout in broad strokes, reading without JavaScript,
+    `prefers-reduced-motion`, build errors on badly filled content.
+  - Assert relations ("below the header", "aligned with the logo",
+    "brighter than before") rather than exact pixels or milliseconds,
+    unless the design itself depends on that value.
+  - A decorative component (animation, canvas) gets a handful of tests:
+    it appears, it reveals, it reacts to the pointer and to a click, it
+    stops under `prefers-reduced-motion`. No test per tuning parameter.
+  - No new pixel-analysis helper in `tests/helpers/` without the user's
+    agreement.
+  - CSS first: no JavaScript for a behavior that CSS delivers with an
+    acceptable gap from the design.
+  - Tests that read the pixels of a canvas carry the `@pixels` tag;
+    `playwright.config.ts` runs them on Chromium only (`chromium`,
+    `mobile-chrome`). Text and layout tests stay on every project, even
+    when they drive the fake clock (a scramble-text decoding).
 - **Mobile first**: base styles target phones; wider screens are enhanced
   through `@media (min-width: …)`. The Playwright projects `mobile-chrome`
-  and `mobile-safari` check every behavior on a phone.
+  and `mobile-safari` check every behavior on a phone, except the `@pixels`
+  tests, which run on `mobile-chrome` only.
 - **Static site**: no JavaScript required to read the content. Animations
   are an enhancement and respect `prefers-reduced-motion`.
 - **Deterministic tools**: go through the CLIs (`hugo`, `npm`, `npx`, `git`,

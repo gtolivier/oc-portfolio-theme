@@ -23,8 +23,34 @@ jobs:
       run: npm ci
     - name: Check types
       run: npm run typecheck
+    # The browsers are cached per runner image family (`$ImageOS`, the same
+    # across that family's updates) and Playwright version; their system
+    # dependencies are not, so a cache hit still installs those. The cache is
+    # saved right after the install, before the tests, so a red run still
+    # keeps it.
+    - name: Read the Playwright version and the runner image family
+      id: playwright-version
+      run: |
+        echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+        echo "image=$ImageOS" >> "$GITHUB_OUTPUT"
+    - name: Restore Playwright Browsers
+      id: playwright-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.image }}-${{ steps.playwright-version.outputs.version }}
     - name: Install Playwright Browsers
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
       run: npx playwright install --with-deps
+    - name: Save Playwright Browsers
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ steps.playwright-cache.outputs.cache-primary-key }}
+    - name: Install Playwright system dependencies
+      if: steps.playwright-cache.outputs.cache-hit == 'true'
+      run: npx playwright install-deps
     - name: Run Playwright tests
       run: npx playwright test
     - uses: actions/upload-artifact@v4

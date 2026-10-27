@@ -45,8 +45,6 @@ function invisibleSizer(text: string): HTMLSpanElement {
 class ScrambleText extends HTMLElement {
   private shown = document.createElement('span');
 
-  private startTimer: ReturnType<typeof setTimeout> | undefined;
-
   private tickTimer: ReturnType<typeof setInterval> | undefined;
 
   connectedCallback(): void {
@@ -62,15 +60,13 @@ class ScrambleText extends HTMLElement {
     this.shown.setAttribute('aria-hidden', 'true');
     this.replaceChildren(invisibleSizer(text), this.shown);
     this.shown.textContent = scramble(text);
-    const delayMs = Number(this.getAttribute('delay')) || 0;
-    this.startTimer = setTimeout(() => this.revealLeftToRight(text), delayMs);
+    this.revealLeftToRight(text);
     reducedMotion.addEventListener('change', () => {
       if (reducedMotion.matches) this.showInClear(text);
     });
   }
 
   private showInClear(text: string): void {
-    clearTimeout(this.startTimer);
     clearInterval(this.tickTimer);
     this.textContent = text;
   }

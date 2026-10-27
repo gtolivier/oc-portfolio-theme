@@ -1,8 +1,0 @@
-# Configuration added to exampleSite/hugo.toml by the tests of a bilingual
-# site without a main menu: empty lists replace the example site's French
-# and English main menus. Hugo replaces a list rather than merging it, so
-# the empty list leaves no menu entry.
-[languages.fr.menus]
-  main = []
-[languages.en.menus]
-  main = []

@@ -1,7 +1,7 @@
 import { test, expect, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { CATALOG_SITE, buildSite, removeDirectory, serveSite } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
-import { SIGNS, textOnScreen, textOnScreenWithSpaces } from './helpers/text-on-screen';
+import { SIGNS, textOnScreen } from './helpers/text-on-screen';
 
 /* Where the characters an element shows on screen are drawn: the box of each visible
    character of its text nodes, whitespace excluded, under the same visibility rules as
@@ -176,59 +176,12 @@ test.describe('catalog: scramble-text', () => {
     ).toBe(true);
   });
 
-  test('with a delay, a scramble-text stays fully scrambled until the delay is over, then decodes and ends in clear', async ({ page, context }) => {
-    /* Animations are allowed, and time stands still from before the page loads, until the
-       test advances it, step by step, to watch the text during the delay and after it. */
-    await openCatalogPage(page, context, 'scramble-text-delay', 'no-preference');
-    /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text-delay.md),
-       whose text is "Échappement" (11 letters) and whose delay is 1000 ms. */
-    const scrambleText = page.getByRole('main').locator('scramble-text');
-    await expect(scrambleText).toHaveCount(1);
-    const word = 'Échappement';
-    /* From load until the delay is over, every 25 ms: every letter is replaced by a sign. */
-    for (let elapsed = 0; elapsed < 1000; elapsed += 25) {
-      if (elapsed > 0) await page.clock.runFor(25);
-      const shown = await textOnScreen(scrambleText);
-      expect(Array.from(shown), `at ${elapsed} ms, "${shown}" shows one sign per letter of "${word}"`).toHaveLength(word.length);
-      for (const character of Array.from(shown)) {
-        expect(SIGNS, `at ${elapsed} ms, during the delay, "${character}", shown in "${shown}", is one of the signs`).toContain(character);
-      }
-    }
-    /* Once the delay is over, the text decodes as it would without one: 1.5 s later, it
-       is in clear. */
-    await page.clock.runFor(25 + 1500);
-    expect(await textOnScreen(scrambleText)).toBe(word);
-  });
-
-  test('a scramble-text takes longer to decode the longer its text: when a short one is in clear, a long one on the same page is still partly scrambled', async ({ page, context }) => {
-    /* Animations are allowed, and time stands still from before the page loads, until the
-       test advances it: animation frames and timers then run as they would in 1.5 s. */
-    await openCatalogPage(page, context, 'scramble-text-lengths', 'no-preference');
-    /* The two scramble-texts of the page (tests/fixtures/catalog/content/scramble-text-lengths.md):
-       a short one, "Échappement" (11 letters), then a long sentence (over 90 letters). */
-    const scrambleTexts = page.getByRole('main').locator('scramble-text');
-    await expect(scrambleTexts).toHaveCount(2);
-    const short = 'Échappement';
-    const long = 'Un texte brouillé se décode de gauche à droite, une lettre après une autre, puis finit par se montrer entièrement en clair'.replace(/\s+/g, '');
-    /* 1.5 s after load, the short text is in clear. */
-    await page.clock.runFor(1500);
-    expect(await textOnScreen(scrambleTexts.nth(0))).toBe(short);
-    /* At that moment, the long one still shows signs in place of some of its letters. */
-    const shown = Array.from(await textOnScreen(scrambleTexts.nth(1)));
-    const letters = Array.from(long);
-    expect(shown, `"${shown.join('')}" shows one character per letter of the long text`).toHaveLength(letters.length);
-    expect(
-      shown.some((character, index) => character !== letters[index] && SIGNS.includes(character)),
-      `when the short text is in clear, the long one, "${shown.join('')}", still shows signs in place of some of its letters`,
-    ).toBe(true);
-  });
-
   test('however long its text, a scramble-text is in clear 2 s after it starts decoding: a sentence of over 90 letters is in clear 2.1 s after load', async ({ page, context }) => {
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it: animation frames and timers then run as they would in 2.1 s. */
     await openCatalogPage(page, context, 'scramble-text-lengths', 'no-preference');
     /* The second scramble-text of the page (tests/fixtures/catalog/content/scramble-text-lengths.md),
-       a long sentence (over 90 letters) without a delay: it starts decoding at load. At a
+       a long sentence (over 90 letters): it starts decoding at load. At a
        tenth of a second per letter, it would still be decoding for more than 9 s. */
     const scrambleTexts = page.getByRole('main').locator('scramble-text');
     await expect(scrambleTexts).toHaveCount(2);
@@ -239,35 +192,13 @@ test.describe('catalog: scramble-text', () => {
     expect(await textOnScreen(scrambleTexts.nth(1))).toBe(long);
   });
 
-  test('even when the main thread of the page is busy while it decodes, a scramble-text is in clear 2 s after it starts decoding: a sentence of over 90 letters, the page busy for 1 s midway, is in clear 2.1 s after load', async ({ page, context }) => {
-    /* Animations are allowed, and time stands still from before the page loads, until the
-       test advances it. */
-    await openCatalogPage(page, context, 'scramble-text-lengths', 'no-preference');
-    /* The second scramble-text of the page (tests/fixtures/catalog/content/scramble-text-lengths.md),
-       a long sentence (over 90 letters) without a delay: it starts decoding at load, and on an
-       idle page it is in clear 2 s later. */
-    const scrambleTexts = page.getByRole('main').locator('scramble-text');
-    await expect(scrambleTexts).toHaveCount(2);
-    const long = 'Un texte brouillé se décode de gauche à droite, une lettre après une autre, puis finit par se montrer entièrement en clair'.replace(/\s+/g, '');
-    expect(Array.from(long).length, 'the sentence has over 90 letters').toBeGreaterThan(90);
-    /* 0.5 s after load, while it decodes, the main thread of the page is busy for 1 s, as under
-       heavy page scripts or on a slow device. For the page's timers, that is time jumping 1 s
-       ahead: each timer due meanwhile fires at most once, at the end, the callbacks it missed
-       skipped rather than replayed. */
-    await page.clock.runFor(500);
-    await page.clock.fastForward(1000);
-    /* 2.1 s after load, a little more than the 2 s cap, the whole sentence is in clear all the
-       same. */
-    await page.clock.runFor(600);
-    expect(await textOnScreen(scrambleTexts.nth(1))).toBe(long);
-  });
-
-  test('with a short duration (0.6 s), a long scramble-text is in clear 0.6 s after it starts decoding: a sentence of over 90 letters is in clear 1 s after load', async ({ page, context }) => {
-    /* Animations are allowed, and time stands still from before the page loads, until the
-       test advances it: animation frames and timers then run as they would in 1 s. */
+  test('the duration sets how long a scramble-text takes to decode: a long one with a short duration (0.6 s) is in clear 1 s after load, a short one with a long duration (3 s) is still partly scrambled at 2 s and in clear at 3 s', async ({ page, context }) => {
+    /* Animations are allowed, and time stands still from before each page loads, until the
+       test advances it. Both pages share the context's clock: the second one opens in a
+       second tab once the first one is fully checked. */
     await openCatalogPage(page, context, 'scramble-text-duration', 'no-preference');
     /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text-duration.md),
-       a long sentence (over 90 letters) without a delay, whose duration is 600 ms: it starts
+       a long sentence (over 90 letters), whose duration is 600 ms: it starts
        decoding at load. Without a duration, it would still be decoding until 2 s after load. */
     const scrambleText = page.getByRole('main').locator('scramble-text');
     await expect(scrambleText).toHaveCount(1);
@@ -277,23 +208,23 @@ test.describe('catalog: scramble-text', () => {
        without one, the whole sentence is in clear. */
     await page.clock.runFor(1000);
     expect(await textOnScreen(scrambleText)).toBe(long);
-  });
 
-  test('with a long duration (3 s), a short scramble-text is still partly scrambled 2 s after it starts decoding, and in clear 3 s after', async ({ page, context }) => {
-    /* Animations are allowed, and time stands still from before the page loads, until the
-       test advances it: animation frames and timers then run as they would in 2 s, then 3 s. */
-    await openCatalogPage(page, context, 'scramble-text-long-duration', 'no-preference');
+    /* The site is already served to the context, and its clock, still paused after the
+       first page's checks, stands still from before the second page loads. */
+    const longDurationPage = await context.newPage();
+    await longDurationPage.emulateMedia({ reducedMotion: 'no-preference' });
+    await longDurationPage.goto(`${CATALOG_SITE.origin}/fr/scramble-text-long-duration/`);
     /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text-long-duration.md),
-       a single short word, "Échappement" (11 letters), without a delay, whose duration is
+       a single short word, "Échappement" (11 letters), whose duration is
        3000 ms: it starts decoding at load. Without a duration, it would be in clear 1.5 s
        after load. */
-    const scrambleText = page.getByRole('main').locator('scramble-text');
-    await expect(scrambleText).toHaveCount(1);
+    const shortScrambleText = longDurationPage.getByRole('main').locator('scramble-text');
+    await expect(shortScrambleText).toHaveCount(1);
     const word = 'Échappement';
     /* 2 s after load, past the 1.5 s it takes without a duration and well before the 3 s
        duration, some of its letters are still replaced by signs. */
-    await page.clock.runFor(2000);
-    const shown = Array.from(await textOnScreen(scrambleText));
+    await longDurationPage.clock.runFor(2000);
+    const shown = Array.from(await textOnScreen(shortScrambleText));
     const letters = Array.from(word);
     expect(shown, `at 2 s, "${shown.join('')}" shows one character per letter of "${word}"`).toHaveLength(letters.length);
     expect(
@@ -301,11 +232,11 @@ test.describe('catalog: scramble-text', () => {
       `at 2 s, "${shown.join('')}" still shows signs in place of some of its letters`,
     ).toBe(true);
     /* 3 s after load, once the duration is over, the word is in clear. */
-    await page.clock.runFor(1000);
-    expect(await textOnScreen(scrambleText)).toBe(word);
+    await longDurationPage.clock.runFor(1000);
+    expect(await textOnScreen(shortScrambleText)).toBe(word);
   });
 
-  test('while a scramble-text decodes, the accessible name of the heading that contains it is its final text', async ({ page, context }) => {
+  test('while a scramble-text decodes, assistive technologies are given only its final text: it names the heading that contains it, and none of its signs is in the accessibility tree', async ({ page, context }) => {
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it, step by step, to watch the decoding as it goes. */
     await openCatalogPage(page, context, 'scramble-text-heading', 'no-preference');
@@ -315,7 +246,10 @@ test.describe('catalog: scramble-text', () => {
     await expect(heading).toHaveCount(1);
     await expect(heading.locator('scramble-text')).toHaveCount(1);
     /* From load until the text is in clear (1.5 s), every 25 ms: assistive technologies
-       name the heading "Échappement", never the signs shown on screen. */
+       name the heading "Échappement", never the signs shown on screen, and the accessibility
+       tree of the heading — its role, its name and every text a screen reader can reach
+       inside it, such as when it reads the page line by line — holds "Échappement" and none
+       of the signs. Its level, written "[level=2]", is not text and is left out. */
     for (let elapsed = 0; elapsed < 1500; elapsed += 25) {
       if (elapsed > 0) await page.clock.runFor(25);
       const shown = await textOnScreen(heading);
@@ -324,25 +258,6 @@ test.describe('catalog: scramble-text', () => {
         page.getByRole('main').getByRole('heading', { level: 2, name: 'Échappement', exact: true }),
         `at ${elapsed} ms, while "${shown}" is shown, the heading is found by its name`,
       ).toHaveCount(1);
-    }
-  });
-
-  test('while a scramble-text decodes, assistive technologies are given only its final text: none of its signs is in the accessibility tree', async ({ page, context }) => {
-    /* Animations are allowed, and time stands still from before the page loads, until the
-       test advances it, step by step, to watch the decoding as it goes. */
-    await openCatalogPage(page, context, 'scramble-text-heading', 'no-preference');
-    /* The only second-level heading of the page (tests/fixtures/catalog/content/scramble-text-heading.md),
-       whose whole text is a scramble-text: "Échappement". */
-    const heading = page.getByRole('main').getByRole('heading', { level: 2 });
-    await expect(heading).toHaveCount(1);
-    await expect(heading.locator('scramble-text')).toHaveCount(1);
-    /* From load until the text is in clear (1.5 s), every 25 ms: the accessibility tree of
-       the heading — its role, its name and every text a screen reader can reach inside it,
-       such as when it reads the page line by line — holds "Échappement" and none of the
-       signs shown on screen. Its level, written "[level=2]", is not text and is left out. */
-    for (let elapsed = 0; elapsed < 1500; elapsed += 25) {
-      if (elapsed > 0) await page.clock.runFor(25);
-      const shown = await textOnScreen(heading);
       const accessibilityTree = await heading.ariaSnapshot();
       const exposed = accessibilityTree.replace('[level=2]', '');
       expect(exposed, `at ${elapsed} ms, while "${shown}" is shown, assistive technologies get the final text`).toContain('Échappement');
@@ -352,30 +267,6 @@ test.describe('catalog: scramble-text', () => {
           `at ${elapsed} ms, while "${shown}" is shown, the accessibility tree of the heading holds no "${sign}":\n${accessibilityTree}`,
         ).not.toContain(sign);
       }
-    }
-  });
-
-  test('while a scramble-text decodes, its spaces stay spaces, at the same positions', async ({ page, context }) => {
-    /* Animations are allowed, and time stands still from before the page loads, until the
-       test advances it, step by step, to watch the decoding as it goes. */
-    await openCatalogPage(page, context, 'scramble-text-lengths', 'no-preference');
-    /* The second scramble-text of the page (tests/fixtures/catalog/content/scramble-text-lengths.md),
-       a long sentence with many spaces, still decoding 1.5 s after load. */
-    const scrambleTexts = page.getByRole('main').locator('scramble-text');
-    await expect(scrambleTexts).toHaveCount(2);
-    const sentence = Array.from('Un texte brouillé se décode de gauche à droite, une lettre après une autre, puis finit par se montrer entièrement en clair');
-    /* From load to 1.5 s later, every 25 ms: one character is shown per character of the
-       sentence, a space exactly where the sentence has one, and no space elsewhere. */
-    for (let elapsed = 0; elapsed <= 1500; elapsed += 25) {
-      if (elapsed > 0) await page.clock.runFor(25);
-      const shown = Array.from(await textOnScreenWithSpaces(scrambleTexts.nth(1)));
-      expect(shown, `at ${elapsed} ms, "${shown.join('')}" shows one character per character of the sentence`).toHaveLength(sentence.length);
-      sentence.forEach((character, index) => {
-        expect(
-          shown[index] === ' ',
-          `at ${elapsed} ms, in "${shown.join('')}", character ${index} is a space exactly when the sentence has one there`,
-        ).toBe(character === ' ');
-      });
     }
   });
 
@@ -469,52 +360,6 @@ test.describe('catalog: scramble-text', () => {
       shown = await checkWrapping(`at ${elapsed} ms`);
     }
     expect(shown, 'the sentence ends in clear').toBe(sentence);
-  });
-
-  test('once in clear, a scramble-text inside a paragraph wraps like plain text: its first word follows the text before it on the same line, and its words go on over the next lines', async ({ page, context }) => {
-    /* Animations are allowed, and time stands still from before the page loads, until the
-       test advances it past the end of the decoding. */
-    await openCatalogPage(page, context, 'scramble-text-in-paragraph', 'no-preference');
-    await page.evaluate(async () => {
-      await document.fonts.ready;
-    });
-    /* The only paragraph of the page (tests/fixtures/catalog/content/scramble-text-in-paragraph.md),
-       300px wide: a few words, "Au fil du texte,", then a scramble-text, a phrase much
-       longer than what is left of the line, then more words. */
-    const paragraph = page.getByRole('main').getByTestId('paragraph');
-    const scrambleText = paragraph.locator('scramble-text');
-    await expect(scrambleText).toHaveCount(1);
-    const phrase = 'un texte brouillé se décode de gauche à droite puis se montre en clair';
-    /* 2.1 s after load, a little more than the 2 s cap, the phrase is in clear. */
-    await page.clock.runFor(2100);
-    expect(await textOnScreen(scrambleText)).toBe(phrase.replace(/\s+/g, ''));
-    /* Where the last character of the text before the scramble-text is drawn. */
-    const before = await scrambleText.evaluate((element) => {
-      const text = element.previousSibling;
-      const content = text?.textContent ?? '';
-      const end = content.trimEnd().length;
-      const range = document.createRange();
-      range.setStart(text as Node, end - 1);
-      range.setEnd(text as Node, end);
-      const box = range.getBoundingClientRect();
-      return { top: box.top, bottom: box.bottom };
-    });
-    const boxes = await visibleCharacterBoxes(scrambleText);
-    expect(boxes.length, 'the phrase is drawn on screen').toBeGreaterThan(0);
-    const first = boxes[0];
-    const last = boxes[boxes.length - 1];
-    const middle = (box: { top: number; bottom: number }) => (box.top + box.bottom) / 2;
-    const characterHeight = first.bottom - first.top;
-    /* Its first word sits on the line of "Au fil du texte,", right after it. */
-    expect(
-      Math.abs(middle(first) - middle(before)),
-      `the first letter of the phrase is drawn ${middle(first) - middle(before)}px below the text before it, for characters ${characterHeight}px high: on the same line`,
-    ).toBeLessThan(characterHeight / 2);
-    /* Its last word is on a line below: its words wrapped over more than one line. */
-    expect(
-      middle(last) - middle(first),
-      `the last letter of the phrase is drawn ${middle(last) - middle(first)}px below its first one, for characters ${characterHeight}px high: on a later line`,
-    ).toBeGreaterThan(characterHeight / 2);
   });
 
   test('under prefers-reduced-motion: reduce, a scramble-text shows its text in clear from load', async ({ page, context }) => {

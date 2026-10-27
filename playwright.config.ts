@@ -8,6 +8,11 @@ import { defineConfig, devices } from '@playwright/test';
 // import path from 'path';
 // dotenv.config({ path: path.resolve(__dirname, '.env') });
 
+/* Tests that read the pixels of a canvas run on Chromium only (chromium and
+   mobile-chrome): the other engines render the same page, so running them
+   there only adds time. Text and layout tests stay on every project. */
+const PIXEL_TESTS = /@pixels/;
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -17,10 +22,10 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  /* Retry once on CI only. */
+  retries: process.env.CI ? 1 : 0,
+  /* One worker per CPU core of the CI runner. */
+  workers: process.env.CI ? '100%' : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [['list'], ['html', { open: 'never' }]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
@@ -42,11 +47,13 @@ export default defineConfig({
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
+      grepInvert: PIXEL_TESTS,
     },
 
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
+      grepInvert: PIXEL_TESTS,
     },
 
     /* Mobile first: every behavior is also checked on a phone. */
@@ -57,6 +64,7 @@ export default defineConfig({
     {
       name: 'mobile-safari',
       use: { ...devices['iPhone 15'] },
+      grepInvert: PIXEL_TESTS,
     },
 
     /* Test against branded browsers. */
@@ -71,16 +79,17 @@ export default defineConfig({
   ],
 
   /* Serves the theme's example site, in the production environment
-     to test the same output as the one that will be deployed. */
+     to test the same output as the one that will be deployed. Both servers
+     render to memory, so neither overwrites the pages on disk of another
+     Hugo server running on the same site, such as the development one. */
   webServer: [
     {
-      command: 'hugo server --source exampleSite --environment production --port 1314 --disableLiveReload',
+      command: 'hugo server --source exampleSite --environment production --port 1314 --disableLiveReload --renderToMemory',
       url: 'http://localhost:1314',
       reuseExistingServer: !process.env.CI,
     },
     /* The same site served under a subpath, like a deployment in a
-       subfolder (baseURL /portfolio/). Rendered to memory so it does not
-       overwrite the previous server's pages on disk. */
+       subfolder (baseURL /portfolio/). */
     {
       command:
         'hugo server --source exampleSite --environment production --port 1315 --baseURL http://localhost:1315/portfolio/ --disableLiveReload --renderToMemory',

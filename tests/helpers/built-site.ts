@@ -155,12 +155,6 @@ export const SITE_WITH_ENGLISH_BY_DEFAULT = testSite('english-by-default');
    tests/fixtures/long-menu/hugo.toml). */
 export const SITE_WITH_A_LONG_MENU = testSite('long-menu');
 
-/* The example site has a French and an English main menu, of three links
-   each: this site keeps both languages but empties both menus (see
-   tests/fixtures/without-menu/hugo.toml), so that its header has no
-   navigation link. */
-export const SITE_WITHOUT_MENU = testSite('without-menu');
-
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

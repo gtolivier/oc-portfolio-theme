@@ -3,14 +3,11 @@ import {
   SITE_WITH_A_LONG_MENU,
   SITE_WITH_A_SINGLE_LANGUAGE,
   SITE_WITH_ENGLISH_BY_DEFAULT,
-  SITE_WITHOUT_MENU,
   buildSite,
   serveSite,
   removeDirectory,
 } from './helpers/built-site';
 import { characterWeights } from './helpers/character-weights';
-import { inkMargins } from './helpers/pixels';
-import { textPieceStyles } from './helpers/text-piece-styles';
 
 /* The logo is the header link named after the site title. */
 function headerLogo(page: Page): Locator {
@@ -76,16 +73,6 @@ async function characterTops(element: Locator): Promise<number[]> {
   });
 }
 
-/* The box of the element's text as rendered: the rectangle of a Range over its contents. */
-async function textBox(element: Locator): Promise<{ top: number; right: number; bottom: number; left: number }> {
-  return element.evaluate((root) => {
-    const range = document.createRange();
-    range.selectNodeContents(root);
-    const { top, right, bottom, left } = range.getBoundingClientRect();
-    return { top, right, bottom, left };
-  });
-}
-
 /* The top edge of the header's 1 px bottom border, given the header's box. */
 function bottomBorderTop(headerBox: { y: number; height: number }): number {
   return headerBox.y + headerBox.height - 1;
@@ -122,11 +109,6 @@ const DESKTOP_MIN_WIDTH = 768;
 const NARROW_DESKTOP_VIEWPORT = { width: DESKTOP_MIN_WIDTH, height: 1024 };
 const WIDE_DESKTOP_VIEWPORT = { width: 1280, height: 800 };
 const DESKTOP_VIEWPORTS = [NARROW_DESKTOP_VIEWPORT, WIDE_DESKTOP_VIEWPORT];
-/* Every 8 px from the breakpoint to the wide desktop window's width, both included. */
-const DESKTOP_WIDTHS_EVERY_8_PX = Array.from(
-  { length: (WIDE_DESKTOP_VIEWPORT.width - DESKTOP_MIN_WIDTH) / 8 + 1 },
-  (_, index) => DESKTOP_MIN_WIDTH + 8 * index,
-);
 
 test('the header logo displays the initials and leads to the home page', async ({ page }) => {
   await page.goto('/fr/');
@@ -154,32 +136,27 @@ test('the header navigation lists the entries of the site main menu', async ({ p
   await expect(links.nth(2)).toHaveAttribute('href', '/fr/#contact');
 });
 
-test('served under /portfolio/, the "Contact" link of the French header leads to /portfolio/fr/#contact', async ({ page }) => {
-  await page.goto('http://localhost:1315/portfolio/fr/');
-  const contact = page.locator('header nav').getByRole('link', { name: 'Contact', exact: true });
-  await expect(contact).toHaveAttribute('href', '/portfolio/fr/#contact');
+test('served under /portfolio/, the "Contact" link of the header leads to /portfolio/{lang}/#contact, in French and in English', async ({ page }) => {
+  for (const lang of ['fr', 'en']) {
+    await page.goto(`http://localhost:1315/portfolio/${lang}/`);
+    const contact = page.locator('header nav').getByRole('link', { name: 'Contact', exact: true });
+    await expect(contact).toHaveAttribute('href', `/portfolio/${lang}/#contact`);
+  }
 });
 
-test('served under /portfolio/, the "Contact" link of the English header leads to /portfolio/en/#contact', async ({ page }) => {
-  await page.goto('http://localhost:1315/portfolio/en/');
-  const contact = page.locator('header nav').getByRole('link', { name: 'Contact', exact: true });
-  await expect(contact).toHaveAttribute('href', '/portfolio/en/#contact');
-});
-
-test('on the home page, only the "Accueil" navigation link is marked as the current page', async ({ page }) => {
-  await page.goto('/fr/');
-  const nav = page.locator('header nav');
-  await expect(nav.getByRole('link', { name: 'Accueil', exact: true })).toHaveAttribute('aria-current', 'page');
-  await expect(nav.getByRole('link', { name: 'Projets', exact: true })).not.toHaveAttribute('aria-current');
-  await expect(nav.getByRole('link', { name: 'Contact', exact: true })).not.toHaveAttribute('aria-current');
-});
-
-test('on the Projets page, only the "Projets" navigation link is marked as the current page', async ({ page }) => {
-  await page.goto('/fr/projets/');
-  const nav = page.locator('header nav');
-  await expect(nav.getByRole('link', { name: 'Projets', exact: true })).toHaveAttribute('aria-current', 'page');
-  await expect(nav.getByRole('link', { name: 'Accueil', exact: true })).not.toHaveAttribute('aria-current');
-  await expect(nav.getByRole('link', { name: 'Contact', exact: true })).not.toHaveAttribute('aria-current');
+test('only the navigation link of the current page is marked as the current page, on the home page and on the Projets page', async ({ page }) => {
+  for (const { url, current } of [
+    { url: '/fr/', current: 'Accueil' },
+    { url: '/fr/projets/', current: 'Projets' },
+  ]) {
+    await page.goto(url);
+    const nav = page.locator('header nav');
+    for (const name of ['Accueil', 'Projets', 'Contact']) {
+      const link = nav.getByRole('link', { name, exact: true });
+      if (name === current) await expect(link, `${name} on ${url}`).toHaveAttribute('aria-current', 'page');
+      else await expect(link, `${name} on ${url}`).not.toHaveAttribute('aria-current');
+    }
+  }
 });
 
 test('the navigation link marked as the current page is underlined with an accent-colored line', async ({ page }) => {
@@ -191,29 +168,9 @@ test('the navigation link marked as the current page is underlined with an accen
   await expect(current).not.toHaveCSS('border-bottom-width', '0px');
 });
 
-test('the accent underline of the navigation link marked as the current page starts 3 px below the bottom of its text as displayed, measured on the text itself (on a phone and at 1280 px)', async ({ page }) => {
-  /* The space between the bottom of the rendered text and the top of the accent underline, by window width. */
-  const gaps: Record<string, number> = {};
-  for (const viewport of [PHONE_VIEWPORT, WIDE_DESKTOP_VIEWPORT]) {
-    await page.setViewportSize(viewport);
-    await page.goto('/fr/');
-    await page.evaluate(() => document.fonts.ready);
-    const current = page.locator('header nav').getByRole('link', { name: 'Accueil', exact: true });
-    await expect(current).toHaveAttribute('aria-current', 'page');
-    const box = (await current.boundingBox())!;
-    const borderWidth = await current.evaluate((element) => parseFloat(getComputedStyle(element).borderBottomWidth));
-    const underlineTop = box.y + box.height - borderWidth;
-    gaps[`at ${viewport.width} px`] = underlineTop - (await textBox(current)).bottom;
-  }
-  /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
-  expect(
-    Object.values(gaps).every((gap) => Math.abs(gap - 3) <= 0.5),
-    `gaps between the text bottom and the underline: ${JSON.stringify(gaps)}`,
-  ).toBe(true);
-});
-
-test('in English, the header navigation lists the entries of the English main menu', async ({ page }) => {
+test('in English, the header logo leads to the English home page and the navigation lists the English main menu', async ({ page }) => {
   await page.goto('/en/');
+  await expect(headerLogo(page)).toHaveAttribute('href', '/en/');
   const links = navigationLinks(page);
   await expect(links).toHaveText(['Home', 'Projects', 'Contact']);
   await expect(links.nth(0)).toHaveAttribute('href', '/en/');
@@ -221,24 +178,17 @@ test('in English, the header navigation lists the entries of the English main me
   await expect(links.nth(2)).toHaveAttribute('href', '/en/#contact');
 });
 
-test('in English, the header logo leads to the English home page', async ({ page }) => {
-  await page.goto('/en/');
-  const logo = headerLogo(page);
-  await expect(logo).toHaveAttribute('href', '/en/');
-});
-
-test('on the French home page, the header offers an "EN" link to the English home page', async ({ page }) => {
-  await page.goto('/fr/');
-  const enLink = page.locator('header').getByRole('link', { name: 'EN', exact: true });
-  await expect(enLink).toBeVisible();
-  await expect(enLink).toHaveAttribute('href', '/en/');
-});
-
-test('on the French Projets page, the header "EN" link leads to the English Projects page', async ({ page }) => {
-  await page.goto('/fr/projets/');
-  const enLink = page.locator('header').getByRole('link', { name: 'EN', exact: true });
-  await expect(enLink).toBeVisible();
-  await expect(enLink).toHaveAttribute('href', '/en/projects/');
+test('the header "EN" and "FR" links lead to the translated page', async ({ page }) => {
+  for (const { url, name, href } of [
+    { url: '/fr/', name: 'EN', href: '/en/' },
+    { url: '/fr/projets/', name: 'EN', href: '/en/projects/' },
+    { url: '/en/projects/', name: 'FR', href: '/fr/projets/' },
+  ]) {
+    await page.goto(url);
+    const link = page.locator('header').getByRole('link', { name, exact: true });
+    await expect(link, `${name} link on ${url}`).toBeVisible();
+    await expect(link, `${name} link on ${url}`).toHaveAttribute('href', href);
+  }
 });
 
 test('on a French page without a translation, the header "EN" link leads to the English home page', async ({ page }) => {
@@ -257,13 +207,6 @@ test('on a French page, the header "EN" link announces its language: hreflang="e
   await expect(enLink).toHaveAttribute('lang', 'en');
 });
 
-test('on the English Projects page, the header "FR" link leads to the French Projets page', async ({ page }) => {
-  await page.goto('/en/projects/');
-  const frLink = page.locator('header').getByRole('link', { name: 'FR', exact: true });
-  await expect(frLink).toBeVisible();
-  await expect(frLink).toHaveAttribute('href', '/fr/projets/');
-});
-
 test('on a French page, the header displays the current language "FR" next to the "EN" link, without a link, marked as current', async ({ page }) => {
   await page.goto('/fr/');
   const header = page.locator('header');
@@ -274,20 +217,17 @@ test('on a French page, the header displays the current language "FR" next to th
   await expect(header.getByRole('link', { name: 'FR', exact: true })).toHaveCount(0);
 });
 
-test('on a French page, the header language switcher is a group named "Langue"', async ({ page }) => {
-  await page.goto('/fr/');
-  const group = languageSwitcher(page, 'Langue');
-  await expect(group).toBeVisible();
-  await expect(group.getByText('FR', { exact: true })).toHaveAttribute('aria-current');
-  await expect(group.getByRole('link', { name: 'EN', exact: true })).toHaveAttribute('href', '/en/');
-});
-
-test('in English, the header language switcher is a group named "Language"', async ({ page }) => {
-  await page.goto('/en/');
-  const group = languageSwitcher(page, 'Language');
-  await expect(group).toBeVisible();
-  await expect(group.getByText('EN', { exact: true })).toHaveAttribute('aria-current');
-  await expect(group.getByRole('link', { name: 'FR', exact: true })).toHaveAttribute('href', '/fr/');
+test('the header language switcher is a group named "Langue" on a French page, "Language" on an English page', async ({ page }) => {
+  for (const { url, name, current, other, href } of [
+    { url: '/fr/', name: 'Langue', current: 'FR', other: 'EN', href: '/en/' },
+    { url: '/en/', name: 'Language', current: 'EN', other: 'FR', href: '/fr/' },
+  ]) {
+    await page.goto(url);
+    const group = languageSwitcher(page, name);
+    await expect(group, `switcher on ${url}`).toBeVisible();
+    await expect(group.getByText(current, { exact: true })).toHaveAttribute('aria-current');
+    await expect(group.getByRole('link', { name: other, exact: true })).toHaveAttribute('href', href);
+  }
 });
 
 test('the header language switcher shows the languages in the site order, FR then EN, on a French page as on an English page, the current one highlighted', async ({ page }) => {
@@ -346,89 +286,6 @@ test.describe('single-language site', () => {
     await expect(languageSwitcher(page, 'Langue')).toHaveCount(0);
     await expect(page.locator('header').getByText('FR', { exact: true })).toHaveCount(0);
   });
-
-  test('on a phone, on a single-language site, the header leaves 12 px above the logo row, 8 px between the logo and the links row, and 12 px between the links row and its bottom border', async ({ page, context }) => {
-    await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
-    await page.setViewportSize(PHONE_VIEWPORT);
-    await page.goto(`${SITE_WITH_A_SINGLE_LANGUAGE.origin}/fr/`);
-    await expect(languageSwitcher(page, 'Langue')).toHaveCount(0);
-    const headerBox = (await page.locator('header').boundingBox())!;
-    const logoBox = (await headerLogo(page).boundingBox())!;
-    const links = navigationLinks(page);
-    await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
-    const linkBoxes = await boxesOf(links);
-
-    /* The first row holds the logo alone. */
-    const firstRowTop = logoBox.y;
-    const firstRowBottom = logoBox.y + logoBox.height;
-    const secondRowTop = Math.min(...linkBoxes.map((box) => box.y));
-    const secondRowBottom = Math.max(...linkBoxes.map((box) => box.y + box.height));
-    const borderTop = bottomBorderTop(headerBox);
-    /* The three gaps, by name, so a failure shows all of them. */
-    const gaps: Record<string, number> = {
-      'space above the logo row': firstRowTop - headerBox.y,
-      'gap between the logo row and the links row': secondRowTop - firstRowBottom,
-      'space below the links row': borderTop - secondRowBottom,
-    };
-    const expected: Record<string, number> = {
-      'space above the logo row': 12,
-      'gap between the logo row and the links row': 8,
-      'space below the links row': 12,
-    };
-    /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
-    expect(
-      Object.keys(expected).every((name) => Math.abs(gaps[name] - expected[name]) <= 0.5),
-      `gaps: ${JSON.stringify(gaps)}`,
-    ).toBe(true);
-  });
-
-  test('from 768 px wide, on a single-language site, the last navigation link ends 48 px from the right edge, where the language switcher ends on a bilingual site (at 768 and 1280 px)', async ({ page, context }) => {
-    await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
-    const spaces: Record<string, number> = {};
-    for (const viewport of DESKTOP_VIEWPORTS) {
-      await page.setViewportSize(viewport);
-      await page.goto(`${SITE_WITH_A_SINGLE_LANGUAGE.origin}/fr/`);
-      await expect(languageSwitcher(page, 'Langue')).toHaveCount(0);
-      const links = navigationLinks(page);
-      await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
-      const lastLinkBox = (await links.last().boundingBox())!;
-      spaces[`last link to right edge at ${viewport.width} px`] = viewport.width - (lastLinkBox.x + lastLinkBox.width);
-    }
-    /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
-    expect(
-      Object.values(spaces).every((space) => Math.abs(space - 48) <= 0.5),
-      `spaces: ${JSON.stringify(spaces)}`,
-    ).toBe(true);
-  });
-});
-
-test('in the header language switcher, the current language is ink text on a paper background', async ({ page }) => {
-  await page.goto('/fr/');
-  const group = languageSwitcher(page, 'Langue');
-  const currentLanguage = group.getByText('FR', { exact: true });
-  await expect(currentLanguage).toHaveAttribute('aria-current');
-  await expect(currentLanguage).toHaveCSS('color', 'rgb(1, 53, 73)');
-  await expect(currentLanguage).toHaveCSS('background-color', 'rgb(227, 223, 204)');
-});
-
-test('in the header language switcher, the link to the other language is cream at 70% opacity, on a transparent background', async ({ page }) => {
-  await page.goto('/fr/');
-  const group = languageSwitcher(page, 'Langue');
-  const otherLanguage = group.getByRole('link', { name: 'EN', exact: true });
-  await expect(otherLanguage).toBeVisible();
-  await expect(otherLanguage).toHaveCSS('color', 'rgba(227, 223, 204, 0.7)');
-  await expect(otherLanguage).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-});
-
-test('the header language switcher is surrounded by a 1 px cream border at 35% opacity', async ({ page }) => {
-  await page.goto('/fr/');
-  const group = languageSwitcher(page, 'Langue');
-  await expect(group).toBeVisible();
-  for (const side of ['top', 'right', 'bottom', 'left']) {
-    await expect(group).toHaveCSS(`border-${side}-style`, 'solid');
-    await expect(group).toHaveCSS(`border-${side}-width`, '1px');
-    await expect(group).toHaveCSS(`border-${side}-color`, 'rgba(227, 223, 204, 0.35)');
-  }
 });
 
 test('the border of the header language switcher surrounds only its FR and EN entries, without spanning the full width of the header', async ({ page }) => {
@@ -446,97 +303,6 @@ test('the border of the header language switcher surrounds only its FR and EN en
   expect(groupBox.width - (entriesRight - entriesLeft)).toBeLessThanOrEqual(10);
 });
 
-test('the header language switcher leaves 2 px between the inside of its border and its entries, on every side', async ({ page }) => {
-  await page.goto('/fr/');
-  const group = languageSwitcher(page, 'Langue');
-  const first = group.getByText('FR', { exact: true });
-  const last = group.getByRole('link', { name: 'EN', exact: true });
-  await expect(first).toHaveAttribute('aria-current');
-  await expect(last).toBeVisible();
-  const groupBox = (await group.boundingBox())!;
-  const firstBox = (await first.boundingBox())!;
-  const lastBox = (await last.boundingBox())!;
-  const border = 1;
-  /* The space between the inner edge of the 1 px border and the entries, side by side. */
-  const spaces = {
-    top: firstBox.y - groupBox.y - border,
-    bottom: groupBox.y + groupBox.height - (firstBox.y + firstBox.height) - border,
-    left: firstBox.x - groupBox.x - border,
-    right: groupBox.x + groupBox.width - (lastBox.x + lastBox.width) - border,
-  };
-  /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
-  expect(
-    Object.values(spaces).every((space) => Math.abs(space - 2) <= 0.5),
-    `spaces: ${JSON.stringify(spaces)}`,
-  ).toBe(true);
-});
-
-test('in the header language switcher, the FR and EN entries are 2 px apart', async ({ page }) => {
-  await page.goto('/fr/');
-  const group = languageSwitcher(page, 'Langue');
-  const first = group.getByText('FR', { exact: true });
-  const second = group.getByRole('link', { name: 'EN', exact: true });
-  await expect(first).toHaveAttribute('aria-current');
-  await expect(second).toBeVisible();
-  const firstBox = (await first.boundingBox())!;
-  const secondBox = (await second.boundingBox())!;
-  /* The horizontal distance between the right edge of the first entry and the left edge of the second one. */
-  const gap = secondBox.x - (firstBox.x + firstBox.width);
-  /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
-  expect(Math.abs(gap - 2), `gap: ${gap}`).toBeLessThanOrEqual(0.5);
-});
-
-test('the header language switcher is in IBM Plex Mono 12 px, weight 600', async ({ page }) => {
-  await page.goto('/fr/');
-  const group = languageSwitcher(page, 'Langue');
-  const entries = group.getByText('FR', { exact: true }).or(group.getByRole('link', { name: 'EN', exact: true }));
-  await expect(entries).toHaveCount(2);
-  const styles = await entries.evaluateAll((elements) =>
-    elements.map((element) => {
-      const style = getComputedStyle(element);
-      return {
-        family: style.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
-        size: style.fontSize,
-        weight: style.fontWeight,
-      };
-    }),
-  );
-  const expected = { family: 'IBM Plex Mono', size: '12px', weight: '600' };
-  expect(styles).toEqual([expected, expected]);
-});
-
-test('the header logo and the navigation links are in IBM Plex Mono 14 px', async ({ page }) => {
-  await page.goto('/fr/');
-  /* The logo and the navigation links, without the language switch link (12 px, tested above). */
-  const links = headerLogo(page).or(navigationLinks(page));
-  await expect(links).toHaveCount(4);
-  const styles = await links.evaluateAll((elements) =>
-    elements.map((element) => {
-      const style = getComputedStyle(element);
-      return {
-        family: style.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
-        size: style.fontSize,
-      };
-    }),
-  );
-  const expected = { family: 'IBM Plex Mono', size: '14px' };
-  expect(styles).toEqual([expected, expected, expected, expected]);
-});
-
-test('the header logo text has a letter-spacing of 0.06em (0.84 px at 14 px)', async ({ page }) => {
-  await page.goto('/fr/');
-  const logo = headerLogo(page);
-  await expect(logo).toHaveText('| E ||| | X |||');
-  /* The computed letter-spacing of every element that directly holds a piece of the logo text. */
-  const spacings = (await textPieceStyles(logo)).map(({ letterSpacing }) => letterSpacing);
-  expect(spacings.length).toBeGreaterThan(0);
-  /* Compared numerically: browsers may serialize the value differently ("0.84px", "0.840000px"); "normal" gives NaN and fails. */
-  expect(
-    spacings.every((spacing) => Math.abs(parseFloat(spacing) - 0.84) <= 0.01),
-    `letter-spacings: ${spacings.join(', ')}`,
-  ).toBe(true);
-});
-
 test('in the header logo, the first "|" of each initial is bold (700), every other character stays at weight 400', async ({ page }) => {
   await page.goto('/fr/');
   const logo = headerLogo(page);
@@ -548,33 +314,6 @@ test('in the header logo, the first "|" of each initial is bold (700), every oth
   ]);
 });
 
-test('the header navigation links have a letter-spacing of 0.08em (1.12 px at 14 px)', async ({ page }) => {
-  await page.goto('/fr/');
-  const links = navigationLinks(page);
-  await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
-  const spacings = await links.evaluateAll((elements) => elements.map((element) => getComputedStyle(element).letterSpacing));
-  /* Compared numerically: browsers may serialize the value differently ("1.12px", "1.120000px"); "normal" gives NaN and fails. */
-  expect(
-    spacings.every((spacing) => Math.abs(parseFloat(spacing) - 1.12) <= 0.01),
-    `letter-spacings: ${spacings.join(', ')}`,
-  ).toBe(true);
-});
-
-test('the header navigation links are spaced 32 px apart', async ({ page }) => {
-  await page.goto('/fr/');
-  const links = navigationLinks(page);
-  await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
-  const boxes = await boxesOf(links);
-  /* The horizontal distance between the right edge of each link and the left edge of the next one. */
-  const gaps = boxes.slice(1).map((box, index) => box.x - (boxes[index].x + boxes[index].width));
-  expect(gaps).toHaveLength(2);
-  /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
-  expect(
-    gaps.every((gap) => Math.abs(gap - 32) <= 0.5),
-    `gaps: ${gaps.join(', ')}`,
-  ).toBe(true);
-});
-
 test('in the header language switcher, the link to the other language offers a target of at least 24 × 24 px (WCAG 2.5.8)', async ({ page }) => {
   await page.goto('/fr/');
   const otherLanguage = languageSwitcher(page, 'Langue').getByRole('link', { name: 'EN', exact: true });
@@ -582,79 +321,6 @@ test('in the header language switcher, the link to the other language offers a t
   const box = (await otherLanguage.boundingBox())!;
   expect.soft(box.width, 'target width').toBeGreaterThanOrEqual(24);
   expect.soft(box.height, 'target height').toBeGreaterThanOrEqual(24);
-});
-
-test('in the header language switcher, the current language has the same height as the link to the other language', async ({ page }) => {
-  await page.goto('/fr/');
-  const group = languageSwitcher(page, 'Langue');
-  const currentLanguage = group.getByText('FR', { exact: true });
-  const otherLanguage = group.getByRole('link', { name: 'EN', exact: true });
-  await expect(currentLanguage).toHaveAttribute('aria-current');
-  await expect(otherLanguage).toBeVisible();
-  const frBox = (await currentLanguage.boundingBox())!;
-  const enBox = (await otherLanguage.boundingBox())!;
-  expect(frBox.height, 'height of the current language').toBeCloseTo(enBox.height, 0);
-});
-
-test('in the header language switcher, the text of each entry, measured on its pixels, is vertically centred in the entry within 1 px and has 9 px left and right of it up to the edge of the entry, and the entry stays at least 24 px tall (on a phone and at 1280 px)', async ({ page }) => {
-  for (const viewport of [PHONE_VIEWPORT, WIDE_DESKTOP_VIEWPORT]) {
-    await page.setViewportSize(viewport);
-    await page.goto('/fr/');
-    await page.evaluate(() => document.fonts.ready);
-    const group = languageSwitcher(page, 'Langue');
-    const currentLanguage = group.getByText('FR', { exact: true });
-    const otherLanguage = group.getByRole('link', { name: 'EN', exact: true });
-    await expect(currentLanguage).toHaveAttribute('aria-current');
-    await expect(otherLanguage).toBeVisible();
-    for (const [name, entry] of [['FR', currentLanguage], ['EN', otherLanguage]] as const) {
-      const box = (await entry.boundingBox())!;
-      /* Measured on the glyphs as drawn: the box the browser gives the text depends on how
-         each platform handles the font's metrics (Chromium on Linux makes it taller than the
-         line for the same layout), the drawn glyphs do not. */
-      const measured = await inkMargins(entry);
-      expect(measured, `${name} shows its text at ${viewport.width} px`).not.toBeNull();
-      const ink = measured!;
-      /* How far the middle of the drawn text sits below the middle of the entry. */
-      const offCentre = (ink.top - ink.bottom) / 2;
-      /* Compared within 1 px: the font does not centre the ink of capitals on the line, and
-         anti-aliasing spreads it to whole screen pixels. */
-      expect.soft(
-        Math.abs(offCentre) <= 1,
-        `${name} text off the vertical centre at ${viewport.width} px: ${JSON.stringify({ offCentre, ...ink })}`,
-      ).toBe(true);
-      /* Compared within 1.5 px: the ink of a letter starts and ends a little inside the
-         advance the font gives it (its side bearings, up to about 0.9 px here), and the
-         platform's anti-aliasing and hinting may move an edge by a screen pixel. */
-      expect.soft(
-        [ink.left, ink.right].every((space) => Math.abs(space - 9) <= 1.5),
-        `${name} spaces left and right of its text at ${viewport.width} px: ${JSON.stringify(ink)}`,
-      ).toBe(true);
-      expect.soft(box.height, `${name} target height at ${viewport.width} px`).toBeGreaterThanOrEqual(24);
-    }
-  }
-});
-
-test('on desktop, a hovered navigation link is underlined in the accent color, the line offset below the text', async ({ page, hasTouch }) => {
-  test.skip(hasTouch, 'mouse hover does not exist on a touch screen');
-  await page.goto('/fr/');
-  const link = page.locator('header nav').getByRole('link', { name: 'Projets', exact: true });
-  await expect(link).not.toHaveAttribute('aria-current');
-  await link.hover();
-  await expect(link).toHaveCSS('text-decoration-line', 'underline');
-  await expect(link).toHaveCSS('text-decoration-color', 'rgb(42, 136, 141)');
-  await expect(link).toHaveCSS('text-underline-offset', '5px');
-});
-
-test('on desktop, the hovered current page link keeps a single accent-colored line (no underline on top of its border)', async ({ page, hasTouch }) => {
-  test.skip(hasTouch, 'mouse hover does not exist on a touch screen');
-  await page.goto('/fr/');
-  const current = page.locator('header nav').getByRole('link', { name: 'Accueil', exact: true });
-  await expect(current).toHaveAttribute('aria-current', 'page');
-  await current.hover();
-  await expect(current).toHaveCSS('border-bottom-style', 'solid');
-  await expect(current).toHaveCSS('border-bottom-color', 'rgb(42, 136, 141)');
-  await expect(current).toHaveCSS('border-bottom-width', '2px');
-  await expect(current).toHaveCSS('text-decoration-line', 'none');
 });
 
 test('after scrolling a long page, the header stays stuck to the top of the window and visible', async ({ page }) => {
@@ -711,72 +377,50 @@ test('on arriving at an anchor of a long page, the targeted element is not hidde
   expect(targetBox.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height);
 });
 
-test('on a phone, the header fits within the screen width: no horizontal scrolling, logo and links fully visible', async ({ page, isMobile }) => {
-  test.skip(!isMobile, 'phone-specific behavior');
-  await page.goto('/fr/');
-  const width = page.viewportSize()!.width;
+test('on a phone, down to 320 px wide, the header fits within the screen width: no horizontal scrolling, logo, links and language switcher fully visible', async ({ page }) => {
+  for (const viewport of [PHONE_VIEWPORT, NARROWEST_PHONE_VIEWPORT]) {
+    const { width } = viewport;
+    await page.setViewportSize(viewport);
+    await page.goto('/fr/');
 
-  const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-  expect(pageWidth).toBeLessThanOrEqual(width);
+    const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(pageWidth, `width of the page content at ${width} px`).toBeLessThanOrEqual(width);
 
-  const links = page.locator('header').getByRole('link');
-  await expect(links).toHaveCount(5);
-  for (const link of await links.all()) {
-    await expect(link).toBeVisible();
-    const box = (await link.boundingBox())!;
-    expect(box.x).toBeGreaterThanOrEqual(0);
-    expect(box.x + box.width).toBeLessThanOrEqual(width);
+    await expect(page.locator('header').getByRole('link')).toHaveCount(5);
+    await expect(navigationLinks(page)).toHaveText(['Accueil', 'Projets', 'Contact']);
+    const items: NamedItem[] = [
+      ...(await headerItems(page)),
+      ['language switch link', languageSwitcher(page, 'Langue').getByRole('link', { name: 'EN', exact: true })],
+    ];
+    for (const [name, item] of items) {
+      await expect(item, `${name} at ${width} px`).toBeVisible();
+      const box = (await item.boundingBox())!;
+      /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+      expect(box.x, `left edge of the ${name} at ${width} px`).toBeGreaterThanOrEqual(-0.5);
+      expect(box.x + box.width, `right edge of the ${name} at ${width} px`).toBeLessThanOrEqual(width + 0.5);
+    }
   }
 });
 
-test('the header logo is 16 px from the left edge of the window on a phone, 48 px on desktop', async ({ page, isMobile }) => {
-  await page.goto('/fr/');
-  const logo = headerLogo(page);
-  const box = (await logo.boundingBox())!;
-  expect(box.x).toBeCloseTo(isMobile ? 16 : 48, 0);
-});
-
-test('on a phone, the header logo and the language switcher share the first row, vertically centred, 16 px from the left and right edges', async ({ page }) => {
+test('on a phone, the header logo and the language switcher share the first row, and the navigation links sit on a row below it, lined up on the left with the logo', async ({ page }) => {
   await page.setViewportSize(PHONE_VIEWPORT);
   await page.goto('/fr/');
+  const links = navigationLinks(page);
+  await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
   const logoBox = (await headerLogo(page).boundingBox())!;
   const switcherBox = (await languageSwitcher(page, 'Langue').boundingBox())!;
+  const linkBoxes = await boxesOf(links);
 
-  expect(logoBox.x, 'distance from the left edge to the logo').toBeCloseTo(16, 0);
-  expect(PHONE_VIEWPORT.width - (switcherBox.x + switcherBox.width), 'distance from the switcher to the right edge').toBeCloseTo(16, 0);
   const logoCentre = logoBox.y + logoBox.height / 2;
   const switcherCentre = switcherBox.y + switcherBox.height / 2;
   expect(Math.abs(logoCentre - switcherCentre), 'gap between the vertical centres of the logo and the switcher').toBeLessThanOrEqual(1);
-});
-
-test('on a phone, the header navigation links sit on a second row, lined up on the left with the logo, 8 px below the first row', async ({ page }) => {
-  await page.setViewportSize(PHONE_VIEWPORT);
-  await page.goto('/fr/');
-  const logoBox = (await headerLogo(page).boundingBox())!;
-  const switcherBox = (await languageSwitcher(page, 'Langue').boundingBox())!;
-  const firstLinkBox = (await navigationLinks(page).first().boundingBox())!;
-
-  expect(firstLinkBox.x, 'horizontal offset between the logo and the first link').toBeCloseTo(logoBox.x, 0);
   const firstRowBottom = Math.max(logoBox.y + logoBox.height, switcherBox.y + switcherBox.height);
-  expect(firstLinkBox.y - firstRowBottom, 'gap between the first row and the links row').toBeCloseTo(8, 0);
-});
-
-test('on a phone, the header leaves 12 px above its first row and 12 px between its links row and its bottom border', async ({ page }) => {
-  await page.setViewportSize(PHONE_VIEWPORT);
-  await page.goto('/fr/');
-  const headerBox = (await page.locator('header').boundingBox())!;
-  const logoBox = (await headerLogo(page).boundingBox())!;
-  const switcherBox = (await languageSwitcher(page, 'Langue').boundingBox())!;
-  const links = navigationLinks(page);
-  await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
-  const linkBoxes = await boxesOf(links);
-
-  const firstRowTop = Math.min(logoBox.y, switcherBox.y);
-  const secondRowBottom = Math.max(...linkBoxes.map((box) => box.y + box.height));
-  const borderTop = bottomBorderTop(headerBox);
   /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
-  expect(Math.abs(firstRowTop - headerBox.y - 12), `space above the first row: ${firstRowTop - headerBox.y}`).toBeLessThanOrEqual(0.5);
-  expect(Math.abs(borderTop - secondRowBottom - 12), `space below the links row: ${borderTop - secondRowBottom}`).toBeLessThanOrEqual(0.5);
+  expect(
+    linkBoxes.every((box) => box.y >= firstRowBottom - 0.5),
+    `link tops ${linkBoxes.map((box) => box.y).join(', ')}, first row bottom ${firstRowBottom}`,
+  ).toBe(true);
+  expect(Math.abs(linkBoxes[0].x - logoBox.x), 'horizontal offset between the logo and the first link').toBeLessThanOrEqual(1);
 });
 
 test('on a phone, on a page where no menu link is current, the header keeps the home page layout: same height, logo, language switcher and navigation links in the same place', async ({ page }) => {
@@ -807,62 +451,42 @@ test('on a phone, on a page where no menu link is current, the header keeps the 
   expect(differences, 'measures that differ from the home page').toEqual([]);
 });
 
-test('from 768 px wide, the header logo, navigation links and language switcher sit on a single row, vertically centred (at 768 and 1280 px)', async ({ page }) => {
+test('from 768 px wide, the header sits on a single row, vertically centred: the logo on the left, then the navigation links, then the language switcher on the right, without overlap (at 768 and 1280 px)', async ({ page }) => {
   for (const viewport of DESKTOP_VIEWPORTS) {
     await page.setViewportSize(viewport);
     await page.goto('/fr/');
     const links = navigationLinks(page);
     await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
-    expectCentredOnLogo(await verticalCentres(await headerItems(page)), viewport.width);
+    const items = await headerItems(page);
+    expectCentredOnLogo(await verticalCentres(items), viewport.width);
+    /* Each item ends before the next one starts, in document order, from left to right. */
+    const overlaps: string[] = [];
+    for (let index = 1; index < items.length; index++) {
+      const [previousName, previous] = items[index - 1];
+      const [name, item] = items[index];
+      const previousBox = (await previous.boundingBox())!;
+      const box = (await item.boundingBox())!;
+      /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
+      if (previousBox.x + previousBox.width > box.x + 0.5) {
+        overlaps.push(`${previousName} ends at ${previousBox.x + previousBox.width}, ${name} starts at ${box.x}`);
+      }
+    }
+    expect(overlaps, `items out of order or overlapping at ${viewport.width} px`).toEqual([]);
+
+    /* The switcher on the right: the header leaves as much space after it, up to the right
+       edge of the page, as before the logo, from the left edge. */
+    const logoBox = (await headerLogo(page).boundingBox())!;
+    const switcherBox = (await languageSwitcher(page, 'Langue').boundingBox())!;
+    const pageWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    const spaceAfterSwitcher = pageWidth - (switcherBox.x + switcherBox.width);
+    expect(
+      Math.abs(spaceAfterSwitcher - logoBox.x),
+      `at ${viewport.width} px, space after the switcher ${spaceAfterSwitcher}, before the logo ${logoBox.x}`,
+    ).toBeLessThanOrEqual(1);
   }
 });
 
-test('from 768 px wide, the header logo sits on the left, the language switcher 48 px from the right edge, the navigation links right before it, 32 px from it', async ({ page }) => {
-  await page.setViewportSize(WIDE_DESKTOP_VIEWPORT);
-  await page.goto('/fr/');
-  const links = navigationLinks(page);
-  await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
-  const logoBox = (await headerLogo(page).boundingBox())!;
-  const lastLinkBox = (await links.last().boundingBox())!;
-  const switcherBox = (await languageSwitcher(page, 'Langue').boundingBox())!;
-
-  const spaces = {
-    leftEdgeToLogo: logoBox.x,
-    switcherToRightEdge: WIDE_DESKTOP_VIEWPORT.width - (switcherBox.x + switcherBox.width),
-    lastLinkToSwitcher: switcherBox.x - (lastLinkBox.x + lastLinkBox.width),
-  };
-  /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
-  expect.soft(Math.abs(spaces.leftEdgeToLogo - 48), `spaces: ${JSON.stringify(spaces)}`).toBeLessThanOrEqual(0.5);
-  expect.soft(Math.abs(spaces.switcherToRightEdge - 48), `spaces: ${JSON.stringify(spaces)}`).toBeLessThanOrEqual(0.5);
-  expect.soft(Math.abs(spaces.lastLinkToSwitcher - 32), `spaces: ${JSON.stringify(spaces)}`).toBeLessThanOrEqual(0.5);
-});
-
-test('from 768 px wide, the language switcher is the tallest item of the header, 22 px below its top edge and 22 px above its bottom border', async ({ page }) => {
-  await page.setViewportSize(WIDE_DESKTOP_VIEWPORT);
-  await page.goto('/fr/');
-  const headerBox = (await page.locator('header').boundingBox())!;
-  const switcherBox = (await languageSwitcher(page, 'Langue').boundingBox())!;
-  const links = navigationLinks(page);
-  await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
-  const items = await logoAndNavigationLinks(page);
-
-  /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
-  for (const [name, item] of items) {
-    const box = (await item.boundingBox())!;
-    expect.soft(box.y, `top of the ${name}, against the switcher top ${switcherBox.y}`).toBeGreaterThanOrEqual(switcherBox.y - 0.5);
-    expect.soft(box.y + box.height, `bottom of the ${name}, against the switcher bottom ${switcherBox.y + switcherBox.height}`)
-      .toBeLessThanOrEqual(switcherBox.y + switcherBox.height + 0.5);
-  }
-  const borderTop = bottomBorderTop(headerBox);
-  const spaces = {
-    headerTopToSwitcher: switcherBox.y - headerBox.y,
-    switcherToBottomBorder: borderTop - (switcherBox.y + switcherBox.height),
-  };
-  expect.soft(Math.abs(spaces.headerTopToSwitcher - 22), `spaces: ${JSON.stringify(spaces)}`).toBeLessThanOrEqual(0.5);
-  expect.soft(Math.abs(spaces.switcherToBottomBorder - 22), `spaces: ${JSON.stringify(spaces)}`).toBeLessThanOrEqual(0.5);
-});
-
-test('after the window is widened from 375 px to 1280 px on the same page, the header takes back its desktop height, the language switcher 22 px below its top edge and 22 px above its bottom border, and the hero still ends at the bottom of the window, within 1 px', async ({ page }) => {
+test('after the window is widened from 375 px to 1280 px on the same page, the hero still ends at the bottom of the window, within 1 px', async ({ page }) => {
   /* 900 px high: tall enough for the hero's content at 375 px as at 1280 px, so the hero's
      height is the window height minus the header height. */
   const height = 900;
@@ -874,33 +498,18 @@ test('after the window is widened from 375 px to 1280 px on the same page, the h
 
   /* Widened without reloading: the page lays itself out again. */
   await page.setViewportSize({ width: WIDE_DESKTOP_VIEWPORT.width, height });
-  const header = page.locator('header');
-  const switcher = languageSwitcher(page, 'Langue');
   /* The hero is the main content region named by its main heading. */
   const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
   await expect(hero.getByRole('heading', { level: 1 })).toBeVisible();
 
-  /* What differs from a page loaded at 1280 px, beyond a sub-pixel rounding tolerance;
-     measured again until the layout settles. */
-  const problems = async (): Promise<string[]> => {
-    const headerBox = (await header.boundingBox())!;
-    const switcherBox = (await switcher.boundingBox())!;
+  /* How far the hero's bottom sits from the window's bottom; measured again until the layout settles. */
+  const heroBottomOffset = async (): Promise<number> => {
     const heroBox = (await hero.boundingBox())!;
-    const measures = {
-      'space between the header top and the switcher': switcherBox.y - headerBox.y,
-      'space between the switcher and the header bottom border': bottomBorderTop(headerBox) - (switcherBox.y + switcherBox.height),
-      'hero bottom against the window bottom': heroBox.y + heroBox.height - height,
-    };
-    const expected = {
-      'space between the header top and the switcher': { value: 22, tolerance: 0.5 },
-      'space between the switcher and the header bottom border': { value: 22, tolerance: 0.5 },
-      'hero bottom against the window bottom': { value: 0, tolerance: 1 },
-    };
-    return (Object.keys(expected) as (keyof typeof expected)[])
-      .filter((name) => !(Math.abs(measures[name] - expected[name].value) <= expected[name].tolerance))
-      .map((name) => `${name}: ${measures[name]} px, expected ${expected[name].value} px (header height ${headerBox.height} px)`);
+    return heroBox.y + heroBox.height - height;
   };
-  await expect.poll(problems, { message: 'layout after widening the window to 1280 px' }).toEqual([]);
+  await expect
+    .poll(async () => Math.abs(await heroBottomOffset()), { message: 'hero bottom against the window bottom after widening to 1280 px' })
+    .toBeLessThanOrEqual(1);
 });
 
 test('from 768 px wide, at least 24 px separate the header logo from the first navigation link, in French and in English (at 768 and 1280 px)', async ({ page }) => {
@@ -973,24 +582,6 @@ test('in a 320 px wide window, the header logo stays on a single line', async ({
   ).toBe(true);
 });
 
-test('in a 320 px wide window, the header still fits: no horizontal scrolling, logo, links and language switcher fully visible', async ({ page }) => {
-  await page.setViewportSize(NARROWEST_PHONE_VIEWPORT);
-  await page.goto('/fr/');
-
-  const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-  expect(pageWidth, 'width of the page content').toBeLessThanOrEqual(320);
-
-  const links = navigationLinks(page);
-  await expect(links).toHaveText(['Accueil', 'Projets', 'Contact']);
-  for (const [name, item] of await headerItems(page)) {
-    await expect(item, name).toBeVisible();
-    const box = (await item.boundingBox())!;
-    /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
-    expect(box.x, `left edge of the ${name}`).toBeGreaterThanOrEqual(-0.5);
-    expect(box.x + box.width, `right edge of the ${name}`).toBeLessThanOrEqual(320.5);
-  }
-});
-
 test.describe('site with a long menu', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
@@ -1032,62 +623,42 @@ test.describe('site with a long menu', () => {
     expect(lineCount, `top edges of the links: ${linkTops.join(', ')}`).toBeGreaterThan(1);
   });
 
-  test('from 768 px wide, with a menu too long to fit on the header line, the links wrap between the logo and the language switcher: every link at least 24 px right of the logo and 32 px left of the switcher, the switcher 48 px from the right edge (every 8 px from 768 to 1280 px)', async ({ page, context }) => {
+  test('from 768 px wide, with a menu too long to fit on the header line, the links wrap between the logo and the language switcher without overlapping them or going past the header, and the logo stays on a single line (at 768, 1024 and 1280 px)', async ({ page, context }) => {
     await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
     await page.setViewportSize(NARROW_DESKTOP_VIEWPORT);
     await page.goto(`${SITE_WITH_A_LONG_MENU.origin}/fr/`);
     const links = navigationLinks(page);
     await expect(links).toHaveText(['Accueil', 'Projets', 'Parcours', 'Compétences', 'Publications', 'Contact']);
     const logo = headerLogo(page);
+    await expect(logo).toHaveText('| E ||| | X |||');
     const switcher = languageSwitcher(page, 'Langue');
+    const header = page.locator('header');
 
     const problems: string[] = [];
-    for (const width of DESKTOP_WIDTHS_EVERY_8_PX) {
+    for (const width of [DESKTOP_MIN_WIDTH, 1024, WIDE_DESKTOP_VIEWPORT.width]) {
       /* Resized without reloading: the page lays itself out again at each width. */
       await page.setViewportSize({ width, height: NARROW_DESKTOP_VIEWPORT.height });
+      const headerBox = (await header.boundingBox())!;
       const logoBox = (await logo.boundingBox())!;
       const switcherBox = (await switcher.boundingBox())!;
       const linkBoxes = await boxesOf(links);
 
       if (width === DESKTOP_MIN_WIDTH) {
-        /* The row the menu is too long for: 48 px gutters, the logo, 24 px, the links 32 px apart,
-           32 px, the switcher. */
-        const rowWidth =
-          2 * 48 + logoBox.width + 24 + linkBoxes.reduce((sum, box) => sum + box.width, 0)
-          + 32 * (linkBoxes.length - 1) + 32 + switcherBox.width;
-        expect(rowWidth, `width the single row would need at ${width} px`).toBeGreaterThan(width);
+        /* The menu is too long for a single line here: its links sit on more than one line. */
+        const linkTops = linkBoxes.map((box) => box.y);
+        expect(new Set(linkTops.map(Math.round)).size, `top edges of the links at ${width} px: ${linkTops.join(', ')}`)
+          .toBeGreaterThan(1);
       }
 
       /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
-      const switcherToRightEdge = width - (switcherBox.x + switcherBox.width);
-      if (Math.abs(switcherToRightEdge - 48) > 0.5) {
-        problems.push(`at ${width} px, the switcher is ${switcherToRightEdge} px from the right edge`);
-      }
       for (const [index, box] of linkBoxes.entries()) {
         const name = `at ${width} px, navigation link ${index + 1}`;
-        /* The horizontal distance between the right edge of the logo and the left edge of the link. */
-        const logoGap = box.x - (logoBox.x + logoBox.width);
-        if (logoGap < 24 - 0.5) problems.push(`${name} is ${logoGap} px right of the logo`);
-        /* The horizontal distance between the right edge of the link and the left edge of the switcher. */
-        const switcherGap = switcherBox.x - (box.x + box.width);
-        if (switcherGap < 32 - 0.5) problems.push(`${name} is ${switcherGap} px left of the switcher`);
+        if (box.x < logoBox.x + logoBox.width - 0.5) problems.push(`${name} starts at ${box.x}, before the logo ends`);
+        if (box.x + box.width > switcherBox.x + 0.5) problems.push(`${name} ends at ${box.x + box.width}, after the switcher starts`);
+        if (box.y < headerBox.y - 0.5 || box.y + box.height > bottomBorderTop(headerBox) + 0.5) {
+          problems.push(`${name} goes past the header: ${JSON.stringify(box)}`);
+        }
       }
-    }
-    expect(problems, 'links outside the space between the logo and the switcher').toEqual([]);
-  });
-
-  test('from 768 px wide, with a menu too long to fit on the header line, the header logo stays on a single line (every 8 px from 768 to 1280 px)', async ({ page, context }) => {
-    await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
-    await page.setViewportSize(NARROW_DESKTOP_VIEWPORT);
-    await page.goto(`${SITE_WITH_A_LONG_MENU.origin}/fr/`);
-    await expect(navigationLinks(page)).toHaveText(['Accueil', 'Projets', 'Parcours', 'Compétences', 'Publications', 'Contact']);
-    const logo = headerLogo(page);
-    await expect(logo).toHaveText('| E ||| | X |||');
-
-    const problems: string[] = [];
-    for (const width of DESKTOP_WIDTHS_EVERY_8_PX) {
-      /* Resized without reloading: the page lays itself out again at each width. */
-      await page.setViewportSize({ width, height: NARROW_DESKTOP_VIEWPORT.height });
       const tops = await characterTops(logo);
       if (tops.length !== 10) problems.push(`at ${width} px, the logo renders ${tops.length} characters`);
       /* On a single line, every character shares the vertical position of the first one. */
@@ -1095,64 +666,6 @@ test.describe('site with a long menu', () => {
         problems.push(`at ${width} px, the logo characters sit at ${tops.join(', ')}`);
       }
     }
-    expect(problems, 'widths at which the logo does not stay on a single line').toEqual([]);
+    expect(problems, 'links outside the space between the logo and the switcher, or logo on several lines').toEqual([]);
   });
-});
-
-test.describe('site without a main menu', () => {
-  let siteDirectory: string;
-  test.beforeAll(() => {
-    siteDirectory = buildSite(SITE_WITHOUT_MENU);
-  });
-  test.afterAll(() => {
-    removeDirectory(siteDirectory);
-  });
-
-  test('on a phone, on a multilingual site without a main menu, the header has a single row: 12 px above the logo and language switcher row, 12 px between that row and its bottom border', async ({ page, context }) => {
-    await serveSite(context, SITE_WITHOUT_MENU, siteDirectory);
-    await page.setViewportSize(PHONE_VIEWPORT);
-    await page.goto(`${SITE_WITHOUT_MENU.origin}/fr/`);
-    /* A multilingual site, with a language switcher, but no navigation link. */
-    const switcher = languageSwitcher(page, 'Langue');
-    await expect(switcher).toBeVisible();
-    await expect(navigationLinks(page)).toHaveCount(0);
-    const headerBox = (await page.locator('header').boundingBox())!;
-    const logoBox = (await headerLogo(page).boundingBox())!;
-    const switcherBox = (await switcher.boundingBox())!;
-
-    /* The only row holds the logo and the switcher. */
-    const rowTop = Math.min(logoBox.y, switcherBox.y);
-    const rowBottom = Math.max(logoBox.y + logoBox.height, switcherBox.y + switcherBox.height);
-    const borderTop = bottomBorderTop(headerBox);
-    /* The two spaces, by name, so a failure shows both of them. */
-    const spaces: Record<string, number> = {
-      'space above the row': rowTop - headerBox.y,
-      'space below the row': borderTop - rowBottom,
-    };
-    /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
-    expect(
-      Object.values(spaces).every((space) => Math.abs(space - 12) <= 0.5),
-      `spaces: ${JSON.stringify(spaces)}`,
-    ).toBe(true);
-  });
-});
-
-test('the header is separated from the page by a 1 px solid paper-colored bottom border at 12% opacity', async ({ page }) => {
-  await page.goto('/fr/');
-  const header = page.locator('header');
-  await expect(header).toBeVisible();
-  await expect(header).toHaveCSS('border-bottom-style', 'solid');
-  await expect(header).toHaveCSS('border-bottom-width', '1px');
-  await expect(header).toHaveCSS('border-bottom-color', 'rgba(227, 223, 204, 0.12)');
-});
-
-test('the header links are paper-colored and not underlined', async ({ page }) => {
-  await page.goto('/fr/');
-  /* The logo and the navigation links, without the language switch link. */
-  const links = headerLogo(page).or(navigationLinks(page));
-  await expect(links).toHaveCount(4);
-  for (const link of await links.all()) {
-    await expect(link).toHaveCSS('color', 'rgb(227, 223, 204)');
-    await expect(link).toHaveCSS('text-decoration-line', 'none');
-  }
 });
