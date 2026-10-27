@@ -64,9 +64,10 @@ The roadmap (one conversation per feature) lives in the private repository
     agreement.
   - CSS first: no JavaScript for a behavior that CSS delivers with an
     acceptable gap from the design.
-  - Tests that read canvas pixels or frame timings carry the `@pixels`
-    tag; `playwright.config.ts` runs them on Chromium only (`chromium`,
-    `mobile-chrome`).
+  - Tests that read the pixels of a canvas carry the `@pixels` tag;
+    `playwright.config.ts` runs them on Chromium only (`chromium`,
+    `mobile-chrome`). Text and layout tests stay on every project, even
+    when they drive the fake clock (a scramble-text decoding).
 - **Mobile first**: base styles target phones; wider screens are enhanced
   through `@media (min-width: …)`. The Playwright projects `mobile-chrome`
   and `mobile-safari` check every behavior on a phone.
