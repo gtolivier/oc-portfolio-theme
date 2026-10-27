@@ -119,13 +119,20 @@ function customProperty(style: CSSStyleDeclaration, name: string): string {
   return style.getPropertyValue(name).trim();
 }
 
-/* A custom property the stylesheet sets in px. A missing or unreadable one counts as 0: NaN would keep
-   the layout's search for the number of rows from ever ending. */
+/* The browsers' default, for a root font size that cannot be read. */
+const DEFAULT_ROOT_FONT_SIZE_PX = 16;
+
+/* What one rem is worth, in CSS pixels. */
+function remPx(): number {
+  return Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || DEFAULT_ROOT_FONT_SIZE_PX;
+}
+
+/* A custom property the stylesheet sets in px or rem, in CSS pixels. A missing or unreadable one counts as 0:
+   NaN would keep the layout's search for the number of rows from ever ending. */
 function customPropertyPx(style: CSSStyleDeclaration, name: string): number {
-  const value = customProperty(style, name).trim();
-  const number = Number.parseFloat(value) || 0;
-  if (!value.endsWith('rem')) return number;
-  return number * (Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16);
+  const value = customProperty(style, name);
+  const length = Number.parseFloat(value) || 0;
+  return value.endsWith('rem') ? length * remPx() : length;
 }
 
 /* A decorative canvas covering the whole box, behind the content. */
