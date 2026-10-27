@@ -51,15 +51,22 @@ class ScrambleText extends HTMLElement {
 
   private isInClear = false;
 
+  private finalText: string | undefined;
+
   connectedCallback(): void {
     if (this.isInClear) return;
-    const text = this.textContent ?? '';
+    /* Inserted again while decoding: the text content now holds the signs, so
+       the text read on first connection is the one to decode. */
+    this.finalText ??= this.textContent ?? '';
+    const text = this.finalText;
     this.setAttribute('role', 'text');
     this.setAttribute('aria-label', text);
     this.decode(text);
   }
 
   private decode(text: string): void {
+    clearTimeout(this.startTimer);
+    clearInterval(this.tickTimer);
     const reducedMotion = reducedMotionQuery();
     if (reducedMotion.matches) return;
     this.shown.setAttribute('aria-hidden', 'true');
