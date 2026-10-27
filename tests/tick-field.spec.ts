@@ -2032,6 +2032,69 @@ test.describe('catalog: tick-field', () => {
     ).toBeGreaterThanOrEqual(Math.max(leftAlone, rightAlone));
   });
 
+  test('a tick-field removed from the page and inserted again starts only one ripple per click: once revealed, 300 ms after a click (a tap on mobile) at its centre, the zones around the click point the ring crosses, about 84px from it, are no brighter than they were 300 ms after the same click before the field was moved', async ({ page, context, hasTouch }) => {
+    const tickField = await openRevealedTickField(page, context);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    /* The centre of the field, with room for the ring all around it. */
+    const point = { x: fieldBox!.width / 2, y: fieldBox!.height / 2 };
+    const onScreen = { x: fieldBox!.x + point.x, y: fieldBox!.y + point.y };
+
+    /* The ring grows about 0.28px per ms: 300 ms after the click, its middle is about 84px from
+       the click point. Four zones straddle the ring, 20px deep across it, so that they take in
+       its edges, where a second ring over the first shows most, and 40px long along it, to its
+       right, left, top and bottom: farther than the 60px a pointer hovering the click point
+       lights, so the ring alone lights them. */
+    const RADIUS = 84;
+    const DEPTH = 20;
+    const LENGTH = 40;
+    const zones = [
+      { name: 'right', rectangle: { x: point.x + RADIUS - DEPTH / 2, y: point.y - LENGTH / 2, width: DEPTH, height: LENGTH } },
+      { name: 'left', rectangle: { x: point.x - RADIUS - DEPTH / 2, y: point.y - LENGTH / 2, width: DEPTH, height: LENGTH } },
+      { name: 'top', rectangle: { x: point.x - LENGTH / 2, y: point.y - RADIUS - DEPTH / 2, width: LENGTH, height: DEPTH } },
+      { name: 'bottom', rectangle: { x: point.x - LENGTH / 2, y: point.y + RADIUS - DEPTH / 2, width: LENGTH, height: DEPTH } },
+    ];
+
+    const brightnessAfterClick = async (): Promise<number[]> => {
+      await clickOrTap(page, hasTouch, onScreen);
+      await page.clock.runFor(300);
+      const screenshot = await tickField.screenshot();
+      const brightness = await luminanceAboveBackgroundInRectangles(
+        tickField,
+        screenshot,
+        zones.map((zone) => zone.rectangle),
+      );
+      /* Long enough for the ripple, gone 1.7 s after its click, to leave nothing behind. */
+      await page.clock.runFor(2000);
+      return brightness;
+    };
+    const neverMoved = await brightnessAfterClick();
+
+    /* A page script moves the field: it takes it out of the page and puts it back where it was. */
+    await tickField.evaluate((field) => {
+      const parent = field.parentNode!;
+      const next = field.nextSibling;
+      field.remove();
+      parent.insertBefore(field, next);
+    });
+    /* Long enough for a field revealed anew to be drawn across its whole width. */
+    await page.clock.runFor(2000);
+    const moved = await brightnessAfterClick();
+
+    const brighterZones = zones
+      .map((zone, index) => ({ zone, neverMoved: neverMoved[index], moved: moved[index] }))
+      .filter(({ neverMoved, moved }) => moved > 1.05 * neverMoved)
+      .map(
+        ({ zone, neverMoved, moved }) =>
+          `${zone.name} (${Math.round(zone.rectangle.x)}, ${Math.round(zone.rectangle.y)})px: ${Math.round(neverMoved)} before the move → ${Math.round(moved)} after it`,
+      );
+    expect(
+      brighterZones,
+      `zones about ${RADIUS}px around the click point at (${Math.round(point.x)}, ${Math.round(point.y)})px that show, 300 ms after a click on the moved tick-field, more than 1.05 times the brightness above the background they showed 300 ms after the same click before the move`,
+    ).toEqual([]);
+  });
+
   test('the ripple lasts more than a second: once revealed, 1.2 s after the click, a zone down and to the left of the click point, at 45°, about 336px from it, is brighter than just before the click', async ({ page, context, hasTouch }) => {
     const tickField = await openRevealedTickField(page, context);
 
