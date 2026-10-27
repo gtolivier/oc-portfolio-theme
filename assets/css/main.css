@@ -120,7 +120,7 @@
 
 /* What the theme script reads to draw a tick-field: the least empty
    space between its ticks and the box's sides, and its top and bottom,
-   in px (the script reads the number); and which way its diagonal runs,
+   in px, in rem or as a calc() expression; and which way its diagonal runs,
    from its faint green corner on the left to its bright cream corner on
    the right: ascending, up to the top right, or descending, down to the
    bottom right. A field nested in the hero is reset to these defaults,
