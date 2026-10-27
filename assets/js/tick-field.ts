@@ -122,7 +122,10 @@ function customProperty(style: CSSStyleDeclaration, name: string): string {
 /* A custom property the stylesheet sets in px. A missing or unreadable one counts as 0: NaN would keep
    the layout's search for the number of rows from ever ending. */
 function customPropertyPx(style: CSSStyleDeclaration, name: string): number {
-  return Number.parseFloat(customProperty(style, name)) || 0;
+  const value = customProperty(style, name).trim();
+  const number = Number.parseFloat(value) || 0;
+  if (!value.endsWith('rem')) return number;
+  return number * (Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16);
 }
 
 /* A decorative canvas covering the whole box, behind the content. */
