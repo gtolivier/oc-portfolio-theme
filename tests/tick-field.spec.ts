@@ -26,7 +26,7 @@ function yBelowOrAboveField(fieldBox: Rectangle, viewportHeight: number, margin:
   return fieldBox.y + fieldBox.height + margin < viewportHeight ? fieldBox.y + fieldBox.height + margin : fieldBox.y - margin;
 }
 
-test.describe('catalog: tick-field', { tag: '@pixels' }, () => {
+test.describe('catalog: tick-field', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
     siteDirectory = buildSite(CATALOG_SITE);
@@ -113,7 +113,7 @@ test.describe('catalog: tick-field', { tag: '@pixels' }, () => {
     expect(linkIsUnderThePointer, 'at the middle of the link, the element under the pointer is the link').toBe(true);
   });
 
-  test('a tick-field starts empty and reveals from left to right', async ({ page, context }) => {
+  test('a tick-field starts empty and reveals from left to right', { tag: '@pixels' }, async ({ page, context }) => {
     const tickField = await openEmptyTickField(page, context);
     /* Right after load: the first animation frame has run. */
     await page.clock.runFor(16);
@@ -152,7 +152,7 @@ test.describe('catalog: tick-field', { tag: '@pixels' }, () => {
     ).toBe(0);
   });
 
-  test('2 s after load, a tick-field is drawn across its whole width: every vertical band of it, from the left edge to the right edge, shows pixels that differ from its background', async ({ page, context }) => {
+  test('2 s after load, a tick-field is drawn across its whole width: every vertical band of it, from the left edge to the right edge, shows pixels that differ from its background', { tag: '@pixels' }, async ({ page, context }) => {
     const tickField = await openEmptyTickField(page, context);
     await page.clock.runFor(2000);
 
@@ -170,7 +170,7 @@ test.describe('catalog: tick-field', { tag: '@pixels' }, () => {
     expect(emptyBands, `bands of the ${Math.round(width)}px-wide tick-field with no drawn pixel`).toEqual([]);
   });
 
-  test('once revealed, after the window is widened, a tick-field is drawn up to its new right edge with ticks as close together as before: 100 ms after the resize, every vertical band of it shows as many ticks as the same width showed before the resize, not the fewer, wider ticks of the old field stretched', async ({ page, context }) => {
+  test('once revealed, after the window is widened, a tick-field is drawn up to its new right edge with ticks as close together as before: 100 ms after the resize, every vertical band of it shows as many ticks as the same width showed before the resize, not the fewer, wider ticks of the old field stretched', { tag: '@pixels' }, async ({ page, context }) => {
     const tickField = await openEmptyTickField(page, context);
     /* Revealed: the reveal sweeps the width in about 1.1 s. */
     await page.clock.runFor(2000);
@@ -221,7 +221,7 @@ test.describe('catalog: tick-field', { tag: '@pixels' }, () => {
     ).toEqual([]);
   });
 
-  test('under prefers-reduced-motion: reduce, a tick-field is drawn across its whole width from load: right after load, every vertical band of it, from the left edge to the right edge, shows pixels that differ from its background', async ({ page, context }) => {
+  test('under prefers-reduced-motion: reduce, a tick-field is drawn across its whole width from load: right after load, every vertical band of it, from the left edge to the right edge, shows pixels that differ from its background', { tag: '@pixels' }, async ({ page, context }) => {
     /* The visitor asks for reduced motion, and time stands still from before the page
        loads, until the test advances it by a single animation frame. */
     const tickField = await openEmptyTickField(page, context, 'reduce');
@@ -246,7 +246,7 @@ test.describe('catalog: tick-field', { tag: '@pixels' }, () => {
     ).toEqual([]);
   });
 
-  test('once revealed, a tick-field is made of short ticks in rows: between two rows of drawn pixels, a horizontal band at least 4px high, across its whole width, shows only its background', async ({ page, context }) => {
+  test('once revealed, a tick-field is made of short ticks in rows: between two rows of drawn pixels, a horizontal band at least 4px high, across its whole width, shows only its background', { tag: '@pixels' }, async ({ page, context }) => {
     /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
        to change it. */
     const tickField = await openEmptyTickField(page, context, 'reduce');
@@ -269,7 +269,7 @@ test.describe('catalog: tick-field', { tag: '@pixels' }, () => {
     ).toBeGreaterThan(0);
   });
 
-  test('once revealed, a tick-field is brighter on the right than on the left: 2 s after load, its right quarter shows more than twice the brightness above the background of its left quarter', async ({ page, context }) => {
+  test('once revealed, a tick-field is brighter on the right than on the left: 2 s after load, its right quarter shows more than twice the brightness above the background of its left quarter', { tag: '@pixels' }, async ({ page, context }) => {
     const tickField = await openEmptyTickField(page, context);
     await page.clock.runFor(2000);
 
@@ -292,7 +292,7 @@ test.describe('catalog: tick-field', { tag: '@pixels' }, () => {
     ).toBeGreaterThan(2 * left);
   });
 
-  test('once revealed, a tick-field fades from its top right corner, clearly visible, to its bottom left corner, almost invisible, over its whole height: its bottom left tick lies less than 9% of the way from the background to its green, its top right tick more than 40% of the way to the cream, and in a vertical band at the middle of its width, the ticks at mid-height are dimmer than those at the top and brighter than those at the bottom', async ({ page, context }) => {
+  test('once revealed, a tick-field fades from its top right corner, clearly visible, to its bottom left corner, almost invisible, over its whole height: its bottom left tick lies less than 9% of the way from the background to its green, its top right tick more than 40% of the way to the cream, and in a vertical band at the middle of its width, the ticks at mid-height are dimmer than those at the top and brighter than those at the bottom', { tag: '@pixels' }, async ({ page, context }) => {
     /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
        to brighten a tick. */
     const tickField = await openEmptyTickField(page, context, 'reduce');
@@ -352,7 +352,7 @@ test.describe('catalog: tick-field', { tag: '@pixels' }, () => {
     expect.soft(middle, `mid-height against 1.15 times bottom; ${column}`).toBeGreaterThan(1.15 * bottom);
   });
 
-  test('once revealed, each tick rests at the opacity its place along the diagonal sets: its top right tick shows about 61% of its colour over the background, not more, its bottom right tick about 50%, and its top left tick, where the horizontal place weighs three times the vertical one, about 14%', async ({ page, context }) => {
+  test('once revealed, each tick rests at the opacity its place along the diagonal sets: its top right tick shows about 61% of its colour over the background, not more, its bottom right tick about 50%, and its top left tick, where the horizontal place weighs three times the vertical one, about 14%', { tag: '@pixels' }, async ({ page, context }) => {
     /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
        to brighten a tick. */
     const tickField = await openEmptyTickField(page, context, 'reduce');
@@ -417,7 +417,7 @@ test.describe('catalog: tick-field', { tag: '@pixels' }, () => {
     expect.soft(Math.abs(topLeft.opacity - topLeftDesign), `distance from the design's opacity of the top left tick, ${ticks}`).toBeLessThanOrEqual(0.05);
   });
 
-  test('with a fine pointer, hovering brightens the ticks under the pointer, and the trail fades once it leaves', async ({ page, context, hasTouch }) => {
+  test('with a fine pointer, hovering brightens the ticks under the pointer, and the trail fades once it leaves', { tag: '@pixels' }, async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
     const tickField = await openRevealedTickField(page, context);
 
@@ -472,7 +472,7 @@ test.describe('catalog: tick-field', { tag: '@pixels' }, () => {
     ).toBeLessThanOrEqual(0.1 * before);
   });
 
-  test('a click (a tap on mobile) starts a ripple that spreads, then fades', async ({ page, context, hasTouch }) => {
+  test('a click (a tap on mobile) starts a ripple that spreads, then fades', { tag: '@pixels' }, async ({ page, context, hasTouch }) => {
     const tickField = await openRevealedTickField(page, context);
 
     const fieldBox = await tickField.boundingBox();
@@ -619,7 +619,7 @@ test.describe('catalog: tick-field', { tag: '@pixels' }, () => {
     ).toEqual([]);
   });
 
-  test('under prefers-reduced-motion: reduce, a tick-field stays still: 2 s after load, after a hover (with a fine pointer) and 300 ms after a click (a tap on mobile) at its centre, every vertical band of it, from the left edge to the right edge, shows the brightness it showed right after load', async ({ page, context, hasTouch }) => {
+  test('under prefers-reduced-motion: reduce, a tick-field stays still: 2 s after load, after a hover (with a fine pointer) and 300 ms after a click (a tap on mobile) at its centre, every vertical band of it, from the left edge to the right edge, shows the brightness it showed right after load', { tag: '@pixels' }, async ({ page, context, hasTouch }) => {
     /* The visitor asks for reduced motion, and time stands still from before the page
        loads, until the test advances it. */
     const tickField = await openEmptyTickField(page, context, 'reduce');
@@ -676,7 +676,7 @@ test.describe('catalog: tick-field', { tag: '@pixels' }, () => {
     ).toEqual([]);
   });
 
-  test('if the visitor turns on reduced motion during the reveal, a tick-field is drawn across its whole width at once, then stays still: two animation frames after the switch, every vertical band of it shows drawn pixels, and 300 ms after a click (a tap on mobile) at its centre, every band shows the brightness it showed right after the switch', async ({ page, context, hasTouch }) => {
+  test('if the visitor turns on reduced motion during the reveal, a tick-field is drawn across its whole width at once, then stays still: two animation frames after the switch, every vertical band of it shows drawn pixels, and 300 ms after a click (a tap on mobile) at its centre, every band shows the brightness it showed right after the switch', { tag: '@pixels' }, async ({ page, context, hasTouch }) => {
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it to the middle of the reveal. */
     const tickField = await openEmptyTickField(page, context, 'no-preference');
@@ -739,7 +739,7 @@ test.describe('catalog: tick-field', { tag: '@pixels' }, () => {
     ).toEqual([]);
   });
 
-  test('a tick-field scrolled out of view during its reveal stops animating, and resumes once back: while it is off screen, the page requests no animation frame, and 2 s after it is back on screen, every vertical band of it, from the left edge to the right edge, shows drawn pixels', async ({ page, context }) => {
+  test('a tick-field scrolled out of view during its reveal stops animating, and resumes once back: while it is off screen, the page requests no animation frame, and 2 s after it is back on screen, every vertical band of it, from the left edge to the right edge, shows drawn pixels', { tag: '@pixels' }, async ({ page, context }) => {
     await serveSite(context, CATALOG_SITE, siteDirectory);
     await stopClockBeforeLoad(page);
     /* Every animation frame the page requests, counted from load: requestAnimationFrame

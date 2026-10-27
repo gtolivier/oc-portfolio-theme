@@ -538,7 +538,7 @@ test('on phone as on desktop, each hero button offers a target of at least 24 ×
   }
 });
 
-test('on phone as on desktop, the hero is a tick field drawn across its whole width, behind its text, even where its ticks are faintest: 2 s after load, every vertical band of the empty strip below its buttons, from the left edge, whose bottom-left ticks are almost invisible, to the right edge, shows pixels that changed at all since right after load, and at the middle of the heading, the tagline, the stack and each button, the element under the pointer is that element, so a click lands on the button', { tag: '@pixels' }, async ({ page }) => {
+test('on phone as on desktop, the hero is a tick field drawn across its whole width, even where its ticks are faintest: 2 s after load, every vertical band of the empty strip below its buttons, from the left edge, whose bottom-left ticks are almost invisible, to the right edge, shows pixels that changed at all since right after load', { tag: '@pixels' }, async ({ page }) => {
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
   /* The hero is the main content region named by its main heading. */
@@ -578,6 +578,23 @@ test('on phone as on desktop, the hero is a tick field drawn across its whole wi
     bandsWithoutDrawnPixels(columns, scale, heroBox.width),
     `bands of the ${Math.round(heroBox.width)}px-wide hero, in the strip below its buttons, with no pixel changed at all since right after load`,
   ).toEqual([]);
+});
+
+test('on phone as on desktop, the hero’s tick field lies behind its text: at the middle of the heading, the tagline, the stack and each button, the element under the pointer is that element, so a click lands on the button', async ({ page }) => {
+  await page.goto('/fr/');
+  /* The hero is the main content region named by its main heading. */
+  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  await expect(hero).toBeVisible();
+  /* The field's canvas is in place, so the check below does not pass before it exists. */
+  await expect(hero.locator('canvas')).toHaveCount(1);
+  const elements = {
+    'heading': hero.getByRole('heading', { level: 1 }),
+    'tagline': hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
+    'stack': hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
+    'first button, "Voir les projets"': hero.getByRole('link', { name: 'Voir les projets' }),
+    'second button, "Contact"': hero.getByRole('link', { name: 'Contact' }),
+  };
+  for (const [name, element] of Object.entries(elements)) await expect(element, name).toBeVisible();
 
   /* Behind the text: at the middle of the first line box of each element (rather than of its
      bounding box, so that the point stays on it even if it wraps), the element under the

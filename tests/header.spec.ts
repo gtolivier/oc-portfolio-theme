@@ -472,6 +472,17 @@ test('from 768 px wide, the header sits on a single row, vertically centred: the
       }
     }
     expect(overlaps, `items out of order or overlapping at ${viewport.width} px`).toEqual([]);
+
+    /* The switcher on the right: the header leaves as much space after it, up to the right
+       edge of the page, as before the logo, from the left edge. */
+    const logoBox = (await headerLogo(page).boundingBox())!;
+    const switcherBox = (await languageSwitcher(page, 'Langue').boundingBox())!;
+    const pageWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    const spaceAfterSwitcher = pageWidth - (switcherBox.x + switcherBox.width);
+    expect(
+      Math.abs(spaceAfterSwitcher - logoBox.x),
+      `at ${viewport.width} px, space after the switcher ${spaceAfterSwitcher}, before the logo ${logoBox.x}`,
+    ).toBeLessThanOrEqual(1);
   }
 });
 
