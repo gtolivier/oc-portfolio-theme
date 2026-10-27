@@ -166,6 +166,8 @@ class TickField extends HTMLElement {
 
   private pressedInside = false;
 
+  private listening = false;
+
   private ripples: Ripple[] = [];
 
   private gradient: CanvasGradient | undefined;
@@ -176,6 +178,18 @@ class TickField extends HTMLElement {
   connectedCallback(): void {
     this.canvas.setAttribute('aria-hidden', 'true');
     this.prepend(this.canvas);
+    this.listenToPointer();
+    this.revealStart = performance.now();
+    this.trackOnScreen();
+    this.requestDraw();
+    new ResizeObserver(() => this.draw()).observe(this);
+  }
+
+  /* Once only: a field moved in the page is connected again, and a second set of listeners
+     would start a second ripple per click. */
+  private listenToPointer(): void {
+    if (this.listening) return;
+    this.listening = true;
     this.addEventListener('pointermove', (event) => {
       if (reducedMotionQuery().matches) return;
       const { x, y } = this.localPoint(event);
@@ -199,10 +213,6 @@ class TickField extends HTMLElement {
       this.ripples.push({ ...this.localPoint(event), start: performance.now() });
       this.requestDraw();
     });
-    this.revealStart = performance.now();
-    this.trackOnScreen();
-    this.requestDraw();
-    new ResizeObserver(() => this.draw()).observe(this);
   }
 
   private localPoint(event: MouseEvent): Point {
