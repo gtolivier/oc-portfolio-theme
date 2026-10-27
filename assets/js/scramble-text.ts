@@ -65,8 +65,7 @@ class ScrambleText extends HTMLElement {
   }
 
   private decode(text: string): void {
-    clearTimeout(this.startTimer);
-    clearInterval(this.tickTimer);
+    this.stopTimers();
     const reducedMotion = reducedMotionQuery();
     if (reducedMotion.matches) return;
     this.shown.setAttribute('aria-hidden', 'true');
@@ -80,10 +79,14 @@ class ScrambleText extends HTMLElement {
   }
 
   private showInClear(text: string): void {
-    clearTimeout(this.startTimer);
-    clearInterval(this.tickTimer);
+    this.stopTimers();
     this.textContent = text;
     this.isInClear = true;
+  }
+
+  private stopTimers(): void {
+    clearTimeout(this.startTimer);
+    clearInterval(this.tickTimer);
   }
 
   private revealLeftToRight(text: string): void {
