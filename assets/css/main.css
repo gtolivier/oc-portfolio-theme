@@ -365,6 +365,12 @@ h1 {
   text-decoration: none;
 }
 
+/* The logo's line is as tall as the menu links', whatever the font's
+   normal line height. */
+.site-header > a:first-child {
+  line-height: var(--header-link-line-height);
+}
+
 /* The nav comes between the logo and the language switcher in the markup:
    order moves it after the switcher and the full basis puts it on a row of
    its own, so the logo and the switcher share the first row. */
