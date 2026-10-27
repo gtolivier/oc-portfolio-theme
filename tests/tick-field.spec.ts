@@ -446,6 +446,48 @@ test.describe('catalog: tick-field', () => {
     ).toBeGreaterThanOrEqual(48);
   });
 
+  test('a minimum margin a stylesheet gives a tick-field as a calc() expression is honoured: with --tick-field-min-vertical-margin set to calc(2rem + 8px), the empty margins at the top and bottom of its drawn ticks are at least 40px', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
+       to light or lengthen a tick. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-calc-margin/`);
+    /* The only tick-field of the page (tests/fixtures/catalog/content/tick-field-calc-margin.md),
+       320px high, as wide as the page, with no content and a solid background, whose style
+       sets --tick-field-min-vertical-margin to calc(2rem + 8px): 40px, the root font size
+       being 16px. */
+    const tickField = page.getByRole('main').locator('tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    const rootFontSize = await page.evaluate(() => Number.parseFloat(getComputedStyle(document.documentElement).fontSize));
+    expect(rootFontSize, 'root font size, in CSS pixels').toBe(16);
+    /* The text above the field can leave it at a fraction of a pixel from the left or top of
+       the page, which would shift its screenshot by up to a pixel against its box: the field is
+       moved, without changing the layout around it, onto whole CSS pixels. */
+    await tickField.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      const left = box.left + window.scrollX;
+      const top = box.top + window.scrollY;
+      element.style.left = `${Math.round(left) - left}px`;
+      element.style.top = `${Math.round(top) - top}px`;
+    });
+    await page.clock.runFor(100);
+    const box = await tickField.boundingBox();
+    expect(box, 'the tick-field has a box on screen').not.toBeNull();
+
+    /* The top and bottom margins, in CSS pixels, measured as in the test of the centred field:
+       from the top and bottom of the box to the nearest edge of a drawn tick. */
+    const screenshot = await tickField.screenshot();
+    const extent = await extentOfDrawnTicks(tickField, screenshot);
+    expect(extent.top, `drawn ticks in the ${Math.round(box!.height)}px-high tick-field`).not.toBeNaN();
+    const margins = { top: extent.top, bottom: box!.height - extent.bottom };
+    expect(
+      Math.min(margins.top, margins.bottom),
+      `smaller top or bottom margin of the ${Math.round(box!.height)}px-high tick-field, in CSS pixels (top ${margins.top.toFixed(2)}, bottom ${margins.bottom.toFixed(2)})`,
+    ).toBeGreaterThanOrEqual(40);
+  });
+
   test('a tick-field reveals from left to right: 500 ms after load, every vertical band of its left part shows drawn pixels, while its right part still only shows its background', async ({ page, context }) => {
     const tickField = await openEmptyTickField(page, context);
     /* Midway through the reveal, which sweeps the width in about 1.1 s: the front is near
