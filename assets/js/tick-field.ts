@@ -129,10 +129,21 @@ function remPx(): number {
 
 /* A custom property the stylesheet sets in px or rem, in CSS pixels. A missing or unreadable one counts as 0:
    NaN would keep the layout's search for the number of rows from ever ending. */
-function customPropertyPx(style: CSSStyleDeclaration, name: string): number {
+function customPropertyPx(host: HTMLElement, style: CSSStyleDeclaration, name: string): number {
   const value = customProperty(style, name);
+  if (value.startsWith('calc(')) return calcPx(host, value);
   const length = Number.parseFloat(value) || 0;
   return value.endsWith('rem') ? length * remPx() : length;
+}
+
+/* A calc() expression, in CSS pixels, resolved by the browser on a throwaway element. */
+function calcPx(host: HTMLElement, expression: string): number {
+  const probe = document.createElement('div');
+  probe.style.cssText = `position: absolute; visibility: hidden; width: ${expression}`;
+  host.append(probe);
+  const width = probe.getBoundingClientRect().width;
+  probe.remove();
+  return width || 0;
 }
 
 /* A decorative canvas covering the whole box, behind the content. */
@@ -375,8 +386,8 @@ class TickField extends HTMLElement {
      more of the narrow width to ticks, and its diagonal runs down to the bottom right. */
   private fieldVariant(style: CSSStyleDeclaration): FieldVariant {
     return {
-      minSideMargin: customPropertyPx(style, '--tick-field-min-side-margin'),
-      minVerticalMargin: customPropertyPx(style, '--tick-field-min-vertical-margin'),
+      minSideMargin: customPropertyPx(this, style, '--tick-field-min-side-margin'),
+      minVerticalMargin: customPropertyPx(this, style, '--tick-field-min-vertical-margin'),
       isDiagonalDescending: customProperty(style, '--tick-field-diagonal') === 'descending',
     };
   }
