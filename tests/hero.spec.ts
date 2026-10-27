@@ -112,6 +112,20 @@ function colorComponents(color: string) {
   return { red, green, blue, alpha };
 }
 
+/* Contrast ratio between two opaque colors, as WCAG defines it: from 1 (same luminance) to 21
+   (black on white). */
+function contrastRatio(a: { red: number; green: number; blue: number }, b: { red: number; green: number; blue: number }) {
+  const luminance = ({ red, green, blue }: typeof a) => {
+    const [r, g, bl] = [red, green, blue].map((value) => {
+      const channel = value / 255;
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  };
+  const [lighter, darker] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 /* Computed styles that decide how a button looks: text color, background, underline, and
    border on each side. Colors as components. */
 async function buttonStyle(button: Locator) {
@@ -336,6 +350,9 @@ test('the first hero button is filled, the second outlined', async ({ page }) =>
   const second = await buttonStyle(secondButton);
   /* Filled: an opaque background. */
   expect(first.background.alpha, 'opacity of the first button’s background').toBe(1);
+  /* …that stands out from the page: at least the 3:1 contrast WCAG asks of a control. */
+  const pageBackground = colorComponents(await page.locator('body').evaluate((body) => getComputedStyle(body).backgroundColor));
+  expect(contrastRatio(first.background, pageBackground), 'contrast between the first button’s background and the page').toBeGreaterThanOrEqual(3);
   expect(first.textDecoration, 'underline of the first button').toBe('none');
   const firstFamily = await firstButton.evaluate((el) => getComputedStyle(el).fontFamily.split(',')[0].trim().replace(/["']/g, ''));
   expect(firstFamily, 'font family of the first button').toBe('IBM Plex Mono');
