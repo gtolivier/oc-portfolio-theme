@@ -127,7 +127,7 @@ function remPx(): number {
   return Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || DEFAULT_ROOT_FONT_SIZE_PX;
 }
 
-/* A custom property the stylesheet sets in px or rem, in CSS pixels. A missing or unreadable one counts as 0:
+/* A custom property the stylesheet sets in px, in rem or as a calc() expression, in CSS pixels. A missing or unreadable one counts as 0:
    NaN would keep the layout's search for the number of rows from ever ending. */
 function customPropertyPx(host: HTMLElement, style: CSSStyleDeclaration, name: string): number {
   const value = customProperty(style, name);
