@@ -549,6 +549,40 @@ test.describe('catalog: scramble-text', () => {
     }
   });
 
+  test('a scramble-text removed from the page and inserted again while it decodes ends in clear on its text, shown exactly once, and its accessible name is that text', async ({ page, context }) => {
+    /* Animations are allowed, and time stands still from before the page loads, until the
+       test advances it to the middle of the decoding, then past its end. */
+    await openCatalogPage(page, context, 'scramble-text-heading', 'no-preference');
+    /* The only second-level heading of the page (tests/fixtures/catalog/content/scramble-text-heading.md),
+       whose whole text is a scramble-text: "Échappement", in clear 1.5 s after load. */
+    const heading = page.getByRole('main').getByRole('heading', { level: 2 });
+    await expect(heading).toHaveCount(1);
+    const scrambleText = heading.locator('scramble-text');
+    await expect(scrambleText).toHaveCount(1);
+    const word = 'Échappement';
+    /* Halfway through the decoding, 750 ms after load, some letters are still scrambled. */
+    await page.clock.runFor(750);
+    const midway = await textOnScreen(scrambleText);
+    expect(
+      Array.from(midway).some((character) => SIGNS.includes(character)),
+      `at 750 ms, before it is moved, "${midway}" still shows signs in place of some letters`,
+    ).toBe(true);
+    /* A page script moves it: removes it from the page, then inserts it again at the same
+       place, as when a list is reordered. */
+    await scrambleText.evaluate((element) => {
+      const parent = element.parentNode as Node;
+      const next = element.nextSibling;
+      element.remove();
+      parent.insertBefore(element, next);
+    });
+    await expect(scrambleText).toHaveCount(1);
+    /* 2 s after it is inserted again, longer than any decoding: the visitor sees
+       "Échappement", once, and assistive technologies name the heading "Échappement". */
+    await page.clock.runFor(2000);
+    expect(await textOnScreen(scrambleText), '2 s after it is inserted again, the text is shown in clear, exactly once').toBe(word);
+    await expect(heading, '2 s after it is inserted again').toHaveAccessibleName(word);
+  });
+
   test('under prefers-reduced-motion: reduce, a scramble-text shows its text in clear from load', async ({ page, context }) => {
     /* The visitor asks for reduced motion, and time stands still from before the page
        loads: no animation frame runs and no timer with a delay fires, the page stays as it
