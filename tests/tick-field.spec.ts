@@ -488,6 +488,101 @@ test.describe('catalog: tick-field', () => {
     ).toBeGreaterThanOrEqual(40);
   });
 
+  test('a tick-field placed inside the hero keeps the default values on a phone: in a 375 × 800 window, with the field still (reduced motion), the empty margins on the left and right of its drawn ticks are at least 24px, those at its top and bottom at least 18px, and its diagonal ascends: of its four corner ticks, the bottom left one shows the least of its colour over the background, and the top right one the most', async ({ page, context }) => {
+    await serveSite(context, CATALOG_SITE, siteDirectory);
+    /* A phone window, under 768px wide, where the hero's own field takes its phone values,
+       set whatever the project's own window. */
+    await page.setViewportSize({ width: 375, height: 800 });
+    /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
+       to light or lengthen a tick. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await stopClockBeforeLoad(page);
+    await page.goto(`${CATALOG_SITE.origin}/fr/tick-field-in-hero/`);
+    /* The tick-field nested in the page's hero (tests/fixtures/catalog/content/tick-field-in-hero.md),
+       320px high, as wide as the hero's content, with no content and a solid background. */
+    const tickField = page.getByRole('main').locator('tick-field.hero tick-field');
+    await expect(tickField).toHaveCount(1);
+    await expect(tickField).toBeVisible();
+    /* The hero's own field draws its ticks all around the nested one: where the nested field's
+       edges fall between two device pixels, as on a phone's high-density screen, the edge pixels
+       of its screenshot would show them. The hero's own canvas is hidden, without changing the
+       layout, so that only the nested field's ticks show. */
+    const heroCanvas = page.getByRole('main').locator('tick-field.hero > canvas');
+    await expect(heroCanvas).toHaveCount(1);
+    await heroCanvas.evaluate((element) => {
+      (element as HTMLElement).style.visibility = 'hidden';
+    });
+    /* The hero can leave the field at a fraction of a pixel from the left or top of the page,
+       which would shift its screenshot by up to a pixel against its box: the field is moved,
+       without changing the layout around it, onto whole CSS pixels. */
+    await tickField.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      const left = box.left + window.scrollX;
+      const top = box.top + window.scrollY;
+      element.style.left = `${Math.round(left) - left}px`;
+      element.style.top = `${Math.round(top) - top}px`;
+    });
+    await page.clock.runFor(100);
+    const box = await tickField.boundingBox();
+    expect(box, 'the tick-field has a box on screen').not.toBeNull();
+    const size = `${Math.round(box!.width)}×${Math.round(box!.height)}px`;
+
+    /* The empty margins, in CSS pixels, measured as in the test of the centred field: from the
+       top and bottom of the box to the nearest edge of a drawn tick, and from each side of the
+       box to the outer edge of the outermost column of ticks, taken in a band from 6px outside
+       its edge to 8px inside it. */
+    const screenshot = await tickField.screenshot();
+    const extent = await extentOfDrawnTicks(tickField, screenshot);
+    expect(extent.left, `drawn ticks in the ${size} tick-field`).not.toBeNaN();
+    const rightColumnBand = { x: extent.right - 8, y: 0, width: 14, height: box!.height };
+    const [leftColumn, rightColumn] = await horizontalExtentOfDrawnStrokeInRectangles(tickField, screenshot, [
+      { x: extent.left - 6, y: 0, width: 14, height: box!.height },
+      rightColumnBand,
+    ]);
+    const margins = {
+      left: leftColumn.x,
+      right: box!.width - (rightColumn.x + rightColumn.width),
+      top: extent.top,
+      bottom: box!.height - extent.bottom,
+    };
+
+    /* The corner ticks, wherever the margins put them: the ticks drawn whole in the band of the
+       rightmost column, whose ticks are among the most opaque at the top as at the bottom, give
+       the first and last rows, the ticks of a row all starting at the same height; the drawn
+       ticks give the left edge of the leftmost column. A tick's opacity is read, 2px down the
+       tick, inside even the shortest, across it every quarter of a CSS pixel: a pixel it covers
+       fully shows the background plus its opacity times (its colour − the background),
+       whichever colour it has, and the most opaque reading is that of a fully covered pixel. */
+    const rightColumnTicks = await drawnStrokesInRectangle(tickField, screenshot, rightColumnBand);
+    expect(rightColumnTicks.length, `ticks drawn whole in the rightmost column of the ${size} tick-field`).toBeGreaterThanOrEqual(2);
+    const firstRow = rightColumnTicks[0].y;
+    const lastRow = rightColumnTicks[rightColumnTicks.length - 1].y;
+    const tickWidth = rightColumnTicks[0].width;
+    const STEP = 0.25;
+    const opacityOfTick = async (x: number, y: number): Promise<number> => {
+      const points = Array.from({ length: Math.ceil(tickWidth / STEP) }, (_, step) => ({ x: x + (step + 0.5) * STEP, y: y + 2.5 }));
+      const measures = await canvasOpacityOverBackgroundAt(tickField, screenshot, points);
+      return Math.max(...measures.map(({ opacity }) => opacity).filter((opacity) => !Number.isNaN(opacity)));
+    };
+    const corners = {
+      'top left': await opacityOfTick(extent.left, firstRow),
+      'top right': await opacityOfTick(rightColumnTicks[0].x, firstRow),
+      'bottom left': await opacityOfTick(extent.left, lastRow),
+      'bottom right': await opacityOfTick(rightColumnTicks[0].x, lastRow),
+    };
+    type Corner = keyof typeof corners;
+    const others = (corner: Corner): number[] =>
+      (Object.keys(corners) as Corner[]).filter((name) => name !== corner).map((name) => corners[name]);
+
+    const describe = `${size}: margins left ${margins.left.toFixed(2)}, right ${margins.right.toFixed(2)}, top ${margins.top.toFixed(2)}, bottom ${margins.bottom.toFixed(2)}; ${Object.entries(corners).map(([corner, opacity]) => `${corner} tick ${(100 * opacity).toFixed(1)}%`).join(', ')}`;
+    const problems: string[] = [];
+    if (Math.min(margins.left, margins.right) < 24) problems.push('a side margin is under 24px');
+    if (Math.min(margins.top, margins.bottom) < 18) problems.push('a top or bottom margin is under 18px');
+    if (!others('bottom left').every((opacity) => corners['bottom left'] < opacity)) problems.push('the bottom left tick is not the faintest');
+    if (!others('top right').every((opacity) => corners['top right'] > opacity)) problems.push('the top right tick is not the most opaque');
+    expect(problems, `the tick-field inside the hero, in a 375 × 800 window (${describe})`).toEqual([]);
+  });
+
   test('a tick-field reveals from left to right: 500 ms after load, every vertical band of its left part shows drawn pixels, while its right part still only shows its background', async ({ page, context }) => {
     const tickField = await openEmptyTickField(page, context);
     /* Midway through the reveal, which sweeps the width in about 1.1 s: the front is near
