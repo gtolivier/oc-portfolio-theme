@@ -58,7 +58,7 @@ test('body text is in IBM Plex Sans and the header text (logo and navigation) in
   expect(loadedFonts).toContain('IBM Plex Mono');
 
   await expect
-    .poll(() => receivedFonts.filter((url) => new URL(url).origin === origin).length)
+    .poll(() => receivedFonts.filter((url) => /sans/i.test(url) && new URL(url).origin === origin).length)
     .toBeGreaterThan(0);
   await expect
     .poll(() => receivedFonts.filter((url) => /mono/i.test(url) && new URL(url).origin === origin).length)

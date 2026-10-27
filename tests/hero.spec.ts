@@ -408,7 +408,7 @@ test('on phone as on desktop, the hero starts right below the header and ends at
   }
 });
 
-test('on phone as on desktop, the hero’s text block is centred vertically: the middle of the hero lies between the top of its heading and the bottom of its buttons', async ({ page }) => {
+test('on phone as on desktop, the hero’s text block is centred vertically: the middle of the hero lies between the top of its heading and the bottom of its buttons, and the free space above and below that block differ by at most a tenth of the hero’s height', async ({ page }) => {
   /* Windows set whatever the project's own window, all tall enough to leave the hero at least
      150 px of free height around its text, so the centring shows: the two desktop ones and
      three under 768 px wide. */
@@ -429,6 +429,15 @@ test('on phone as on desktop, the hero’s text block is centred vertically: the
       .toBeGreaterThanOrEqual(headingBox.y);
     expect.soft(heroMiddle, `at ${size}, middle of the hero, above the bottom of the buttons (${Math.round(buttonsBottom)} px)`)
       .toBeLessThanOrEqual(buttonsBottom);
+
+    /* The block may sit a little off the exact middle, as the design does, but not pushed
+       towards the top or the bottom of the hero. */
+    const spaceAbove = headingBox.y - heroBox.y;
+    const spaceBelow = heroBox.y + heroBox.height - buttonsBottom;
+    expect.soft(
+      Math.abs(spaceBelow - spaceAbove),
+      `at ${size}, gap between the free space above (${Math.round(spaceAbove)} px) and below (${Math.round(spaceBelow)} px) the text`,
+    ).toBeLessThanOrEqual(heroBox.height / 10);
   }
 });
 

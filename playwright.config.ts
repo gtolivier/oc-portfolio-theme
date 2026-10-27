@@ -8,9 +8,9 @@ import { defineConfig, devices } from '@playwright/test';
 // import path from 'path';
 // dotenv.config({ path: path.resolve(__dirname, '.env') });
 
-/* Tests that read canvas pixels or frame timings run on Chromium only
-   (chromium and mobile-chrome): the other engines render the same page,
-   so running them there only adds time. */
+/* Tests that read the pixels of a canvas run on Chromium only (chromium and
+   mobile-chrome): the other engines render the same page, so running them
+   there only adds time. Text and layout tests stay on every project. */
 const PIXEL_TESTS = /@pixels/;
 
 /**
@@ -79,16 +79,17 @@ export default defineConfig({
   ],
 
   /* Serves the theme's example site, in the production environment
-     to test the same output as the one that will be deployed. */
+     to test the same output as the one that will be deployed. Both servers
+     render to memory, so neither overwrites the pages on disk of another
+     Hugo server running on the same site, such as the development one. */
   webServer: [
     {
-      command: 'hugo server --source exampleSite --environment production --port 1314 --disableLiveReload',
+      command: 'hugo server --source exampleSite --environment production --port 1314 --disableLiveReload --renderToMemory',
       url: 'http://localhost:1314',
       reuseExistingServer: !process.env.CI,
     },
     /* The same site served under a subpath, like a deployment in a
-       subfolder (baseURL /portfolio/). Rendered to memory so it does not
-       overwrite the previous server's pages on disk. */
+       subfolder (baseURL /portfolio/). */
     {
       command:
         'hugo server --source exampleSite --environment production --port 1315 --baseURL http://localhost:1315/portfolio/ --disableLiveReload --renderToMemory',

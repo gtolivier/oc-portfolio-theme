@@ -181,7 +181,7 @@ test.describe('catalog: scramble-text', () => {
        test advances it: animation frames and timers then run as they would in 2.1 s. */
     await openCatalogPage(page, context, 'scramble-text-lengths', 'no-preference');
     /* The second scramble-text of the page (tests/fixtures/catalog/content/scramble-text-lengths.md),
-       a long sentence (over 90 letters) without a delay: it starts decoding at load. At a
+       a long sentence (over 90 letters): it starts decoding at load. At a
        tenth of a second per letter, it would still be decoding for more than 9 s. */
     const scrambleTexts = page.getByRole('main').locator('scramble-text');
     await expect(scrambleTexts).toHaveCount(2);
@@ -194,10 +194,11 @@ test.describe('catalog: scramble-text', () => {
 
   test('the duration sets how long a scramble-text takes to decode: a long one with a short duration (0.6 s) is in clear 1 s after load, a short one with a long duration (3 s) is still partly scrambled at 2 s and in clear at 3 s', async ({ page, context }) => {
     /* Animations are allowed, and time stands still from before each page loads, until the
-       test advances it. Each page has its own clock: the second one opens in its own tab. */
+       test advances it. Both pages share the context's clock: the second one opens in a
+       second tab once the first one is fully checked. */
     await openCatalogPage(page, context, 'scramble-text-duration', 'no-preference');
     /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text-duration.md),
-       a long sentence (over 90 letters) without a delay, whose duration is 600 ms: it starts
+       a long sentence (over 90 letters), whose duration is 600 ms: it starts
        decoding at load. Without a duration, it would still be decoding until 2 s after load. */
     const scrambleText = page.getByRole('main').locator('scramble-text');
     await expect(scrambleText).toHaveCount(1);
@@ -208,10 +209,13 @@ test.describe('catalog: scramble-text', () => {
     await page.clock.runFor(1000);
     expect(await textOnScreen(scrambleText)).toBe(long);
 
+    /* The site is already served to the context, and its clock, still paused after the
+       first page's checks, stands still from before the second page loads. */
     const longDurationPage = await context.newPage();
-    await openCatalogPage(longDurationPage, context, 'scramble-text-long-duration', 'no-preference');
+    await longDurationPage.emulateMedia({ reducedMotion: 'no-preference' });
+    await longDurationPage.goto(`${CATALOG_SITE.origin}/fr/scramble-text-long-duration/`);
     /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text-long-duration.md),
-       a single short word, "Échappement" (11 letters), without a delay, whose duration is
+       a single short word, "Échappement" (11 letters), whose duration is
        3000 ms: it starts decoding at load. Without a duration, it would be in clear 1.5 s
        after load. */
     const shortScrambleText = longDurationPage.getByRole('main').locator('scramble-text');
