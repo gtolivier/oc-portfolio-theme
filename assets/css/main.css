@@ -116,12 +116,17 @@
   /* Side margin shared by the header and the content, so the content
      lines up with the logo. */
   --page-gutter: 16px;
-  /* What the theme script reads to draw a tick-field: the least empty
-     space between its ticks and the box's sides, and its top and bottom,
-     in px (the script reads the number); and which way its diagonal
-     runs, from its faint green corner on the left to its bright cream
-     corner on the right: ascending, up to the top right, or descending,
-     down to the bottom right. */
+}
+
+/* What the theme script reads to draw a tick-field: the least empty
+   space between its ticks and the box's sides, and its top and bottom,
+   in px (the script reads the number); and which way its diagonal runs,
+   from its faint green corner on the left to its bright cream corner on
+   the right: ascending, up to the top right, or descending, down to the
+   bottom right. A field nested in the hero is reset to these defaults,
+   not the hero's own phone values it would inherit. */
+:root,
+.hero tick-field {
   --tick-field-min-side-margin: 24px;
   --tick-field-min-vertical-margin: 18px;
   --tick-field-diagonal: ascending;
@@ -207,14 +212,6 @@ h1 {
 
 .hero::before {
   min-height: var(--hero-edge-space);
-}
-
-/* A field nested in the hero keeps the defaults of the root element, not
-   the hero's own phone values it would inherit. */
-.hero tick-field {
-  --tick-field-min-side-margin: 24px;
-  --tick-field-min-vertical-margin: 18px;
-  --tick-field-diagonal: ascending;
 }
 
 @media (min-width: 768px) {
