@@ -822,6 +822,9 @@ test.describe('catalog: tick-field', () => {
   });
 
   test('if the visitor turns on reduced motion while a ripple spreads, a tick-field stays still from then on: once revealed, 300 ms after a click (a tap on mobile) at its centre, reduced motion is turned on, and 300 ms and 2 s after the switch, every vertical band of it shows the brightness it showed two animation frames after the switch', { tag: '@pixels' }, async ({ page, context, hasTouch }) => {
+    /* On a loaded CI runner, replaying the animation on the fake clock takes 20 to 35 s, around
+       the 30 s timeout: this test gets three times as long. */
+    test.slow();
     /* Animations are allowed: the visitor's motion preference is left as the browser sets
        it, and the field is fully revealed. */
     const tickField = await openRevealedTickField(page, context);
@@ -889,6 +892,9 @@ test.describe('catalog: tick-field', () => {
 
   test('with a fine pointer, if the visitor turns on reduced motion while the hover trail fades, a tick-field stays still from then on: once revealed, 150 ms after the pointer leaves the tick-field it hovered, reduced motion is turned on, and 300 ms and 2 s after the switch, every vertical band of it shows the brightness it showed two animation frames after the switch', { tag: '@pixels' }, async ({ page, context, hasTouch }) => {
     test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
+    /* On a loaded CI runner, replaying the animation on the fake clock takes 20 to 35 s, around
+       the 30 s timeout: this test gets three times as long. */
+    test.slow();
     /* Animations are allowed: the visitor's motion preference is left as the browser sets
        it, and the field is fully revealed. */
     const tickField = await openRevealedTickField(page, context);
