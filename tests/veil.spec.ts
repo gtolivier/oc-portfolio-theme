@@ -3,7 +3,7 @@ import { CATALOG_SITE, buildSite, removeDirectory, serveSite } from './helpers/b
 import { stopClockBeforeLoad } from './helpers/clock';
 import { type Rectangle, luminanceAboveBackgroundInRectangle } from './helpers/pixels';
 
-test.describe('catalog: veil', () => {
+test.describe('catalog: veil', { tag: '@pixels' }, () => {
   let siteDirectory: string;
   test.beforeAll(() => {
     siteDirectory = buildSite(CATALOG_SITE);

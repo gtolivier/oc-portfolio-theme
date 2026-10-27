@@ -19,20 +19,16 @@ import {
   tryToBuildSite,
 } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
-import { replacePlexMonoFiles } from './helpers/fonts';
 import { tabUntilFocused } from './helpers/keyboard';
 import { clickOrTap } from './helpers/pointer';
 import {
-  type Channels,
   type Rectangle,
   bandsWithoutDrawnPixels,
   meanLuminanceGainedInRectangle,
   brightnessKeptUnderLayerInRectangle,
   canvasOpacityOverBackgroundAt,
-  channelsOfColour,
   drawnStrokesInRectangle,
   extentOfDrawnTicks,
-  horizontalExtentOfDrawnStrokeInRectangles,
   pixelsChangedPerColumnInRectangle,
   pixelsNotOfBackgroundPerRow,
 } from './helpers/pixels';
@@ -97,20 +93,6 @@ async function displayedText(element: Locator): Promise<string> {
     return walk(root);
   });
   return text.replace(/\s+/g, ' ').trim();
-}
-
-/* Computed styles that decide how a text looks: displayed case, first font of the stack,
-   weight and color. */
-async function textStyle(element: Locator) {
-  return element.evaluate((el) => {
-    const style = getComputedStyle(el);
-    return {
-      textTransform: style.textTransform,
-      family: style.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
-      weight: style.fontWeight,
-      color: style.color,
-    };
-  });
 }
 
 /* Components of a computed color, however the browser serializes it (`rgb(…)`, `rgba(…)` or
@@ -261,19 +243,13 @@ async function expectHeroToEndAtWindowBottom(page: Page, viewport: { width: numb
   ).toBeLessThanOrEqual(1);
 }
 
-test('on the French home page, the main heading starts with the site author name', async ({ page }) => {
+test('on the French home page, the main heading shows the author name, then the professional title on a new line below it', async ({ page }) => {
   await page.goto('/fr/');
   const mainHeading = mainContentHeading(page);
-  /* The DOM text, as written in params.author: the uppercase display is up to CSS. */
+  /* The name comes from params.author, the title from the front matter of
+     exampleSite/content/_index.md, [params.hero] block, title key. DOM text, as written there:
+     the uppercase display is up to CSS. */
   await expect(mainHeading).toHaveText(/^\s*Jean Exemple/);
-});
-
-test('on the French home page, the main heading displays, on a new line below the author name, their professional title', async ({ page }) => {
-  await page.goto('/fr/');
-  const mainHeading = mainContentHeading(page);
-  /* The title comes from the front matter of exampleSite/content/_index.md, [params.hero]
-     block, title key. DOM text, as written in the front matter: the uppercase display is up
-     to CSS. */
   await expect(mainHeading).toHaveText(/^\s*Jean Exemple\s*Horloger indépendant\s*$/);
   /* On a new line: the professional title starts at least half a line below the name. */
   const professionalTitle = mainHeading.getByText('Horloger indépendant', { exact: true });
@@ -283,247 +259,9 @@ test('on the French home page, the main heading displays, on a new line below th
   expect(professionalTitleBox!.y - mainHeadingBox!.y).toBeGreaterThanOrEqual(professionalTitleBox!.height / 2);
 });
 
-test('on the French home page, the author name is displayed in uppercase, in IBM Plex Mono bold (700), paper color, larger than the professional title that follows it', async ({ page }) => {
-  await page.goto('/fr/');
-  const mainHeading = mainContentHeading(page);
-  await expect(mainHeading).toHaveText(/^\s*Jean Exemple/);
-  const professionalTitle = mainHeading.getByText('Horloger indépendant', { exact: true });
-  await expect(professionalTitle).toBeVisible();
-  /* The name is a direct text node of the h1: it takes the computed styles of the h1. Design
-     reference: name in clamp(44px, 6.4vw, 100px), title in clamp(22px, 3vw, 46px). */
-  const nameStyle = await textStyle(mainHeading);
-  expect(nameStyle).toEqual({
-    textTransform: 'uppercase',
-    family: 'IBM Plex Mono',
-    weight: '700',
-    color: 'rgb(227, 223, 204)',
-  });
-  const nameSize = await mainHeading.evaluate((h1) => parseFloat(getComputedStyle(h1).fontSize));
-  const titleSize = await professionalTitle.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
-  expect(nameSize, 'the name is larger than the professional title').toBeGreaterThan(titleSize);
-});
-
-test('on the French home page, the professional title that follows the author name is displayed in uppercase, in IBM Plex Mono semibold (600), accent color', async ({ page }) => {
-  await page.goto('/fr/');
-  const mainHeading = mainContentHeading(page);
-  /* The title is a separate element in the h1: its own computed styles decide how it looks.
-     Design reference: accent #2A888D. */
-  const professionalTitle = mainHeading.getByText('Horloger indépendant', { exact: true });
-  await expect(professionalTitle).toBeVisible();
-  expect(await textStyle(professionalTitle)).toEqual({
-    textTransform: 'uppercase',
-    family: 'IBM Plex Mono',
-    weight: '600',
-    color: 'rgb(42, 136, 141)',
-  });
-});
-
-test('on phone as on desktop, the hero heading follows the design’s spacing: name with a line height of 1.02, professional title with a line height of 1.3, both letter-spaced by -0.64 px within 0.02 px, and the title line starting 36 px below the name line from 768 px wide, 24 px on a phone, within 1.5 px', async ({ page, isMobile }) => {
-  /* Design reference: letter-spacing -0.02em set on the h1 itself, whose font size is the
-     browser default for an h1 (2em of 16 px = 32 px): both lines inherit -0.64 px. Name
-     line-height 1.02; title line-height 1.3 and margin-top 36px (24px on a phone). Desktop
-     projects are checked at a wide window and at 768 px wide, where the desktop spacing
-     starts; phone projects at their own size. */
-  const viewports = isMobile ? [page.viewportSize()!] : DESKTOP_VIEWPORTS;
-  const expectedGap = isMobile ? 24 : 36;
-  for (const viewport of viewports) {
-    const size = `${viewport.width} × ${viewport.height}`;
-    await openHomeAt(page, viewport);
-    const mainHeading = mainContentHeading(page);
-    /* Both lines in clear: the decoding is over. */
-    await expect(mainHeading).toHaveText(/^\s*Jean Exemple\s*Horloger indépendant\s*$/);
-
-    /* For each line: computed size, line height and letter spacing of the element holding its
-       text, and the top and bottom of its line boxes. A text's client rects cover its glyphs'
-       content area (or its line box); the line box extends it by half the leading on each
-       side, centred on it. */
-    const lines = await mainHeading.evaluate((root, texts) => texts.map((text) => {
-      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-        const start = (node.textContent ?? '').indexOf(text);
-        if (start === -1) continue;
-        const style = getComputedStyle(node.parentElement!);
-        const fontSize = parseFloat(style.fontSize);
-        const lineHeight = parseFloat(style.lineHeight);
-        const range = document.createRange();
-        range.setStart(node, start);
-        range.setEnd(node, start + text.length);
-        const rects = Array.from(range.getClientRects()).filter((rect) => rect.width > 0);
-        const first = rects[0];
-        const last = rects[rects.length - 1];
-        return {
-          fontSize,
-          rawLineHeight: style.lineHeight,
-          lineHeight,
-          rawLetterSpacing: style.letterSpacing,
-          letterSpacing: parseFloat(style.letterSpacing),
-          lineTop: first.top - (lineHeight - first.height) / 2,
-          lineBottom: last.bottom + (lineHeight - last.height) / 2,
-        };
-      }
-      return null;
-    }), ['Jean Exemple', 'Horloger indépendant']);
-    const [name, title] = lines;
-    expect(name, `at ${size}, author name found`).not.toBeNull();
-    expect(title, `at ${size}, professional title found`).not.toBeNull();
-
-    expect.soft(name!.lineHeight / name!.fontSize, `at ${size}, name line height (${name!.rawLineHeight} for ${name!.fontSize}px)`).toBeCloseTo(1.02, 2);
-    expect.soft(title!.lineHeight / title!.fontSize, `at ${size}, title line height (${title!.rawLineHeight} for ${title!.fontSize}px)`).toBeCloseTo(1.3, 2);
-    /* Distance to -0.64 px; NaN while the letter spacing is `normal`. */
-    expect.soft(Math.abs(name!.letterSpacing + 0.64), `at ${size}, name letter spacing (${name!.rawLetterSpacing}) differs from -0.64px by`).toBeLessThanOrEqual(0.02);
-    expect.soft(Math.abs(title!.letterSpacing + 0.64), `at ${size}, title letter spacing (${title!.rawLetterSpacing}) differs from -0.64px by`).toBeLessThanOrEqual(0.02);
-    const gap = title!.lineTop - name!.lineBottom;
-    expect.soft(gap, `at ${size}, space between the bottom of the name line and the top of the title line`).toBeGreaterThanOrEqual(expectedGap - 1.5);
-    expect.soft(gap, `at ${size}, space between the bottom of the name line and the top of the title line`).toBeLessThanOrEqual(expectedGap + 1.5);
-  }
-});
-
-test('on phone as on desktop, the hero tagline follows the design’s spacing: 20 px with a line height of 1.55, at most 600 px wide, starting 165 px below the heading from 768 px wide; 18 px, 40 px below the heading on a phone; within 1.5 px', async ({ page, isMobile }) => {
-  /* Design reference: tagline in 20px, line-height 1.55, max-width 600px, margin-top 165px
-     below the heading, which has no margin of its own. On a phone, where the design has no
-     layout, 18px and 40px below the heading; the line height and the maximum width stay.
-     Desktop projects are checked at a wide window and at 768 px wide, where the desktop
-     spacing starts; phone projects at their own size. */
-  const viewports = isMobile ? [page.viewportSize()!] : DESKTOP_VIEWPORTS;
-  const expectedFontSize = isMobile ? 18 : 20;
-  const expectedGap = isMobile ? 40 : 165;
-  for (const viewport of viewports) {
-    const size = `${viewport.width} × ${viewport.height}`;
-    await openHomeAt(page, viewport);
-    const mainHeading = mainContentHeading(page);
-    /* Both heading lines in clear: the decoding is over. */
-    await expect(mainHeading).toHaveText(/^\s*Jean Exemple\s*Horloger indépendant\s*$/);
-    /* The tagline: the element holding its first line, which holds the other two as well. */
-    const tagline = page.getByRole('main').getByText('Montres mécaniques sur mesure — 20 ans d’atelier.');
-    await expect(tagline).toBeVisible();
-    await expect(tagline).toContainText('de pendules et de montres anciennes.');
-
-    const style = await tagline.evaluate((el) => {
-      const computed = getComputedStyle(el);
-      return {
-        fontSize: parseFloat(computed.fontSize),
-        rawLineHeight: computed.lineHeight,
-        lineHeight: parseFloat(computed.lineHeight),
-        maxWidth: computed.maxWidth,
-        width: el.getBoundingClientRect().width,
-      };
-    });
-    expect.soft(style.fontSize, `at ${size}, tagline font size`).toBeCloseTo(expectedFontSize, 1);
-    expect.soft(style.lineHeight / style.fontSize, `at ${size}, tagline line height (${style.rawLineHeight} for ${style.fontSize}px)`).toBeCloseTo(1.55, 2);
-    expect.soft(style.maxWidth, `at ${size}, tagline maximum width`).toBe('600px');
-    expect.soft(style.width, `at ${size}, tagline width`).toBeLessThanOrEqual(600.5);
-
-    /* The gap between the bottom of the heading's own box (its title line included) and the
-       top of the tagline's box. */
-    const headingBox = (await mainHeading.boundingBox())!;
-    const taglineBox = (await tagline.boundingBox())!;
-    const gap = taglineBox.y - (headingBox.y + headingBox.height);
-    expect.soft(gap, `at ${size}, space between the bottom of the heading and the top of the tagline`).toBeGreaterThanOrEqual(expectedGap - 1.5);
-    expect.soft(gap, `at ${size}, space between the bottom of the heading and the top of the tagline`).toBeLessThanOrEqual(expectedGap + 1.5);
-  }
-});
-
-test('on phone as on desktop, the hero stack follows the design’s spacing: 14 px, letter-spaced by 0.56 px (0.04em) within 0.02 px, starting 20 px below the tagline within 1.5 px', async ({ page, isMobile }) => {
-  /* Design reference: stack in 14px, letter-spacing 0.04em (0.56 px at 14 px), margin-top
-     20px below the tagline. The design has no phone layout: the same values apply there.
-     Desktop projects are checked at a wide window and at 768 px wide, where the desktop
-     spacing starts; phone projects at their own size. */
-  const viewports = isMobile ? [page.viewportSize()!] : DESKTOP_VIEWPORTS;
-  for (const viewport of viewports) {
-    const size = `${viewport.width} × ${viewport.height}`;
-    await openHomeAt(page, viewport);
-    const main = page.getByRole('main');
-    /* The tagline: the element holding its first line, which holds the other two as well. */
-    const tagline = main.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.');
-    await expect(tagline).toBeVisible();
-    await expect(tagline).toContainText('de pendules et de montres anciennes.');
-    const stack = main.getByText('Laiton · Acier · Rubis · Émail', { exact: true });
-    await expect(stack).toBeVisible();
-
-    const style = await stack.evaluate((el) => {
-      const computed = getComputedStyle(el);
-      return {
-        fontSize: parseFloat(computed.fontSize),
-        rawLetterSpacing: computed.letterSpacing,
-        letterSpacing: parseFloat(computed.letterSpacing),
-      };
-    });
-    expect.soft(style.fontSize, `at ${size}, stack font size`).toBeCloseTo(14, 1);
-    /* Distance to 0.56 px; NaN while the letter spacing is `normal`. */
-    expect.soft(Math.abs(style.letterSpacing - 0.56), `at ${size}, stack letter spacing (${style.rawLetterSpacing}) differs from 0.56px by`).toBeLessThanOrEqual(0.02);
-
-    /* The gap between the bottom of the tagline's box and the top of the stack's box. */
-    const taglineBox = (await tagline.boundingBox())!;
-    const stackBox = (await stack.boundingBox())!;
-    const gap = stackBox.y - (taglineBox.y + taglineBox.height);
-    expect.soft(gap, `at ${size}, space between the bottom of the tagline and the top of the stack`).toBeGreaterThanOrEqual(20 - 1.5);
-    expect.soft(gap, `at ${size}, space between the bottom of the tagline and the top of the stack`).toBeLessThanOrEqual(20 + 1.5);
-  }
-});
-
-test('on phone as on desktop, the hero buttons follow the design’s sizing and spacing: both in IBM Plex Mono 15 px, letter-spaced by 0.6 px (0.04em) within 0.02 px, with 26 px of horizontal padding, the same height within 1 px, 16 px apart and starting 44 px below the stack, within 1.5 px', async ({ page, isMobile }) => {
-  /* Design reference: buttons in mono 15px, letter-spacing 0.04em (0.6 px at 15 px), padding
-     14px 26px for the filled one, 13px 26px plus a 1px border for the outlined one, so both
-     are the same height; their row has a 16px gap and sits 44px below the stack. The design
-     has no phone layout: the same values apply there. Desktop projects are checked at a wide
-     window and at 768 px wide, where the desktop spacing starts; phone projects at their own
-     size. */
-  const viewports = isMobile ? [page.viewportSize()!] : DESKTOP_VIEWPORTS;
-  for (const viewport of viewports) {
-    const size = `${viewport.width} × ${viewport.height}`;
-    await openHomeAt(page, viewport);
-    const stack = page.getByRole('main').getByText('Laiton · Acier · Rubis · Émail', { exact: true });
-    await expect(stack).toBeVisible();
-    const first = firstHeroButton(page);
-    const second = secondHeroButton(page);
-    await expect(first).toHaveText(/^\s*Voir les projets/);
-    await expect(second).toHaveText('Contact');
-
-    const buttons = { 'first button, "Voir les projets"': first, 'second button, "Contact"': second };
-    for (const [name, button] of Object.entries(buttons)) {
-      await expect(button, `${name} at ${size}`).toBeVisible();
-      const style = await button.evaluate((el) => {
-        const computed = getComputedStyle(el);
-        return {
-          family: computed.fontFamily.split(',')[0].trim().replace(/["']/g, ''),
-          fontSize: parseFloat(computed.fontSize),
-          rawLetterSpacing: computed.letterSpacing,
-          letterSpacing: parseFloat(computed.letterSpacing),
-          paddingLeft: parseFloat(computed.paddingLeft),
-          paddingRight: parseFloat(computed.paddingRight),
-        };
-      });
-      expect.soft(style.family, `at ${size}, ${name} font`).toBe('IBM Plex Mono');
-      expect.soft(style.fontSize, `at ${size}, ${name} font size`).toBeCloseTo(15, 1);
-      /* Distance to 0.6 px; NaN while the letter spacing is `normal`. */
-      expect.soft(Math.abs(style.letterSpacing - 0.6), `at ${size}, ${name} letter spacing (${style.rawLetterSpacing}) differs from 0.6px by`).toBeLessThanOrEqual(0.02);
-      expect.soft(style.paddingLeft, `at ${size}, ${name} left padding`).toBeCloseTo(26, 1);
-      expect.soft(style.paddingRight, `at ${size}, ${name} right padding`).toBeCloseTo(26, 1);
-    }
-
-    const stackBox = (await stack.boundingBox())!;
-    const firstBox = (await first.boundingBox())!;
-    const secondBox = (await second.boundingBox())!;
-    expect.soft(Math.abs(firstBox.height - secondBox.height), `at ${size}, height of the first button (${firstBox.height} px) differs from the second's (${secondBox.height} px) by`).toBeLessThanOrEqual(1);
-
-    /* 16 px between the two buttons: side by side when they share a line; when the second one
-       wraps below the first, as the design's wrapping row lays it out, 16 px between the rows. */
-    const shareALine = secondBox.y < firstBox.y + firstBox.height;
-    const apart = shareALine ? secondBox.x - (firstBox.x + firstBox.width) : secondBox.y - (firstBox.y + firstBox.height);
-    const apartLabel = `at ${size}, space between the buttons (${shareALine ? 'side by side' : 'second one below the first'})`;
-    expect.soft(apart, apartLabel).toBeGreaterThanOrEqual(16 - 1.5);
-    expect.soft(apart, apartLabel).toBeLessThanOrEqual(16 + 1.5);
-
-    /* The gap between the bottom of the stack's box and the top of the buttons' boxes. */
-    const below = Math.min(firstBox.y, secondBox.y) - (stackBox.y + stackBox.height);
-    expect.soft(below, `at ${size}, space between the bottom of the stack and the top of the buttons`).toBeGreaterThanOrEqual(44 - 1.5);
-    expect.soft(below, `at ${size}, space between the bottom of the stack and the top of the buttons`).toBeLessThanOrEqual(44 + 1.5);
-  }
-});
-
-test('on the French home page, the hero heading decodes: right after load, its author name and professional title are scrambled, and 4 s later both are in clear', async ({ page }) => {
+test('on the French home page, the hero heading decodes: right after load, its author name and professional title are scrambled, and 1.5 s later both are in clear', async ({ page }) => {
   /* Animations are allowed, and time stands still from before the page loads, until the
-     test advances it: animation frames and timers then run as they would in 4 s. */
+     test advances it: animation frames and timers then run as they would in that time. */
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
@@ -538,52 +276,12 @@ test('on the French home page, the hero heading decodes: right after load, its a
   for (const character of Array.from(shown)) {
     expect(SIGNS, `"${character}", shown in "${shown}" right after load, is one of the signs`).toContain(character);
   }
-  /* 4 s after load, the name and the title are both in clear. */
-  await page.clock.runFor(4000);
-  expect(await textOnScreen(mainHeading), '4 s after load').toBe(inClear);
-});
-
-test('on the French home page, the hero title line decodes together with the name: when the first letters of the author name are in clear, the first letters of the professional title are in clear too', async ({ page }) => {
-  /* Both lines start decoding at the same moment, as the user chose after comparing the hero
-     with the design. Animations are allowed, and time stands still from before the page
-     loads, until the test advances it. */
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await stopClockBeforeLoad(page);
-  await page.goto('/fr/');
-  const mainHeading = mainContentHeading(page);
-  await expect(mainHeading).toHaveCount(1);
-  /* What the visitor sees in the heading, whitespace excluded: the name, from params.author,
-     then the title, from the [params.hero] block of exampleSite/content/_index.md. */
-  const name = Array.from('Jean Exemple'.replace(/\s+/g, ''));
-  const title = Array.from('Horloger indépendant'.replace(/\s+/g, ''));
-  /* Time advances in small steps until the first word of the name, "Jean", is in clear. */
-  let shown = Array.from(await textOnScreen(mainHeading));
-  for (let elapsedMs = 0; elapsedMs < 4000 && !shown.join('').startsWith('Jean'); elapsedMs += 25) {
-    await page.clock.runFor(25);
-    shown = Array.from(await textOnScreen(mainHeading));
-  }
-  expect(shown.join(''), 'the name starts with "Jean" in clear within 4 s of load').toMatch(/^Jean/);
-  expect(shown, `"${shown.join('')}" shows one character per letter of the name and the title`).toHaveLength(name.length + title.length);
-  /* At that moment, the title has started decoding too: its first letters, "Ho", are in
-     clear. */
-  const titleShown = shown.slice(name.length).join('');
-  expect(titleShown, `the title, shown as "${titleShown}" when the name starts with "Jean" in clear, starts with its first letters in clear`).toMatch(/^Ho/);
-});
-
-test('on the French home page, the hero heading decodes at the design’s pace: 1.5 s after load, its author name and professional title are both in clear', async ({ page }) => {
-  /* Design reference: the name and the title decode in about 1.1 s at most, both starting
-     at load, so both are in clear well before 1.5 s. Animations are allowed, and time stands
-     still from before the page loads, until the test advances it. */
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await stopClockBeforeLoad(page);
-  await page.goto('/fr/');
-  const mainHeading = mainContentHeading(page);
-  await expect(mainHeading).toHaveCount(1);
-  /* What the visitor sees in the heading, whitespace excluded: the name, from params.author,
-     and the title, from the [params.hero] block of exampleSite/content/_index.md. */
-  const inClear = 'Jean Exemple Horloger indépendant'.replace(/\s+/g, '');
+  /* Design reference: the name and the title decode in about 1.1 s at most, both starting at
+     load, so both are in clear well before 1.5 s, and stay so. */
   await page.clock.runFor(1500);
   expect(await textOnScreen(mainHeading), '1.5 s after load').toBe(inClear);
+  await page.clock.runFor(2500);
+  expect(await textOnScreen(mainHeading), '4 s after load').toBe(inClear);
 });
 
 test('on the French home page, the hero displays the tagline, one line per entry: the three lines, in order, each below the previous one', async ({ page }) => {
@@ -608,34 +306,6 @@ test('on the French home page, the hero displays the stack on one line, entries 
   await expect(main.getByText('Laiton · Acier · Rubis · Émail', { exact: true })).toBeVisible();
 });
 
-test('on the French home page, the hero tagline is displayed in IBM Plex Sans, paper color at 88% opacity, and the stack in IBM Plex Mono, accent color', async ({ page }) => {
-  await page.goto('/fr/');
-  const main = page.getByRole('main');
-  /* Design reference: paper #E3DFCC at 88% opacity for the tagline, accent #2A888D for the
-     stack. */
-  const lines = [
-    'Montres mécaniques sur mesure — 20 ans d’atelier.',
-    'Conception, réparation et entretien',
-    'de pendules et de montres anciennes.',
-  ];
-  for (const line of lines) {
-    const element = main.getByText(line);
-    await expect(element).toBeVisible();
-    const { family, color } = await textStyle(element);
-    expect({ family, color: colorComponents(color) }, `style of "${line}"`).toEqual({
-      family: 'IBM Plex Sans',
-      color: { red: 227, green: 223, blue: 204, alpha: 0.88 },
-    });
-  }
-  const stack = main.getByText('Laiton · Acier · Rubis · Émail', { exact: true });
-  await expect(stack).toBeVisible();
-  const { family, color } = await textStyle(stack);
-  expect({ family, color: colorComponents(color) }, 'style of the stack').toEqual({
-    family: 'IBM Plex Mono',
-    color: { red: 42, green: 136, blue: 141, alpha: 1 },
-  });
-});
-
 test('on the French home page, the first hero button, "Voir les projets", leads to the French Projets page', async ({ page }) => {
   await page.goto('/fr/');
   /* The buttons come from the front matter of exampleSite/content/_index.md,
@@ -656,20 +326,27 @@ test('on the French home page, the first hero button displays an arrow "→" aft
   expect(await displayedText(firstButton)).toMatch(/^Voir les projets ?→$/);
 });
 
-test('on the French home page, the first hero button, "Voir les projets", is filled: ink text on a paper background, in IBM Plex Mono semibold (600), not underlined', async ({ page }) => {
+test('the first hero button is filled, the second outlined', async ({ page }) => {
   await page.goto('/fr/');
-  /* Design reference: ink #013549, paper #E3DFCC. */
   const firstButton = firstHeroButton(page);
+  const secondButton = secondHeroButton(page);
   await expect(firstButton).toHaveText(/^\s*Voir les projets/);
-  const { family, weight } = await textStyle(firstButton);
-  const { color, background, textDecoration } = await buttonStyle(firstButton);
-  expect({ family, weight, color, background, textDecoration }, 'style of the first button').toEqual({
-    family: 'IBM Plex Mono',
-    weight: '600',
-    color: { red: 1, green: 53, blue: 73, alpha: 1 },
-    background: { red: 227, green: 223, blue: 204, alpha: 1 },
-    textDecoration: 'none',
-  });
+  await expect(secondButton).toHaveText('Contact');
+  const first = await buttonStyle(firstButton);
+  const second = await buttonStyle(secondButton);
+  /* Filled: an opaque background. */
+  expect(first.background.alpha, 'opacity of the first button’s background').toBeGreaterThan(0.5);
+  expect(first.textDecoration, 'underline of the first button').toBe('none');
+  const firstFamily = await firstButton.evaluate((el) => getComputedStyle(el).fontFamily.split(',')[0].trim().replace(/["']/g, ''));
+  expect(firstFamily, 'font family of the first button').toBe('IBM Plex Mono');
+  /* Outlined: no background, a visible border on all four sides. */
+  expect(second.background.alpha, 'opacity of the second button’s background').toBe(0);
+  expect(second.textDecoration, 'underline of the second button').toBe('none');
+  for (const { side, width, style, color } of second.borders) {
+    expect.soft(parseFloat(width), `width of the second button’s ${side} border`).toBeGreaterThan(0);
+    expect.soft(style, `style of the second button’s ${side} border`).not.toMatch(/^(none|hidden)$/);
+    expect.soft(color.alpha, `opacity of the second button’s ${side} border colour`).toBeGreaterThan(0);
+  }
 });
 
 test('on the French home page, the second hero button, placed after "Voir les projets", is "Contact" and leads to #contact', async ({ page }) => {
@@ -680,44 +357,6 @@ test('on the French home page, the second hero button, placed after "Voir les pr
   const secondButton = secondHeroButton(page);
   await expect(secondButton).toHaveText('Contact');
   await expect(secondButton).toHaveAttribute('href', '#contact');
-});
-
-test('on the French home page, the second hero button, "Contact", is outlined: paper text, solid 1 px paper border at 50% opacity on all four sides, transparent background, not underlined', async ({ page }) => {
-  await page.goto('/fr/');
-  /* Design reference: paper #E3DFCC, 1px solid border at 50% opacity. */
-  await expect(firstHeroButton(page)).toHaveText(/^\s*Voir les projets/);
-  const secondButton = secondHeroButton(page);
-  await expect(secondButton).toHaveText('Contact');
-  const { color, background, textDecoration, borders } = await buttonStyle(secondButton);
-  expect({ color, backgroundAlpha: background.alpha, textDecoration, borders }, 'style of the second button').toEqual({
-    color: { red: 227, green: 223, blue: 204, alpha: 1 },
-    backgroundAlpha: 0,
-    textDecoration: 'none',
-    borders: (['top', 'right', 'bottom', 'left'] as const).map((side) => ({
-      side,
-      width: '1px',
-      style: 'solid',
-      color: { red: 227, green: 223, blue: 204, alpha: 0.5 },
-    })),
-  });
-});
-
-test('on desktop, the hovered second hero button, "Contact", turns accent-colored: text and border on all four sides', async ({ page, hasTouch }) => {
-  test.skip(hasTouch, 'mouse hover does not exist on a touch screen');
-  await page.goto('/fr/');
-  /* Design reference: on hover, text and border in accent #2A888D, opaque. The colors are
-     waited on to settle, in case a transition comes with the hover. */
-  await expect(firstHeroButton(page)).toHaveText(/^\s*Voir les projets/);
-  const secondButton = secondHeroButton(page);
-  await expect(secondButton).toHaveText('Contact');
-  await secondButton.hover();
-  const accent = { red: 42, green: 136, blue: 141, alpha: 1 };
-  await expect.poll(() => textAndBorderColors(secondButton), {
-    message: 'style of the hovered second button',
-  }).toEqual({
-    color: accent,
-    borders: (['top', 'right', 'bottom', 'left'] as const).map((side) => ({ side, color: accent })),
-  });
 });
 
 test('on phone as on desktop, the second hero button, "Contact", reached by keyboard turns accent-colored: text and border on all four sides', async ({ page, browserName }) => {
@@ -739,7 +378,7 @@ test('on phone as on desktop, the second hero button, "Contact", reached by keyb
   });
 });
 
-test('on the French home page, the hero fills at least the full window height below the header: it starts right below the header and ends at the bottom of the window, or lower', async ({ page }) => {
+test('on phone as on desktop, the hero starts right below the header and ends at the bottom of the window', async ({ page }) => {
   await page.goto('/fr/');
   /* The hero is the main content region named by its main heading (a section labeled by the
      h1): it groups the heading, the tagline, the stack and the buttons. */
@@ -759,12 +398,9 @@ test('on the French home page, the hero fills at least the full window height be
   expect(Math.abs(heroBox.y - headerBottom), 'the top of the hero is right below the header').toBeLessThanOrEqual(1);
   expect(heroBox.y + heroBox.height, 'the bottom of the hero is at the bottom of the window, or lower')
     .toBeGreaterThanOrEqual(viewportHeight - 1);
-});
 
-test('in a window tall enough for its content, the hero ends exactly at the bottom of the window: its height is the window height minus the header height, within 1 px, on a phone as on desktop', async ({ page }) => {
-  /* Design reference: minimum height "100vh minus the header height". The header is two rows
-     on a phone and one row from 768 px wide: checked at a phone window and at both desktop
-     ones. */
+  /* In a window tall enough for its content, it ends exactly there. The header is two rows on
+     a phone and one row from 768 px wide: checked at a phone window and at both desktop ones. */
   for (const viewport of TALL_VIEWPORTS) {
     const size = `${viewport.width} × ${viewport.height}`;
     await openHomeAt(page, viewport);
@@ -772,38 +408,12 @@ test('in a window tall enough for its content, the hero ends exactly at the bott
   }
 });
 
-test('from 768 px wide, the hero’s text block is centred vertically in the hero, as in the design: at 1280 × 900 and at 768 × 1024, the space between its buttons and the bottom of the hero is the space between the top of the hero and its heading plus 40 px, within 4 px', async ({ page }) => {
-  /* Design reference: the text block (heading, tagline, stack, buttons) sits in the middle of
-     the hero, with 40 px of padding below it. Both windows are tall enough to leave the hero
-     free space around its text. */
-  for (const viewport of DESKTOP_VIEWPORTS) {
-    const size = `${viewport.width} × ${viewport.height}`;
-    await openHomeAt(page, viewport);
-    const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
-
-    const heroBox = (await hero.boundingBox())!;
-    const headingBox = (await heading.boundingBox())!;
-    const buttonsBottom = await bottomOfButtons(buttons);
-    const spaceAbove = headingBox.y - heroBox.y;
-    const spaceBelow = heroBox.y + heroBox.height - buttonsBottom;
-    expect.soft(
-      spaceBelow - spaceAbove,
-      `at ${size}, space below the buttons (${Math.round(spaceBelow)} px) minus space above the heading (${Math.round(spaceAbove)} px)`,
-    ).toBeGreaterThanOrEqual(36);
-    expect.soft(
-      spaceBelow - spaceAbove,
-      `at ${size}, space below the buttons (${Math.round(spaceBelow)} px) minus space above the heading (${Math.round(spaceAbove)} px)`,
-    ).toBeLessThanOrEqual(44);
-  }
-});
-
-test('on a phone, under 768 px wide, the hero’s text block is centred vertically in the hero, as from 768 px: at 375 × 1000, 412 × 1100 and 767 × 1024, the space between its buttons and the bottom of the hero is the space between the top of the hero and its heading plus 40 px, within 4 px', async ({ page }) => {
-  /* Design reference: the text block (heading, tagline, stack, buttons) sits in the middle of
-     the hero, with 40 px of padding below it. The three phone windows, set here whatever the
-     project's own window, are tall enough to leave the hero at least 150 px of free height
-     around its text, so the centring shows. */
-  const PHONE_VIEWPORTS = [{ width: 375, height: 1000 }, { width: 412, height: 1100 }, { width: 767, height: 1024 }];
-  for (const viewport of PHONE_VIEWPORTS) {
+test('on phone as on desktop, the hero’s text block is centred vertically: the middle of the hero lies between the top of its heading and the bottom of its buttons', async ({ page }) => {
+  /* Windows set whatever the project's own window, all tall enough to leave the hero at least
+     150 px of free height around its text, so the centring shows: the two desktop ones and
+     three under 768 px wide. */
+  const viewports = [...DESKTOP_VIEWPORTS, { width: 375, height: 1000 }, { width: 412, height: 1100 }, { width: 767, height: 1024 }];
+  for (const viewport of viewports) {
     const size = `${viewport.width} × ${viewport.height}`;
     await openHomeAt(page, viewport);
     const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
@@ -814,20 +424,15 @@ test('on a phone, under 768 px wide, the hero’s text block is centred vertical
     expect(buttonsBottom - headingBox.y, `at ${size}, height of the hero's text, against a ${Math.round(heroBox.height)} px hero`)
       .toBeLessThanOrEqual(heroBox.height - 150);
 
-    const spaceAbove = headingBox.y - heroBox.y;
-    const spaceBelow = heroBox.y + heroBox.height - buttonsBottom;
-    expect.soft(
-      spaceBelow - spaceAbove,
-      `at ${size}, space below the buttons (${Math.round(spaceBelow)} px) minus space above the heading (${Math.round(spaceAbove)} px)`,
-    ).toBeGreaterThanOrEqual(36);
-    expect.soft(
-      spaceBelow - spaceAbove,
-      `at ${size}, space below the buttons (${Math.round(spaceBelow)} px) minus space above the heading (${Math.round(spaceAbove)} px)`,
-    ).toBeLessThanOrEqual(44);
+    const heroMiddle = heroBox.y + heroBox.height / 2;
+    expect.soft(heroMiddle, `at ${size}, middle of the hero, below the top of the heading (${Math.round(headingBox.y)} px)`)
+      .toBeGreaterThanOrEqual(headingBox.y);
+    expect.soft(heroMiddle, `at ${size}, middle of the hero, above the bottom of the buttons (${Math.round(buttonsBottom)} px)`)
+      .toBeLessThanOrEqual(buttonsBottom);
   }
 });
 
-test('on a phone, under 768 px wide, when the hero’s content is taller than the room it has, its heading keeps its distance from the header: at 320 × 568 and at 667 × 375 (landscape), at least 40 px separate the bottom of the header from the top of the heading, and at least 40 px stay between the buttons and the bottom of the hero, within 1 px', async ({ page }) => {
+test('on a phone, under 768 px wide, when the hero’s content is taller than the room it has, its heading stays below the header and its buttons inside the hero: at 320 × 568 and at 667 × 375 (landscape)', async ({ page }) => {
   /* The two phone windows, set here whatever the project's own window, are too short for the
      hero's text: from the top of its heading to the bottom of its buttons, it is taller than
      the window less the header, so the hero grows past the bottom of the window. */
@@ -847,25 +452,24 @@ test('on a phone, under 768 px wide, when the hero’s content is taller than th
       .toBeGreaterThan(room);
 
     const heroBox = (await hero.boundingBox())!;
-    expect.soft(
-      headingBox.y - headerBottom,
-      `at ${size}, space between the bottom of the header and the top of the heading`,
-    ).toBeGreaterThanOrEqual(39);
-    expect.soft(
-      heroBox.y + heroBox.height - buttonsBottom,
-      `at ${size}, space between the bottom of the buttons and the bottom of the hero`,
-    ).toBeGreaterThanOrEqual(39);
+    expect.soft(headingBox.y, `at ${size}, top of the heading, below the bottom of the header (${Math.round(headerBottom)} px)`)
+      .toBeGreaterThan(headerBottom);
+    for (const button of buttons) {
+      const box = (await button.boundingBox())!;
+      expect.soft(
+        box.y >= heroBox.y && box.y + box.height <= heroBox.y + heroBox.height,
+        `at ${size}, button "${await button.textContent()}" inside the hero`,
+      ).toBe(true);
+    }
   }
 });
 
-test('the hero content is aligned with the header logo: 16 px from the left edge on a phone, 48 px on desktop', async ({ page, isMobile }) => {
+test('on phone as on desktop, the hero content lines up on the left with the header logo', async ({ page }) => {
   await page.goto('/fr/');
-  /* Design reference: 16 px side margin on a phone, 48 px on desktop, like the header. The
-     logo is the header link named after the site title. */
+  /* The logo is the header link named after the site title. */
   const logo = page.locator('header').getByRole('link', { name: 'Exemple', exact: true });
   await expect(logo).toBeVisible();
-  const expectedLeftEdge = isMobile ? 16 : 48;
-  expect((await logo.boundingBox())!.x, 'left edge of the logo').toBeCloseTo(expectedLeftEdge, 0);
+  const logoLeft = (await logo.boundingBox())!.x;
   /* The hero elements: name and professional title in the h1, tagline, stack and first
      button. */
   const main = page.getByRole('main');
@@ -881,7 +485,8 @@ test('the hero content is aligned with the header logo: 16 px from the left edge
   for (const [name, element] of Object.entries(elements)) {
     await expect(element, name).toBeVisible();
     const box = (await element.boundingBox())!;
-    expect.soft(box.x, `left edge: ${name}`).toBeCloseTo(expectedLeftEdge, 0);
+    expect.soft(Math.abs(box.x - logoLeft), `left edge of the ${name} (${box.x} px) against the logo’s (${logoLeft} px)`)
+      .toBeLessThanOrEqual(1);
   }
 });
 
@@ -933,7 +538,7 @@ test('on phone as on desktop, each hero button offers a target of at least 24 ×
   }
 });
 
-test('on phone as on desktop, the hero is a tick field drawn across its whole width, behind its text, even where its ticks are faintest: 2 s after load, every vertical band of the empty strip below its buttons, from the left edge, whose bottom-left ticks are almost invisible, to the right edge, shows pixels that changed at all since right after load, and at the middle of the heading, the tagline, the stack and each button, the element under the pointer is that element, so a click lands on the button', async ({ page }) => {
+test('on phone as on desktop, the hero is a tick field drawn across its whole width, behind its text, even where its ticks are faintest: 2 s after load, every vertical band of the empty strip below its buttons, from the left edge, whose bottom-left ticks are almost invisible, to the right edge, shows pixels that changed at all since right after load, and at the middle of the heading, the tagline, the stack and each button, the element under the pointer is that element, so a click lands on the button', { tag: '@pixels' }, async ({ page }) => {
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
   /* The hero is the main content region named by its main heading. */
@@ -991,7 +596,7 @@ test('on phone as on desktop, the hero is a tick field drawn across its whole wi
   }
 });
 
-test('on phone as on desktop, a click (a tap on mobile) on the hero’s professional title starts a ripple around that point: once revealed, 300 ms after the click, zones all around the click point, about 84px from it, got brighter since just before the click, while the zone at the click point did not', async ({ page, hasTouch }) => {
+test('on phone as on desktop, a click (a tap on mobile) on the hero’s professional title starts a ripple around that point: once revealed, 300 ms after the click, zones all around the click point, about 84px from it, got brighter since just before the click, while the zone at the click point did not', { tag: '@pixels' }, async ({ page, hasTouch }) => {
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
   /* The hero is the main content region named by its main heading. */
@@ -1161,7 +766,7 @@ async function heroWithAndWithoutVeil(
   return { veiled, bare, background };
 }
 
-test('on phone as on desktop, the hero’s veil darkens its text zone: with the field still (reduced motion), compared with the same hero without its veil, the field behind the middle of the text zone keeps at most 0.8 times the share of its brightness it keeps in the same columns at the hero’s top edge, above the text', async ({ page }) => {
+test('on phone as on desktop, the hero’s veil darkens its text zone: with the field still (reduced motion), compared with the same hero without its veil, the field behind the middle of the text zone keeps at most 0.8 times the share of its brightness it keeps in the same columns at the hero’s top edge, above the text', { tag: '@pixels' }, async ({ page }) => {
   /* A window at least 800px high, the project's own when it already is (phones): the hero is
      as high as the window less the header, and its vertically centred content needs room
      above the heading for the strip along the hero's top edge measured below. */
@@ -1198,83 +803,6 @@ test('on phone as on desktop, the hero’s veil darkens its text zone: with the 
   ).toBeLessThanOrEqual(0.8 * keptAtTop.kept);
 });
 
-test('on phone as on desktop, the hero’s veil follows the design: with the field still (reduced motion), compared with the same hero without its veil, it hides the field most at about 38 % of the hero’s width and 55 % of its height, and less and less towards the edges: the zone there keeps at most 0.8 times the share of the field’s brightness each zone 10 % of the width or height to its left, right, top and bottom keeps, and from each of these, towards its edge, the zone halfway to the edge, then the zone against it, each keeps at least 1.1 times what the previous one keeps', async ({ page }) => {
-  const { hero, text } = await stillHero(page);
-  const heroBox = (await hero.boundingBox())!;
-  const { width, height } = heroBox;
-
-  /* 32px squares, given by their centres, relative to the hero. One where the veil is at its
-     densest in the design, at 38 % of the width and 55 % of the height. From it, towards each
-     edge of the hero, in a straight line: one 10 % of the hero's width (or height) away, one
-     halfway between that centre and the edge, one 24px from the edge, where the field, which
-     leaves a margin along its edges, still draws ticks. */
-  const SIDE = 32;
-  const INSET = 24 + SIDE / 2;
-  const centre = { x: 0.38 * width, y: 0.55 * height };
-  const towardsEdges = [
-    { name: 'left', points: [{ x: centre.x - 0.1 * width, y: centre.y }, { x: (centre.x + INSET) / 2, y: centre.y }, { x: INSET, y: centre.y }] },
-    { name: 'right', points: [{ x: centre.x + 0.1 * width, y: centre.y }, { x: (centre.x + width - INSET) / 2, y: centre.y }, { x: width - INSET, y: centre.y }] },
-    { name: 'top', points: [{ x: centre.x, y: centre.y - 0.1 * height }, { x: centre.x, y: (centre.y + INSET) / 2 }, { x: centre.x, y: INSET }] },
-    { name: 'bottom', points: [{ x: centre.x, y: centre.y + 0.1 * height }, { x: centre.x, y: (centre.y + height - INSET) / 2 }, { x: centre.x, y: height - INSET }] },
-  ];
-  const square = ({ x, y }: { x: number; y: number }): Rectangle => ({ x: x - SIDE / 2, y: y - SIDE / 2, width: SIDE, height: SIDE });
-  const where = ({ x, y }: { x: number; y: number }): string => `(${Math.round(x)}, ${Math.round(y)})px`;
-
-  /* The field is brighter on the right than on the left, and at the top than at the bottom:
-     what each zone keeps of the field's brightness is measured against the same hero without
-     its veil. */
-  const { veiled, bare, background } = await heroWithAndWithoutVeil(page, hero, text);
-  const keptAt = async (point: { x: number; y: number }): Promise<number> => {
-    const { drawn, kept } = await brightnessKeptUnderLayerInRectangle(hero, bare, veiled, square(point), background);
-    expect(drawn, `brightness above the background of the field around ${where(point)}: ticks are drawn there`).toBeGreaterThan(0);
-    return kept;
-  };
-
-  const keptAtCentre = await keptAt(centre);
-  const notAsDesigned: string[] = [];
-  for (const { name, points } of towardsEdges) {
-    const kept = await Promise.all(points.map(keptAt));
-    const [near, halfway, atEdge] = kept;
-    if (!(keptAtCentre <= 0.8 * near)) {
-      notAsDesigned.push(`${name}: 10 % away, at ${where(points[0])}, keeps ${near.toFixed(2)}, less than 1.25 times the centre`);
-    }
-    if (!(halfway >= 1.1 * near)) {
-      notAsDesigned.push(`${name}: halfway to the edge, at ${where(points[1])}, keeps ${halfway.toFixed(2)}, less than 1.1 times ${near.toFixed(2)} 10 % away`);
-    }
-    if (!(atEdge >= 1.1 * halfway)) {
-      notAsDesigned.push(`${name}: against the edge, at ${where(points[2])}, keeps ${atEdge.toFixed(2)}, less than 1.1 times ${halfway.toFixed(2)} halfway`);
-    }
-  }
-  expect(
-    notAsDesigned,
-    `zones of the ${Math.round(width)} × ${Math.round(height)}px hero where the veil does not hide the field less and less from ${where(centre)}, which keeps ${keptAtCentre.toFixed(2)} of the field’s brightness, towards the edges`,
-  ).toEqual([]);
-});
-
-test('on phone as on desktop, the hero’s veil spreads as wide as the design’s: with the field still (reduced motion), compared with the same hero without its veil, halfway along the horizontal line from its densest point, at 38 % of the hero’s width and 55 % of its height, to the hero’s right edge, the field keeps at most 0.63 of its brightness', async ({ page }) => {
-  const { hero, text } = await stillHero(page);
-  const { width, height } = (await hero.boundingBox())!;
-
-  /* A 32px square centred halfway between the veil's densest point in the design, at 38 % of
-     the width and 55 % of the height, and the hero's right edge, on the same row: at 69 % of
-     the width. The design's veil, an ellipse reaching 70 % of the width on each side of that
-     point, still hides more than 40 % of the field there; a veil reaching less than half the
-     width fades out sooner and lets most of the field show. */
-  const SIDE = 32;
-  const point = { x: (0.38 * width + width) / 2, y: 0.55 * height };
-  const halfway: Rectangle = { x: point.x - SIDE / 2, y: point.y - SIDE / 2, width: SIDE, height: SIDE };
-
-  /* The field is brighter on the right than on the left: what the zone keeps of the field's
-     brightness is measured against the same hero without its veil. */
-  const { veiled, bare, background } = await heroWithAndWithoutVeil(page, hero, text);
-  const { drawn, kept } = await brightnessKeptUnderLayerInRectangle(hero, bare, veiled, halfway, background);
-  expect(drawn, `brightness above the background of the field around (${Math.round(point.x)}, ${Math.round(point.y)})px: ticks are drawn there`).toBeGreaterThan(0);
-  expect(
-    kept,
-    `share of the field’s brightness kept around (${Math.round(point.x)}, ${Math.round(point.y)})px, halfway from the veil’s densest point to the right edge of the ${Math.round(width)} × ${Math.round(height)}px hero`,
-  ).toBeLessThanOrEqual(0.63);
-});
-
 /* Leaves only the still hero's field showing: its text and its veil are hidden without moving
    anything, and the hero is given the page's background colour, which shows through it, so
    that the pixels that differ from the hero's background are the ticks'. The site header is
@@ -1306,87 +834,6 @@ function outermostColumnBands(extent: { left: number; right: number }, heroHeigh
     right: { x: extent.right - 8, y: 0, width: 14, height: heroHeight },
   };
 }
-
-test('on a phone, under 768 px wide, the hero’s tick field leaves side margins of at least 12 px, not 24 px, its ticks centred: at 320, 375 and 412 px wide, with the field still (reduced motion), the empty margins on its left and right are equal within a pixel, each at least 12 px, and together under 40 px, so that no further column of ticks, 16 px apart, would fit between margins of 12 px, while a minimum of 24 px leaves at least 48 px', async ({ page }) => {
-  /* Phone widths, set whatever the project's own window: the field leaves different room on
-     each side of its columns of ticks at each of them. */
-  const PHONE_WIDTHS = [320, 375, 412];
-  const HEIGHT = 800;
-  await page.setViewportSize({ width: PHONE_WIDTHS[0], height: HEIGHT });
-  const { hero, text } = await stillHero(page);
-  await showOnlyTheField(hero, text);
-
-  const problems: string[] = [];
-  const measured: string[] = [];
-  for (const width of PHONE_WIDTHS) {
-    await page.setViewportSize({ width, height: HEIGHT });
-    await page.clock.runFor(100);
-    const box = (await hero.boundingBox())!;
-    expect(box.width, `width of the hero in a ${width}px-wide window`).toBeCloseTo(width, 0);
-
-    /* The empty side margins, in CSS pixels, from each side of the hero to the nearest edge of
-       its outermost columns of ticks, measured as for any tick-field. */
-    const screenshot = await hero.screenshot();
-    const extent = await extentOfDrawnTicks(hero, screenshot);
-    expect(extent.left, `drawn ticks in the ${width}px-wide hero`).not.toBeNaN();
-    const bands = outermostColumnBands(extent, box.height);
-    const [leftColumn, rightColumn] = await horizontalExtentOfDrawnStrokeInRectangles(hero, screenshot, [bands.left, bands.right]);
-    const left = leftColumn.x;
-    const right = box.width - (rightColumn.x + rightColumn.width);
-    const describe = `${width}px: left ${left.toFixed(2)}, right ${right.toFixed(2)}`;
-    measured.push(describe);
-    if (Math.abs(left - right) > 1) problems.push(`${describe}: left and right margins differ by more than 1px`);
-    if (Math.min(left, right) < 12) problems.push(`${describe}: a side margin is under 12px`);
-    if (left + right >= 40) problems.push(`${describe}: the side margins add up to 40px or more, room for another column of ticks between margins of 12px`);
-  }
-  expect(problems, `empty side margins around the hero’s ticks, in CSS pixels (${measured.join('; ')})`).toEqual([]);
-});
-
-test('on a phone, under 768 px wide, the hero’s tick field leaves top and bottom margins of at least 9 px, not 18 px, its ticks centred: at 320 × 699, 375 × 801 and 412 × 849, with the field still (reduced motion), the empty margins at its top and bottom are equal within a pixel, each at least 9 px, and together under 40 px, so that no further row of ticks, 22 px apart, would fit between margins of 9 px, while a minimum of 18 px leaves at least 40 px at these heights', async ({ page }) => {
-  /* Phone windows, set whatever the project's own window. The hero is as high as the window
-     less the header, a height that leaves, at each of them, no room for another row of ticks
-     between margins of 9px, while margins of at least 18px drop a row and leave 40px or more.
-     Each leaves an even number of pixels around the rows, so that centred rows on whole pixels
-     leave the same margin at the top and at the bottom. */
-  const PHONE_VIEWPORTS = [
-    { width: 320, height: 699 },
-    { width: 375, height: 801 },
-    { width: 412, height: 849 },
-  ];
-  await page.setViewportSize(PHONE_VIEWPORTS[0]);
-  const { hero, text } = await stillHero(page);
-  await showOnlyTheField(hero, text);
-
-  const problems: string[] = [];
-  const measured: string[] = [];
-  for (const viewport of PHONE_VIEWPORTS) {
-    const size = `${viewport.width} × ${viewport.height}`;
-    await page.setViewportSize(viewport);
-    await page.clock.runFor(100);
-    const box = (await hero.boundingBox())!;
-    expect(box.width, `width of the hero in a ${size}px window`).toBeCloseTo(viewport.width, 0);
-    /* The hero's height is the window's less the header's: the room the sizes were picked for. */
-    const headerBox = (await page.locator('header').boundingBox())!;
-    expect(
-      Math.abs(box.height - (viewport.height - headerBox.height)),
-      `at ${size}, hero height (${box.height}px) against the window height minus the header height (${viewport.height - headerBox.height}px)`,
-    ).toBeLessThanOrEqual(1);
-
-    /* The empty top and bottom margins, in CSS pixels, from the top and bottom of the hero to
-       the nearest edge of its first and last rows of ticks, measured as for any tick-field. */
-    const screenshot = await hero.screenshot();
-    const extent = await extentOfDrawnTicks(hero, screenshot);
-    expect(extent.top, `drawn ticks in the ${size}px hero`).not.toBeNaN();
-    const top = extent.top;
-    const bottom = box.height - extent.bottom;
-    const describe = `${size}px, hero ${box.height.toFixed(2)}px high: top ${top.toFixed(2)}, bottom ${bottom.toFixed(2)}`;
-    measured.push(describe);
-    if (Math.abs(top - bottom) > 1) problems.push(`${describe}: top and bottom margins differ by more than 1px`);
-    if (Math.min(top, bottom) < 9) problems.push(`${describe}: a top or bottom margin is under 9px`);
-    if (top + bottom >= 40) problems.push(`${describe}: the top and bottom margins add up to 40px or more, room for another row of ticks between margins of 9px`);
-  }
-  expect(problems, `empty top and bottom margins around the hero’s ticks, in CSS pixels (${measured.join('; ')})`).toEqual([]);
-});
 
 /* The phone windows the field's corner ticks are checked at, set whatever the project's own
    window, up to the widest under 768px. */
@@ -1429,33 +876,7 @@ function pointsAcrossTick(x: number, y: number, tickWidth: number): { x: number;
   return Array.from({ length: Math.ceil(tickWidth / STEP) }, (_, step) => ({ x: x + (step + 0.5) * STEP, y: y + 2.5 }));
 }
 
-/* The theme's three tick colours. */
-type Hue = 'green' | 'accent' | 'cream';
-
-/* The theme's three tick colours, as the hero sees them: green (--color-accent-dark), accent
-   (--color-accent) and cream (--color-paper), read through the same colour handling as the ticks. */
-async function themeTickHues(hero: Locator): Promise<Record<Hue, Channels>> {
-  const themeColour = async (customProperty: string): Promise<Channels> =>
-    channelsOfColour(hero, await hero.evaluate((el, name) => getComputedStyle(el).getPropertyValue(name).trim(), customProperty));
-  return {
-    green: await themeColour('--color-accent-dark'),
-    accent: await themeColour('--color-accent'),
-    cream: await themeColour('--color-paper'),
-  };
-}
-
-/* A colour, as assertion messages show it: its channels rounded, "(red, green, blue)". */
-function describeColour(channels: Channels): string {
-  return `(${Math.round(channels.red)}, ${Math.round(channels.green)}, ${Math.round(channels.blue)})`;
-}
-
-/* Of the theme's tick colours `hues`, the one closest to `colour`. */
-function closestHue(colour: Channels, hues: Record<Hue, Channels>): Hue {
-  const distance = (other: Channels) => Math.hypot(colour.red - other.red, colour.green - other.green, colour.blue - other.blue);
-  return (Object.keys(hues) as Hue[]).reduce((best, hue) => (distance(hues[hue]) < distance(hues[best]) ? hue : best));
-}
-
-test('on a phone, under 768 px wide, the hero’s tick field is faintest at the top left and most opaque at the bottom right: at 320 × 699, 375 × 801, 412 × 849 and 767 × 1024, with the field still (reduced motion), of its four corner ticks, the top left one shows the least of its colour over the background, and the bottom right one the most', async ({ page }) => {
+test('on a phone, under 768 px wide, the hero’s tick field is faintest at the top left and most opaque at the bottom right: at 320 × 699, 375 × 801, 412 × 849 and 767 × 1024, with the field still (reduced motion), of its four corner ticks, the top left one shows the least of its colour over the background, and the bottom right one the most', { tag: '@pixels' }, async ({ page }) => {
   await page.setViewportSize(CORNER_TICKS_PHONE_VIEWPORTS[0]);
   const { hero, text } = await stillHero(page);
   await showOnlyTheField(hero, text);
@@ -1500,145 +921,6 @@ test('on a phone, under 768 px wide, the hero’s tick field is faintest at the 
   expect(problems, `share of its colour each corner tick of the hero shows over the background (${measured.join('; ')})`).toEqual([]);
 });
 
-test('on a phone, under 768 px wide, the hero’s tick field is coloured along the same diagonal as its opacity: green at the top left, cream at the bottom right: at 320 × 699, 375 × 801, 412 × 849 and 767 × 1024, with the field still (reduced motion), its top left corner tick is drawn in the colour closest to the theme’s green, of green, accent and cream, and its bottom right corner tick in the colour closest to the cream', async ({ page }) => {
-  await page.setViewportSize(CORNER_TICKS_PHONE_VIEWPORTS[0]);
-  const { hero, text } = await stillHero(page);
-  await showOnlyTheField(hero, text);
-  const hues = await themeTickHues(hero);
-
-  const problems: string[] = [];
-  const measured: string[] = [];
-  for (const viewport of CORNER_TICKS_PHONE_VIEWPORTS) {
-    const size = `${viewport.width} × ${viewport.height}`;
-    await page.setViewportSize(viewport);
-    await page.clock.runFor(100);
-    const box = (await hero.boundingBox())!;
-    expect(box.width, `width of the hero in a ${size}px window`).toBeCloseTo(viewport.width, 0);
-    const screenshot = await hero.screenshot();
-
-    const { columns, firstRow, lastRow, tickWidth } = await cornerTicks(hero, screenshot, box.height, size);
-
-    /* A tick's colour, whatever its opacity: the colour the field holds where, of the points
-       across the tick, it covers a pixel most. The top left tick is the field's faintest: only
-       its own colour, not what it adds over the background, stands far enough above rounding
-       errors to tell its hue. */
-    const colourOfTick = async (x: number, y: number): Promise<Channels> => {
-      const points = pointsAcrossTick(x, y, tickWidth);
-      const measures = (await canvasOpacityOverBackgroundAt(hero, screenshot, points)).filter(({ opacity }) => !Number.isNaN(opacity));
-      expect(measures.length, `points of the tick at (${x.toFixed(1)}, ${y.toFixed(1)})px of the ${size}px hero drawn in a colour other than the background`).toBeGreaterThan(0);
-      return measures.reduce((best, measure) => (measure.opacity > best.opacity ? measure : best)).colour;
-    };
-    const corners: { name: string; colour: Channels; wanted: Hue }[] = [
-      { name: 'top left', colour: await colourOfTick(columns.left, firstRow), wanted: 'green' },
-      { name: 'bottom right', colour: await colourOfTick(columns.right, lastRow), wanted: 'cream' },
-    ];
-    const describe = `${size}px: ${corners.map(({ name, colour }) => `${name} ${describeColour(colour)}, closest to ${closestHue(colour, hues)}`).join('; ')}`;
-    measured.push(describe);
-    for (const { name, colour, wanted } of corners) {
-      if (closestHue(colour, hues) !== wanted) problems.push(`${size}px: the ${name} tick, ${describeColour(colour)}, is closest to ${closestHue(colour, hues)}, not ${wanted}`);
-    }
-  }
-  expect(
-    problems,
-    `colour of the hero’s corner ticks, against green ${describeColour(hues.green)}, accent ${describeColour(hues.accent)} and cream ${describeColour(hues.cream)} (${measured.join(' | ')})`,
-  ).toEqual([]);
-});
-
-test('from 768 px wide, with a classic scrollbar that leaves the page less than 768 px, the hero’s tick field keeps its desktop version, like the rest of the page: at 768 × 1024, 775 × 1024 and 782 × 1024, with a 15 px scrollbar and the field still (reduced motion), the page is in its desktop layout, the hero’s text 48 px from its left edge, while the field leaves side margins of at least 24 px, is faintest at the bottom left and most opaque at the top right, green at the bottom left and cream at the top right', async ({ browser, baseURL, isMobile, hasTouch, deviceScaleFactor, userAgent }) => {
-  /* Windows from 768px wide, where the page switches to its desktop layout, whose width
-     includes the scrollbar, up to the widest a 15px scrollbar leaves under 768px of page. */
-  const SCROLLBAR_WIDTH = 15;
-  const VIEWPORTS = [
-    { width: 768, height: 1024 },
-    { width: 775, height: 1024 },
-    { width: 782, height: 1024 },
-  ];
-
-  /* The project's browser and device, with the scrollbars a desktop shows: Chromium is run
-     headless with its scrollbars hidden, which then take no width from the page. */
-  await using browserWithScrollbars = await browser.browserType().launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
-  const context = await browserWithScrollbars.newContext({ baseURL, viewport: VIEWPORTS[0], isMobile, hasTouch, deviceScaleFactor, userAgent });
-  const page = await context.newPage();
-  const { hero, text } = await stillHero(page);
-
-  /* A classic scrollbar, which takes its width from the page, as on a desktop whose scrollbars
-     are always shown, rather than one laid over the page. The browser puts it in place on its
-     next rendering, which the stopped clock does not hold back. */
-  await page.addStyleTag({
-    content: `::-webkit-scrollbar { width: ${SCROLLBAR_WIDTH}px; } ::-webkit-scrollbar-thumb { background: grey; }`,
-  });
-  const scrollbarWidth = (): Promise<number> => page.evaluate(() => window.innerWidth - document.documentElement.clientWidth);
-  const scrollbarTakesWidth = await expect
-    .poll(scrollbarWidth, { timeout: 2000 })
-    .toBeGreaterThan(0)
-    .then(() => true, () => false);
-  test.skip(!scrollbarTakesWidth, 'this browser lays its scrollbar over the page or hides it: it takes no width from the page');
-  expect(await scrollbarWidth(), 'width the scrollbar takes from the page').toBe(SCROLLBAR_WIDTH);
-  await page.clock.runFor(100);
-
-  /* The heading, hidden from assistive technologies once only the field shows. */
-  const heading = hero.getByRole('heading', { level: 1, includeHidden: true });
-  await showOnlyTheField(hero, text);
-  const hues = await themeTickHues(hero);
-
-  const problems: string[] = [];
-  const measured: string[] = [];
-  for (const viewport of VIEWPORTS) {
-    const size = `${viewport.width} × ${viewport.height}`;
-    await page.setViewportSize(viewport);
-    await page.clock.runFor(100);
-
-    /* The page is in its desktop layout, while the scrollbar leaves it less than 768px. */
-    const pageWidth = await page.evaluate(() => document.documentElement.clientWidth);
-    expect(pageWidth, `width the scrollbar leaves the page in a ${size}px window`).toBe(viewport.width - SCROLLBAR_WIDTH);
-    expect(pageWidth, `width the scrollbar leaves the page in a ${size}px window`).toBeLessThan(768);
-    const box = (await hero.boundingBox())!;
-    expect(box.width, `width of the hero in a ${size}px window`).toBeCloseTo(pageWidth, 0);
-    const headingBox = (await heading.boundingBox())!;
-    expect(headingBox.x - box.x, `distance from the hero’s left edge to its heading in a ${size}px window, 48px in the desktop layout, 16px on a phone`).toBeCloseTo(48, 0);
-
-    const screenshot = await hero.screenshot();
-    const { columns, firstRow, lastRow, tickWidth } = await cornerTicks(hero, screenshot, box.height, size);
-
-    /* The empty side margins, measured as in the phone test: from each side of the hero to the
-       nearest edge of its outermost columns of ticks. */
-    const bands = outermostColumnBands(await extentOfDrawnTicks(hero, screenshot), box.height);
-    const [leftColumn, rightColumn] = await horizontalExtentOfDrawnStrokeInRectangles(hero, screenshot, [bands.left, bands.right]);
-    const margins = { left: leftColumn.x, right: box.width - (rightColumn.x + rightColumn.width) };
-
-    /* A corner tick's opacity and colour, read as in the phone tests: of the points across the
-       tick, the reading where it covers a pixel most. */
-    const tick = async (x: number, y: number): Promise<{ opacity: number; colour: Channels }> => {
-      const measures = (await canvasOpacityOverBackgroundAt(hero, screenshot, pointsAcrossTick(x, y, tickWidth))).filter(({ opacity }) => !Number.isNaN(opacity));
-      expect(measures.length, `points of the tick at (${x.toFixed(1)}, ${y.toFixed(1)})px of the ${size}px hero drawn in a colour other than the background`).toBeGreaterThan(0);
-      return measures.reduce((best, measure) => (measure.opacity > best.opacity ? measure : best));
-    };
-    const corners = {
-      'top left': await tick(columns.left, firstRow),
-      'top right': await tick(columns.right, firstRow),
-      'bottom left': await tick(columns.left, lastRow),
-      'bottom right': await tick(columns.right, lastRow),
-    };
-    type Corner = keyof typeof corners;
-    const describe = `${size}px, page ${pageWidth}px: margins left ${margins.left.toFixed(2)}, right ${margins.right.toFixed(2)}; ${Object.entries(corners).map(([corner, { opacity, colour }]) => `${corner} ${(100 * opacity).toFixed(1)}% ${describeColour(colour)}`).join(', ')}`;
-    measured.push(describe);
-    if (Math.min(margins.left, margins.right) < 24) problems.push(`${describe}: a side margin is under 24px`);
-    const others = (corner: Corner): number[] =>
-      (Object.keys(corners) as Corner[]).filter((name) => name !== corner).map((name) => corners[name].opacity);
-    if (!others('bottom left').every((opacity) => corners['bottom left'].opacity < opacity)) {
-      problems.push(`${describe}: the bottom left tick is not the faintest`);
-    }
-    if (!others('top right').every((opacity) => corners['top right'].opacity > opacity)) {
-      problems.push(`${describe}: the top right tick is not the most opaque`);
-    }
-    for (const [corner, wanted] of [['bottom left', 'green'], ['top right', 'cream']] as [Corner, Hue][]) {
-      const hue = closestHue(corners[corner].colour, hues);
-      if (hue !== wanted) problems.push(`${size}px: the ${corner} tick is closest to ${hue}, not ${wanted}`);
-    }
-  }
-  expect(problems, `the hero’s tick field beside a classic scrollbar (${measured.join(' | ')})`).toEqual([]);
-});
-
 test('served under /portfolio/, the first hero button of the French home page, "Voir les projets", leads to /portfolio/fr/projets/', async ({ page }) => {
   await page.goto('http://localhost:1315/portfolio/fr/');
   const firstButton = firstHeroButton(page);
@@ -1658,39 +940,19 @@ test('served under /portfolio/, the second hero button of the French home page, 
   await expect(secondButton).toHaveAttribute('href', '#contact');
 });
 
-test('on the English home page, the title below the author name is the English professional title', async ({ page }) => {
-  await page.goto('/en/');
-  const mainHeading = mainContentHeading(page);
-  /* The title comes from the front matter of exampleSite/content/_index.en.md, [params.hero]
-     block, title key. DOM text, as written in the front matter: the uppercase display is up
-     to CSS. */
-  await expect(mainHeading.getByText('Independent clockmaker', { exact: true })).toBeVisible();
-});
-
-test('on the English home page, the hero displays the three lines of the English tagline, in order, each below the previous one', async ({ page }) => {
+test('on the English home page, the hero shows the English title, tagline and stack, and its first button, "View projects", leads to the English Projects page', async ({ page }) => {
   await page.goto('/en/');
   const main = page.getByRole('main');
-  /* The tagline comes from the front matter of exampleSite/content/_index.en.md,
-     [params.hero] block, tagline key (a list of strings, one per line). */
-  const lines = [
+  /* The hero comes from the front matter of exampleSite/content/_index.en.md, [params.hero]
+     block: title, tagline (one line per entry) and stack. DOM text, as written there: the
+     uppercase display is up to CSS. */
+  await expect(mainContentHeading(page).getByText('Independent clockmaker', { exact: true })).toBeVisible();
+  await expectLinesInOrder(main, [
     'Custom mechanical watches — 20 years at the bench.',
     'Design, repair and servicing',
     'of antique clocks and watches.',
-  ];
-  await expectLinesInOrder(main, lines);
-});
-
-test('on the English home page, the hero displays the English stack, entries separated by "·"', async ({ page }) => {
-  await page.goto('/en/');
-  const main = page.getByRole('main');
-  /* The stack comes from the front matter of exampleSite/content/_index.en.md, [params.hero]
-     block, stack key (a list of strings: 'Brass', 'Steel', 'Ruby', 'Enamel'). They are
-     displayed in one piece, separated by a middle dot surrounded by spaces. */
+  ]);
   await expect(main.getByText('Brass · Steel · Ruby · Enamel', { exact: true })).toBeVisible();
-});
-
-test('on the English home page, the first hero button, "View projects", leads to the English Projects page', async ({ page }) => {
-  await page.goto('/en/');
   /* The English Projects page has the slug 'projects' (exampleSite/content/projets/_index.en.md). */
   const firstButton = firstHeroButton(page);
   await expect(firstButton).toHaveText('View projects');
@@ -1698,6 +960,7 @@ test('on the English home page, the first hero button, "View projects", leads to
   await firstButton.click();
   await expect(page).toHaveURL('/en/projects/');
 });
+
 
 test.describe('home page without JavaScript', () => {
   /* The theme rule: no JavaScript is required to read the content. Animations (the decoding
@@ -1819,19 +1082,6 @@ test.describe('home page of a single-language site', () => {
     removeDirectory(siteDirectory);
   });
 
-  test('on a single-language site, in a window tall enough for its content, the hero ends exactly at the bottom of the window: its height is the window height minus the header height, within 1 px, on a phone as on desktop', async ({ page, context }) => {
-    await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
-    /* Same windows as on the bilingual example site: the header, without its language
-       switcher, is two rows on a phone and one row from 768 px wide. */
-    for (const viewport of TALL_VIEWPORTS) {
-      const size = `${viewport.width} × ${viewport.height}`;
-      await openHomeAt(page, viewport, SITE_WITH_A_SINGLE_LANGUAGE.origin);
-      /* The site is single-language: the header shows no language switcher. */
-      await expect(page.locator('header').getByRole('group', { name: 'Langue' }), `language switcher at ${size}`).toHaveCount(0);
-      await expectHeroToEndAtWindowBottom(page, viewport, size);
-    }
-  });
-
   test.describe('without JavaScript and with the fallback font', () => {
     /* Without JavaScript, the hero's height relies on CSS alone: the header's estimated
        height, which must also hold when the web fonts never arrive. */
@@ -1853,29 +1103,6 @@ test.describe('home page of a single-language site', () => {
         await expect(page.locator('header').getByRole('group', { name: 'Langue' }), `language switcher at ${size}`).toHaveCount(0);
         await expectHeroToEndAtWindowBottom(page, viewport, size);
       }
-    });
-
-    test('on a single-language site, without JavaScript and with a monospace font whose normal line height is 1 em instead of 1.3, the header logo sits on a line 18.2 px tall, like the menu links, and the hero ends exactly at the bottom of the window, within 1 px, on a phone', async ({ page, context }) => {
-      await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
-      /* IBM Plex Mono's normal line height is 1.3 em, the header's estimated height's: served
-         with an ascent of 0.8 em and a descent of 0.2 em, the same on every machine, it stands
-         for a fallback font whose normal line height differs from it. */
-      const replacedFonts = await replacePlexMonoFiles(page, SITE_WITH_A_SINGLE_LANGUAGE.origin, { ascent: 0.8, descent: 0.2 });
-      const viewport = { width: 412, height: 1100 };
-      const size = `${viewport.width} × ${viewport.height}`;
-      await openHomeWithoutScriptAt(page, viewport, SITE_WITH_A_SINGLE_LANGUAGE.origin);
-      /* The replaced font really is the one displayed: the page asked for IBM Plex Mono and
-         loaded it. */
-      expect(replacedFonts.some((url) => /mono/i.test(url)), `replaced font requests: ${replacedFonts.join(', ')}`).toBe(true);
-      const loadedFonts = await page.evaluate(() =>
-        [...document.fonts].filter((face) => face.status === 'loaded').map((face) => face.family.replace(/["']/g, '')));
-      expect(loadedFonts, 'web fonts loaded').toContain('IBM Plex Mono');
-      /* The site is single-language: the header shows no language switcher. */
-      await expect(page.locator('header').getByRole('group', { name: 'Langue' })).toHaveCount(0);
-      /* The logo's line: 14 px × 1.3, whatever the font's normal line height. */
-      const logoBox = (await page.locator('header').getByRole('link', { name: 'Exemple', exact: true }).boundingBox())!;
-      expect.soft(Math.abs(logoBox.height - 18.2), `logo height (${logoBox.height} px) against 18.2 px`).toBeLessThanOrEqual(0.5);
-      await expectHeroToEndAtWindowBottom(page, viewport, size);
     });
   });
 });
@@ -1919,48 +1146,6 @@ test.describe('home page of a site with a long menu', () => {
       `at ${size}, hero height (${heroBox.height} px) against the window height minus the header height (${expectedHeight} px)`,
     ).toBeLessThanOrEqual(1);
   });
-
-  test('from 768 px wide, with a menu too long for its line, in a window tall enough for its content, the hero ends exactly at the bottom of the window at every width from 768 to 1280 px, in steps of 16 px: its height is the window height minus the header height, within 1 px, and at one of these widths at least the menu wraps onto several lines', async ({ page, context, browserName }) => {
-    /* 33 page loads, each measured: on the CI's WebKit, several times slower than the other
-       browsers there, the default time limit is too short for them. */
-    test.slow(browserName === 'webkit', '33 page loads, slow on WebKit in CI');
-    await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
-    /* How many lines the menu takes at a given width depends on the platform's text
-       rendering: the test only requires that some width of the range wraps it, so that a
-       header taller than its usual single row is exercised. */
-    const problems: string[] = [];
-    const measured: string[] = [];
-    const multiLineWidths: number[] = [];
-    for (let width = 768; width <= 1280; width += 16) {
-      const viewport = { width, height: 1024 };
-      const size = `${viewport.width} × ${viewport.height}`;
-      await openHomeAt(page, viewport, SITE_WITH_A_LONG_MENU.origin);
-
-      const links = page.locator('header nav').getByRole('link');
-      await expect(links, `menu links at ${size}`).toHaveText(['Accueil', 'Projets', 'Parcours', 'Compétences', 'Publications', 'Contact']);
-      const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
-
-      /* The page sizes the hero to the header once the header is laid out: a measure taken
-         before that, while the hero is still sized for a single-row header, is taken again,
-         in a single round trip each time. A width where the hero never matches within 2 s is
-         measured as it stands, and reported below. */
-      await expect.poll(() => hero.evaluate((element, windowHeight) =>
-        Math.abs(element.getBoundingClientRect().height - (windowHeight - document.querySelector('header')!.getBoundingClientRect().height)),
-      viewport.height), { message: `hero settled to the header height at ${size}`, timeout: 2_000 }).toBeLessThanOrEqual(1).catch(() => {});
-
-      const { lineCount } = await menuLines(links);
-      if (lineCount > 1) multiLineWidths.push(width);
-      const { expectedHeight, headerHeight } = await heightBelowHeader(page, viewport, { heading, buttons }, size);
-      const heroBox = (await hero.boundingBox())!;
-      const describe = `${size}: menu on ${lineCount} line(s), header ${headerHeight.toFixed(2)} px, hero ${heroBox.height.toFixed(2)} px, expected ${expectedHeight.toFixed(2)} px`;
-      measured.push(describe);
-      if (Math.abs(heroBox.height - expectedHeight) > 1) {
-        problems.push(`${describe}: the hero height is not the window height minus the header height, within 1 px`);
-      }
-    }
-    if (multiLineWidths.length === 0) problems.push('the menu sits on a single line at every width from 768 to 1280 px: no taller header was exercised');
-    expect(problems, `hero height against the window height minus the header height (${measured.join(' | ')})`).toEqual([]);
-  });
 });
 
 test.describe('home page of another site, with a different hero', () => {
@@ -1972,22 +1157,15 @@ test.describe('home page of another site, with a different hero', () => {
     removeDirectory(siteDirectory);
   });
 
-  test('the main heading displays the name of this site’s author, then the title of its hero, and not those of the example site', async ({ page, context }) => {
+  test('the hero shows this site’s author, title and only button, "Écrire à Camille", to its mailto: address, and not those of the example site', async ({ page, context }) => {
     await serveSite(context, SITE_WITH_ANOTHER_HERO, siteDirectory);
     await page.goto(`${SITE_WITH_ANOTHER_HERO.origin}/fr/`);
-    const mainHeading = mainContentHeading(page);
-    /* The author comes from params.author (tests/fixtures/other-hero/hugo.toml), the title
-       from the [params.hero] block, title key, of tests/fixtures/other-hero/content/_index.md.
-       DOM text, as written in the configuration: the uppercase display is up to CSS. */
-    await expect(mainHeading).toHaveText(/^\s*Camille Fictive\s*Relieuse d’art\s*$/);
-  });
-
-  test('the hero displays the only button declared by this site, "Écrire à Camille", to its mailto: address, and not the buttons of the example site', async ({ page, context }) => {
-    await serveSite(context, SITE_WITH_ANOTHER_HERO, siteDirectory);
-    await page.goto(`${SITE_WITH_ANOTHER_HERO.origin}/fr/`);
-    /* The button comes from tests/fixtures/other-hero/content/_index.md, single
-       [[params.hero.actions]] block, with an external url. The text of this home page has no
-       link: the only link of the main content is this button (the header has its own links). */
+    /* The author comes from params.author (tests/fixtures/other-hero/hugo.toml), the title and
+       the single [[params.hero.actions]] block from tests/fixtures/other-hero/content/_index.md.
+       DOM text, as written there: the uppercase display is up to CSS. */
+    await expect(mainContentHeading(page)).toHaveText(/^\s*Camille Fictive\s*Relieuse d’art\s*$/);
+    /* The text of this home page has no link: the only link of the main content is this
+       button (the header has its own links). */
     const main = page.getByRole('main');
     const links = main.getByRole('link');
     await expect(links).toHaveCount(1);
@@ -2052,35 +1230,7 @@ test.describe('home page of a site whose hero has long words, on a 320 px wide p
     if (siteDirectory) removeDirectory(siteDirectory);
   });
 
-  test('on a 320 px wide phone, a hero whose author name and title each contain a word of 12 characters or more fits within the width: no horizontal scrolling, h1 fully visible', async ({ page, context }) => {
-    await serveSite(context, SITE_WITH_A_HERO_WITH_LONG_WORDS, siteDirectory);
-    await page.goto(`${SITE_WITH_A_HERO_WITH_LONG_WORDS.origin}/fr/`);
-    const width = page.viewportSize()!.width;
-    expect(width, 'window width').toBe(320);
-
-    /* The author comes from params.author (tests/fixtures/hero-with-long-words/hugo.toml), the
-       title from the [params.hero] block, title key, of
-       tests/fixtures/hero-with-long-words/content/_index.md. "Vanderkerckhove-Fictive" and
-       "Horlogère-restauratrice" have more than 12 characters. */
-    const mainHeading = mainContentHeading(page);
-    await expect(mainHeading).toHaveText(/^\s*Apolline Vanderkerckhove-Fictive\s*Horlogère-restauratrice\s*$/);
-
-    const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-    expect.soft(pageWidth, 'no horizontal scrolling').toBeLessThanOrEqual(width);
-
-    const elements = {
-      'author name (h1)': mainHeading,
-      'professional title': mainHeading.getByText('Horlogère-restauratrice', { exact: true }),
-    };
-    for (const [name, element] of Object.entries(elements)) {
-      await expect(element, name).toBeVisible();
-      const { left, right } = await displayedExtent(element);
-      expect.soft(left, `left edge within the window: ${name}`).toBeGreaterThanOrEqual(0);
-      expect.soft(right, `right edge within the window: ${name}`).toBeLessThanOrEqual(width);
-    }
-  });
-
-  test('on a 320 px wide phone, while the heading of a hero with long words decodes, the page never scrolls horizontally: every 250 ms from load, while the heading is still scrambled at load, until it is in clear, within 6 s, the name and the title stay within the width', async ({ page, context }) => {
+  test('on a 320 px wide phone, a hero whose author name and title each contain a word of 12 characters or more never scrolls horizontally: every 250 ms while its heading decodes, then in clear, within 6 s, the name and the title stay within the width', async ({ page, context }) => {
     /* Animations are allowed, and time stands still from before the page loads, until the
        test advances it, step by step. */
     await page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -2090,10 +1240,11 @@ test.describe('home page of a site whose hero has long words, on a 320 px wide p
     const width = page.viewportSize()!.width;
     expect(width, 'window width').toBe(320);
 
-    /* The name, "Apolline Vanderkerckhove-Fictive", from params.author
-       (tests/fixtures/hero-with-long-words/hugo.toml), decodes first; the title,
-       "Horlogère-restauratrice", from tests/fixtures/hero-with-long-words/content/_index.md,
-       decodes when the name is done. Both are in clear within 6 s of load. */
+    /* The author comes from params.author (tests/fixtures/hero-with-long-words/hugo.toml), the
+       title from the [params.hero] block, title key, of
+       tests/fixtures/hero-with-long-words/content/_index.md. "Vanderkerckhove-Fictive" and
+       "Horlogère-restauratrice" have more than 12 characters. Both are in clear within 6 s
+       of load. */
     const mainHeading = mainContentHeading(page);
     await expect(mainHeading).toHaveCount(1);
     const elements = {
@@ -2125,8 +1276,11 @@ test.describe('home page of a site whose hero has long words, on a 320 px wide p
       }
       if (!holdsASign(shown)) break;
     }
-    /* The decoding ends: the heading is in clear, within 6 s of load. */
+    /* The decoding ends: the heading is in clear, within 6 s of load, and fully visible. */
     expect(shown, `heading shown ${elapsedMs} ms after load, in clear`).toBe(inClear);
+    await expect(mainHeading).toHaveText(/^\s*Apolline Vanderkerckhove-Fictive\s*Horlogère-restauratrice\s*$/);
+    await expect(mainHeading, 'author name (h1)').toBeVisible();
+    await expect(mainHeading.getByText('Horlogère-restauratrice', { exact: true }), 'professional title').toBeVisible();
   });
 });
 

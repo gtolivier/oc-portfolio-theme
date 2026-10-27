@@ -15,7 +15,7 @@ export async function textOnScreen(element: Locator): Promise<string> {
 
 /* Same as textOnScreen, but with its spaces kept: every run of whitespace becomes a single
    space, as the browser renders it, and leading and trailing whitespace is dropped. */
-export async function textOnScreenWithSpaces(element: Locator): Promise<string> {
+async function textOnScreenWithSpaces(element: Locator): Promise<string> {
   const text = await element.evaluate((root) => {
     const hides = (el: Element) => {
       const style = getComputedStyle(el);

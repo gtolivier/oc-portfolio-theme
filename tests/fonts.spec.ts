@@ -14,7 +14,17 @@ async function loadedFamilies(page: Page): Promise<string[]> {
   });
 }
 
-test('body text is in IBM Plex Sans, a font actually loaded from the site itself and never from another domain', async ({ page, baseURL }) => {
+/* Weights of the IBM Plex Mono faces the browser actually loaded. */
+async function loadedMonoWeights(page: Page): Promise<string[]> {
+  return page.evaluate(async () => {
+    await document.fonts.ready;
+    return [...document.fonts]
+      .filter((face) => face.status === 'loaded' && face.family.replace(/["']/g, '') === 'IBM Plex Mono')
+      .map((face) => face.weight);
+  });
+}
+
+test('body text is in IBM Plex Sans and the header text (logo and navigation) in IBM Plex Mono, fonts actually loaded from the site itself and never from another domain', async ({ page, baseURL }) => {
   const requestedFonts: string[] = [];
   const receivedFonts: string[] = [];
   page.on('request', (request) => {
@@ -32,27 +42,6 @@ test('body text is in IBM Plex Sans, a font actually loaded from the site itself
   const textFamily = await page.locator('body').evaluate((body) => getComputedStyle(body).fontFamily);
   expect(textFamily.split(',')[0].trim().replace(/["']/g, '')).toBe('IBM Plex Sans');
 
-  const loadedFonts = await loadedFamilies(page);
-  expect(loadedFonts).toContain('IBM Plex Sans');
-
-  await expect
-    .poll(() => receivedFonts.filter((url) => new URL(url).origin === origin).length)
-    .toBeGreaterThan(0);
-  expect(requestedFonts.filter((url) => new URL(url).origin !== origin)).toEqual([]);
-});
-
-test('the header text (logo and navigation) is in IBM Plex Mono, a font actually loaded from the site itself', async ({ page }) => {
-  const receivedMonoFonts: string[] = [];
-  page.on('response', (response) => {
-    const request = response.request();
-    if (response.ok() && isAFont(request.resourceType(), response.url()) && /mono/i.test(response.url())) {
-      receivedMonoFonts.push(response.url());
-    }
-  });
-
-  await page.goto('/fr/');
-  const origin = new URL(page.url()).origin;
-
   /* The logo and the navigation links, without the language switch link. */
   const headerLinks = page
     .locator('header')
@@ -65,11 +54,16 @@ test('the header text (logo and navigation) is in IBM Plex Mono, a font actually
   expect(headerFamilies).toEqual(['IBM Plex Mono', 'IBM Plex Mono', 'IBM Plex Mono', 'IBM Plex Mono']);
 
   const loadedFonts = await loadedFamilies(page);
+  expect(loadedFonts).toContain('IBM Plex Sans');
   expect(loadedFonts).toContain('IBM Plex Mono');
 
   await expect
-    .poll(() => receivedMonoFonts.filter((url) => new URL(url).origin === origin).length)
+    .poll(() => receivedFonts.filter((url) => new URL(url).origin === origin).length)
     .toBeGreaterThan(0);
+  await expect
+    .poll(() => receivedFonts.filter((url) => /mono/i.test(url) && new URL(url).origin === origin).length)
+    .toBeGreaterThan(0);
+  expect(requestedFonts.filter((url) => new URL(url).origin !== origin)).toEqual([]);
 });
 
 test('served under a subpath (baseURL /portfolio/), the site still loads its IBM Plex Sans and IBM Plex Mono fonts, with no font file not found', async ({ page }) => {
@@ -88,7 +82,7 @@ test('served under a subpath (baseURL /portfolio/), the site still loads its IBM
   expect(loadedFonts).toEqual(expect.arrayContaining(['IBM Plex Sans', 'IBM Plex Mono']));
 });
 
-test('the page title is in IBM Plex Mono bold (700), a weight actually loaded from the site and not synthesized by the browser', async ({ page }) => {
+test('the page title (IBM Plex Mono bold, 700) and the header language switcher (IBM Plex Mono semibold, 600) use weights actually loaded from the site, not synthesized or replaced by the browser', async ({ page }) => {
   await page.goto('/fr/projets/');
 
   const title = page.locator('h1');
@@ -101,17 +95,8 @@ test('the page title is in IBM Plex Mono bold (700), a weight actually loaded fr
     };
   });
   expect(titleStyle).toEqual({ family: 'IBM Plex Mono', weight: '700' });
+  expect(await loadedMonoWeights(page)).toContain('700');
 
-  const loadedMonoWeights = await page.evaluate(async () => {
-    await document.fonts.ready;
-    return [...document.fonts]
-      .filter((face) => face.status === 'loaded' && face.family.replace(/["']/g, '') === 'IBM Plex Mono')
-      .map((face) => face.weight);
-  });
-  expect(loadedMonoWeights).toContain('700');
-});
-
-test('the header language switcher is in IBM Plex Mono semibold (600), a weight actually loaded from the site and not replaced by bold (700)', async ({ page }) => {
   await page.goto('/fr/');
 
   const group = page.locator('header').getByRole('group', { name: 'Langue', exact: true });
@@ -128,12 +113,5 @@ test('the header language switcher is in IBM Plex Mono semibold (600), a weight 
   );
   const expected = { family: 'IBM Plex Mono', weight: '600' };
   expect(styles).toEqual([expected, expected]);
-
-  const loadedMonoWeights = await page.evaluate(async () => {
-    await document.fonts.ready;
-    return [...document.fonts]
-      .filter((face) => face.status === 'loaded' && face.family.replace(/["']/g, '') === 'IBM Plex Mono')
-      .map((face) => face.weight);
-  });
-  expect(loadedMonoWeights).toContain('600');
+  expect(await loadedMonoWeights(page)).toContain('600');
 });

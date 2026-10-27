@@ -50,13 +50,11 @@ test.describe('English browser', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
   });
 
-  test('an English browser that opens /#contact lands on /en/#contact', async ({ page, baseURL }) => {
+  test('an English browser keeps the anchor and the query: /#contact lands on /en/#contact, /?source=test on /en/?source=test', async ({ page, baseURL }) => {
     await page.goto('/#contact');
     await expect(page).toHaveURL(new URL('/en/#contact', baseURL).href);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
-  });
 
-  test('an English browser that opens /?source=test lands on /en/?source=test', async ({ page, baseURL }) => {
     await page.goto('/?source=test');
     await expect(page).toHaveURL(new URL('/en/?source=test', baseURL).href);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
@@ -83,16 +81,6 @@ test.describe('British English browser', () => {
   });
 });
 
-test.describe('French browser', () => {
-  test.use({ locale: 'fr-FR' });
-
-  test('a French (fr-FR) browser that opens / lands on /fr/', async ({ page, baseURL }) => {
-    await page.goto('/');
-    await expect(page).toHaveURL(new URL('/fr/', baseURL).href);
-    await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
-  });
-});
-
 test.describe('French browser, old address of an English page', () => {
   test.use({ locale: 'fr-FR' });
 
@@ -104,16 +92,13 @@ test.describe('French browser, old address of an English page', () => {
     removeDirectory(siteDirectory);
   });
 
-  test('a French browser that opens the old address (alias) of an English page lands on that English page, not on its French translation', async ({ page, context }) => {
+  test('a French browser that opens the old address (alias) of an English page or of the English home page lands on that English page, not on its French translation', async ({ page, context }) => {
     await serveSite(context, SITE_WITH_ALIASES, siteDirectory);
     await page.goto(`${SITE_WITH_ALIASES.origin}/en/old-english-page/`);
     await expect(page).toHaveURL(`${SITE_WITH_ALIASES.origin}/en/page-avec-alias/`);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
     await expect(page.getByRole('main')).toContainText('Fictional English page, reachable from its old address.');
-  });
 
-  test('a French browser that opens the old address (alias) of the English home page lands on /en/, not on /fr/', async ({ page, context }) => {
-    await serveSite(context, SITE_WITH_ALIASES, siteDirectory);
     await page.goto(`${SITE_WITH_ALIASES.origin}/en/english/`);
     await expect(page).toHaveURL(`${SITE_WITH_ALIASES.origin}/en/`);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
@@ -124,23 +109,18 @@ test.describe('French browser, old address of an English page', () => {
 test.describe('French browser, after a click on "EN"', () => {
   test.use({ locale: 'fr-FR' });
 
-  test('after a click on "EN" from a French page, a French browser that reopens / lands on /fr/', async ({ page, baseURL }) => {
-    await page.goto('/fr/');
-    await page.locator('header').getByRole('group', { name: 'Langue', exact: true }).getByRole('link', { name: 'EN', exact: true }).click();
-    await expect(page).toHaveURL(new URL('/en/', baseURL).href);
-    /* The choice made in the switcher is not remembered: / follows only the browser language. */
-    await page.goto('/');
-    await expect(page).toHaveURL(new URL('/fr/', baseURL).href);
-    await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
-  });
-
-  test('a click on "EN" from a French page stores nothing in the browser (neither localStorage nor cookie)', async ({ page, context, baseURL }) => {
+  test('a click on "EN" from a French page is not remembered: nothing is stored in the browser, and / still leads a French browser to /fr/', async ({ page, context, baseURL }) => {
     await page.goto('/fr/');
     await page.locator('header').getByRole('group', { name: 'Langue', exact: true }).getByRole('link', { name: 'EN', exact: true }).click();
     await expect(page).toHaveURL(new URL('/en/', baseURL).href);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+    /* Neither localStorage nor cookie. */
     expect(await page.evaluate(() => Object.keys(window.localStorage))).toEqual([]);
     expect(await context.cookies(baseURL)).toEqual([]);
+    /* / follows only the browser language. */
+    await page.goto('/');
+    await expect(page).toHaveURL(new URL('/fr/', baseURL).href);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
   });
 });
 
