@@ -19,6 +19,7 @@ import {
   tryToBuildSite,
 } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
+import { replacePlexMonoFiles } from './helpers/fonts';
 import { tabUntilFocused } from './helpers/keyboard';
 import { clickOrTap } from './helpers/pointer';
 import {
@@ -1834,6 +1835,29 @@ test.describe('home page of a single-language site', () => {
         await expect(page.locator('header').getByRole('group', { name: 'Langue' }), `language switcher at ${size}`).toHaveCount(0);
         await expectHeroToEndAtWindowBottom(page, viewport, size);
       }
+    });
+
+    test('on a single-language site, without JavaScript and with a monospace font whose normal line height is 1 em instead of 1.3, the header logo sits on a line 18.2 px tall, like the menu links, and the hero ends exactly at the bottom of the window, within 1 px, on a phone', async ({ page, context }) => {
+      await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
+      /* IBM Plex Mono's normal line height is 1.3 em, the header's estimated height's: served
+         with an ascent of 0.8 em and a descent of 0.2 em, the same on every machine, it stands
+         for a fallback font whose normal line height differs from it. */
+      const replacedFonts = await replacePlexMonoFiles(page, SITE_WITH_A_SINGLE_LANGUAGE.origin, { ascent: 0.8, descent: 0.2 });
+      const viewport = { width: 412, height: 1100 };
+      const size = `${viewport.width} × ${viewport.height}`;
+      await openHomeAt(page, viewport, SITE_WITH_A_SINGLE_LANGUAGE.origin);
+      /* The replaced font really is the one displayed: the page asked for IBM Plex Mono and
+         loaded it. */
+      expect(replacedFonts.some((url) => /mono/i.test(url)), `replaced font requests: ${replacedFonts.join(', ')}`).toBe(true);
+      const loadedFonts = await page.evaluate(() =>
+        [...document.fonts].filter((face) => face.status === 'loaded').map((face) => face.family.replace(/["']/g, '')));
+      expect(loadedFonts, 'web fonts loaded').toContain('IBM Plex Mono');
+      /* The site is single-language: the header shows no language switcher. */
+      await expect(page.locator('header').getByRole('group', { name: 'Langue' })).toHaveCount(0);
+      /* The logo's line: 14 px × 1.3, whatever the font's normal line height. */
+      const logoBox = (await page.locator('header').getByRole('link', { name: 'Exemple', exact: true }).boundingBox())!;
+      expect.soft(Math.abs(logoBox.height - 18.2), `logo height (${logoBox.height} px) against 18.2 px`).toBeLessThanOrEqual(0.5);
+      await expectHeroToEndAtWindowBottom(page, viewport, size);
     });
   });
 });
