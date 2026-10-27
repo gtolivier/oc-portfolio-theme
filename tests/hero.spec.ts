@@ -1881,10 +1881,11 @@ test.describe('home page of a single-language site', () => {
 });
 
 /* The top edge of each link of the header menu, in document order, and the number of lines
-   they sit on: the distinct top edges, rounded to the pixel. */
+   they sit on: the distinct top edges, rounded to the pixel. All the links are measured in a
+   single round trip to the page, which keeps a measure taken at many widths fast on every
+   browser. */
 async function menuLines(links: Locator): Promise<{ linkTops: number[]; lineCount: number }> {
-  const linkTops: number[] = [];
-  for (const link of await links.all()) linkTops.push((await link.boundingBox())!.y);
+  const linkTops = await links.evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().y));
   return { linkTops, lineCount: new Set(linkTops.map((top) => Math.round(top))).size };
 }
 
@@ -1919,7 +1920,10 @@ test.describe('home page of a site with a long menu', () => {
     ).toBeLessThanOrEqual(1);
   });
 
-  test('from 768 px wide, with a menu too long for its line, in a window tall enough for its content, the hero ends exactly at the bottom of the window at every width from 768 to 1280 px, in steps of 16 px: its height is the window height minus the header height, within 1 px, and at one of these widths at least the menu wraps onto several lines', async ({ page, context }) => {
+  test('from 768 px wide, with a menu too long for its line, in a window tall enough for its content, the hero ends exactly at the bottom of the window at every width from 768 to 1280 px, in steps of 16 px: its height is the window height minus the header height, within 1 px, and at one of these widths at least the menu wraps onto several lines', async ({ page, context, browserName }) => {
+    /* 33 page loads, each measured: on the CI's WebKit, several times slower than the other
+       browsers there, the default time limit is too short for them. */
+    test.slow(browserName === 'webkit', '33 page loads, slow on WebKit in CI');
     await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
     /* How many lines the menu takes at a given width depends on the platform's text
        rendering: the test only requires that some width of the range wraps it, so that a
@@ -1934,10 +1938,18 @@ test.describe('home page of a site with a long menu', () => {
 
       const links = page.locator('header nav').getByRole('link');
       await expect(links, `menu links at ${size}`).toHaveText(['Accueil', 'Projets', 'Parcours', 'Compétences', 'Publications', 'Contact']);
+      const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
+
+      /* The page sizes the hero to the header once the header is laid out: a measure taken
+         before that, while the hero is still sized for a single-row header, is taken again,
+         in a single round trip each time. A width where the hero never matches within 2 s is
+         measured as it stands, and reported below. */
+      await expect.poll(() => hero.evaluate((element, windowHeight) =>
+        Math.abs(element.getBoundingClientRect().height - (windowHeight - document.querySelector('header')!.getBoundingClientRect().height)),
+      viewport.height), { message: `hero settled to the header height at ${size}`, timeout: 2_000 }).toBeLessThanOrEqual(1).catch(() => {});
+
       const { lineCount } = await menuLines(links);
       if (lineCount > 1) multiLineWidths.push(width);
-
-      const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
       const { expectedHeight, headerHeight } = await heightBelowHeader(page, viewport, { heading, buttons }, size);
       const heroBox = (await hero.boundingBox())!;
       const describe = `${size}: menu on ${lineCount} line(s), header ${headerHeight.toFixed(2)} px, hero ${heroBox.height.toFixed(2)} px, expected ${expectedHeight.toFixed(2)} px`;
