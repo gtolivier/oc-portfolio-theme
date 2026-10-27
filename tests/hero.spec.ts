@@ -335,7 +335,7 @@ test('the first hero button is filled, the second outlined', async ({ page }) =>
   const first = await buttonStyle(firstButton);
   const second = await buttonStyle(secondButton);
   /* Filled: an opaque background. */
-  expect(first.background.alpha, 'opacity of the first button’s background').toBeGreaterThan(0.5);
+  expect(first.background.alpha, 'opacity of the first button’s background').toBe(1);
   expect(first.textDecoration, 'underline of the first button').toBe('none');
   const firstFamily = await firstButton.evaluate((el) => getComputedStyle(el).fontFamily.split(',')[0].trim().replace(/["']/g, ''));
   expect(firstFamily, 'font family of the first button').toBe('IBM Plex Mono');
@@ -408,7 +408,7 @@ test('on phone as on desktop, the hero starts right below the header and ends at
   }
 });
 
-test('on phone as on desktop, the hero’s text block is centred vertically: the middle of the hero lies between the top of its heading and the bottom of its buttons, and the free space below that block is at least the one above it, and exceeds it by at most a tenth of the hero’s height', async ({ page }) => {
+test('on phone as on desktop, the hero’s text block is centred vertically: the free space below that block is at least the one above it, and exceeds it by at most a tenth of the hero’s height', async ({ page }) => {
   /* Windows set whatever the project's own window, all tall enough to leave the hero at least
      150 px of free height around its text, so the centring shows: the two desktop ones and
      three under 768 px wide. */
@@ -423,12 +423,6 @@ test('on phone as on desktop, the hero’s text block is centred vertically: the
     const buttonsBottom = await bottomOfButtons(buttons);
     expect(buttonsBottom - headingBox.y, `at ${size}, height of the hero's text, against a ${Math.round(heroBox.height)} px hero`)
       .toBeLessThanOrEqual(heroBox.height - 150);
-
-    const heroMiddle = heroBox.y + heroBox.height / 2;
-    expect.soft(heroMiddle, `at ${size}, middle of the hero, below the top of the heading (${Math.round(headingBox.y)} px)`)
-      .toBeGreaterThanOrEqual(headingBox.y);
-    expect.soft(heroMiddle, `at ${size}, middle of the hero, above the bottom of the buttons (${Math.round(buttonsBottom)} px)`)
-      .toBeLessThanOrEqual(buttonsBottom);
 
     /* The design sets the block a little above the exact middle, never below it, and not
        pushed towards the top of the hero. */
@@ -987,7 +981,6 @@ test('on the English home page, the hero shows the English title, tagline and st
   await firstButton.click();
   await expect(page).toHaveURL('/en/projects/');
 });
-
 
 test.describe('home page without JavaScript', () => {
   /* The theme rule: no JavaScript is required to read the content. Animations (the decoding

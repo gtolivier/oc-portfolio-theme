@@ -619,6 +619,88 @@ test.describe('catalog: tick-field', () => {
     ).toEqual([]);
   });
 
+  test('a click (a tap on mobile) outside a tick-field starts no ripple: once revealed, 300 ms after a click just below its bottom edge, the zones of the field about 84px from the click point are what they showed just before the click', { tag: '@pixels' }, async ({ page, context, hasTouch }) => {
+    const tickField = await openRevealedTickField(page, context);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const viewport = page.viewportSize();
+    expect(viewport, 'the page has a viewport').not.toBeNull();
+    /* A point of the page 6px below the bottom edge of the field, at the middle of its width:
+       outside the field, close enough to it for a ring centred there to reach into it. */
+    const GAP = 6;
+    const point = { x: fieldBox!.width / 2, y: fieldBox!.height + GAP };
+    const onScreen = { x: fieldBox!.x + point.x, y: fieldBox!.y + point.y };
+    expect(onScreen.y, 'the click point is in the viewport').toBeLessThan(viewport!.height);
+    const outsideTheField = await tickField.evaluate(
+      (element, { x, y }) => {
+        const hit = document.elementFromPoint(x, y);
+        return hit !== null && !element.contains(hit) && hit.closest('a, button, input, select, textarea, summary') === null;
+      },
+      onScreen,
+    );
+    expect(outsideTheField, 'the element under the click point is outside the tick-field and does nothing on a click').toBe(true);
+
+    /* A ring started there would be about 84px from the click point 300 ms after the click
+       (about 0.28px per ms). Three zones of the field straddle that circle: one straight above
+       the click point, 20px deep across it and 40px long along it, and two 30px squares up and
+       to its left and right, at 45°. All of them are far enough from the click point for the
+       ring alone to change them, not the glow of a pointer hovering the click point. */
+    const RADIUS = 84;
+    const DEPTH = 20;
+    const LENGTH = 40;
+    const HALF_SIDE = 15;
+    const diagonal = RADIUS / Math.SQRT2;
+    const zones = [
+      { name: 'above', rectangle: { x: point.x - LENGTH / 2, y: point.y - RADIUS - DEPTH / 2, width: LENGTH, height: DEPTH } },
+      {
+        name: 'up and to the left',
+        rectangle: { x: point.x - diagonal - HALF_SIDE, y: point.y - diagonal - HALF_SIDE, width: 2 * HALF_SIDE, height: 2 * HALF_SIDE },
+      },
+      {
+        name: 'up and to the right',
+        rectangle: { x: point.x + diagonal - HALF_SIDE, y: point.y - diagonal - HALF_SIDE, width: 2 * HALF_SIDE, height: 2 * HALF_SIDE },
+      },
+    ];
+    for (const zone of zones) {
+      expect(
+        zone.rectangle.x >= 0 &&
+          zone.rectangle.x + zone.rectangle.width <= fieldBox!.width &&
+          zone.rectangle.y >= 0 &&
+          zone.rectangle.y + zone.rectangle.height <= fieldBox!.height,
+        `the zone ${zone.name} of the click point lies inside the tick-field`,
+      ).toBe(true);
+    }
+
+    const brightness = async (): Promise<number[]> => {
+      const screenshot = await tickField.screenshot();
+      return Promise.all(zones.map((zone) => luminanceAboveBackgroundInRectangle(tickField, screenshot, zone.rectangle)));
+    };
+
+    /* With a fine pointer, a click first brings the pointer over the click point: the pointer
+       is there already before the click, so that both measures differ by the click alone. */
+    if (!hasTouch) await page.mouse.move(onScreen.x, onScreen.y);
+    await page.clock.runFor(300);
+    const before = await brightness();
+
+    await clickOrTap(page, hasTouch, onScreen);
+    await page.clock.runFor(300);
+    const after = await brightness();
+
+    /* What each zone showed before the click, within 10%. */
+    const changedZones = zones
+      .map((zone, index) => ({ zone, before: before[index], after: after[index] }))
+      .filter(({ before, after }) => Math.abs(after - before) > 0.1 * before)
+      .map(
+        ({ zone, before, after }) =>
+          `${zone.name} (${Math.round(zone.rectangle.x)}, ${Math.round(zone.rectangle.y)})px: ${Math.round(before)} → ${Math.round(after)}`,
+      );
+    expect(
+      changedZones,
+      `zones of the tick-field about ${RADIUS}px from the click point ${GAP}px below its bottom edge, at (${Math.round(point.x)}, ${Math.round(point.y)})px, whose brightness above the background, 300 ms after the click, differs by more than 10% from what they showed just before it`,
+    ).toEqual([]);
+  });
+
   test('under prefers-reduced-motion: reduce, a tick-field stays still: 2 s after load, after a hover (with a fine pointer) and 300 ms after a click (a tap on mobile) at its centre, every vertical band of it, from the left edge to the right edge, shows the brightness it showed right after load', { tag: '@pixels' }, async ({ page, context, hasTouch }) => {
     /* The visitor asks for reduced motion, and time stands still from before the page
        loads, until the test advances it. */
@@ -805,6 +887,80 @@ test.describe('catalog: tick-field', () => {
     ).toEqual([]);
   });
 
+  test('with a fine pointer, if the visitor turns on reduced motion while the hover trail fades, a tick-field stays still from then on: once revealed, 150 ms after the pointer leaves the tick-field it hovered, reduced motion is turned on, and 300 ms and 2 s after the switch, every vertical band of it shows the brightness it showed two animation frames after the switch', { tag: '@pixels' }, async ({ page, context, hasTouch }) => {
+    test.skip(hasTouch, 'hover needs a fine pointer; touch screens have none');
+    /* Animations are allowed: the visitor's motion preference is left as the browser sets
+       it, and the field is fully revealed. */
+    const tickField = await openRevealedTickField(page, context);
+
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const viewport = page.viewportSize();
+    expect(viewport, 'the page has a viewport').not.toBeNull();
+    const width = fieldBox!.width;
+    /* A point in the left half, where the ticks are dim, at mid-height. */
+    const hovered = { x: 0.2 * width, y: fieldBox!.height / 2 };
+    /* A point of the page 40px below the tick-field, or above it if the viewport ends first:
+       outside the tick-field, in the same column. */
+    const MARGIN = 40;
+    const outside = { x: fieldBox!.x + hovered.x, y: yBelowOrAboveField(fieldBox!, viewport!.height, MARGIN) };
+    expect(
+      outside.y < fieldBox!.y || outside.y > fieldBox!.y + fieldBox!.height,
+      'the point the pointer leaves for is outside the tick-field',
+    ).toBe(true);
+    expect(outside.y, 'the point the pointer leaves for is in the viewport').toBeGreaterThanOrEqual(0);
+
+    /* The width split into adjacent vertical bands, at least 40px wide each and as high as the
+       field: the first starts at the left edge, the last ends at the right edge. Together they
+       cover the whole field, the glow around the hovered point included. */
+    const MIN_BAND_WIDTH = 40;
+    const bands = verticalBands(width, fieldBox!.height, MIN_BAND_WIDTH);
+    const describeBand = (band: Rectangle): string =>
+      `${Math.round(band.x)}–${Math.round(band.x + band.width)}px`;
+    const brightness = async (): Promise<number[]> => {
+      const screenshot = await tickField.screenshot();
+      return Promise.all(bands.map((band) => luminanceAboveBackgroundInRectangle(tickField, screenshot, band)));
+    };
+    /* The bands whose brightness differs from `reference` by more than `tolerance` of it. */
+    const changedBands = (reference: number[], measured: number[], tolerance: number): string[] =>
+      bands
+        .map((band, index) => ({ band, before: reference[index], after: measured[index] }))
+        .filter(({ before, after }) => Math.abs(after - before) > tolerance * before)
+        .map(({ band, before, after }) => `${describeBand(band)}: ${Math.round(before)} → ${Math.round(after)}`);
+
+    const beforeHover = await brightness();
+
+    /* A hover for a few animation frames, then the pointer leaves the field. */
+    await page.mouse.move(fieldBox!.x + hovered.x, fieldBox!.y + hovered.y);
+    await page.clock.runFor(100);
+    await page.mouse.move(outside.x, outside.y);
+
+    /* The trail fades: 150 ms after the pointer left, it still lights bands the field showed
+       dimmer before the hover. */
+    await page.clock.runFor(150);
+    expect(
+      changedBands(beforeHover, await brightness(), 0.05),
+      `bands of the ${Math.round(width)}px-wide tick-field whose brightness above the background, 150 ms after the pointer left the point (${Math.round(hovered.x)}, ${Math.round(hovered.y)})px it hovered, differs by more than 5% from what they showed before the hover`,
+    ).not.toEqual([]);
+
+    /* The visitor then asks for reduced motion, the trail still far from faded. Time moves by
+       two animation frames, then stands still again. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.clock.runFor(32);
+    const rightAfterSwitch = await brightness();
+
+    /* From then on, still: 300 ms after the switch, while the trail would still fade, and 2 s
+       after it, once it would have faded, each band shows what it showed right after the
+       switch, within 2%. */
+    await page.clock.runFor(300);
+    const shortlyAfter = changedBands(rightAfterSwitch, await brightness(), 0.02).map((band) => `300 ms after: ${band}`);
+    await page.clock.runFor(1700);
+    const longAfter = changedBands(rightAfterSwitch, await brightness(), 0.02).map((band) => `2 s after: ${band}`);
+    expect(
+      [...shortlyAfter, ...longAfter],
+      `bands of the ${Math.round(width)}px-wide tick-field whose brightness above the background, 300 ms and 2 s after reduced motion was turned on while the trail of a hover at (${Math.round(hovered.x)}, ${Math.round(hovered.y)})px faded, differs by more than 2% from what they showed two animation frames after the switch`,
+    ).toEqual([]);
+  });
 
   test('a tick-field scrolled out of view during its reveal stops animating, and resumes once back: while it is off screen, the page requests no animation frame, and 2 s after it is back on screen, every vertical band of it, from the left edge to the right edge, shows drawn pixels', { tag: '@pixels' }, async ({ page, context }) => {
     await serveSite(context, CATALOG_SITE, siteDirectory);
