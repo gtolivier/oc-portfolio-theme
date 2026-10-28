@@ -3,12 +3,14 @@
     "minify" (cond hugo.IsDevelopment false true)
     "sourceMap" (cond hugo.IsDevelopment "linked" "none")
   }}
+  {{- /* main.css reveals the text the script would have scrambled on this class. */}}
+  {{- $markScriptFailed := "document.documentElement.classList.add('script-failed')" | safeJS }}
   {{- with . | js.Build $opts }}
     {{- if hugo.IsDevelopment }}
-      <script defer src="{{ .RelPermalink }}" onerror="document.documentElement.classList.add('script-failed')"></script>
+      <script defer src="{{ .RelPermalink }}" onerror="{{ $markScriptFailed }}"></script>
     {{- else }}
       {{- with . | fingerprint }}
-        <script defer src="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="anonymous" onerror="document.documentElement.classList.add('script-failed')"></script>
+        <script defer src="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="anonymous" onerror="{{ $markScriptFailed }}"></script>
       {{- end }}
     {{- end }}
   {{- end }}
