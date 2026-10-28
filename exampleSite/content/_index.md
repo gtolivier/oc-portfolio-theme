@@ -1,6 +1,15 @@
 +++
 title = 'Accueil'
 
+[params]
+clients = [
+  'Bijouterie Valmont',
+  'Antiquités Roussel',
+  'Château de Mirevent',
+  'Galerie Aubertin',
+  'Maison Delorme',
+]
+
 [params.hero]
 title = 'Horloger indépendant'
 tagline = [
@@ -18,15 +27,6 @@ stack = ['Laiton', 'Acier', 'Rubis', 'Émail']
 #   est servi sous /portfolio/, url = '/fr/page-longue/' mène à
 #   /portfolio/fr/page-longue/ (et url = '/portfolio/…' à
 #   /portfolio/portfolio/…).
-[params]
-clients = [
-  'Bijouterie Valmont',
-  'Antiquités Roussel',
-  'Château de Mirevent',
-  'Galerie Aubertin',
-  'Maison Delorme',
-]
-
 [[params.hero.actions]]
 label = 'Voir les projets'
 pageRef = '/projets'
