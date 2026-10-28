@@ -1038,12 +1038,15 @@ test.describe('home page without JavaScript', () => {
   });
 });
 
+/* The URL of the theme's bundle, fingerprinted or not. */
+const THEME_SCRIPT_URL = '**/js/main*.js';
+
 test('with JavaScript on but the theme’s script blocked, the hero heading of the French home page still shows the author name and the professional title after a short wait, instead of staying hidden', async ({ page }) => {
   /* JavaScript is on, but the theme's bundle fails to load, as when a network or an extension
      blocks it: the <noscript> fallback does not apply, and the script that
      would reveal the heading never runs. */
   const blockedScripts: string[] = [];
-  await page.route('**/js/main*.js', async (route) => {
+  await page.route(THEME_SCRIPT_URL, async (route) => {
     blockedScripts.push(route.request().url());
     await route.abort();
   });
@@ -1067,7 +1070,7 @@ test('while the theme’s script is slow to load, the hero heading of the French
   const scriptHeld = new Promise<void>((resolve) => {
     scriptRequested = resolve;
   });
-  await page.route('**/js/main*.js', async (route) => {
+  await page.route(THEME_SCRIPT_URL, async (route) => {
     scriptRequested();
     await scriptReleased;
     await route.fallback();
@@ -1080,7 +1083,8 @@ test('while the theme’s script is slow to load, the hero heading of the French
     for (const text of texts) {
       await expect(mainHeading.getByText(text, { exact: true }), text).toHaveCount(1);
     }
-    /* Well past the old timed fallback, not an exact delay: the script is still on its way. */
+    /* Long enough for a timer meant to reveal the heading to have fired, not an exact delay:
+       the script is still on its way. */
     await page.waitForTimeout(3000);
     for (const text of texts) {
       expect(await mainHeading.getByText(text, { exact: true }).isVisible(), `${text} visible while the script is held`).toBe(false);
