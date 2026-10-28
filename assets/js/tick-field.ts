@@ -381,14 +381,15 @@ class TickField extends HTMLElement {
       const tickHeight = this.tickHeight(columnShare, gridShare(row, layout.rows));
       context.globalAlpha = fadeIn * this.restingAlpha(drawing, x, y);
       context.fillRect(x, y, FIELD_TICK_WIDTH_PX, tickHeight);
-      if (drawing.hasLighting) this.drawLighting(drawing, x, y, tickHeight);
+      if (drawing.hasLighting) this.drawLighting(drawing, x, y, tickHeight, fadeIn);
     }
   }
 
-  private drawLighting(drawing: FieldDrawing, x: number, y: number, tickHeight: number): void {
+  /* A ring lights a tick only as far as the reveal has faded it in. */
+  private drawLighting(drawing: FieldDrawing, x: number, y: number, tickHeight: number, fadeIn: number): void {
     const tickColor = drawing.context.fillStyle;
-    const hover = this.hoverLighting(drawing.litTrail, x, y, tickHeight);
-    const ripple = this.rippleLighting(drawing.agedRipples, x, y, tickHeight);
+    const hover = fadeIn * this.hoverLighting(drawing.litTrail, x, y, tickHeight);
+    const ripple = fadeIn *this.rippleLighting(drawing.agedRipples, x, y, tickHeight);
     this.drawGrownEnds(drawing, x, y, tickHeight, Math.max(hover, ripple));
     this.drawLitTick(drawing, x, y, tickHeight, hover);
     this.drawLitTick(drawing, x, y, tickHeight, ripple);
