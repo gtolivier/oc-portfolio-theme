@@ -32,22 +32,21 @@ The roadmap (one conversation per feature) lives in the private repository
 
 - **Language**: code is in English — identifiers, file and folder names,
   components, CSS classes, test titles, code comments — and so is this
-  file, written for agents. So is what goes with the code into the
-  repository's history: commit messages, PR titles and descriptions,
-  review comments and replies. The roadmap stays in French, as do the
-  build errors the templates raise (`errorf`) for whoever fills in the
-  content. Site content, `i18n/`
-  strings and the fictional content of `exampleSite/` and of the test
-  fixtures keep their language, and so do the names visitors see in an
-  address: content file names, which set the slug (`page-avec-alias.md`),
-  and the HTML ids used as anchors (`#contenu`). Renaming them would break
-  published links.
+  file, written for agents. So are commit messages, PR titles and
+  descriptions, issues and release notes, and review comments and
+  replies. The conversation with the user and the roadmap stay in French,
+  as do the build errors the templates raise (`errorf`) for whoever fills
+  in the content. Site content, `i18n/` strings and the fictional content
+  of `exampleSite/` and of the test fixtures keep their language, and so
+  do the names visitors see in an address: content file names, which set
+  the slug (`page-avec-alias.md`), and the HTML ids used as anchors
+  (`#contenu`). Renaming them would break published links.
 - **TDD required**: every feature goes through the `tdd:feature` skill
   (dedicated branch, red/green/refactor cycles, pull request). No production
-  code without a failing test first. Only exception: a gap from the design
-  that no test can catch without measuring pixels finely (a tuning value, a
-  light curve) is tuned by eye, in its own commit, with before/after
-  captures in the PR; the suite must stay green.
+  code without a failing test first. Only exception: a tuning value the
+  tests deliberately leave open (a delay, a duration, a light curve), or a
+  gap from the design that no test can catch without measuring pixels
+  finely, is tuned by eye, in its own commit; the suite must stay green.
 - **Playwright e2e tests**: a test describes a behavior the visitor can see
   (text, link, navigation, rendering at a screen size), not an
   implementation detail. Only exception: a content error (badly filled
