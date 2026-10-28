@@ -764,6 +764,62 @@ test('on phone as on desktop, a click (a tap on mobile) on the hero’s professi
   ).toBeLessThanOrEqual(0.5);
 });
 
+test('on phone as on desktop, after a click (a tap on mobile) on the hero’s professional title, activating the "Contact" button with the keyboard starts no ripple: once that click’s ripple has faded, no pixel of the hero changes, 300 ms nor 900 ms after the Enter key, from just before it', { tag: '@pixels' }, async ({ page, hasTouch, browserName }) => {
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  /* The hero is the main content region named by its main heading. */
+  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  await expect(hero).toBeVisible();
+  const title = hero.getByRole('heading', { level: 1 }).getByText('Horloger indépendant', { exact: true });
+  await expect(title).toBeVisible();
+  /* The "Contact" button leads to #contact, an anchor of the page itself: activating it leaves
+     the visitor on the home page, with the hero where it was. */
+  const contact = secondHeroButton(page);
+  await expect(contact).toHaveText('Contact');
+  await expect(contact).toHaveAttribute('href', '#contact');
+  /* Long after the field's reveal (about 1.1 s) and the heading's decoding (in clear 4 s after
+     load): from then on, nothing but the field's reactions changes what the hero shows. */
+  await page.clock.runFor(5000);
+
+  /* A press inside the field: a click (a tap) on the middle of the first line box of the
+     professional title's text, which starts a ripple of its own. 2 s later, that ripple (about
+     1.6 s long) and the trail of the pointer have faded. */
+  const onScreen = await title.evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const box = range.getClientRects()[0];
+    return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  });
+  await clickOrTap(page, hasTouch, onScreen);
+  await page.clock.runFor(2000);
+
+  /* Then the keyboard: Tab until the "Contact" button has the focus, and its focus style shows,
+     before the screenshot taken just before the Enter key. */
+  await tabUntilFocused(contact, browserName);
+  await expect(contact).toBeFocused();
+  await page.clock.runFor(100);
+  const before = await hero.screenshot();
+
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/fr\/#contact$/);
+
+  /* A ripple spreads for about 1.6 s: 300 ms and 900 ms after the Enter key, the pixels of the
+     whole hero that differ from just before it by more than a rounding error. */
+  const heroBox = (await hero.boundingBox())!;
+  const wholeHero = { x: 0, y: 0, width: heroBox.width, height: heroBox.height };
+  let elapsed = 0;
+  for (const delay of [300, 900]) {
+    await page.clock.runFor(delay - elapsed);
+    elapsed = delay;
+    const after = await hero.screenshot();
+    const { columns } = await pixelsChangedPerColumnInRectangle(hero, before, after, wholeHero);
+    expect(
+      columns.reduce((sum, count) => sum + count, 0),
+      `pixels of the ${Math.round(heroBox.width)} × ${Math.round(heroBox.height)}px hero changed ${delay} ms after the Enter key on the focused "Contact" button, following a click on the professional title`,
+    ).toBe(0);
+  }
+});
+
 /* The hero of the French home page, still: the visitor asks for reduced motion, so the field is
    drawn once, complete, and stays still; time stands still from before the page loads, then
    runs a few animation frames, which draw the field. With its text (heading, tagline, stack
