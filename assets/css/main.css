@@ -580,6 +580,35 @@ tick-field > canvas {
   font-weight: 700;
 }
 
+/* The hero and the client band share one grid cell: the hero keeps its
+   height, and the band is the bottom strip of its first screen. The hero
+   keeps room for the band below its text. */
+.first-screen {
+  --clients-band-height: 2.5rem;
+  display: grid;
+}
+
+.first-screen > * {
+  grid-area: 1 / 1;
+}
+
+.first-screen > .hero {
+  padding-bottom: calc(var(--hero-edge-space) + var(--clients-band-height));
+}
+
+.clients {
+  align-self: end;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 0.75rem;
+  height: var(--clients-band-height);
+  margin: 0;
+  padding: 0 var(--page-gutter);
+  overflow: hidden;
+  list-style: none;
+}
+
 /* Each client name is followed by a decorative separator, which assistive
    technologies do not get (empty alternative text). */
 .clients li::after {

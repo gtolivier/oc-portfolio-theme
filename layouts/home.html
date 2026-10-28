@@ -1,4 +1,5 @@
 {{ define "main" }}
+  <div class="first-screen">
   {{- with .Params.hero }}
   {{- if not site.Params.author }}{{ errorf "hero : le paramètre author du site n’est pas renseigné" }}{{ end }}
   <tick-field class="hero" role="region" aria-labelledby="hero-heading">
@@ -34,5 +35,6 @@
     {{- end }}
   </ul>
   {{- end }}
+  </div>
   {{ .Content }}
 {{ end }}
