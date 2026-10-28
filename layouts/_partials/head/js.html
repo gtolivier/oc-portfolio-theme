@@ -5,10 +5,10 @@
   }}
   {{- with . | js.Build $opts }}
     {{- if hugo.IsDevelopment }}
-      <script defer src="{{ .RelPermalink }}"></script>
+      <script defer src="{{ .RelPermalink }}" onerror="document.documentElement.classList.add('script-failed')"></script>
     {{- else }}
       {{- with . | fingerprint }}
-        <script defer src="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="anonymous"></script>
+        <script defer src="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="anonymous" onerror="document.documentElement.classList.add('script-failed')"></script>
       {{- end }}
     {{- end }}
   {{- end }}

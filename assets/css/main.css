@@ -495,18 +495,14 @@ scramble-text {
 
 /* Until the theme script has defined it, the text stays hidden rather than
    flash in clear before being scrambled. head.html shows it again when
-   scripts are disabled. */
+   scripts are disabled, and the script tag's error handler does the same
+   (script-failed class) when the script is blocked or fails to load. */
 scramble-text:not(:defined) {
   visibility: hidden;
-  /* If the script never defines it (blocked or failed to load), the text shows
-     in clear after a short wait. */
-  animation: show-undefined-text 0s 2s forwards;
 }
 
-@keyframes show-undefined-text {
-  to {
-    visibility: visible;
-  }
+.script-failed scramble-text:not(:defined) {
+  visibility: visible;
 }
 
 /* Once in clear, the text is plain text again and wraps with the text around it. */
