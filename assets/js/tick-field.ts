@@ -391,11 +391,12 @@ class TickField extends HTMLElement {
     }
   }
 
-  /* The pointer or a ring lights a tick only as far as the reveal has faded it in. */
+  /* The pointer or a ring lights a tick only as far as the reveal has faded it in: the fade
+     scales the light's strength, after its curve, as it scales the tick's resting alpha. */
   private drawLighting(drawing: FieldDrawing, x: number, y: number, tickHeight: number, fadeIn: number): void {
     const tickColor = drawing.context.fillStyle;
-    const hover = fadeIn * this.hoverLighting(drawing.litTrail, x, y, tickHeight);
-    const ripple = fadeIn * this.rippleLighting(drawing.agedRipples, x, y, tickHeight);
+    const hover = fadeIn * litStrength(this.hoverLighting(drawing.litTrail, x, y, tickHeight));
+    const ripple = fadeIn * litStrength(this.rippleLighting(drawing.agedRipples, x, y, tickHeight));
     this.drawGrownEnds(drawing, x, y, tickHeight, Math.max(hover, ripple));
     this.drawLitTick(drawing, x, y, tickHeight, hover);
     this.drawLitTick(drawing, x, y, tickHeight, ripple);
@@ -403,23 +404,23 @@ class TickField extends HTMLElement {
   }
 
   /* The grown ends take the tick's own colour first, so the light over them reads as over the middle. */
-  private drawGrownEnds(drawing: FieldDrawing, x: number, y: number, tickHeight: number, lighting: number): void {
-    const growthAtEachEnd = this.growthAtEachEnd(lighting);
+  private drawGrownEnds(drawing: FieldDrawing, x: number, y: number, tickHeight: number, strength: number): void {
+    const growthAtEachEnd = this.growthAtEachEnd(strength);
     if (growthAtEachEnd <= 0) return;
     drawing.context.fillRect(x, y - growthAtEachEnd, FIELD_TICK_WIDTH_PX, growthAtEachEnd);
     drawing.context.fillRect(x, y + tickHeight, FIELD_TICK_WIDTH_PX, growthAtEachEnd);
   }
 
-  private growthAtEachEnd(lighting: number): number {
-    return Math.round((FIELD_LIT_TICK_GROWTH_PX / 2) * litStrength(lighting));
+  private growthAtEachEnd(strength: number): number {
+    return Math.round((FIELD_LIT_TICK_GROWTH_PX / 2) * strength);
   }
 
-  private drawLitTick(drawing: FieldDrawing, x: number, y: number, tickHeight: number, lighting: number): void {
-    if (lighting <= 0) return;
+  private drawLitTick(drawing: FieldDrawing, x: number, y: number, tickHeight: number, strength: number): void {
+    if (strength <= 0) return;
     const { context } = drawing;
-    context.globalAlpha = litStrength(lighting);
+    context.globalAlpha = strength;
     context.fillStyle = drawing.litColor;
-    const growthAtEachEnd = this.growthAtEachEnd(lighting);
+    const growthAtEachEnd = this.growthAtEachEnd(strength);
     context.fillRect(x, y - growthAtEachEnd, FIELD_TICK_WIDTH_PX, tickHeight + 2 * growthAtEachEnd);
   }
 
