@@ -184,7 +184,8 @@ class TickField extends HTMLElement {
       this.pressedInside = this.isInside(event);
     });
     this.addEventListener('click', (event) => {
-      if (!this.pressedInside || reducedMotionQuery().matches) return;
+      /* A click made by the keyboard or by script has no press of its own (detail 0). */
+      if (event.detail === 0 || !this.pressedInside || reducedMotionQuery().matches) return;
       this.ripples.push({ ...this.localPoint(event), start: performance.now() });
       this.requestDraw();
     });
@@ -192,6 +193,21 @@ class TickField extends HTMLElement {
     this.trackOnScreen();
     this.requestDraw();
     new ResizeObserver(() => this.draw()).observe(this);
+    this.watchPixelDensity();
+  }
+
+  /* The window moving to a screen of another pixel density changes no size: redraw when the density
+     the field was drawn at stops matching, then watch the new one. */
+  private watchPixelDensity(): void {
+    const query = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    query.addEventListener(
+      'change',
+      () => {
+        this.draw();
+        this.watchPixelDensity();
+      },
+      { once: true },
+    );
   }
 
   private localPoint(event: MouseEvent): Point {

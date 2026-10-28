@@ -19,9 +19,10 @@ import {
   tryToBuildSite,
 } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
-import { blockRequests, holdRequests, themeScriptUrl } from './helpers/held-requests';
+import { blockRequests, fontFilesUrl, holdRequests, themeScriptUrl } from './helpers/held-requests';
+import { heroRegion } from './helpers/hero';
 import { tabUntilFocused } from './helpers/keyboard';
-import { clickOrTap } from './helpers/pointer';
+import { clickOrTap, middleOfFirstLine } from './helpers/pointer';
 import {
   type Rectangle,
   bandsWithoutDrawnPixels,
@@ -226,10 +227,10 @@ async function bottomOfButtons(buttons: Locator[]): Promise<number> {
   );
 }
 
-/* The open home page's hero, the main content region named by its main heading, with that
-   heading and its two buttons, all three checked visible in the window of the given `size`. */
+/* The open home page's hero, with its main heading and its two buttons, all three checked
+   visible in the window of the given `size`. */
 async function heroHeadingAndButtons(page: Page, size: string): Promise<{ hero: Locator; heading: Locator; buttons: Locator[] }> {
-  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  const hero = heroRegion(page);
   const heading = hero.getByRole('heading', { level: 1 });
   const buttons = [hero.getByRole('link', { name: 'Voir les projets' }), hero.getByRole('link', { name: 'Contact' })];
   await expect(heading, `heading at ${size}`).toBeVisible();
@@ -409,9 +410,8 @@ test('on phone as on desktop, the second hero button, "Contact", reached by keyb
 
 test('on phone as on desktop, the hero starts right below the header and ends at the bottom of the window', async ({ page }) => {
   await page.goto('/fr/');
-  /* The hero is the main content region named by its main heading (a section labeled by the
-     h1): it groups the heading, the tagline, the stack and the buttons. */
-  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  /* The hero groups the heading, the tagline, the stack and the buttons. */
+  const hero = heroRegion(page);
   await expect(hero.getByRole('heading', { level: 1 })).toBeVisible();
   await expect(hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.')).toBeVisible();
   await expect(hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true })).toBeVisible();
@@ -574,8 +574,7 @@ test('on phone as on desktop, each hero button offers a target of at least 24 ×
 test('on phone as on desktop, the hero is a tick field drawn across its whole width, even where its ticks are faintest: 2 s after load, every vertical band of the empty strip below its buttons, from the left edge, whose bottom-left ticks are almost invisible, to the right edge, shows pixels that changed at all since right after load', { tag: '@pixels' }, async ({ page }) => {
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
-  /* The hero is the main content region named by its main heading. */
-  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  const hero = heroRegion(page);
   await expect(hero).toBeVisible();
   const elements = {
     'heading': hero.getByRole('heading', { level: 1 }),
@@ -615,8 +614,7 @@ test('on phone as on desktop, the hero is a tick field drawn across its whole wi
 
 test('on phone as on desktop, the hero’s tick field lies behind its text: at the middle of the heading, the tagline, the stack and each button, the element under the pointer is that element, so a click lands on the button', async ({ page }) => {
   await page.goto('/fr/');
-  /* The hero is the main content region named by its main heading. */
-  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  const hero = heroRegion(page);
   await expect(hero).toBeVisible();
   /* The field's canvas is in place, so the check below does not pass before it exists. */
   await expect(hero.locator('canvas')).toHaveCount(1);
@@ -649,8 +647,7 @@ test('on phone as on desktop, the hero’s tick field lies behind its text: at t
 test('on phone as on desktop, a click (a tap on mobile) on the hero’s professional title starts a ripple around that point: once revealed, 300 ms after the click, zones all around the click point, about 84px from it, got brighter since just before the click, while the zone at the click point did not', { tag: '@pixels' }, async ({ page, hasTouch }) => {
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
-  /* The hero is the main content region named by its main heading. */
-  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  const hero = heroRegion(page);
   await expect(hero).toBeVisible();
   /* The professional title, below the author name, high in the hero: there, towards the top
      edge of the veil, the veil lets most of the field show, ripple included. */
@@ -661,16 +658,10 @@ test('on phone as on desktop, a click (a tap on mobile) on the hero’s professi
      load): from then on, nothing but the ripple changes what the hero shows. */
   await page.clock.runFor(5000);
 
-  /* The click point: the middle of the first line box of the title's text (rather than of its
-     element's box, which may span the hero's width, so that the point stays on its letters even
-     if it wraps), relative to the hero. */
+  /* The click point: the middle of the first line box of the title's text, relative to the
+     hero. */
   const heroBox = (await hero.boundingBox())!;
-  const onScreen = await title.evaluate((el) => {
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    const box = range.getClientRects()[0];
-    return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
-  });
+  const onScreen = await middleOfFirstLine(title);
   const point = { x: onScreen.x - heroBox.x, y: onScreen.y - heroBox.y };
   const isOnTheTitle = await title.evaluate((el, { x, y }) => {
     const hit = document.elementFromPoint(x, y);
@@ -764,6 +755,136 @@ test('on phone as on desktop, a click (a tap on mobile) on the hero’s professi
   ).toBeLessThanOrEqual(0.5);
 });
 
+test('on phone as on desktop, after a click (a tap on mobile) on the hero’s professional title, activating the "Contact" button with the keyboard starts no ripple: once that click’s ripple has faded, no pixel of the hero changes, 300 ms nor 900 ms after the Enter key, from just before it', { tag: '@pixels' }, async ({ page, hasTouch, browserName }) => {
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  const hero = heroRegion(page);
+  await expect(hero).toBeVisible();
+  const title = hero.getByRole('heading', { level: 1 }).getByText('Horloger indépendant', { exact: true });
+  await expect(title).toBeVisible();
+  /* The "Contact" button leads to #contact, an anchor of the page itself: activating it leaves
+     the visitor on the home page, with the hero where it was. */
+  const contact = secondHeroButton(page);
+  await expect(contact).toHaveText('Contact');
+  await expect(contact).toHaveAttribute('href', '#contact');
+  /* Long after the field's reveal (about 1.1 s) and the heading's decoding (in clear 4 s after
+     load): from then on, nothing but the field's reactions changes what the hero shows. */
+  await page.clock.runFor(5000);
+
+  /* A press inside the field: a click (a tap) on the middle of the first line box of the
+     professional title's text, which starts a ripple of its own. 2 s later, that ripple (about
+     1.6 s long) and the trail of the pointer have faded. */
+  const onScreen = await middleOfFirstLine(title);
+  await clickOrTap(page, hasTouch, onScreen);
+  await page.clock.runFor(2000);
+
+  /* Then the keyboard: Tab until the "Contact" button has the focus, and its focus style shows,
+     before the screenshot taken just before the Enter key. */
+  await tabUntilFocused(contact, browserName);
+  await expect(contact).toBeFocused();
+  await page.clock.runFor(100);
+  const before = await hero.screenshot();
+
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/fr\/#contact$/);
+
+  /* A ripple spreads for about 1.6 s: 300 ms and 900 ms after the Enter key, the pixels of the
+     whole hero that differ from just before it by more than a rounding error. */
+  const heroBox = (await hero.boundingBox())!;
+  const wholeHero = { x: 0, y: 0, width: heroBox.width, height: heroBox.height };
+  let elapsed = 0;
+  for (const delay of [300, 900]) {
+    await page.clock.runFor(delay - elapsed);
+    elapsed = delay;
+    const after = await hero.screenshot();
+    const { columns } = await pixelsChangedPerColumnInRectangle(hero, before, after, wholeHero);
+    expect(
+      columns.reduce((sum, count) => sum + count, 0),
+      `pixels of the ${Math.round(heroBox.width)} × ${Math.round(heroBox.height)}px hero changed ${delay} ms after the Enter key on the focused "Contact" button, following a click on the professional title`,
+    ).toBe(0);
+  }
+});
+
+/* A press at one point of the page, dragged to another and released there, as the device makes
+   it: with a mouse, the button goes down at the first point and up at the second, so no click
+   lands on an element that holds only one of them; on a touch screen, the finger slides from one
+   to the other, which the browser takes for a scroll, not a tap. Playwright's touch screen only
+   taps: the slide goes through the Chromium DevTools protocol, which the projects that run pixel
+   tests (Chromium only) all offer. */
+async function pressAndDrag(page: Page, hasTouch: boolean, from: { x: number; y: number }, to: { x: number; y: number }): Promise<void> {
+  const STEPS = 10;
+  const along = (step: number) => ({ x: from.x + ((to.x - from.x) * step) / STEPS, y: from.y + ((to.y - from.y) * step) / STEPS });
+  if (hasTouch) {
+    const session = await page.context().newCDPSession(page);
+    await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [from] });
+    for (let step = 1; step <= STEPS; step += 1) {
+      await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [along(step)] });
+    }
+    await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await session.detach();
+  } else {
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: STEPS });
+    await page.mouse.up();
+  }
+}
+
+test('on phone as on desktop, after a press on the hero’s professional title dragged out of the hero and released on the header, without a click on the hero, activating the "Contact" button with the keyboard starts no ripple: once the pointer’s trail has faded, no pixel of the hero changes, 300 ms nor 900 ms after the Enter key, from just before it', { tag: '@pixels' }, async ({ page, hasTouch, browserName }) => {
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  const hero = heroRegion(page);
+  await expect(hero).toBeVisible();
+  const title = hero.getByRole('heading', { level: 1 }).getByText('Horloger indépendant', { exact: true });
+  await expect(title).toBeVisible();
+  const header = page.getByRole('banner');
+  await expect(header).toBeVisible();
+  /* The "Contact" button leads to #contact, an anchor of the page itself: activating it leaves
+     the visitor on the home page, with the hero where it was. */
+  const contact = secondHeroButton(page);
+  await expect(contact).toHaveText('Contact');
+  await expect(contact).toHaveAttribute('href', '#contact');
+  /* Long after the field's reveal (about 1.1 s) and the heading's decoding (in clear 4 s after
+     load): from then on, nothing but the field's reactions changes what the hero shows. */
+  await page.clock.runFor(5000);
+
+  /* A press inside the field, on the middle of the first line box of the professional title's
+     text, dragged up out of the hero and released on the middle of the sticky header, which stays
+     at the top of the window: no click reaches the hero. 2 s later, the trail of the pointer has
+     faded. */
+  const onScreen = await middleOfFirstLine(title);
+  const headerBox = (await header.boundingBox())!;
+  const onHeader = { x: headerBox.x + headerBox.width / 2, y: headerBox.y + headerBox.height / 2 };
+  await pressAndDrag(page, hasTouch, onScreen, onHeader);
+  await page.clock.runFor(2000);
+
+  /* Then the keyboard: Tab until the "Contact" button has the focus, and its focus style shows,
+     before the screenshot taken just before the Enter key. */
+  await tabUntilFocused(contact, browserName);
+  await expect(contact).toBeFocused();
+  await page.clock.runFor(100);
+  const before = await hero.screenshot();
+
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/fr\/#contact$/);
+
+  /* A ripple spreads for about 1.6 s: 300 ms and 900 ms after the Enter key, the pixels of the
+     whole hero that differ from just before it by more than a rounding error. */
+  const heroBox = (await hero.boundingBox())!;
+  const wholeHero = { x: 0, y: 0, width: heroBox.width, height: heroBox.height };
+  let elapsed = 0;
+  for (const delay of [300, 900]) {
+    await page.clock.runFor(delay - elapsed);
+    elapsed = delay;
+    const after = await hero.screenshot();
+    const { columns } = await pixelsChangedPerColumnInRectangle(hero, before, after, wholeHero);
+    expect(
+      columns.reduce((sum, count) => sum + count, 0),
+      `pixels of the ${Math.round(heroBox.width)} × ${Math.round(heroBox.height)}px hero changed ${delay} ms after the Enter key on the focused "Contact" button, following a press on the professional title released on the header`,
+    ).toBe(0);
+  }
+});
+
 /* The hero of the French home page, still: the visitor asks for reduced motion, so the field is
    drawn once, complete, and stays still; time stands still from before the page loads, then
    runs a few animation frames, which draw the field. With its text (heading, tagline, stack
@@ -772,8 +893,7 @@ async function stillHero(page: Page): Promise<{ hero: Locator; text: Record<stri
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
-  /* The hero is the main content region named by its main heading. */
-  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  const hero = heroRegion(page);
   await expect(hero).toBeVisible();
   const text = {
     'heading': hero.getByRole('heading', { level: 1 }),
@@ -1018,7 +1138,7 @@ test.describe('home page without JavaScript', () => {
 
   test('without JavaScript, the hero of the French home page is complete and readable: the heading shows the author name and the professional title in clear, with the tagline, the stack and both buttons, nothing left transparent', async ({ page }) => {
     await page.goto('/fr/');
-    const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+    const hero = heroRegion(page);
     const mainHeading = hero.getByRole('heading', { level: 1 });
     /* In clear: the heading displays the name and the title themselves, not scrambled signs,
        whether in its text or in generated content. */
@@ -1052,8 +1172,8 @@ test.describe('home page without JavaScript', () => {
 
 test('with JavaScript on but the theme’s script blocked, the hero heading of the French home page still shows the author name and the professional title after a short wait, instead of staying hidden', async ({ page }) => {
   /* JavaScript is on, but the theme's bundle fails to load, as when a network or an extension
-     blocks it: the <noscript> fallback does not apply, and the script that
-     would reveal the heading never runs. */
+     blocks it: the inline head script still sets the class that hides the heading, and the
+     script that would reveal it never runs. */
   const blockedScripts = await blockRequests(page, themeScriptUrl());
   await page.goto('/fr/');
   expect(blockedScripts, 'theme script request blocked').not.toEqual([]);
@@ -1101,21 +1221,43 @@ test('when the request for the theme’s script never completes, the hero headin
   }
 });
 
-/* Makes the theme's script, on the pages `page` opens next, throw while running, before any
-   element is defined, as in a browser lacking an API it relies on. */
-async function failThemeScriptBeforeDefiningElements(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    customElements.define = () => {
-      throw new Error('theme script failed before defining its elements');
-    };
-  });
+/* How a custom element of the theme fails, as in a browser lacking an API it relies on: its
+   definition throws, which stops the theme's script there, before the element is defined, or
+   the element is defined but each of its instances throws while starting up. */
+type ElementFailure = 'on definition' | 'on start-up';
+
+/* Makes the custom elements the theme's script defines, on the pages `page` opens next, fail
+   as `failure` says: every one of them, or with `only`, the element of that name alone; any
+   other element is defined as usual. */
+async function failCustomElements(page: Page, failure: ElementFailure, only?: string): Promise<void> {
+  await page.addInitScript(
+    ([failure, only]) => {
+      const define = customElements.define.bind(customElements);
+      customElements.define = (name, constructor, options) => {
+        if (only !== null && name !== only) {
+          define(name, constructor, options);
+          return;
+        }
+        if (failure === 'on definition') {
+          throw new Error(`theme script failed before defining ${name}`);
+        }
+        define(name, class extends constructor {
+          constructor() {
+            super();
+            throw new Error(`${name} element failed while starting up`);
+          }
+        }, options);
+      };
+    },
+    [failure, only ?? null] as const,
+  );
 }
 
 test('when the theme’s script loads but fails before defining its elements, the hero heading of the French home page still shows the author name and the professional title after a short wait, instead of staying hidden', async ({ page }) => {
   /* The theme's bundle loads and passes its integrity check, but throws while running.
      Replacing the bundle's body instead would fail the integrity check, a load failure like
-     the blocked-script case above. */
-  await failThemeScriptBeforeDefiningElements(page);
+     the blocked-script case above. It throws before any element is defined. */
+  await failCustomElements(page, 'on definition');
   const scriptErrors: string[] = [];
   page.on('pageerror', (error) => scriptErrors.push(error.message));
   await page.goto('/fr/');
@@ -1129,7 +1271,7 @@ test('when the theme’s script loads but fails while a font of the page is stil
   /* The theme's bundle loads, then throws before defining any element, as in the test above,
      while the page's font files are held back, as on a slow connection: the page itself has not
      finished loading. The visitor must not wait for a font to read the heading. */
-  await failThemeScriptBeforeDefiningElements(page);
+  await failCustomElements(page, 'on definition');
   /* Listening before the page opens, so as not to miss the error. */
   const scriptError = page.waitForEvent('pageerror');
   const fonts = await holdRequests(page, fontFilesUrl());
@@ -1149,21 +1291,7 @@ test('when the theme’s script defines its scrambled-text element but that elem
   /* The theme's bundle loads and registers the element, but every element of the page fails
      while starting up, as when its setup throws in some browser: the element is registered,
      yet the heading's text never gets upgraded nor decoded. */
-  await page.addInitScript(() => {
-    const define = customElements.define.bind(customElements);
-    customElements.define = (name, constructor, options) => {
-      if (name !== 'scramble-text') {
-        define(name, constructor, options);
-        return;
-      }
-      define(name, class extends constructor {
-        constructor() {
-          super();
-          throw new Error('scrambled-text element failed while starting up');
-        }
-      }, options);
-    };
-  });
+  await failCustomElements(page, 'on start-up', 'scramble-text');
   const scriptErrors: string[] = [];
   page.on('pageerror', (error) => scriptErrors.push(error.message));
   await page.goto('/fr/');
@@ -1214,11 +1342,6 @@ test.describe('home page without a hero', () => {
     expect(errors).toEqual([]);
   });
 });
-
-/* The URL of any font file, on any origin or on the given one. */
-function fontFilesUrl(origin = '**'): string {
-  return `${origin}/**/*.{woff,woff2,ttf,otf}`;
-}
 
 /* Sizes the window to `viewport`, then opens the French home page of the test site served at
    `origin`, JavaScript off, and waits for its fonts. Not through `document.fonts.ready`: with

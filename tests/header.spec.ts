@@ -8,6 +8,7 @@ import {
   removeDirectory,
 } from './helpers/built-site';
 import { characterWeights } from './helpers/character-weights';
+import { heroRegion } from './helpers/hero';
 
 /* The logo is the header link named after the site title. */
 function headerLogo(page: Page): Locator {
@@ -498,8 +499,7 @@ test('after the window is widened from 375 px to 1280 px on the same page, the h
 
   /* Widened without reloading: the page lays itself out again. */
   await page.setViewportSize({ width: WIDE_DESKTOP_VIEWPORT.width, height });
-  /* The hero is the main content region named by its main heading. */
-  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  const hero = heroRegion(page);
   await expect(hero.getByRole('heading', { level: 1 })).toBeVisible();
 
   /* How far the hero's bottom sits from the window's bottom; measured again until the layout settles. */

@@ -4,10 +4,11 @@
     "sourceMap" (cond hugo.IsDevelopment "linked" "none")
   }}
   {{- with . | js.Build $opts }}
-    {{- /* Once the document is parsed, the deferred script has run or failed (to load or
-         while running; the fonts need not be loaded): if an element is still undefined (never defined, or failed while starting up),
-         the script-failed class lets main.css reveal the text it would have scrambled. */}}
-    <script>addEventListener('DOMContentLoaded', function () { if (document.querySelector('scramble-text:not(:defined)')) { document.documentElement.classList.add('script-failed') } })</script>
+    {{- /* Set before the body is parsed, scramble-text-pending lets main.css hide the text
+         the script will scramble. Once the document is parsed, the deferred script has run
+         or failed (to load, while running, or in the element's constructor, which leaves it
+         undefined too): if a scramble-text is still undefined, removing the class reveals it. */}}
+    <script>document.documentElement.classList.add('scramble-text-pending'); addEventListener('DOMContentLoaded', function () { if (document.querySelector('scramble-text:not(:defined)')) { document.documentElement.classList.remove('scramble-text-pending') } })</script>
     {{- if hugo.IsDevelopment }}
       <script defer src="{{ .RelPermalink }}"></script>
     {{- else }}
