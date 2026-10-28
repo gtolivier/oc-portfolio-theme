@@ -1039,16 +1039,16 @@ test.describe('home page without JavaScript', () => {
 });
 
 test('with JavaScript on but the theme’s script blocked, the hero heading of the French home page still shows the author name and the professional title after a short wait, instead of staying hidden', async ({ page }) => {
-  /* JavaScript is on, but every script request fails, as when a network or an extension
-     blocks the theme's bundle: the <noscript> fallback does not apply, and the script that
+  /* JavaScript is on, but the theme's bundle fails to load, as when a network or an extension
+     blocks it: the <noscript> fallback does not apply, and the script that
      would reveal the heading never runs. */
   const blockedScripts: string[] = [];
-  await page.route('**/*.js', async (route) => {
+  await page.route('**/js/main*.js', async (route) => {
     blockedScripts.push(route.request().url());
     await route.abort();
   });
   await page.goto('/fr/');
-  expect(blockedScripts, 'script requests blocked').not.toEqual([]);
+  expect(blockedScripts, 'theme script request blocked').not.toEqual([]);
   const mainHeading = mainContentHeading(page);
   /* A generous wait, not an exact delay: the visitor sees the heading after a short while. */
   for (const text of ['Jean Exemple', 'Horloger indépendant']) {
