@@ -1094,6 +1094,41 @@ test('while the theme’s script is slow to load, the hero heading of the French
   }
 });
 
+test('when the request for the theme’s script never completes, the hero heading of the French home page still shows the author name and the professional title after a long wait, well past the slow-load case, instead of staying hidden', async ({ page }) => {
+  /* The theme's bundle is requested but never arrives, nor fails, as on a connection that
+     stalls: its error handler never fires, and the page is never fully parsed, since a deferred
+     script holds DOMContentLoaded. The request stays held for the whole test. */
+  let releaseScript!: () => void;
+  const scriptReleased = new Promise<void>((resolve) => {
+    releaseScript = resolve;
+  });
+  let scriptRequested!: () => void;
+  const scriptHeld = new Promise<void>((resolve) => {
+    scriptRequested = resolve;
+  });
+  let scriptAnswered = false;
+  await page.route(THEME_SCRIPT_URL, async (route) => {
+    scriptRequested();
+    await scriptReleased;
+    scriptAnswered = true;
+    await route.abort();
+  });
+  try {
+    await page.goto('/fr/', { waitUntil: 'commit' });
+    await scriptHeld;
+    const mainHeading = mainContentHeading(page);
+    /* A generous wait, longer than the one during which a slow script keeps the heading hidden,
+       not an exact delay: the visitor sees the heading eventually. */
+    for (const text of ['Jean Exemple', 'Horloger indépendant']) {
+      await expect(mainHeading.getByText(text, { exact: true }), `${text} visible while the script is held`).toBeVisible({ timeout: 15000 });
+    }
+    expect(scriptAnswered, 'theme script request still held').toBe(false);
+  } finally {
+    releaseScript();
+    await page.unrouteAll({ behavior: 'wait' });
+  }
+});
+
 test('when the theme’s script loads but fails before defining its elements, the hero heading of the French home page still shows the author name and the professional title after a longer wait, instead of staying hidden', async ({ page }) => {
   /* The theme's bundle loads and passes its integrity check, so its error handler never fires,
      but it throws while running, before any element is defined, as in a browser lacking an API
