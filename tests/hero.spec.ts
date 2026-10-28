@@ -19,7 +19,7 @@ import {
   tryToBuildSite,
 } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
-import { blockRequests, holdRequests, themeScriptUrl } from './helpers/held-requests';
+import { blockRequests, fontFilesUrl, holdRequests, themeScriptUrl } from './helpers/held-requests';
 import { tabUntilFocused } from './helpers/keyboard';
 import { clickOrTap } from './helpers/pointer';
 import {
@@ -1108,8 +1108,8 @@ test.describe('home page without JavaScript', () => {
 
 test('with JavaScript on but the theme’s script blocked, the hero heading of the French home page still shows the author name and the professional title after a short wait, instead of staying hidden', async ({ page }) => {
   /* JavaScript is on, but the theme's bundle fails to load, as when a network or an extension
-     blocks it: the <noscript> fallback does not apply, and the script that
-     would reveal the heading never runs. */
+     blocks it: the inline head script still sets the class that hides the heading, and the
+     script that would reveal it never runs. */
   const blockedScripts = await blockRequests(page, themeScriptUrl());
   await page.goto('/fr/');
   expect(blockedScripts, 'theme script request blocked').not.toEqual([]);
@@ -1157,21 +1157,48 @@ test('when the request for the theme’s script never completes, the hero headin
   }
 });
 
-/* Makes the theme's script, on the pages `page` opens next, throw while running, before any
-   element is defined, as in a browser lacking an API it relies on. */
-async function failThemeScriptBeforeDefiningElements(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    customElements.define = () => {
-      throw new Error('theme script failed before defining its elements');
-    };
-  });
+/* How a custom element of the theme fails, as in a browser lacking an API it relies on: its
+   definition throws, which stops the theme's script there, before the element is defined, or
+   the element is defined but each of its instances throws while starting up. */
+type ElementFailure = 'on definition' | 'on start-up';
+
+/* The key of `failCustomElements`'s failures that stands for every element it names no failure
+   for. */
+const EVERY_ELEMENT = '*';
+
+/* Makes the custom elements the theme's script defines, on the pages `page` opens next, fail
+   as `failures` says for each one, by name or under EVERY_ELEMENT; an element given no failure
+   is defined as usual. */
+async function failCustomElements(page: Page, failures: Record<string, ElementFailure>): Promise<void> {
+  await page.addInitScript(
+    ([failures, everyElement]) => {
+      const define = customElements.define.bind(customElements);
+      customElements.define = (name, constructor, options) => {
+        const failure = failures[name] ?? failures[everyElement];
+        if (failure === 'on definition') {
+          throw new Error(`theme script failed before defining ${name}`);
+        }
+        if (failure === 'on start-up') {
+          define(name, class extends constructor {
+            constructor() {
+              super();
+              throw new Error(`${name} element failed while starting up`);
+            }
+          }, options);
+          return;
+        }
+        define(name, constructor, options);
+      };
+    },
+    [failures, EVERY_ELEMENT] as const,
+  );
 }
 
 test('when the theme’s script loads but fails before defining its elements, the hero heading of the French home page still shows the author name and the professional title after a short wait, instead of staying hidden', async ({ page }) => {
   /* The theme's bundle loads and passes its integrity check, but throws while running.
      Replacing the bundle's body instead would fail the integrity check, a load failure like
-     the blocked-script case above. */
-  await failThemeScriptBeforeDefiningElements(page);
+     the blocked-script case above. It throws before any element is defined. */
+  await failCustomElements(page, { [EVERY_ELEMENT]: 'on definition' });
   const scriptErrors: string[] = [];
   page.on('pageerror', (error) => scriptErrors.push(error.message));
   await page.goto('/fr/');
@@ -1185,7 +1212,7 @@ test('when the theme’s script loads but fails while a font of the page is stil
   /* The theme's bundle loads, then throws before defining any element, as in the test above,
      while the page's font files are held back, as on a slow connection: the page itself has not
      finished loading. The visitor must not wait for a font to read the heading. */
-  await failThemeScriptBeforeDefiningElements(page);
+  await failCustomElements(page, { [EVERY_ELEMENT]: 'on definition' });
   /* Listening before the page opens, so as not to miss the error. */
   const scriptError = page.waitForEvent('pageerror');
   const fonts = await holdRequests(page, fontFilesUrl());
@@ -1205,21 +1232,7 @@ test('when the theme’s script defines its scrambled-text element but that elem
   /* The theme's bundle loads and registers the element, but every element of the page fails
      while starting up, as when its setup throws in some browser: the element is registered,
      yet the heading's text never gets upgraded nor decoded. */
-  await page.addInitScript(() => {
-    const define = customElements.define.bind(customElements);
-    customElements.define = (name, constructor, options) => {
-      if (name !== 'scramble-text') {
-        define(name, constructor, options);
-        return;
-      }
-      define(name, class extends constructor {
-        constructor() {
-          super();
-          throw new Error('scrambled-text element failed while starting up');
-        }
-      }, options);
-    };
-  });
+  await failCustomElements(page, { 'scramble-text': 'on start-up' });
   const scriptErrors: string[] = [];
   page.on('pageerror', (error) => scriptErrors.push(error.message));
   await page.goto('/fr/');
@@ -1270,11 +1283,6 @@ test.describe('home page without a hero', () => {
     expect(errors).toEqual([]);
   });
 });
-
-/* The URL of any font file, on any origin or on the given one. */
-function fontFilesUrl(origin = '**'): string {
-  return `${origin}/**/*.{woff,woff2,ttf,otf}`;
-}
 
 /* Sizes the window to `viewport`, then opens the French home page of the test site served at
    `origin`, JavaScript off, and waits for its fonts. Not through `document.fonts.ready`: with

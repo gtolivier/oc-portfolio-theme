@@ -702,7 +702,7 @@ test.describe('catalog: tick-field', () => {
     ).toEqual([]);
   });
 
-  test('ticks the reveal has not reached yet do not light up under a click (a tap on mobile): 400 ms after load, a click ahead of the front, where the field still shows only its background, lights the ticks there, 96 ms later, once the front has just passed them, less than half as much as the same click does once the field is revealed', { tag: '@pixels' }, async ({ page, context, hasTouch }) => {
+  test('ticks the reveal has not reached yet do not light up under a click (a tap on mobile): during the reveal, a click just ahead of the front, where the field still shows only its background, lights the ticks there, once the front has just passed them, less than half as much as the same click does once the field is revealed, measured as long after it', { tag: '@pixels' }, async ({ page, context, hasTouch }) => {
     const tickField = await openEmptyTickField(page, context);
     await tickField.scrollIntoViewIfNeeded();
     const fieldBox = await tickField.boundingBox();
@@ -710,43 +710,73 @@ test.describe('catalog: tick-field', () => {
     const width = fieldBox!.width;
     const height = fieldBox!.height;
 
-    /* The front crosses the width in about 1.1 s, after a short delay: 400 ms after load it is
-       about 32% of the way across, 496 ms after load about 40%. The zone, 4% of the width wide
-       but at least two columns of ticks wide, and 40px high at mid-height, lies ahead of the
-       front at the click, and just behind it 96 ms later: its ticks have only begun to fade in.
-       The click point is at its middle. */
-    /* Columns are 16px apart and ticks 1.6px wide: 34px hold two whole ticks of a row wherever
-       the zone starts. */
-    const twoTickColumnsWidth = 34;
-    const zone = { x: 0.33 * width, y: height / 2 - 20, width: Math.max(0.04 * width, twoTickColumnsWidth), height: 40 };
+    /* How far from the left edge of the field, in CSS pixels, its screenshot shows drawn pixels:
+       where the front shows, as the ticks it passes begin to fade in. */
+    const drawnReach = async (screenshot: Buffer): Promise<number> => {
+      const { columns, scale } = await pixelsNotOfBackgroundPerColumn(tickField, screenshot);
+      return (columns.findLastIndex((count) => count > 0) + 1) / scale;
+    };
+    /* Lets time pass one animation frame at a time until the drawing reaches past `x`, or the
+       reveal, which sweeps the width in about 1.1 s, would be over. Returns the screenshot that
+       shows it and the time that passed. */
+    const ANIMATION_FRAME_MS = 16;
+    const REVEALED_AFTER_MS = 2000;
+    const runUntilDrawnPast = async (x: number): Promise<{ screenshot: Buffer; elapsedMs: number }> => {
+      let elapsedMs = 0;
+      let screenshot = await tickField.screenshot();
+      while ((await drawnReach(screenshot)) <= x && elapsedMs < REVEALED_AFTER_MS) {
+        await page.clock.runFor(ANIMATION_FRAME_MS);
+        elapsedMs += ANIMATION_FRAME_MS;
+        screenshot = await tickField.screenshot();
+      }
+      return { screenshot, elapsedMs };
+    };
+
+    /* Partway through the reveal: the drawing has just reached past a quarter of the width. */
+    const partway = (await runUntilDrawnPast(width / 4)).screenshot;
+    const front = await drawnReach(partway);
+
+    /* How far apart the columns of ticks are, from those the drawn part shows: the median
+       distance from the left edge of a stroke to that of the next, which a stroke split by a
+       faint pixel does not shift. */
+    const { columns, scale } = await pixelsNotOfBackgroundPerColumn(tickField, partway);
+    const strokeStarts = columns.flatMap((count, column) => (count > 0 && !(columns[column - 1] > 0) ? [column] : []));
+    const strokeGaps = strokeStarts.slice(1).map((start, index) => start - strokeStarts[index]).sort((a, b) => a - b);
+    const tickSpacing = strokeGaps[Math.floor(strokeGaps.length / 2)] / scale;
+
+    /* The zone starts where the drawing reaches, ahead of the front, and is two and a half
+       columns of ticks wide, which holds two whole columns wherever it starts, and as high, at
+       mid-height. The click point is at its middle. */
+    const ZONE_SIDE_IN_TICK_COLUMNS = 2.5;
+    const side = ZONE_SIDE_IN_TICK_COLUMNS * tickSpacing;
+    const zone = { x: front, y: height / 2 - side / 2, width: side, height: side };
     const point = { x: zone.x + zone.width / 2, y: height / 2 };
     const onScreen = { x: fieldBox!.x + point.x, y: fieldBox!.y + point.y };
     const describeZone = `the zone ${Math.round(zone.x)}–${Math.round(zone.x + zone.width)}px of the ${Math.round(width)}px-wide tick-field, around the click point (${Math.round(point.x)}, ${Math.round(point.y)})px`;
-    const brightness = async (): Promise<number> =>
-      luminanceAboveBackgroundInRectangle(tickField, await tickField.screenshot(), zone);
 
-    await page.clock.runFor(400);
-    const { rows } = await pixelsNotOfBackgroundPerRow(tickField, await tickField.screenshot(), zone);
+    const { rows } = await pixelsNotOfBackgroundPerRow(tickField, partway, zone);
     expect(
       rows.reduce((sum, count) => sum + count, 0),
-      `pixels of ${describeZone} that differ from its background 400 ms after load, before the click: the front has not reached it yet`,
+      `pixels of ${describeZone} that differ from its background during the reveal, before the click: the front has not reached it yet`,
     ).toBe(0);
 
+    /* Measured as soon as the drawing reaches past the zone: the front has just passed its
+       ticks, which have only begun to fade in. */
     await clickOrTap(page, hasTouch, onScreen);
-    await page.clock.runFor(96);
-    const duringReveal = await brightness();
+    const passed = await runUntilDrawnPast(zone.x + zone.width);
+    const duringReveal = await luminanceAboveBackgroundInRectangle(tickField, passed.screenshot, zone);
 
     /* Once revealed, and the first ripple faded: the same click at the same point, measured as
        long after it. With a fine pointer, the pointer has stayed over the click point since the
        first click, so that both measures show the same hover. */
-    await page.clock.runFor(2000);
+    await page.clock.runFor(REVEALED_AFTER_MS);
     await clickOrTap(page, hasTouch, onScreen);
-    await page.clock.runFor(96);
-    const onceRevealed = await brightness();
+    await page.clock.runFor(passed.elapsedMs);
+    const onceRevealed = await luminanceAboveBackgroundInRectangle(tickField, await tickField.screenshot(), zone);
 
     expect(
       duringReveal,
-      `brightness above the background of ${describeZone}, 96 ms after a click there during the reveal, against ${Math.round(onceRevealed)} 96 ms after the same click once revealed`,
+      `brightness above the background of ${describeZone}, ${passed.elapsedMs} ms after a click there during the reveal, once the front has just passed it, against ${Math.round(onceRevealed)} as long after the same click once revealed`,
     ).toBeLessThan(0.5 * onceRevealed);
   });
 
