@@ -711,10 +711,13 @@ test.describe('catalog: tick-field', () => {
 
     /* The front crosses the width in about 1.1 s, after a short delay: 400 ms after load it is
        about 32% of the way across, 496 ms after load about 40%. The zone, 4% of the width wide
-       (at least one column of ticks, 16px apart) and 40px high at mid-height, lies ahead of the
+       but at least two columns of ticks wide, and 40px high at mid-height, lies ahead of the
        front at the click, and just behind it 96 ms later: its ticks have only begun to fade in.
        The click point is at its middle. */
-    const zone = { x: 0.33 * width, y: height / 2 - 20, width: 0.04 * width, height: 40 };
+    /* Columns are 16px apart and ticks 1.6px wide: 34px hold two whole ticks of a row wherever
+       the zone starts. */
+    const twoTickColumnsWidth = 34;
+    const zone = { x: 0.33 * width, y: height / 2 - 20, width: Math.max(0.04 * width, twoTickColumnsWidth), height: 40 };
     const point = { x: zone.x + zone.width / 2, y: height / 2 };
     const onScreen = { x: fieldBox!.x + point.x, y: fieldBox!.y + point.y };
     const describeZone = `the zone ${Math.round(zone.x)}–${Math.round(zone.x + zone.width)}px of the ${Math.round(width)}px-wide tick-field, around the click point (${Math.round(point.x)}, ${Math.round(point.y)})px`;

@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { CATALOG_SITE, buildSite, removeDirectory, serveSite } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
+import { holdRequests, themeScriptUrl } from './helpers/held-requests';
 import { SIGNS, textOnScreen } from './helpers/text-on-screen';
 
 /* Where the characters an element shows on screen are drawn: the box of each visible
@@ -98,22 +99,10 @@ test.describe('catalog: scramble-text', () => {
        page is parsed and painted before the script runs. */
     await serveSite(context, CATALOG_SITE, siteDirectory);
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    let releaseScript!: () => void;
-    const scriptReleased = new Promise<void>((resolve) => {
-      releaseScript = resolve;
-    });
-    let scriptRequested!: () => void;
-    const scriptHeld = new Promise<void>((resolve) => {
-      scriptRequested = resolve;
-    });
-    await page.route(`${CATALOG_SITE.origin}/js/main*.js`, async (route) => {
-      scriptRequested();
-      await scriptReleased;
-      await route.fallback();
-    });
+    const script = await holdRequests(page, themeScriptUrl(CATALOG_SITE.origin));
     try {
       await page.goto(`${CATALOG_SITE.origin}/fr/scramble-text/`, { waitUntil: 'commit' });
-      await scriptHeld;
+      await script.requested;
       /* The only scramble-text of the page (tests/fixtures/catalog/content/scramble-text.md),
          whose text is "Échappement". */
       const scrambleText = page.getByRole('main').locator('scramble-text');
@@ -129,7 +118,7 @@ test.describe('catalog: scramble-text', () => {
         expect(letters, `"${character}", shown in "${shown}" before the script has run, is not one of its letters`).not.toContain(character);
       }
     } finally {
-      releaseScript();
+      await script.end();
     }
   });
 

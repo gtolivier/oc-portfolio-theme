@@ -19,6 +19,7 @@ import {
   tryToBuildSite,
 } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
+import { holdRequests, themeScriptUrl } from './helpers/held-requests';
 import { tabUntilFocused } from './helpers/keyboard';
 import { clickOrTap } from './helpers/pointer';
 import {
@@ -1038,15 +1039,12 @@ test.describe('home page without JavaScript', () => {
   });
 });
 
-/* The URL of the theme's bundle, fingerprinted or not. */
-const THEME_SCRIPT_URL = '**/js/main*.js';
-
 test('with JavaScript on but the theme’s script blocked, the hero heading of the French home page still shows the author name and the professional title after a short wait, instead of staying hidden', async ({ page }) => {
   /* JavaScript is on, but the theme's bundle fails to load, as when a network or an extension
      blocks it: the <noscript> fallback does not apply, and the script that
      would reveal the heading never runs. */
   const blockedScripts: string[] = [];
-  await page.route(THEME_SCRIPT_URL, async (route) => {
+  await page.route(themeScriptUrl(), async (route) => {
     blockedScripts.push(route.request().url());
     await route.abort();
   });
@@ -1062,22 +1060,10 @@ test('with JavaScript on but the theme’s script blocked, the hero heading of t
 test('while the theme’s script is slow to load, the hero heading of the French home page keeps the author name and the professional title hidden, instead of showing them in clear before the script arrives', async ({ page }) => {
   /* The theme's bundle is held back, as on a very slow connection: it does arrive, but late.
      Until it runs, the heading must not flash in clear before being scrambled. */
-  let releaseScript!: () => void;
-  const scriptReleased = new Promise<void>((resolve) => {
-    releaseScript = resolve;
-  });
-  let scriptRequested!: () => void;
-  const scriptHeld = new Promise<void>((resolve) => {
-    scriptRequested = resolve;
-  });
-  await page.route(THEME_SCRIPT_URL, async (route) => {
-    scriptRequested();
-    await scriptReleased;
-    await route.fallback();
-  });
+  const script = await holdRequests(page, themeScriptUrl());
   try {
     await page.goto('/fr/', { waitUntil: 'commit' });
-    await scriptHeld;
+    await script.requested;
     const mainHeading = mainContentHeading(page);
     const texts = ['Jean Exemple', 'Horloger indépendant'];
     for (const text of texts) {
@@ -1090,7 +1076,7 @@ test('while the theme’s script is slow to load, the hero heading of the French
       expect(await mainHeading.getByText(text, { exact: true }).isVisible(), `${text} visible while the script is held`).toBe(false);
     }
   } finally {
-    releaseScript();
+    await script.end();
   }
 });
 
@@ -1098,34 +1084,19 @@ test('when the request for the theme’s script never completes, the hero headin
   /* The theme's bundle is requested but never arrives, nor fails, as on a connection that
      stalls: its error handler never fires, and the page is never fully parsed, since a deferred
      script holds DOMContentLoaded. The request stays held for the whole test. */
-  let releaseScript!: () => void;
-  const scriptReleased = new Promise<void>((resolve) => {
-    releaseScript = resolve;
-  });
-  let scriptRequested!: () => void;
-  const scriptHeld = new Promise<void>((resolve) => {
-    scriptRequested = resolve;
-  });
-  let scriptAnswered = false;
-  await page.route(THEME_SCRIPT_URL, async (route) => {
-    scriptRequested();
-    await scriptReleased;
-    scriptAnswered = true;
-    await route.abort();
-  });
+  const script = await holdRequests(page, themeScriptUrl());
   try {
     await page.goto('/fr/', { waitUntil: 'commit' });
-    await scriptHeld;
+    await script.requested;
     const mainHeading = mainContentHeading(page);
     /* A generous wait, longer than the one during which a slow script keeps the heading hidden,
        not an exact delay: the visitor sees the heading eventually. */
     for (const text of ['Jean Exemple', 'Horloger indépendant']) {
       await expect(mainHeading.getByText(text, { exact: true }), `${text} visible while the script is held`).toBeVisible({ timeout: 15000 });
     }
-    expect(scriptAnswered, 'theme script request still held').toBe(false);
+    expect(script.isAnswered(), 'theme script request still held').toBe(false);
   } finally {
-    releaseScript();
-    await page.unrouteAll({ behavior: 'wait' });
+    await script.end();
   }
 });
 
@@ -1165,22 +1136,10 @@ test('when the theme’s script loads but fails while a font of the page is stil
     scriptFailed = resolve;
   });
   page.on('pageerror', () => scriptFailed());
-  let releaseFonts!: () => void;
-  const fontsReleased = new Promise<void>((resolve) => {
-    releaseFonts = resolve;
-  });
-  let fontRequested!: () => void;
-  const fontHeld = new Promise<void>((resolve) => {
-    fontRequested = resolve;
-  });
-  await page.route('**/fonts/*.woff2', async (route) => {
-    fontRequested();
-    await fontsReleased;
-    await route.fallback();
-  });
+  const fonts = await holdRequests(page, '**/fonts/*.woff2');
   try {
     await page.goto('/fr/', { waitUntil: 'commit' });
-    await fontHeld;
+    await fonts.requested;
     await scriptError;
     const mainHeading = mainContentHeading(page);
     /* A short wait, not an exact delay: the fonts stay held all along, so the heading must
@@ -1189,7 +1148,7 @@ test('when the theme’s script loads but fails while a font of the page is stil
       await expect(mainHeading.getByText(text, { exact: true }), `${text} visible while the fonts are held`).toBeVisible({ timeout: 5000 });
     }
   } finally {
-    releaseFonts();
+    await fonts.end();
   }
 });
 
