@@ -6,6 +6,9 @@
   {{- /* main.css reveals the text the script would have scrambled on this class. */}}
   {{- $markScriptFailed := "document.documentElement.classList.add('script-failed')" | safeJS }}
   {{- with . | js.Build $opts }}
+    {{- /* The script also fails by throwing while it runs: once the page has loaded, the
+         deferred script has run, so reveal the text if its element is still undefined. */}}
+    <script>addEventListener('load', function () { if (!customElements.get('scramble-text')) { {{ $markScriptFailed }} } })</script>
     {{- if hugo.IsDevelopment }}
       <script defer src="{{ .RelPermalink }}" onerror="{{ $markScriptFailed }}"></script>
     {{- else }}
