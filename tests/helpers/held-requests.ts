@@ -8,8 +8,6 @@ export function themeScriptUrl(origin = '**'): string {
 export interface HeldRequests {
   /* Settles once the page has asked for a matching resource: its request is then held. */
   requested: Promise<void>;
-  /* Whether a held request has been answered: false until the hold ends. */
-  isAnswered(): boolean;
   /* Ends the hold, once the test has checked what it needs: the held requests fail, as if the
      connection dropped, and every route of the page is removed, without failing on a request
      still in flight as the test ends. Not letting them through: a page route removed while its
@@ -29,16 +27,13 @@ export async function holdRequests(page: Page, url: string): Promise<HeldRequest
   const requested = new Promise<void>((resolve) => {
     markRequested = resolve;
   });
-  let isAnswered = false;
   await page.route(url, async (route) => {
     markRequested();
     await holdEnded;
-    isAnswered = true;
     await route.abort();
   });
   return {
     requested,
-    isAnswered: () => isAnswered,
     end: async () => {
       endHold();
       await page.unrouteAll({ behavior: 'ignoreErrors' });

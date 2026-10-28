@@ -189,6 +189,17 @@ function mainContentHeading(page: Page): Locator {
   return page.getByRole('main').getByRole('heading', { level: 1 });
 }
 
+/* Expects the main content heading of the French home page to show the author name and the
+   professional title within `timeout`. Each check's message is the text, followed by
+   "visible <condition>" when a condition is given. */
+async function expectHeroNameAndTitle(page: Page, { timeout, condition }: { timeout: number; condition?: string }): Promise<void> {
+  const mainHeading = mainContentHeading(page);
+  for (const text of ['Jean Exemple', 'Horloger indépendant']) {
+    const message = condition === undefined ? text : `${text} visible ${condition}`;
+    await expect(mainHeading.getByText(text, { exact: true }), message).toBeVisible({ timeout });
+  }
+}
+
 /* The two desktop windows the hero's layout is checked at: a wide one, 1280 × 900, and one
    768 px wide, 768 × 1024, where the desktop spacing starts. */
 const DESKTOP_VIEWPORTS = [{ width: 1280, height: 900 }, { width: 768, height: 1024 }];
@@ -1050,11 +1061,8 @@ test('with JavaScript on but the theme’s script blocked, the hero heading of t
   });
   await page.goto('/fr/');
   expect(blockedScripts, 'theme script request blocked').not.toEqual([]);
-  const mainHeading = mainContentHeading(page);
   /* A generous wait, not an exact delay: the visitor sees the heading after a short while. */
-  for (const text of ['Jean Exemple', 'Horloger indépendant']) {
-    await expect(mainHeading.getByText(text, { exact: true }), text).toBeVisible({ timeout: 5000 });
-  }
+  await expectHeroNameAndTitle(page, { timeout: 5000 });
 });
 
 test('while the theme’s script is slow to load, the hero heading of the French home page keeps the author name and the professional title hidden, instead of showing them in clear before the script arrives', async ({ page }) => {
@@ -1089,13 +1097,9 @@ test('when the request for the theme’s script never completes, the hero headin
   try {
     await page.goto('/fr/', { waitUntil: 'commit' });
     await script.requested;
-    const mainHeading = mainContentHeading(page);
     /* A generous wait, longer than the one during which a slow script keeps the heading hidden,
        not an exact delay: the visitor sees the heading eventually. */
-    for (const text of ['Jean Exemple', 'Horloger indépendant']) {
-      await expect(mainHeading.getByText(text, { exact: true }), `${text} visible while the script is held`).toBeVisible({ timeout: 15000 });
-    }
-    expect(script.isAnswered(), 'theme script request still held').toBe(false);
+    await expectHeroNameAndTitle(page, { timeout: 15000, condition: 'while the script is held' });
   } finally {
     await script.end();
   }
@@ -1111,7 +1115,7 @@ async function failThemeScriptBeforeDefiningElements(page: Page): Promise<void> 
   });
 }
 
-test('when the theme’s script loads but fails before defining its elements, the hero heading of the French home page still shows the author name and the professional title after a longer wait, instead of staying hidden', async ({ page }) => {
+test('when the theme’s script loads but fails before defining its elements, the hero heading of the French home page still shows the author name and the professional title after a short wait, instead of staying hidden', async ({ page }) => {
   /* The theme's bundle loads and passes its integrity check, but throws while running.
      Replacing the bundle's body instead would fail the integrity check, a load failure like
      the blocked-script case above. */
@@ -1120,12 +1124,9 @@ test('when the theme’s script loads but fails before defining its elements, th
   page.on('pageerror', (error) => scriptErrors.push(error.message));
   await page.goto('/fr/');
   expect(scriptErrors, 'theme script raised an error').not.toEqual([]);
-  const mainHeading = mainContentHeading(page);
-  /* A generous wait, longer than the one during which a slow script keeps the heading hidden,
-     not an exact delay: the visitor sees the heading eventually. */
-  for (const text of ['Jean Exemple', 'Horloger indépendant']) {
-    await expect(mainHeading.getByText(text, { exact: true }), text).toBeVisible({ timeout: 10000 });
-  }
+  /* A short wait, well under the long fallback for a script that never arrives, not an exact
+     delay: the visitor sees the heading soon after the script fails. */
+  await expectHeroNameAndTitle(page, { timeout: 5000 });
 });
 
 test('when the theme’s script loads but fails while a font of the page is still loading, the hero heading of the French home page shows the author name and the professional title after a short wait, without waiting for that font', async ({ page }) => {
@@ -1133,22 +1134,16 @@ test('when the theme’s script loads but fails while a font of the page is stil
      while the page's font files are held back, as on a slow connection: the page itself has not
      finished loading. The visitor must not wait for a font to read the heading. */
   await failThemeScriptBeforeDefiningElements(page);
-  let scriptFailed!: () => void;
-  const scriptError = new Promise<void>((resolve) => {
-    scriptFailed = resolve;
-  });
-  page.on('pageerror', () => scriptFailed());
+  /* Listening before the page opens, so as not to miss the error. */
+  const scriptError = page.waitForEvent('pageerror');
   const fonts = await holdRequests(page, fontFilesUrl());
   try {
     await page.goto('/fr/', { waitUntil: 'commit' });
     await fonts.requested;
     await scriptError;
-    const mainHeading = mainContentHeading(page);
     /* A short wait, not an exact delay: the fonts stay held all along, so the heading must
        appear without the page having finished loading. */
-    for (const text of ['Jean Exemple', 'Horloger indépendant']) {
-      await expect(mainHeading.getByText(text, { exact: true }), `${text} visible while the fonts are held`).toBeVisible({ timeout: 5000 });
-    }
+    await expectHeroNameAndTitle(page, { timeout: 5000, condition: 'while the fonts are held' });
   } finally {
     await fonts.end();
   }
