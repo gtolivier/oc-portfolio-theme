@@ -1116,6 +1116,48 @@ test('when the theme’s script loads but fails before defining its elements, th
   }
 });
 
+test('when the theme’s script loads but fails while a font of the page is still loading, the hero heading of the French home page shows the author name and the professional title after a short wait, without waiting for that font', async ({ page }) => {
+  /* The theme's bundle loads, then throws before defining any element, as in the test above,
+     while the page's font files are held back, as on a slow connection: the page itself has not
+     finished loading. The visitor must not wait for a font to read the heading. */
+  await page.addInitScript(() => {
+    customElements.define = () => {
+      throw new Error('theme script failed before defining its elements');
+    };
+  });
+  let scriptFailed!: () => void;
+  const scriptError = new Promise<void>((resolve) => {
+    scriptFailed = resolve;
+  });
+  page.on('pageerror', () => scriptFailed());
+  let releaseFonts!: () => void;
+  const fontsReleased = new Promise<void>((resolve) => {
+    releaseFonts = resolve;
+  });
+  let fontRequested!: () => void;
+  const fontHeld = new Promise<void>((resolve) => {
+    fontRequested = resolve;
+  });
+  await page.route('**/fonts/*.woff2', async (route) => {
+    fontRequested();
+    await fontsReleased;
+    await route.fallback();
+  });
+  try {
+    await page.goto('/fr/', { waitUntil: 'commit' });
+    await fontHeld;
+    await scriptError;
+    const mainHeading = mainContentHeading(page);
+    /* A short wait, not an exact delay: the fonts stay held all along, so the heading must
+       appear without the page having finished loading. */
+    for (const text of ['Jean Exemple', 'Horloger indépendant']) {
+      await expect(mainHeading.getByText(text, { exact: true }), `${text} visible while the fonts are held`).toBeVisible({ timeout: 5000 });
+    }
+  } finally {
+    releaseFonts();
+  }
+});
+
 test.describe('home page without a hero', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
