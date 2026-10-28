@@ -32,10 +32,11 @@ The roadmap (one conversation per feature) lives in the private repository
 
 - **Language**: code is in English — identifiers, file and folder names,
   components, CSS classes, test titles, code comments — and so is this
-  file, written for agents. Text meant for the user stays in French:
-  commit messages, PR titles and descriptions, review comments and
-  replies, and the roadmap, as do the build errors the templates raise
-  (`errorf`) for whoever fills in the content. Site content, `i18n/`
+  file, written for agents. So is what goes with the code into the
+  repository's history: commit messages, PR titles and descriptions,
+  review comments and replies. The roadmap stays in French, as do the
+  build errors the templates raise (`errorf`) for whoever fills in the
+  content. Site content, `i18n/`
   strings and the fictional content of `exampleSite/` and of the test
   fixtures keep their language, and so do the names visitors see in an
   address: content file names, which set the slug (`page-avec-alias.md`),
