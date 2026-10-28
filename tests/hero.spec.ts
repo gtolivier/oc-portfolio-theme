@@ -1082,8 +1082,9 @@ test('while the theme’s script is slow to load, the hero heading of the French
 
 test('when the request for the theme’s script never completes, the hero heading of the French home page still shows the author name and the professional title after a long wait, well past the slow-load case, instead of staying hidden', async ({ page }) => {
   /* The theme's bundle is requested but never arrives, nor fails, as on a connection that
-     stalls: its error handler never fires, and the page is never fully parsed, since a deferred
-     script holds DOMContentLoaded. The request stays held for the whole test. */
+     stalls: the page is never fully parsed, since a deferred script holds DOMContentLoaded,
+     so the page's check for a failed script never runs. The request stays held for the whole
+     test. */
   const script = await holdRequests(page, themeScriptUrl());
   try {
     await page.goto('/fr/', { waitUntil: 'commit' });
@@ -1111,9 +1112,9 @@ async function failThemeScriptBeforeDefiningElements(page: Page): Promise<void> 
 }
 
 test('when the theme’s script loads but fails before defining its elements, the hero heading of the French home page still shows the author name and the professional title after a longer wait, instead of staying hidden', async ({ page }) => {
-  /* The theme's bundle loads and passes its integrity check, so its error handler never fires,
-     but it throws while running. Replacing the bundle's body instead would fail the integrity
-     check and fire that handler, the blocked-script case above. */
+  /* The theme's bundle loads and passes its integrity check, but throws while running.
+     Replacing the bundle's body instead would fail the integrity check, a load failure like
+     the blocked-script case above. */
   await failThemeScriptBeforeDefiningElements(page);
   const scriptErrors: string[] = [];
   page.on('pageerror', (error) => scriptErrors.push(error.message));
