@@ -43,7 +43,10 @@ The roadmap (one conversation per feature) lives in the private repository
   published links.
 - **TDD required**: every feature goes through the `tdd:feature` skill
   (dedicated branch, red/green/refactor cycles, pull request). No production
-  code without a failing test first.
+  code without a failing test first. Only exception: a gap from the design
+  that no test can catch without measuring pixels finely (a tuning value, a
+  light curve) is tuned by eye, in its own commit, with before/after
+  captures in the PR; the suite must stay green.
 - **Playwright e2e tests**: a test describes a behavior the visitor can see
   (text, link, navigation, rendering at a screen size), not an
   implementation detail. Only exception: a content error (badly filled
