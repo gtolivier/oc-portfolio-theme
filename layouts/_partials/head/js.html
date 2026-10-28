@@ -3,18 +3,16 @@
     "minify" (cond hugo.IsDevelopment false true)
     "sourceMap" (cond hugo.IsDevelopment "linked" "none")
   }}
-  {{- /* main.css reveals the text the script would have scrambled on this class. */}}
-  {{- $markScriptFailed := "document.documentElement.classList.add('script-failed')" | safeJS }}
   {{- with . | js.Build $opts }}
-    {{- /* The script also fails by throwing while it runs: once the document is parsed, the
-         deferred script has run (and the fonts need not be loaded), so reveal the text if
-         its element is still undefined. */}}
-    <script>addEventListener('DOMContentLoaded', function () { if (!customElements.get('scramble-text')) { {{ $markScriptFailed }} } })</script>
+    {{- /* Once the document is parsed, the deferred script has run or failed (to load or
+         while running; the fonts need not be loaded): if its element is still undefined,
+         the script-failed class lets main.css reveal the text it would have scrambled. */}}
+    <script>addEventListener('DOMContentLoaded', function () { if (!customElements.get('scramble-text')) { document.documentElement.classList.add('script-failed') } })</script>
     {{- if hugo.IsDevelopment }}
-      <script defer src="{{ .RelPermalink }}" onerror="{{ $markScriptFailed }}"></script>
+      <script defer src="{{ .RelPermalink }}"></script>
     {{- else }}
       {{- with . | fingerprint }}
-        <script defer src="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="anonymous" onerror="{{ $markScriptFailed }}"></script>
+        <script defer src="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="anonymous"></script>
       {{- end }}
     {{- end }}
   {{- end }}

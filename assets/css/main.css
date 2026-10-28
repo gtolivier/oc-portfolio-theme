@@ -496,7 +496,8 @@ scramble-text {
 /* Until the theme script has defined it, the text stays hidden rather than
    flash in clear before being scrambled. head.html shows it again when
    scripts are disabled, and head/js.html does the same (script-failed class)
-   when the script is blocked, fails to load or throws before defining it. */
+   once the page is parsed, if the script failed to load or threw before
+   defining it. */
 scramble-text:not(:defined) {
   visibility: hidden;
   /* A script that never arrives nor fails would keep the text hidden for good:
