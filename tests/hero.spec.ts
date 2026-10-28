@@ -1149,6 +1149,34 @@ test('when the theme’s script loads but fails while a font of the page is stil
   }
 });
 
+test('when the theme’s script defines its scrambled-text element but that element fails while starting up, the hero heading of the French home page still shows the author name and the professional title after a short wait, without waiting for the long fallback', async ({ page }) => {
+  /* The theme's bundle loads and registers the element, but every element of the page fails
+     while starting up, as when its setup throws in some browser: the element is registered,
+     yet the heading's text never gets upgraded nor decoded. */
+  await page.addInitScript(() => {
+    const define = customElements.define.bind(customElements);
+    customElements.define = (name, constructor, options) => {
+      if (name !== 'scramble-text') {
+        define(name, constructor, options);
+        return;
+      }
+      define(name, class extends constructor {
+        constructor() {
+          super();
+          throw new Error('scrambled-text element failed while starting up');
+        }
+      }, options);
+    };
+  });
+  const scriptErrors: string[] = [];
+  page.on('pageerror', (error) => scriptErrors.push(error.message));
+  await page.goto('/fr/');
+  expect(scriptErrors, 'scrambled-text element raised an error').not.toEqual([]);
+  /* A short wait, well under the long fallback for a script that never arrives, not an exact
+     delay: the visitor sees the heading soon after the element fails. */
+  await expectHeroNameAndTitle(page, { timeout: 5000 });
+});
+
 test.describe('home page without a hero', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
