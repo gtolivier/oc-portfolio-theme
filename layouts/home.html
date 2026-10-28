@@ -1,40 +1,40 @@
 {{ define "main" }}
   <div class="first-screen">
-  {{- with .Params.hero }}
-  {{- if not site.Params.author }}{{ errorf "hero : le paramètre author du site n’est pas renseigné" }}{{ end }}
-  <tick-field class="hero" role="region" aria-labelledby="hero-heading">
-    {{- /* The hero decodes faster than the default pace. The name and the title start decoding together. */}}
-    {{- $heroLetterMs := 40 }}
-    <h1 id="hero-heading"><scramble-text duration="{{ mul (strings.RuneCount site.Params.author) $heroLetterMs }}">{{ site.Params.author }}</scramble-text>
-      {{- with .title }}
-      <span class="hero-title"><scramble-text duration="{{ mul (strings.RuneCount .) $heroLetterMs }}">{{ . }}</scramble-text></span>
+    {{- with .Params.hero }}
+    {{- if not site.Params.author }}{{ errorf "hero : le paramètre author du site n’est pas renseigné" }}{{ end }}
+    <tick-field class="hero" role="region" aria-labelledby="hero-heading">
+      {{- /* The hero decodes faster than the default pace. The name and the title start decoding together. */}}
+      {{- $heroLetterMs := 40 }}
+      <h1 id="hero-heading"><scramble-text duration="{{ mul (strings.RuneCount site.Params.author) $heroLetterMs }}">{{ site.Params.author }}</scramble-text>
+        {{- with .title }}
+        <span class="hero-title"><scramble-text duration="{{ mul (strings.RuneCount .) $heroLetterMs }}">{{ . }}</scramble-text></span>
+        {{- end }}
+      </h1>
+      {{- with .tagline }}
+      <p class="hero-tagline">
+        {{- range $index, $line := . }}{{ if $index }}<br>{{ end }}{{ $line }}{{ end -}}
+      </p>
       {{- end }}
-    </h1>
-    {{- with .tagline }}
-    <p class="hero-tagline">
-      {{- range $index, $line := . }}{{ if $index }}<br>{{ end }}{{ $line }}{{ end -}}
-    </p>
+      {{- with .stack }}
+      <p class="hero-stack">{{ delimit . " · " }}</p>
+      {{- end }}
+      {{- with .actions }}
+      <p class="hero-actions">
+        {{- range . }}
+        {{ partial "hero/action.html" . }}
+        {{- end }}
+      </p>
+      {{- end }}
+      <div class="veil" aria-hidden="true"></div>
+    </tick-field>
     {{- end }}
-    {{- with .stack }}
-    <p class="hero-stack">{{ delimit . " · " }}</p>
-    {{- end }}
-    {{- with .actions }}
-    <p class="hero-actions">
+    {{- with .Params.clients }}
+    <ul class="clients" aria-label="{{ i18n "clients" }}">
       {{- range . }}
-      {{ partial "hero/action.html" . }}
+      <li>{{ . }}</li>
       {{- end }}
-    </p>
+    </ul>
     {{- end }}
-    <div class="veil" aria-hidden="true"></div>
-  </tick-field>
-  {{- end }}
-  {{- with .Params.clients }}
-  <ul class="clients" aria-label="{{ i18n "clients" }}">
-    {{- range . }}
-    <li>{{ . }}</li>
-    {{- end }}
-  </ul>
-  {{- end }}
   </div>
   {{ .Content }}
 {{ end }}
