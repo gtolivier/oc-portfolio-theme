@@ -1090,6 +1090,28 @@ test('while the theme’s script is slow to load, the hero heading of the French
   }
 });
 
+test('when the theme’s script loads but fails before defining its elements, the hero heading of the French home page still shows the author name and the professional title after a longer wait, instead of staying hidden', async ({ page }) => {
+  /* The theme's bundle loads and passes its integrity check, so its error handler never fires,
+     but it throws while running, before any element is defined, as in a browser lacking an API
+     it relies on. Replacing the bundle's body instead would fail the integrity check and fire
+     that handler, the blocked-script case above. */
+  await page.addInitScript(() => {
+    customElements.define = () => {
+      throw new Error('theme script failed before defining its elements');
+    };
+  });
+  const scriptErrors: string[] = [];
+  page.on('pageerror', (error) => scriptErrors.push(error.message));
+  await page.goto('/fr/');
+  expect(scriptErrors, 'theme script raised an error').not.toEqual([]);
+  const mainHeading = mainContentHeading(page);
+  /* A generous wait, longer than the one during which a slow script keeps the heading hidden,
+     not an exact delay: the visitor sees the heading eventually. */
+  for (const text of ['Jean Exemple', 'Horloger indépendant']) {
+    await expect(mainHeading.getByText(text, { exact: true }), text).toBeVisible({ timeout: 10000 });
+  }
+});
+
 test.describe('home page without a hero', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
