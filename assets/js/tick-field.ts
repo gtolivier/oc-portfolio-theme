@@ -45,19 +45,20 @@ const FIELD_LIT_TICK_GROWTH_PX = 6;
 
 const FIELD_TRAIL_FADE_MS = 1000;
 
-/* A lit tick's light is this much stronger than its lighting, up to fully opaque. */
-const FIELD_LIT_ALPHA_GAIN = 1.8;
+/* How fast a lit tick's light rises with its lighting: its slope at no lighting, easing into fully opaque. */
+const FIELD_LIT_CURVE_EXPONENT = 2;
 
 const FIELD_RIPPLE_SPEED_PX_PER_MS = 0.28;
 
 const FIELD_RIPPLE_DURATION_MS = 1600;
 
-const FIELD_RIPPLE_RING_HALF_WIDTH_PX = 60;
-
 /* The ring fades faster behind its middle than ahead of it. */
 const FIELD_RIPPLE_INNER_FALLOFF_PX = 20;
 
 const FIELD_RIPPLE_OUTER_FALLOFF_PX = 34;
+
+/* Beyond this many falloffs from its middle, on either side, a ring lights nothing. */
+const FIELD_RIPPLE_CUTOFF_FALLOFFS = 3;
 
 /* In CSS pixels, from the element's top-left corner. */
 type Point = { x: number; y: number };
@@ -104,6 +105,11 @@ type FieldDrawing = {
 /* How far along its line of the grid a column or row sits: 0 for the first, 1 for the last. */
 function gridShare(index: number, count: number): number {
   return count > 1 ? index / (count - 1) : 0;
+}
+
+/* How strongly a tick shows its lighting: rises fast from none, then eases into full. */
+function litStrength(lighting: number): number {
+  return 1 - (1 - lighting) ** FIELD_LIT_CURVE_EXPONENT;
 }
 
 /* From 0 as the reveal front reaches a tick, widthShare of the way across, to 1 once it has faded in. */
@@ -267,8 +273,8 @@ class TickField extends HTMLElement {
     const { age } = ripple;
     const distance = this.distanceFromTick(x, y, tickHeight, ripple);
     const offset = distance - age * FIELD_RIPPLE_SPEED_PX_PER_MS;
-    if (Math.abs(offset) > FIELD_RIPPLE_RING_HALF_WIDTH_PX) return 0;
     const spread = offset < 0 ? FIELD_RIPPLE_INNER_FALLOFF_PX : FIELD_RIPPLE_OUTER_FALLOFF_PX;
+    if (Math.abs(offset) > FIELD_RIPPLE_CUTOFF_FALLOFFS * spread) return 0;
     const falloff = Math.exp(-((offset / spread) ** 2));
     return Math.max(0, 1 - age / FIELD_RIPPLE_DURATION_MS) * falloff;
   }
@@ -405,13 +411,13 @@ class TickField extends HTMLElement {
   }
 
   private growthAtEachEnd(lighting: number): number {
-    return Math.round((FIELD_LIT_TICK_GROWTH_PX / 2) * lighting);
+    return Math.round((FIELD_LIT_TICK_GROWTH_PX / 2) * litStrength(lighting));
   }
 
   private drawLitTick(drawing: FieldDrawing, x: number, y: number, tickHeight: number, lighting: number): void {
     if (lighting <= 0) return;
     const { context } = drawing;
-    context.globalAlpha = Math.min(1, lighting * FIELD_LIT_ALPHA_GAIN);
+    context.globalAlpha = litStrength(lighting);
     context.fillStyle = drawing.litColor;
     const growthAtEachEnd = this.growthAtEachEnd(lighting);
     context.fillRect(x, y - growthAtEachEnd, FIELD_TICK_WIDTH_PX, tickHeight + 2 * growthAtEachEnd);
