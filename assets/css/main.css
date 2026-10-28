@@ -495,9 +495,26 @@ scramble-text {
 
 /* Until the theme script has defined it, the text stays hidden rather than
    flash in clear before being scrambled. head.html shows it again when
-   scripts are disabled. */
+   scripts are disabled, and head/js.html does the same (script-failed class)
+   once the page is parsed, if any scramble-text is still undefined: the
+   script failed to load, threw before defining it, or defined it but the
+   element failed while starting up (its constructor threw). Checking only
+   that the element was defined would miss that last case. */
 scramble-text:not(:defined) {
   visibility: hidden;
+  /* A script that never arrives nor fails would keep the text hidden for good:
+     reveal it after a long wait. */
+  animation: reveal-undefined-text 0s 10s forwards;
+}
+
+@keyframes reveal-undefined-text {
+  to {
+    visibility: visible;
+  }
+}
+
+.script-failed scramble-text:not(:defined) {
+  visibility: visible;
 }
 
 /* Once in clear, the text is plain text again and wraps with the text around it. */

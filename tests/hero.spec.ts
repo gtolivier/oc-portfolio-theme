@@ -19,6 +19,7 @@ import {
   tryToBuildSite,
 } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
+import { blockRequests, holdRequests, themeScriptUrl } from './helpers/held-requests';
 import { tabUntilFocused } from './helpers/keyboard';
 import { clickOrTap } from './helpers/pointer';
 import {
@@ -186,6 +187,17 @@ function secondHeroButton(page: Page): Locator {
 
 function mainContentHeading(page: Page): Locator {
   return page.getByRole('main').getByRole('heading', { level: 1 });
+}
+
+/* Expects the main content heading of the French home page to show the author name and the
+   professional title within `timeout`. Each check's message is the text, followed by
+   "visible <condition>" when a condition is given. */
+async function expectHeroNameAndTitle(page: Page, { timeout, condition }: { timeout: number; condition?: string }): Promise<void> {
+  const mainHeading = mainContentHeading(page);
+  for (const text of ['Jean Exemple', 'Horloger indépendant']) {
+    const message = condition === undefined ? text : `${text} visible ${condition}`;
+    await expect(mainHeading.getByText(text, { exact: true }), message).toBeVisible({ timeout });
+  }
 }
 
 /* The two desktop windows the hero's layout is checked at: a wide one, 1280 × 900, and one
@@ -1038,6 +1050,129 @@ test.describe('home page without JavaScript', () => {
   });
 });
 
+test('with JavaScript on but the theme’s script blocked, the hero heading of the French home page still shows the author name and the professional title after a short wait, instead of staying hidden', async ({ page }) => {
+  /* JavaScript is on, but the theme's bundle fails to load, as when a network or an extension
+     blocks it: the <noscript> fallback does not apply, and the script that
+     would reveal the heading never runs. */
+  const blockedScripts = await blockRequests(page, themeScriptUrl());
+  await page.goto('/fr/');
+  expect(blockedScripts, 'theme script request blocked').not.toEqual([]);
+  /* A generous wait, not an exact delay: the visitor sees the heading after a short while. */
+  await expectHeroNameAndTitle(page, { timeout: 5000 });
+});
+
+test('while the theme’s script is slow to load, the hero heading of the French home page keeps the author name and the professional title hidden, instead of showing them in clear before the script arrives', async ({ page }) => {
+  /* The theme's bundle is held back, as on a very slow connection: it does arrive, but late.
+     Until it runs, the heading must not flash in clear before being scrambled. */
+  const script = await holdRequests(page, themeScriptUrl());
+  try {
+    await page.goto('/fr/', { waitUntil: 'commit' });
+    await script.requested;
+    const mainHeading = mainContentHeading(page);
+    const texts = ['Jean Exemple', 'Horloger indépendant'];
+    for (const text of texts) {
+      await expect(mainHeading.getByText(text, { exact: true }), text).toHaveCount(1);
+    }
+    /* Long enough for a timer meant to reveal the heading to have fired, not an exact delay:
+       the script is still on its way. */
+    await page.waitForTimeout(3000);
+    for (const text of texts) {
+      expect(await mainHeading.getByText(text, { exact: true }).isVisible(), `${text} visible while the script is held`).toBe(false);
+    }
+  } finally {
+    await script.end();
+  }
+});
+
+test('when the request for the theme’s script never completes, the hero heading of the French home page still shows the author name and the professional title after a long wait, well past the slow-load case, instead of staying hidden', async ({ page }) => {
+  /* The theme's bundle is requested but never arrives, nor fails, as on a connection that
+     stalls: the page is never fully parsed, since a deferred script holds DOMContentLoaded,
+     so the page's check for a failed script never runs. The request stays held for the whole
+     test. */
+  const script = await holdRequests(page, themeScriptUrl());
+  try {
+    await page.goto('/fr/', { waitUntil: 'commit' });
+    await script.requested;
+    /* A generous wait, longer than the one during which a slow script keeps the heading hidden,
+       not an exact delay: the visitor sees the heading eventually. */
+    await expectHeroNameAndTitle(page, { timeout: 15000, condition: 'while the script is held' });
+  } finally {
+    await script.end();
+  }
+});
+
+/* Makes the theme's script, on the pages `page` opens next, throw while running, before any
+   element is defined, as in a browser lacking an API it relies on. */
+async function failThemeScriptBeforeDefiningElements(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    customElements.define = () => {
+      throw new Error('theme script failed before defining its elements');
+    };
+  });
+}
+
+test('when the theme’s script loads but fails before defining its elements, the hero heading of the French home page still shows the author name and the professional title after a short wait, instead of staying hidden', async ({ page }) => {
+  /* The theme's bundle loads and passes its integrity check, but throws while running.
+     Replacing the bundle's body instead would fail the integrity check, a load failure like
+     the blocked-script case above. */
+  await failThemeScriptBeforeDefiningElements(page);
+  const scriptErrors: string[] = [];
+  page.on('pageerror', (error) => scriptErrors.push(error.message));
+  await page.goto('/fr/');
+  expect(scriptErrors, 'theme script raised an error').not.toEqual([]);
+  /* A short wait, well under the long fallback for a script that never arrives, not an exact
+     delay: the visitor sees the heading soon after the script fails. */
+  await expectHeroNameAndTitle(page, { timeout: 5000 });
+});
+
+test('when the theme’s script loads but fails while a font of the page is still loading, the hero heading of the French home page shows the author name and the professional title after a short wait, without waiting for that font', async ({ page }) => {
+  /* The theme's bundle loads, then throws before defining any element, as in the test above,
+     while the page's font files are held back, as on a slow connection: the page itself has not
+     finished loading. The visitor must not wait for a font to read the heading. */
+  await failThemeScriptBeforeDefiningElements(page);
+  /* Listening before the page opens, so as not to miss the error. */
+  const scriptError = page.waitForEvent('pageerror');
+  const fonts = await holdRequests(page, fontFilesUrl());
+  try {
+    await page.goto('/fr/', { waitUntil: 'commit' });
+    await fonts.requested;
+    await scriptError;
+    /* A short wait, not an exact delay: the fonts stay held all along, so the heading must
+       appear without the page having finished loading. */
+    await expectHeroNameAndTitle(page, { timeout: 5000, condition: 'while the fonts are held' });
+  } finally {
+    await fonts.end();
+  }
+});
+
+test('when the theme’s script defines its scrambled-text element but that element fails while starting up, the hero heading of the French home page still shows the author name and the professional title after a short wait, without waiting for the long fallback', async ({ page }) => {
+  /* The theme's bundle loads and registers the element, but every element of the page fails
+     while starting up, as when its setup throws in some browser: the element is registered,
+     yet the heading's text never gets upgraded nor decoded. */
+  await page.addInitScript(() => {
+    const define = customElements.define.bind(customElements);
+    customElements.define = (name, constructor, options) => {
+      if (name !== 'scramble-text') {
+        define(name, constructor, options);
+        return;
+      }
+      define(name, class extends constructor {
+        constructor() {
+          super();
+          throw new Error('scrambled-text element failed while starting up');
+        }
+      }, options);
+    };
+  });
+  const scriptErrors: string[] = [];
+  page.on('pageerror', (error) => scriptErrors.push(error.message));
+  await page.goto('/fr/');
+  expect(scriptErrors, 'scrambled-text element raised an error').not.toEqual([]);
+  /* A short wait, well under the long fallback for a script that never arrives, not an exact
+     delay: the visitor sees the heading soon after the element fails. */
+  await expectHeroNameAndTitle(page, { timeout: 5000 });
+});
+
 test.describe('home page without a hero', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
@@ -1080,16 +1215,9 @@ test.describe('home page without a hero', () => {
   });
 });
 
-/* Blocks the font files of the site served at `origin`: a page route takes precedence over the
-   context route that serves the site, so the browser renders the fallback fonts of the stacks.
-   Returns the list, filled as the page asks for them, of the blocked font URLs. */
-async function blockFontFiles(page: Page, origin: string): Promise<string[]> {
-  const blockedFonts: string[] = [];
-  await page.route(`${origin}/**/*.{woff,woff2,ttf,otf}`, async (route) => {
-    blockedFonts.push(route.request().url());
-    await route.abort();
-  });
-  return blockedFonts;
+/* The URL of any font file, on any origin or on the given one. */
+function fontFilesUrl(origin = '**'): string {
+  return `${origin}/**/*.{woff,woff2,ttf,otf}`;
 }
 
 /* Sizes the window to `viewport`, then opens the French home page of the test site served at
@@ -1126,7 +1254,8 @@ test.describe('home page of a single-language site', () => {
 
     test('on a single-language site, without JavaScript and with the web font files blocked, in a window tall enough for its content, the hero ends exactly at the bottom of the window: its height is the window height minus the header height, within 1 px, on a phone as on desktop', async ({ page, context }) => {
       await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
-      const blockedFonts = await blockFontFiles(page, SITE_WITH_A_SINGLE_LANGUAGE.origin);
+      /* The browser then renders the fallback fonts of the stacks. */
+      const blockedFonts = await blockRequests(page, fontFilesUrl(SITE_WITH_A_SINGLE_LANGUAGE.origin));
       for (const viewport of TALL_VIEWPORTS) {
         const size = `${viewport.width} × ${viewport.height}`;
         await openHomeWithoutScriptAt(page, viewport, SITE_WITH_A_SINGLE_LANGUAGE.origin);
