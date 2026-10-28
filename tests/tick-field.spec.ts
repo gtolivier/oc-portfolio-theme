@@ -1,7 +1,7 @@
 import { type BrowserContext, type Locator, type Page, test, expect } from '@playwright/test';
 import { CATALOG_SITE, buildSite, removeDirectory, serveSite } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
-import { clickOrTap } from './helpers/pointer';
+import { clickOrTap, middleOfFirstLine } from './helpers/pointer';
 import {
   type Channels,
   type Rectangle,
@@ -10,6 +10,7 @@ import {
   canvasOpacityOverBackgroundAt,
   countDrawnStrokes,
   countPixelsNotOfBackground,
+  drawnStrokeStarts,
   drawnStrokesInRectangle,
   horizontalBandsWithoutDrawnPixels,
   luminanceAboveBackgroundInRectangle,
@@ -102,15 +103,10 @@ test.describe('catalog: tick-field', () => {
     const link = tickField.getByRole('link', { name: 'lien' });
     await expect(link).toBeVisible();
     await link.scrollIntoViewIfNeeded();
-    const linkIsUnderThePointer = await link.evaluate((element) => {
-      const firstLineBox = element.getClientRects()[0];
-      if (!firstLineBox) return false;
-      const hit = document.elementFromPoint(
-        firstLineBox.left + firstLineBox.width / 2,
-        firstLineBox.top + firstLineBox.height / 2,
-      );
+    const linkIsUnderThePointer = await link.evaluate((element, { x, y }) => {
+      const hit = document.elementFromPoint(x, y);
       return hit !== null && element.contains(hit);
-    });
+    }, await middleOfFirstLine(link));
     expect(linkIsUnderThePointer, 'at the middle of the link, the element under the pointer is the link').toBe(true);
   });
 
@@ -740,7 +736,7 @@ test.describe('catalog: tick-field', () => {
        distance from the left edge of a stroke to that of the next, which a stroke split by a
        faint pixel does not shift. */
     const { columns, scale } = await pixelsNotOfBackgroundPerColumn(tickField, partway);
-    const strokeStarts = columns.flatMap((count, column) => (count > 0 && !(columns[column - 1] > 0) ? [column] : []));
+    const strokeStarts = drawnStrokeStarts(columns, 0, columns.length);
     const strokeGaps = strokeStarts.slice(1).map((start, index) => start - strokeStarts[index]).sort((a, b) => a - b);
     const tickSpacing = strokeGaps[Math.floor(strokeGaps.length / 2)] / scale;
 

@@ -117,19 +117,26 @@ export function horizontalBandsWithoutDrawnPixels(rows: number[], scale: number,
   return bands;
 }
 
-/* Number of separate vertical strokes drawn between two columns of a screenshot (from
-   `fromColumn` included to `toColumn` excluded), given the drawn pixels of each column, as
-   pixelsNotOfBackgroundPerColumn counts them: a stroke is a run of adjacent columns that each
-   show at least one drawn pixel, and strokes are separated by at least one column that shows
-   none. A stroke cut by `fromColumn` counts as one. */
-export function countDrawnStrokes(columns: number[], fromColumn: number, toColumn: number): number {
-  let strokes = 0;
+/* Where the separate vertical strokes drawn between two columns of a screenshot (from
+   `fromColumn` included to `toColumn` excluded) start, given the drawn pixels of each column,
+   as pixelsNotOfBackgroundPerColumn counts them: the first column of each stroke, from left to
+   right. A stroke is a run of adjacent columns that each show at least one drawn pixel, and
+   strokes are separated by at least one column that shows none. A stroke cut by `fromColumn`
+   starts there. */
+export function drawnStrokeStarts(columns: number[], fromColumn: number, toColumn: number): number[] {
+  const starts: number[] = [];
   for (let column = Math.max(0, fromColumn); column < Math.min(columns.length, toColumn); column++) {
     const drawn = columns[column] > 0;
     const previousDrawn = column > fromColumn && columns[column - 1] > 0;
-    if (drawn && !previousDrawn) strokes += 1;
+    if (drawn && !previousDrawn) starts.push(column);
   }
-  return strokes;
+  return starts;
+}
+
+/* Number of separate vertical strokes drawn between two columns of a screenshot, as
+   drawnStrokeStarts finds them. A stroke cut by `fromColumn` counts as one. */
+export function countDrawnStrokes(columns: number[], fromColumn: number, toColumn: number): number {
+  return drawnStrokeStarts(columns, fromColumn, toColumn).length;
 }
 
 /* How much brighter than the element's background the screenshot of an element is: for each

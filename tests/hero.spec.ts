@@ -20,8 +20,9 @@ import {
 } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { blockRequests, fontFilesUrl, holdRequests, themeScriptUrl } from './helpers/held-requests';
+import { heroRegion } from './helpers/hero';
 import { tabUntilFocused } from './helpers/keyboard';
-import { clickOrTap } from './helpers/pointer';
+import { clickOrTap, middleOfFirstLine } from './helpers/pointer';
 import {
   type Rectangle,
   bandsWithoutDrawnPixels,
@@ -174,18 +175,6 @@ async function displayedExtent(element: Locator): Promise<{ left: number; right:
   });
 }
 
-/* The middle of the first line box of an element's text, in px from the top left corner of the
-   window: rather than the middle of the element's box, which may span the whole width, a point
-   that stays on its letters even if the text wraps. */
-async function middleOfFirstLine(element: Locator): Promise<{ x: number; y: number }> {
-  return element.evaluate((el) => {
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    const box = range.getClientRects()[0];
-    return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
-  });
-}
-
 /* The hero comes before the home page text: its action buttons are, in order, the first
    links of the main content. They are looked up there, and not in the whole page, because
    the header has its own links, including a "Contact" one. */
@@ -195,12 +184,6 @@ function firstHeroButton(page: Page): Locator {
 
 function secondHeroButton(page: Page): Locator {
   return page.getByRole('main').getByRole('link').nth(1);
-}
-
-/* The hero of the French home page: the main content region named by its main heading (a
-   section labeled by the h1). */
-function heroRegion(page: Page): Locator {
-  return page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
 }
 
 function mainContentHeading(page: Page): Locator {
@@ -1243,35 +1226,30 @@ test('when the request for the theme’s script never completes, the hero headin
    the element is defined but each of its instances throws while starting up. */
 type ElementFailure = 'on definition' | 'on start-up';
 
-/* The key of `failCustomElements`'s failures that stands for every element it names no failure
-   for. */
-const EVERY_ELEMENT = '*';
-
 /* Makes the custom elements the theme's script defines, on the pages `page` opens next, fail
-   as `failures` says for each one, by name or under EVERY_ELEMENT; an element given no failure
-   is defined as usual. */
-async function failCustomElements(page: Page, failures: Record<string, ElementFailure>): Promise<void> {
+   as `failure` says: every one of them, or with `only`, the element of that name alone; any
+   other element is defined as usual. */
+async function failCustomElements(page: Page, failure: ElementFailure, only?: string): Promise<void> {
   await page.addInitScript(
-    ([failures, everyElement]) => {
+    ([failure, only]) => {
       const define = customElements.define.bind(customElements);
       customElements.define = (name, constructor, options) => {
-        const failure = failures[name] ?? failures[everyElement];
+        if (only !== null && name !== only) {
+          define(name, constructor, options);
+          return;
+        }
         if (failure === 'on definition') {
           throw new Error(`theme script failed before defining ${name}`);
         }
-        if (failure === 'on start-up') {
-          define(name, class extends constructor {
-            constructor() {
-              super();
-              throw new Error(`${name} element failed while starting up`);
-            }
-          }, options);
-          return;
-        }
-        define(name, constructor, options);
+        define(name, class extends constructor {
+          constructor() {
+            super();
+            throw new Error(`${name} element failed while starting up`);
+          }
+        }, options);
       };
     },
-    [failures, EVERY_ELEMENT] as const,
+    [failure, only ?? null] as const,
   );
 }
 
@@ -1279,7 +1257,7 @@ test('when the theme’s script loads but fails before defining its elements, th
   /* The theme's bundle loads and passes its integrity check, but throws while running.
      Replacing the bundle's body instead would fail the integrity check, a load failure like
      the blocked-script case above. It throws before any element is defined. */
-  await failCustomElements(page, { [EVERY_ELEMENT]: 'on definition' });
+  await failCustomElements(page, 'on definition');
   const scriptErrors: string[] = [];
   page.on('pageerror', (error) => scriptErrors.push(error.message));
   await page.goto('/fr/');
@@ -1293,7 +1271,7 @@ test('when the theme’s script loads but fails while a font of the page is stil
   /* The theme's bundle loads, then throws before defining any element, as in the test above,
      while the page's font files are held back, as on a slow connection: the page itself has not
      finished loading. The visitor must not wait for a font to read the heading. */
-  await failCustomElements(page, { [EVERY_ELEMENT]: 'on definition' });
+  await failCustomElements(page, 'on definition');
   /* Listening before the page opens, so as not to miss the error. */
   const scriptError = page.waitForEvent('pageerror');
   const fonts = await holdRequests(page, fontFilesUrl());
@@ -1313,7 +1291,7 @@ test('when the theme’s script defines its scrambled-text element but that elem
   /* The theme's bundle loads and registers the element, but every element of the page fails
      while starting up, as when its setup throws in some browser: the element is registered,
      yet the heading's text never gets upgraded nor decoded. */
-  await failCustomElements(page, { 'scramble-text': 'on start-up' });
+  await failCustomElements(page, 'on start-up', 'scramble-text');
   const scriptErrors: string[] = [];
   page.on('pageerror', (error) => scriptErrors.push(error.message));
   await page.goto('/fr/');
