@@ -107,9 +107,10 @@ function gridShare(index: number, count: number): number {
   return count > 1 ? index / (count - 1) : 0;
 }
 
-/* How strongly a tick shows its lighting: rises fast from none, then eases into full. */
-function litStrength(lighting: number): number {
-  return 1 - (1 - lighting) ** FIELD_LIT_CURVE_EXPONENT;
+/* How strongly a tick shows its lighting: rises fast from none, then eases into full. The reveal's
+   fade scales it after that curve, as it scales the tick's resting alpha. */
+function litStrength(lighting: number, fadeIn: number): number {
+  return fadeIn * (1 - (1 - lighting) ** FIELD_LIT_CURVE_EXPONENT);
 }
 
 /* From 0 as the reveal front reaches a tick, widthShare of the way across, to 1 once it has faded in. */
@@ -391,12 +392,11 @@ class TickField extends HTMLElement {
     }
   }
 
-  /* The pointer or a ring lights a tick only as far as the reveal has faded it in: the fade
-     scales the light's strength, after its curve, as it scales the tick's resting alpha. */
+  /* The pointer or a ring lights a tick only as far as the reveal has faded it in. */
   private drawLighting(drawing: FieldDrawing, x: number, y: number, tickHeight: number, fadeIn: number): void {
     const tickColor = drawing.context.fillStyle;
-    const hover = fadeIn * litStrength(this.hoverLighting(drawing.litTrail, x, y, tickHeight));
-    const ripple = fadeIn * litStrength(this.rippleLighting(drawing.agedRipples, x, y, tickHeight));
+    const hover = litStrength(this.hoverLighting(drawing.litTrail, x, y, tickHeight), fadeIn);
+    const ripple = litStrength(this.rippleLighting(drawing.agedRipples, x, y, tickHeight), fadeIn);
     this.drawGrownEnds(drawing, x, y, tickHeight, Math.max(hover, ripple));
     this.drawLitTick(drawing, x, y, tickHeight, hover);
     this.drawLitTick(drawing, x, y, tickHeight, ripple);
