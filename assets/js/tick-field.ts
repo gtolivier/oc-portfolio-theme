@@ -184,7 +184,10 @@ class TickField extends HTMLElement {
       this.pressedInside = this.isInside(event);
     });
     this.addEventListener('click', (event) => {
-      if (!this.pressedInside || reducedMotionQuery().matches) return;
+      /* A press starts at most one ripple: a click made by the keyboard has no press of its own. */
+      const pressedInside = this.pressedInside;
+      this.pressedInside = false;
+      if (!pressedInside || reducedMotionQuery().matches) return;
       this.ripples.push({ ...this.localPoint(event), start: performance.now() });
       this.requestDraw();
     });
