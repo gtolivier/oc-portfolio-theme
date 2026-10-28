@@ -501,7 +501,7 @@ scramble-text:not(:defined) {
   visibility: hidden;
   /* A script that never arrives nor fails would keep the text hidden for good:
      reveal it after a long wait. */
-  animation: reveal-undefined-text 0s 6s forwards;
+  animation: reveal-undefined-text 0s 10s forwards;
 }
 
 @keyframes reveal-undefined-text {
