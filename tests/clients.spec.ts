@@ -1,5 +1,11 @@
 import { test, expect, type Page } from '@playwright/test';
-import { SITE_WITH_OTHER_CLIENTS, buildSite, removeDirectory, serveSite } from './helpers/built-site';
+import {
+  SITE_WITHOUT_HERO,
+  SITE_WITH_OTHER_CLIENTS,
+  buildSite,
+  removeDirectory,
+  serveSite,
+} from './helpers/built-site';
 
 /* The clients the example site's home pages declare, in their order (proper names, the same in every language). */
 const CLIENTS = [
@@ -53,5 +59,30 @@ test.describe('home page of another site, with other clients', () => {
       'Atelier Bonnefoy',
       'Librairie Castagne',
     ]);
+  });
+});
+
+test.describe('home page of another site, without clients', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITHOUT_HERO);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('a home page whose front matter declares no clients shows no client band: no list "Ils me font confiance", no such label, no empty list', async ({ page, context }) => {
+    await serveSite(context, SITE_WITHOUT_HERO, siteDirectory);
+    await page.goto(`${SITE_WITHOUT_HERO.origin}/fr/`);
+    /* tests/fixtures/without-hero/content/_index.md declares no clients: its text is displayed… */
+    const main = page.getByRole('main');
+    await expect(main.getByText('Accueil fictif sans hero')).toBeVisible();
+    /* …with no band of clients, named or not, even empty, and none of the example site's clients. */
+    await expect(page.getByRole('list', { name: 'Ils me font confiance' })).toHaveCount(0);
+    await expect(page.getByText('Ils me font confiance')).toHaveCount(0);
+    await expect(main.getByRole('list')).toHaveCount(0);
+    for (const client of CLIENTS) {
+      await expect(page.getByText(client)).toHaveCount(0);
+    }
   });
 });
