@@ -1100,16 +1100,21 @@ test('when the request for the theme’s script never completes, the hero headin
   }
 });
 
-test('when the theme’s script loads but fails before defining its elements, the hero heading of the French home page still shows the author name and the professional title after a longer wait, instead of staying hidden', async ({ page }) => {
-  /* The theme's bundle loads and passes its integrity check, so its error handler never fires,
-     but it throws while running, before any element is defined, as in a browser lacking an API
-     it relies on. Replacing the bundle's body instead would fail the integrity check and fire
-     that handler, the blocked-script case above. */
+/* Makes the theme's script, on the pages `page` opens next, throw while running, before any
+   element is defined, as in a browser lacking an API it relies on. */
+async function failThemeScriptBeforeDefiningElements(page: Page): Promise<void> {
   await page.addInitScript(() => {
     customElements.define = () => {
       throw new Error('theme script failed before defining its elements');
     };
   });
+}
+
+test('when the theme’s script loads but fails before defining its elements, the hero heading of the French home page still shows the author name and the professional title after a longer wait, instead of staying hidden', async ({ page }) => {
+  /* The theme's bundle loads and passes its integrity check, so its error handler never fires,
+     but it throws while running. Replacing the bundle's body instead would fail the integrity
+     check and fire that handler, the blocked-script case above. */
+  await failThemeScriptBeforeDefiningElements(page);
   const scriptErrors: string[] = [];
   page.on('pageerror', (error) => scriptErrors.push(error.message));
   await page.goto('/fr/');
@@ -1126,11 +1131,7 @@ test('when the theme’s script loads but fails while a font of the page is stil
   /* The theme's bundle loads, then throws before defining any element, as in the test above,
      while the page's font files are held back, as on a slow connection: the page itself has not
      finished loading. The visitor must not wait for a font to read the heading. */
-  await page.addInitScript(() => {
-    customElements.define = () => {
-      throw new Error('theme script failed before defining its elements');
-    };
-  });
+  await failThemeScriptBeforeDefiningElements(page);
   let scriptFailed!: () => void;
   const scriptError = new Promise<void>((resolve) => {
     scriptFailed = resolve;
