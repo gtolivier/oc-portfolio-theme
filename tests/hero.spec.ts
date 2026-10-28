@@ -437,6 +437,44 @@ test('on phone as on desktop, the hero starts right below the header and ends at
   }
 });
 
+/* The box, in the window, of the client band of the open home page: the visible strip that holds
+   the list "Ils me font confiance", that is the list itself or its nearest ancestor that spans the
+   page width (the document's client width, within 1 px) without holding the hero's heading.
+   Null when no such strip exists. */
+async function clientBandBox(page: Page): Promise<{ left: number; right: number; top: number; bottom: number } | null> {
+  const list = page.getByRole('list', { name: 'Ils me font confiance' });
+  await expect(list).toBeVisible();
+  return list.evaluate((element) => {
+    const pageWidth = document.documentElement.clientWidth;
+    const heading = document.querySelector('main h1');
+    for (let candidate: Element | null = element; candidate && candidate !== document.body; candidate = candidate.parentElement) {
+      if (heading && candidate.contains(heading)) return null;
+      const { left, right, top, bottom } = candidate.getBoundingClientRect();
+      if (Math.abs(left) <= 1 && Math.abs(right - pageWidth) <= 1) return { left, right, top, bottom };
+    }
+    return null;
+  });
+}
+
+test('on phone as on desktop, in a window tall enough for its content, the hero and the client band fill the window below the header: the band, a strip spanning the page width from edge to edge, sits below the hero’s buttons and its bottom edge meets the bottom of the window', async ({ page }) => {
+  /* Design reference: the band is the bottom strip of the first screen, full bleed. Checked at a
+     tall phone window and at both desktop ones, where the hero's content does not set its height. */
+  for (const viewport of TALL_VIEWPORTS) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await openHomeAt(page, viewport);
+    const { buttons } = await heroHeadingAndButtons(page, size);
+    const pageWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    const band = await clientBandBox(page);
+    expect.soft(band, `at ${size}, a strip holding the list "Ils me font confiance" spans the page width (${pageWidth} px)`).not.toBeNull();
+    if (!band) continue;
+    const buttonsBottom = await bottomOfButtons(buttons);
+    expect.soft(band.top, `at ${size}, top of the band against the bottom of the hero's buttons (${buttonsBottom} px)`)
+      .toBeGreaterThanOrEqual(buttonsBottom);
+    expect.soft(Math.abs(band.bottom - viewport.height), `at ${size}, bottom of the band (${band.bottom} px) against the bottom of the window (${viewport.height} px)`)
+      .toBeLessThanOrEqual(1);
+  }
+});
+
 test('on phone as on desktop, the hero’s text block is centred vertically: the free space below that block is at least the one above it, and exceeds it by at most a tenth of the hero’s height', async ({ page }) => {
   /* Windows set whatever the project's own window, all tall enough to leave the hero at least
      150 px of free height around its text, so the centring shows: the two desktop ones and
