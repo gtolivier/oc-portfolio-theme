@@ -575,6 +575,12 @@ tick-field > canvas {
   color: var(--color-paper);
 }
 
+/* Each client name is followed by a decorative separator, which assistive
+   technologies do not get (empty alternative text). */
+.clients li::after {
+  content: "|||" / "";
+}
+
 /* The first bar of each initial. */
 .logo b {
   font-weight: 700;
