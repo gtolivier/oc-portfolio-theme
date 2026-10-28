@@ -19,7 +19,7 @@ import {
   tryToBuildSite,
 } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
-import { holdRequests, themeScriptUrl } from './helpers/held-requests';
+import { blockRequests, holdRequests, themeScriptUrl } from './helpers/held-requests';
 import { tabUntilFocused } from './helpers/keyboard';
 import { clickOrTap } from './helpers/pointer';
 import {
@@ -1054,11 +1054,7 @@ test('with JavaScript on but the theme’s script blocked, the hero heading of t
   /* JavaScript is on, but the theme's bundle fails to load, as when a network or an extension
      blocks it: the <noscript> fallback does not apply, and the script that
      would reveal the heading never runs. */
-  const blockedScripts: string[] = [];
-  await page.route(themeScriptUrl(), async (route) => {
-    blockedScripts.push(route.request().url());
-    await route.abort();
-  });
+  const blockedScripts = await blockRequests(page, themeScriptUrl());
   await page.goto('/fr/');
   expect(blockedScripts, 'theme script request blocked').not.toEqual([]);
   /* A generous wait, not an exact delay: the visitor sees the heading after a short while. */
@@ -1224,18 +1220,6 @@ function fontFilesUrl(origin = '**'): string {
   return `${origin}/**/*.{woff,woff2,ttf,otf}`;
 }
 
-/* Blocks the font files of the site served at `origin`: a page route takes precedence over the
-   context route that serves the site, so the browser renders the fallback fonts of the stacks.
-   Returns the list, filled as the page asks for them, of the blocked font URLs. */
-async function blockFontFiles(page: Page, origin: string): Promise<string[]> {
-  const blockedFonts: string[] = [];
-  await page.route(fontFilesUrl(origin), async (route) => {
-    blockedFonts.push(route.request().url());
-    await route.abort();
-  });
-  return blockedFonts;
-}
-
 /* Sizes the window to `viewport`, then opens the French home page of the test site served at
    `origin`, JavaScript off, and waits for its fonts. Not through `document.fonts.ready`: with
    JavaScript off, Firefox can leave it pending, whether the font files are served or blocked.
@@ -1270,7 +1254,8 @@ test.describe('home page of a single-language site', () => {
 
     test('on a single-language site, without JavaScript and with the web font files blocked, in a window tall enough for its content, the hero ends exactly at the bottom of the window: its height is the window height minus the header height, within 1 px, on a phone as on desktop', async ({ page, context }) => {
       await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
-      const blockedFonts = await blockFontFiles(page, SITE_WITH_A_SINGLE_LANGUAGE.origin);
+      /* The browser then renders the fallback fonts of the stacks. */
+      const blockedFonts = await blockRequests(page, fontFilesUrl(SITE_WITH_A_SINGLE_LANGUAGE.origin));
       for (const viewport of TALL_VIEWPORTS) {
         const size = `${viewport.width} × ${viewport.height}`;
         await openHomeWithoutScriptAt(page, viewport, SITE_WITH_A_SINGLE_LANGUAGE.origin);

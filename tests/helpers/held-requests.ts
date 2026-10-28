@@ -40,3 +40,15 @@ export async function holdRequests(page: Page, url: string): Promise<HeldRequest
     },
   };
 }
+
+/* Blocks every request of the page to `url`: each one fails at once, as if a network or an
+   extension refused it. A page route takes precedence over a context route, such as the one
+   serving a built site. Returns the list, filled as the page asks for them, of the blocked URLs. */
+export async function blockRequests(page: Page, url: string): Promise<string[]> {
+  const blockedUrls: string[] = [];
+  await page.route(url, async (route) => {
+    blockedUrls.push(route.request().url());
+    await route.abort();
+  });
+  return blockedUrls;
+}
