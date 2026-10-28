@@ -1056,6 +1056,40 @@ test('with JavaScript on but the theme’s script blocked, the hero heading of t
   }
 });
 
+test('while the theme’s script is slow to load, the hero heading of the French home page keeps the author name and the professional title hidden, instead of showing them in clear before the script arrives', async ({ page }) => {
+  /* The theme's bundle is held back, as on a very slow connection: it does arrive, but late.
+     Until it runs, the heading must not flash in clear before being scrambled. */
+  let releaseScript!: () => void;
+  const scriptReleased = new Promise<void>((resolve) => {
+    releaseScript = resolve;
+  });
+  let scriptRequested!: () => void;
+  const scriptHeld = new Promise<void>((resolve) => {
+    scriptRequested = resolve;
+  });
+  await page.route('**/js/main*.js', async (route) => {
+    scriptRequested();
+    await scriptReleased;
+    await route.fallback();
+  });
+  try {
+    await page.goto('/fr/', { waitUntil: 'commit' });
+    await scriptHeld;
+    const mainHeading = mainContentHeading(page);
+    const texts = ['Jean Exemple', 'Horloger indépendant'];
+    for (const text of texts) {
+      await expect(mainHeading.getByText(text, { exact: true }), text).toHaveCount(1);
+    }
+    /* Well past the old timed fallback, not an exact delay: the script is still on its way. */
+    await page.waitForTimeout(3000);
+    for (const text of texts) {
+      expect(await mainHeading.getByText(text, { exact: true }).isVisible(), `${text} visible while the script is held`).toBe(false);
+    }
+  } finally {
+    releaseScript();
+  }
+});
+
 test.describe('home page without a hero', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
