@@ -1138,7 +1138,7 @@ test('when the theme’s script loads but fails while a font of the page is stil
     scriptFailed = resolve;
   });
   page.on('pageerror', () => scriptFailed());
-  const fonts = await holdRequests(page, '**/fonts/*.woff2');
+  const fonts = await holdRequests(page, fontFilesUrl());
   try {
     await page.goto('/fr/', { waitUntil: 'commit' });
     await fonts.requested;
@@ -1196,12 +1196,17 @@ test.describe('home page without a hero', () => {
   });
 });
 
+/* The URL of any font file, on any origin or on the given one. */
+function fontFilesUrl(origin = '**'): string {
+  return `${origin}/**/*.{woff,woff2,ttf,otf}`;
+}
+
 /* Blocks the font files of the site served at `origin`: a page route takes precedence over the
    context route that serves the site, so the browser renders the fallback fonts of the stacks.
    Returns the list, filled as the page asks for them, of the blocked font URLs. */
 async function blockFontFiles(page: Page, origin: string): Promise<string[]> {
   const blockedFonts: string[] = [];
-  await page.route(`${origin}/**/*.{woff,woff2,ttf,otf}`, async (route) => {
+  await page.route(fontFilesUrl(origin), async (route) => {
     blockedFonts.push(route.request().url());
     await route.abort();
   });
