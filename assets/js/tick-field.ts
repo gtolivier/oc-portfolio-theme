@@ -45,16 +45,19 @@ const FIELD_LIT_TICK_GROWTH_PX = 6;
 
 const FIELD_TRAIL_FADE_MS = 1000;
 
+/* A lit tick's light is this much stronger than its lighting, up to fully opaque. */
+const FIELD_LIT_ALPHA_GAIN = 1.8;
+
 const FIELD_RIPPLE_SPEED_PX_PER_MS = 0.28;
 
 const FIELD_RIPPLE_DURATION_MS = 1600;
 
-const FIELD_RIPPLE_RING_HALF_WIDTH_PX = 45;
+const FIELD_RIPPLE_RING_HALF_WIDTH_PX = 60;
 
 /* The ring fades faster behind its middle than ahead of it. */
-const FIELD_RIPPLE_INNER_FALLOFF_PX = 14;
+const FIELD_RIPPLE_INNER_FALLOFF_PX = 20;
 
-const FIELD_RIPPLE_OUTER_FALLOFF_PX = 26;
+const FIELD_RIPPLE_OUTER_FALLOFF_PX = 34;
 
 /* In CSS pixels, from the element's top-left corner. */
 type Point = { x: number; y: number };
@@ -407,7 +410,7 @@ class TickField extends HTMLElement {
   private drawLitTick(drawing: FieldDrawing, x: number, y: number, tickHeight: number, lighting: number): void {
     if (lighting <= 0) return;
     const { context } = drawing;
-    context.globalAlpha = lighting;
+    context.globalAlpha = Math.min(1, lighting * FIELD_LIT_ALPHA_GAIN);
     context.fillStyle = drawing.litColor;
     const growthAtEachEnd = this.growthAtEachEnd(lighting);
     context.fillRect(x, y - growthAtEachEnd, FIELD_TICK_WIDTH_PX, tickHeight + 2 * growthAtEachEnd);
