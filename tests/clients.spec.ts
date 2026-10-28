@@ -6,6 +6,7 @@ import {
   removeDirectory,
   serveSite,
 } from './helpers/built-site';
+import { textOnScreen } from './helpers/text-on-screen';
 
 /* The clients the example site's home pages declare, in their order (proper names, the same in every language). */
 const CLIENTS = [
@@ -34,6 +35,18 @@ async function expectClientList(page: Page, name: string, clients: string[] = CL
 test('on the French home page, assistive technologies get the declared clients once each, in order, as the list "Ils me font confiance"', async ({ page }) => {
   await page.goto('/fr/');
   await expectClientList(page, 'Ils me font confiance');
+});
+
+test('on the French home page, each client name is followed on screen by a "|||" separator that assistive technologies do not get', async ({ page }) => {
+  await page.goto('/fr/');
+  /* On screen, in reading order, each name is directly followed by its "|||" (textOnScreen drops whitespace). */
+  const body = page.locator('body');
+  await expect
+    .poll(() => textOnScreen(body))
+    .toContain(CLIENTS.map((client) => `${client.replace(/ /g, '')}|||`).join(''));
+  /* The separator is decoration: the list still exposes the bare names, and no "|||" reaches assistive technologies. */
+  await expectClientList(page, 'Ils me font confiance');
+  expect(await body.ariaSnapshot()).not.toContain('|||');
 });
 
 test('on the English home page, assistive technologies get the same clients once each, in order, as the list "Trusted by"', async ({ page }) => {
