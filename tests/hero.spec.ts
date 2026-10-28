@@ -822,6 +822,86 @@ test('on phone as on desktop, after a click (a tap on mobile) on the hero’s pr
   }
 });
 
+/* A press at one point of the page, dragged to another and released there, as the device makes
+   it: with a mouse, the button goes down at the first point and up at the second, so no click
+   lands on an element that holds only one of them; on a touch screen, the finger slides from one
+   to the other, which the browser takes for a scroll, not a tap. Playwright's touch screen only
+   taps: the slide goes through the Chromium DevTools protocol, which the projects that run pixel
+   tests (Chromium only) all offer. */
+async function pressAndDrag(page: Page, hasTouch: boolean, from: { x: number; y: number }, to: { x: number; y: number }): Promise<void> {
+  const STEPS = 10;
+  const along = (step: number) => ({ x: from.x + ((to.x - from.x) * step) / STEPS, y: from.y + ((to.y - from.y) * step) / STEPS });
+  if (hasTouch) {
+    const session = await page.context().newCDPSession(page);
+    await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [from] });
+    for (let step = 1; step <= STEPS; step += 1) {
+      await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [along(step)] });
+    }
+    await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await session.detach();
+  } else {
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: STEPS });
+    await page.mouse.up();
+  }
+}
+
+test('on phone as on desktop, after a press on the hero’s professional title dragged out of the hero and released on the header, without a click on the hero, activating the "Contact" button with the keyboard starts no ripple: once the pointer’s trail has faded, no pixel of the hero changes, 300 ms nor 900 ms after the Enter key, from just before it', { tag: '@pixels' }, async ({ page, hasTouch, browserName }) => {
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  const hero = heroRegion(page);
+  await expect(hero).toBeVisible();
+  const title = hero.getByRole('heading', { level: 1 }).getByText('Horloger indépendant', { exact: true });
+  await expect(title).toBeVisible();
+  const header = page.getByRole('banner');
+  await expect(header).toBeVisible();
+  /* The "Contact" button leads to #contact, an anchor of the page itself: activating it leaves
+     the visitor on the home page, with the hero where it was. */
+  const contact = secondHeroButton(page);
+  await expect(contact).toHaveText('Contact');
+  await expect(contact).toHaveAttribute('href', '#contact');
+  /* Long after the field's reveal (about 1.1 s) and the heading's decoding (in clear 4 s after
+     load): from then on, nothing but the field's reactions changes what the hero shows. */
+  await page.clock.runFor(5000);
+
+  /* A press inside the field, on the middle of the first line box of the professional title's
+     text, dragged up out of the hero and released on the middle of the sticky header, which stays
+     at the top of the window: no click reaches the hero. 2 s later, the trail of the pointer has
+     faded. */
+  const onScreen = await middleOfFirstLine(title);
+  const headerBox = (await header.boundingBox())!;
+  const onHeader = { x: headerBox.x + headerBox.width / 2, y: headerBox.y + headerBox.height / 2 };
+  await pressAndDrag(page, hasTouch, onScreen, onHeader);
+  await page.clock.runFor(2000);
+
+  /* Then the keyboard: Tab until the "Contact" button has the focus, and its focus style shows,
+     before the screenshot taken just before the Enter key. */
+  await tabUntilFocused(contact, browserName);
+  await expect(contact).toBeFocused();
+  await page.clock.runFor(100);
+  const before = await hero.screenshot();
+
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/fr\/#contact$/);
+
+  /* A ripple spreads for about 1.6 s: 300 ms and 900 ms after the Enter key, the pixels of the
+     whole hero that differ from just before it by more than a rounding error. */
+  const heroBox = (await hero.boundingBox())!;
+  const wholeHero = { x: 0, y: 0, width: heroBox.width, height: heroBox.height };
+  let elapsed = 0;
+  for (const delay of [300, 900]) {
+    await page.clock.runFor(delay - elapsed);
+    elapsed = delay;
+    const after = await hero.screenshot();
+    const { columns } = await pixelsChangedPerColumnInRectangle(hero, before, after, wholeHero);
+    expect(
+      columns.reduce((sum, count) => sum + count, 0),
+      `pixels of the ${Math.round(heroBox.width)} × ${Math.round(heroBox.height)}px hero changed ${delay} ms after the Enter key on the focused "Contact" button, following a press on the professional title released on the header`,
+    ).toBe(0);
+  }
+});
+
 /* The hero of the French home page, still: the visitor asks for reduced motion, so the field is
    drawn once, complete, and stays still; time stands still from before the page loads, then
    runs a few animation frames, which draw the field. With its text (heading, tagline, stack
