@@ -701,6 +701,51 @@ test.describe('catalog: tick-field', () => {
     ).toEqual([]);
   });
 
+  test('ticks the reveal has not reached yet do not light up under a click (a tap on mobile): 400 ms after load, a click ahead of the front, where the field still shows only its background, lights the ticks there, 96 ms later, once the front has just passed them, less than half as much as the same click does once the field is revealed', { tag: '@pixels' }, async ({ page, context, hasTouch }) => {
+    const tickField = await openEmptyTickField(page, context);
+    await tickField.scrollIntoViewIfNeeded();
+    const fieldBox = await tickField.boundingBox();
+    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
+    const width = fieldBox!.width;
+    const height = fieldBox!.height;
+
+    /* The front crosses the width in about 1.1 s, after a short delay: 400 ms after load it is
+       about 32% of the way across, 496 ms after load about 40%. The zone, 4% of the width wide
+       (at least one column of ticks, 16px apart) and 40px high at mid-height, lies ahead of the
+       front at the click, and just behind it 96 ms later: its ticks have only begun to fade in.
+       The click point is at its middle. */
+    const zone = { x: 0.33 * width, y: height / 2 - 20, width: 0.04 * width, height: 40 };
+    const point = { x: zone.x + zone.width / 2, y: height / 2 };
+    const onScreen = { x: fieldBox!.x + point.x, y: fieldBox!.y + point.y };
+    const describeZone = `the zone ${Math.round(zone.x)}–${Math.round(zone.x + zone.width)}px of the ${Math.round(width)}px-wide tick-field, around the click point (${Math.round(point.x)}, ${Math.round(point.y)})px`;
+    const brightness = async (): Promise<number> =>
+      luminanceAboveBackgroundInRectangle(tickField, await tickField.screenshot(), zone);
+
+    await page.clock.runFor(400);
+    const { rows } = await pixelsNotOfBackgroundPerRow(tickField, await tickField.screenshot(), zone);
+    expect(
+      rows.reduce((sum, count) => sum + count, 0),
+      `pixels of ${describeZone} that differ from its background 400 ms after load, before the click: the front has not reached it yet`,
+    ).toBe(0);
+
+    await clickOrTap(page, hasTouch, onScreen);
+    await page.clock.runFor(96);
+    const duringReveal = await brightness();
+
+    /* Once revealed, and the first ripple faded: the same click at the same point, measured as
+       long after it. With a fine pointer, the pointer has stayed over the click point since the
+       first click, so that both measures show the same hover. */
+    await page.clock.runFor(2000);
+    await clickOrTap(page, hasTouch, onScreen);
+    await page.clock.runFor(96);
+    const onceRevealed = await brightness();
+
+    expect(
+      duringReveal,
+      `brightness above the background of ${describeZone}, 96 ms after a click there during the reveal, against ${Math.round(onceRevealed)} 96 ms after the same click once revealed`,
+    ).toBeLessThan(0.5 * onceRevealed);
+  });
+
   test('under prefers-reduced-motion: reduce, a tick-field stays still: 2 s after load, after a hover (with a fine pointer) and 300 ms after a click (a tap on mobile) at its centre, every vertical band of it, from the left edge to the right edge, shows the brightness it showed right after load', { tag: '@pixels' }, async ({ page, context, hasTouch }) => {
     /* The visitor asks for reduced motion, and time stands still from before the page
        loads, until the test advances it. */
