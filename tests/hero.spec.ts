@@ -174,6 +174,18 @@ async function displayedExtent(element: Locator): Promise<{ left: number; right:
   });
 }
 
+/* The middle of the first line box of an element's text, in px from the top left corner of the
+   window: rather than the middle of the element's box, which may span the whole width, a point
+   that stays on its letters even if the text wraps. */
+async function middleOfFirstLine(element: Locator): Promise<{ x: number; y: number }> {
+  return element.evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const box = range.getClientRects()[0];
+    return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  });
+}
+
 /* The hero comes before the home page text: its action buttons are, in order, the first
    links of the main content. They are looked up there, and not in the whole page, because
    the header has its own links, including a "Contact" one. */
@@ -183,6 +195,12 @@ function firstHeroButton(page: Page): Locator {
 
 function secondHeroButton(page: Page): Locator {
   return page.getByRole('main').getByRole('link').nth(1);
+}
+
+/* The hero of the French home page: the main content region named by its main heading (a
+   section labeled by the h1). */
+function heroRegion(page: Page): Locator {
+  return page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
 }
 
 function mainContentHeading(page: Page): Locator {
@@ -226,10 +244,10 @@ async function bottomOfButtons(buttons: Locator[]): Promise<number> {
   );
 }
 
-/* The open home page's hero, the main content region named by its main heading, with that
-   heading and its two buttons, all three checked visible in the window of the given `size`. */
+/* The open home page's hero, with its main heading and its two buttons, all three checked
+   visible in the window of the given `size`. */
 async function heroHeadingAndButtons(page: Page, size: string): Promise<{ hero: Locator; heading: Locator; buttons: Locator[] }> {
-  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  const hero = heroRegion(page);
   const heading = hero.getByRole('heading', { level: 1 });
   const buttons = [hero.getByRole('link', { name: 'Voir les projets' }), hero.getByRole('link', { name: 'Contact' })];
   await expect(heading, `heading at ${size}`).toBeVisible();
@@ -409,9 +427,8 @@ test('on phone as on desktop, the second hero button, "Contact", reached by keyb
 
 test('on phone as on desktop, the hero starts right below the header and ends at the bottom of the window', async ({ page }) => {
   await page.goto('/fr/');
-  /* The hero is the main content region named by its main heading (a section labeled by the
-     h1): it groups the heading, the tagline, the stack and the buttons. */
-  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  /* The hero groups the heading, the tagline, the stack and the buttons. */
+  const hero = heroRegion(page);
   await expect(hero.getByRole('heading', { level: 1 })).toBeVisible();
   await expect(hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.')).toBeVisible();
   await expect(hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true })).toBeVisible();
@@ -574,8 +591,7 @@ test('on phone as on desktop, each hero button offers a target of at least 24 ×
 test('on phone as on desktop, the hero is a tick field drawn across its whole width, even where its ticks are faintest: 2 s after load, every vertical band of the empty strip below its buttons, from the left edge, whose bottom-left ticks are almost invisible, to the right edge, shows pixels that changed at all since right after load', { tag: '@pixels' }, async ({ page }) => {
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
-  /* The hero is the main content region named by its main heading. */
-  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  const hero = heroRegion(page);
   await expect(hero).toBeVisible();
   const elements = {
     'heading': hero.getByRole('heading', { level: 1 }),
@@ -615,8 +631,7 @@ test('on phone as on desktop, the hero is a tick field drawn across its whole wi
 
 test('on phone as on desktop, the hero’s tick field lies behind its text: at the middle of the heading, the tagline, the stack and each button, the element under the pointer is that element, so a click lands on the button', async ({ page }) => {
   await page.goto('/fr/');
-  /* The hero is the main content region named by its main heading. */
-  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  const hero = heroRegion(page);
   await expect(hero).toBeVisible();
   /* The field's canvas is in place, so the check below does not pass before it exists. */
   await expect(hero.locator('canvas')).toHaveCount(1);
@@ -649,8 +664,7 @@ test('on phone as on desktop, the hero’s tick field lies behind its text: at t
 test('on phone as on desktop, a click (a tap on mobile) on the hero’s professional title starts a ripple around that point: once revealed, 300 ms after the click, zones all around the click point, about 84px from it, got brighter since just before the click, while the zone at the click point did not', { tag: '@pixels' }, async ({ page, hasTouch }) => {
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
-  /* The hero is the main content region named by its main heading. */
-  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  const hero = heroRegion(page);
   await expect(hero).toBeVisible();
   /* The professional title, below the author name, high in the hero: there, towards the top
      edge of the veil, the veil lets most of the field show, ripple included. */
@@ -661,16 +675,10 @@ test('on phone as on desktop, a click (a tap on mobile) on the hero’s professi
      load): from then on, nothing but the ripple changes what the hero shows. */
   await page.clock.runFor(5000);
 
-  /* The click point: the middle of the first line box of the title's text (rather than of its
-     element's box, which may span the hero's width, so that the point stays on its letters even
-     if it wraps), relative to the hero. */
+  /* The click point: the middle of the first line box of the title's text, relative to the
+     hero. */
   const heroBox = (await hero.boundingBox())!;
-  const onScreen = await title.evaluate((el) => {
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    const box = range.getClientRects()[0];
-    return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
-  });
+  const onScreen = await middleOfFirstLine(title);
   const point = { x: onScreen.x - heroBox.x, y: onScreen.y - heroBox.y };
   const isOnTheTitle = await title.evaluate((el, { x, y }) => {
     const hit = document.elementFromPoint(x, y);
@@ -767,8 +775,7 @@ test('on phone as on desktop, a click (a tap on mobile) on the hero’s professi
 test('on phone as on desktop, after a click (a tap on mobile) on the hero’s professional title, activating the "Contact" button with the keyboard starts no ripple: once that click’s ripple has faded, no pixel of the hero changes, 300 ms nor 900 ms after the Enter key, from just before it', { tag: '@pixels' }, async ({ page, hasTouch, browserName }) => {
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
-  /* The hero is the main content region named by its main heading. */
-  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  const hero = heroRegion(page);
   await expect(hero).toBeVisible();
   const title = hero.getByRole('heading', { level: 1 }).getByText('Horloger indépendant', { exact: true });
   await expect(title).toBeVisible();
@@ -784,12 +791,7 @@ test('on phone as on desktop, after a click (a tap on mobile) on the hero’s pr
   /* A press inside the field: a click (a tap) on the middle of the first line box of the
      professional title's text, which starts a ripple of its own. 2 s later, that ripple (about
      1.6 s long) and the trail of the pointer have faded. */
-  const onScreen = await title.evaluate((el) => {
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    const box = range.getClientRects()[0];
-    return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
-  });
+  const onScreen = await middleOfFirstLine(title);
   await clickOrTap(page, hasTouch, onScreen);
   await page.clock.runFor(2000);
 
@@ -828,8 +830,7 @@ async function stillHero(page: Page): Promise<{ hero: Locator; text: Record<stri
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
-  /* The hero is the main content region named by its main heading. */
-  const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+  const hero = heroRegion(page);
   await expect(hero).toBeVisible();
   const text = {
     'heading': hero.getByRole('heading', { level: 1 }),
@@ -1074,7 +1075,7 @@ test.describe('home page without JavaScript', () => {
 
   test('without JavaScript, the hero of the French home page is complete and readable: the heading shows the author name and the professional title in clear, with the tagline, the stack and both buttons, nothing left transparent', async ({ page }) => {
     await page.goto('/fr/');
-    const hero = page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
+    const hero = heroRegion(page);
     const mainHeading = hero.getByRole('heading', { level: 1 });
     /* In clear: the heading displays the name and the title themselves, not scrambled signs,
        whether in its text or in generated content. */

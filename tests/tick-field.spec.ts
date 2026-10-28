@@ -716,11 +716,11 @@ test.describe('catalog: tick-field', () => {
       const { columns, scale } = await pixelsNotOfBackgroundPerColumn(tickField, screenshot);
       return (columns.findLastIndex((count) => count > 0) + 1) / scale;
     };
+    const ANIMATION_FRAME_MS = 16;
+    const REVEALED_AFTER_MS = 2000;
     /* Lets time pass one animation frame at a time until the drawing reaches past `x`, or the
        reveal, which sweeps the width in about 1.1 s, would be over. Returns the screenshot that
        shows it and the time that passed. */
-    const ANIMATION_FRAME_MS = 16;
-    const REVEALED_AFTER_MS = 2000;
     const runUntilDrawnPast = async (x: number): Promise<{ screenshot: Buffer; elapsedMs: number }> => {
       let elapsedMs = 0;
       let screenshot = await tickField.screenshot();
@@ -1178,7 +1178,8 @@ test.describe('catalog: tick-field', () => {
       const { data } = await session.send('Page.captureScreenshot', { format: 'png', clip });
       return Buffer.from(data, 'base64');
     };
-    await moveToScreen(viewport!.width);    const afterMove = await screenshotOnNewScreen();
+    await moveToScreen(viewport!.width);
+    const afterMove = await screenshotOnNewScreen();
 
     /* The reference: the same field drawn anew at the new density, once the window has been
        narrowed by one CSS pixel and widened back, at the same size as before. */
