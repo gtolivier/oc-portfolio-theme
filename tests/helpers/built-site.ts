@@ -155,6 +155,13 @@ export const SITE_WITH_ENGLISH_BY_DEFAULT = testSite('english-by-default');
    tests/fixtures/long-menu/hugo.toml). */
 export const SITE_WITH_A_LONG_MENU = testSite('long-menu');
 
+/* The example site's French home page declares five clients: this site
+   replaces that home page with the one of
+   tests/fixtures/other-clients/content, without a hero, which declares
+   three other fictional clients, in an order that is not alphabetical:
+   "Reliure Marchetti", "Atelier Bonnefoy", "Librairie Castagne". */
+export const SITE_WITH_OTHER_CLIENTS = testSite('other-clients');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
