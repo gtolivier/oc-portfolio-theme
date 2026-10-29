@@ -1508,4 +1508,27 @@ test.describe('client content errors: build failure', () => {
       expect(build.errors).toMatch(/\bparamètre\s+clients\b/);
     }
   });
+
+  test('a home page whose clients parameter is a text, or whose clients list holds a table, makes the site build fail with the French message alone, without a template execution error after it', () => {
+    /* tests/fixtures/text-instead-of-list declares clients = 'Maison Delorme', and
+       tests/fixtures/map-instead-of-name a list whose second entry is { name = 'Maison Delorme' }.
+       The person building the site must read the French message that names the clients
+       parameter, and nothing else: no Go template execution error, about a range over a text or
+       a function called with a table, that would follow it and bury it in technical jargon.
+       Two fixtures, so that stopping after only one of the two checks does not pass. */
+    const cases = [
+      { name: 'clients as a text', site: SITE_WITH_CLIENTS_AS_TEXT },
+      { name: 'a table among the clients', site: SITE_WITH_A_CLIENT_AS_MAP },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(build.errors, `with ${name}, the French message should be shown`).toMatch(
+        /\bparamètre\s+clients\b/,
+      );
+      expect(build.errors, `with ${name}, no template execution error should follow the French message`).not.toMatch(
+        /execute of template failed|error calling/i,
+      );
+    }
+  });
 });
