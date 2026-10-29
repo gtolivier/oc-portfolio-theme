@@ -27,6 +27,8 @@ if (clientsBand && clientsWindow && clientsList && clientsTrack) {
     if (isScrolling) setLoopDuration(listWidth / CLIENTS_PACE_PX_PER_SECOND);
     clientsBand.classList.toggle('is-scrolling', isScrolling);
   };
+  /* Until this script runs, the names wrap (see main.css): if it never loads, they stay readable. */
+  clientsBand.classList.add('is-measured');
   const resizeObserver = new ResizeObserver(update);
   resizeObserver.observe(clientsWindow);
   /* The width of the names depends on the font: the list can change width

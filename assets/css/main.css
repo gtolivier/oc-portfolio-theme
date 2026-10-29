@@ -700,26 +700,42 @@ tick-field > canvas {
   }
 }
 
-/* Under reduced motion, and without JavaScript, where clients-fit.ts cannot
-   tell whether the names fit, the still names wrap on as many lines as
-   needed. */
-@media (prefers-reduced-motion: reduce), (scripting: none) {
-  .clients-track {
-    width: auto;
+/* Until clients-fit.ts has run (without JavaScript, or when the script does
+   not load) it cannot tell whether the names fit, and under reduced motion
+   they never loop: the still names wrap on as many lines as needed. */
+.clients-track {
+  width: auto;
+}
+
+.clients ul {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  min-width: 0;
+  row-gap: 4px;
+}
+
+/* A name wider than the band wraps onto several lines instead of being cut. */
+.clients li {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: normal;
+}
+
+/* Once the script runs, and unless the visitor asks for reduced motion, the
+   names stay on one line, and loop when they do not all fit. */
+@media (prefers-reduced-motion: no-preference) {
+  .clients.is-measured .clients-track {
+    width: max-content;
   }
 
-  .clients ul {
-    flex: 0 1 auto;
-    flex-wrap: wrap;
-    min-width: 0;
-    row-gap: 4px;
+  .clients.is-measured ul {
+    flex: none;
+    flex-wrap: nowrap;
   }
 
-  /* A name wider than the band wraps onto several lines instead of being cut. */
-  .clients li {
-    flex: 0 1 auto;
-    min-width: 0;
-    white-space: normal;
+  .clients.is-measured li {
+    flex: none;
+    white-space: nowrap;
   }
 }
 
