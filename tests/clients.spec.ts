@@ -402,6 +402,30 @@ test('on a touch screen, after a tap on the scrolling client band, the names kee
   expectNamesMovedLeft(CLIENTS, namesAfterTap, await namesLeft(list, CLIENTS), 'after a tap on the band');
 });
 
+test('on a phone and on a desktop, when the client names grow wider while they scroll (their font gets larger, as when a web font swaps in), they do not jump: the first name stays where it was, modulo one loop', async ({ page }) => {
+  for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
+    await page.setViewportSize({ width, height });
+    const list = await openClientList(page);
+    /* Frozen well into the loop, so that a jump would show: the moment is set by the test. */
+    await freezeAnimations(page);
+    await (await bandLoop(list)).setAt(0.4);
+    const listWidthBefore = (await list.boundingBox())!.width;
+    const [firstNameBefore] = await namesLeft(list, [CLIENTS[0]]);
+
+    /* The names' font gets larger, as when a wider web font swaps in; the page then renders it. */
+    await page.addStyleTag({ content: '.clients li { font-size: 26px !important; }' });
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const loopWidth = (await list.boundingBox())!.width;
+    expect(loopWidth, `at ${width} px, the list grows wider with its font (from ${listWidthBefore} px)`).toBeGreaterThan(listWidthBefore * 1.2);
+    const [firstNameAfter] = await namesLeft(list, [CLIENTS[0]]);
+
+    /* The band loops by one list: a shift by a whole number of lists shows the same picture. */
+    const shift = (((firstNameAfter - firstNameBefore) % loopWidth) + loopWidth) % loopWidth;
+    expect.soft(Math.min(shift, loopWidth - shift), `at ${width} px, shift of "${CLIENTS[0]}" (from ${firstNameBefore} px to ${firstNameAfter} px), modulo one loop (${loopWidth} px)`)
+      .toBeLessThanOrEqual(3);
+  }
+});
+
 test('under prefers-reduced-motion: reduce, on a phone, down to 320 px wide, and on a desktop, every client name is shown at once, each exactly once, whole, on as many lines as needed', async ({ page }) => {
   /* The visitor asks for reduced motion. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
