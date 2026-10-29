@@ -295,6 +295,32 @@ test('on a phone, the label "Ils me font confiance" sits above the client names,
   }
 });
 
+test('on a 320 px wide phone, with the band’s label in a much larger font (a visitor who enlarged the text), the label "Ils me font confiance" is shown whole, on several lines if needed, instead of being cut', async ({ page }) => {
+  const { width, height } = { width: 320, height: 568 };
+  await page.setViewportSize({ width, height });
+  await openClientList(page);
+  /* The visitor enlarged the text: the label shows at twice its usual size, too wide for one line
+     of the band. */
+  const band = page.locator('.clients');
+  const usualSize = await band.evaluate((element) => parseFloat(getComputedStyle(element, '::before').fontSize));
+  await page.addStyleTag({ content: `.clients::before { font-size: ${usualSize * 2}px; }` });
+  const labelBox = await labelExtent(page, 'Ils me font confiance');
+  expect(labelBox, 'the label "Ils me font confiance" is shown on screen').not.toBeNull();
+  const bandBox = await clientBandBox(page);
+  expect(bandBox, 'the client band spans the page width').not.toBeNull();
+  const windowWidth = await page.evaluate(() => document.documentElement.clientWidth);
+  /* The label's box stays inside the band and the window. */
+  expect.soft(labelBox!.left, `at ${width} × ${height}, left of the label against the left of the band (${bandBox!.left} px)`)
+    .toBeGreaterThanOrEqual(Math.max(bandBox!.left, 0) - 1);
+  expect.soft(labelBox!.right, `at ${width} × ${height}, right of the label against the right of the band (${bandBox!.right} px) and of the window (${windowWidth} px)`)
+    .toBeLessThanOrEqual(Math.min(bandBox!.right, windowWidth) + 1);
+  /* Its text does not run past the band's edge either, where the band would hide it: the band
+     holds nothing wider than itself. */
+  const { scrollWidth, clientWidth } = await band.evaluate((element) => ({ scrollWidth: element.scrollWidth, clientWidth: element.clientWidth }));
+  expect.soft(scrollWidth, `at ${width} × ${height}, width of what the band holds against its own width (${clientWidth} px)`)
+    .toBeLessThanOrEqual(clientWidth + 1);
+});
+
 test('from 768 px wide, the label "Ils me font confiance" sits to the left of the client names, on their line', async ({ page }) => {
   for (const width of [768, 1280]) {
     await page.setViewportSize({ width, height: 900 });
