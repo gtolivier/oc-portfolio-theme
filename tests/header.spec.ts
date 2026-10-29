@@ -8,7 +8,8 @@ import {
   removeDirectory,
 } from './helpers/built-site';
 import { characterWeights } from './helpers/character-weights';
-import { clientBandBox, heroRegion } from './helpers/hero';
+import { clientBandBox } from './helpers/clients';
+import { heroRegion } from './helpers/hero';
 
 /* The logo is the header link named after the site title. */
 function headerLogo(page: Page): Locator {

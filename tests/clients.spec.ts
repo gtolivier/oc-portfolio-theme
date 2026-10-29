@@ -8,8 +8,9 @@ import {
   removeDirectory,
   serveSite,
 } from './helpers/built-site';
+import { clientBandBox, clientList } from './helpers/clients';
 import { blockRequests, themeScriptUrl } from './helpers/held-requests';
-import { clientBandBox, clientList, heroRegion } from './helpers/hero';
+import { heroRegion } from './helpers/hero';
 import { textOnScreen } from './helpers/text-on-screen';
 
 /* The clients the example site's home pages declare, in their order (proper names, the same in every language). */
@@ -20,6 +21,12 @@ const CLIENTS = [
   'Galerie Aubertin',
   'Maison Delorme',
 ];
+
+/* A common phone window and a desktop one. */
+const PHONE_AND_DESKTOP_VIEWPORTS = [{ width: 390, height: 844 }, { width: 1280, height: 900 }];
+
+/* A narrow phone window, 320 px wide, then a common phone window and a desktop one. */
+const NARROW_PHONE_TO_DESKTOP_VIEWPORTS = [{ width: 320, height: 568 }, ...PHONE_AND_DESKTOP_VIEWPORTS];
 
 /* Checks that the page exposes the declared clients once each, in order, as the list named `name`. */
 async function expectClientList(page: Page, name: string, clients: string[] = CLIENTS) {
@@ -128,7 +135,12 @@ function clientNamesOnScreen(page: Page, clients: string[]): Promise<ClientNameO
   }, clients);
 }
 
-/* Checks, on the client names the visitor sees (`shown`, from clientNamesOnScreen), that each of
+/* The pieces of text found by clientNamesOnScreen that the visitor sees, wholly or partly. */
+async function clientNamesShown(page: Page, clients: string[]): Promise<ClientNameOnScreen[]> {
+  return (await clientNamesOnScreen(page, clients)).filter((occurrence) => occurrence.shown);
+}
+
+/* Checks, on the client names the visitor sees (`shown`, from clientNamesShown), that each of
    `clients` shows exactly once and whole. `where` opens each message. */
 function expectEachNameShownOnceAndWhole(shown: ClientNameOnScreen[], clients: string[], where: string): void {
   for (const client of clients) {
@@ -142,7 +154,7 @@ function expectEachNameShownOnceAndWhole(shown: ClientNameOnScreen[], clients: s
   }
 }
 
-/* Checks that no two of the client names the visitor sees (`shown`, from clientNamesOnScreen)
+/* Checks that no two of the client names the visitor sees (`shown`, from clientNamesShown)
    overlap: they wrap onto as many lines as needed rather than pile up. `where` opens each message. */
 function expectNoTwoNamesOverlap(shown: ClientNameOnScreen[], where: string): void {
   for (const [index, first] of shown.entries()) {
@@ -192,6 +204,11 @@ async function advanceAnimationsOneSecond(page: Page): Promise<void> {
       animation.currentTime = Number(animation.currentTime ?? 0) + 1000;
     }),
   );
+}
+
+/* Lets one second pass on the page, as the visitor lives it: the page's own time runs, untouched. */
+async function letOneSecondPass(page: Page): Promise<void> {
+  await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
 }
 
 test('on the French home page, assistive technologies get the declared clients once each, in order, as the list "Ils me font confiance"', async ({ page }) => {
@@ -310,7 +327,7 @@ test('from 768 px wide, the label "Ils me font confiance" sits to the left of th
 });
 
 test('on a phone and on a desktop, the client names move continuously to the left: one second later, they sit further left, while the label "Ils me font confiance" stays put', async ({ page }) => {
-  for (const { width, height } of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+  for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
     await page.setViewportSize({ width, height });
     const list = await openClientList(page);
     await freezeAnimations(page);
@@ -330,12 +347,11 @@ test('on a phone and on a desktop, the client names move continuously to the lef
 test('under prefers-reduced-motion: reduce, on a phone and on a desktop, the client names stay still: one second later, they sit where they were', async ({ page }) => {
   /* The visitor asks for reduced motion. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  for (const { width, height } of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+  for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
     await page.setViewportSize({ width, height });
     const list = await openClientList(page);
     const namesBefore = await namesLeft(list, CLIENTS);
-    /* One second later, as the visitor lives it: the page's own time runs, untouched. */
-    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
+    await letOneSecondPass(page);
     const namesAfter = await namesLeft(list, CLIENTS);
     expectNamesStill(CLIENTS, namesBefore, namesAfter, `at ${width} px`);
   }
@@ -351,29 +367,27 @@ test('on a desktop, while the pointer rests on the scrolling client band, the na
   await list.evaluate((element) => element.scrollIntoView({ block: 'center' }));
   const band = await clientBandBox(page);
   expect(band, 'the client band spans the page width').not.toBeNull();
-  /* One second later, as the visitor lives it: the page's own time runs, untouched. */
-  const oneSecondLater = () => page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
 
   /* The pointer rests in the middle of the band. */
   await page.mouse.move((band!.left + band!.right) / 2, (band!.top + band!.bottom) / 2);
   const namesWhileHovered = await namesLeft(list, CLIENTS);
-  await oneSecondLater();
+  await letOneSecondPass(page);
   expectNamesStill(CLIENTS, namesWhileHovered, await namesLeft(list, CLIENTS), 'with the pointer resting on the band');
 
   /* The pointer leaves the band, for a point above it. */
   await page.mouse.move((band!.left + band!.right) / 2, band!.top / 2);
   const namesOnceLeft = await namesLeft(list, CLIENTS);
-  await oneSecondLater();
+  await letOneSecondPass(page);
   expectNamesMovedLeft(CLIENTS, namesOnceLeft, await namesLeft(list, CLIENTS), 'once the pointer has left the band');
 });
 
 test('under prefers-reduced-motion: reduce, on a phone, down to 320 px wide, and on a desktop, every client name is shown at once, each exactly once, whole, on as many lines as needed', async ({ page }) => {
   /* The visitor asks for reduced motion. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  for (const { width, height } of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+  for (const { width, height } of NARROW_PHONE_TO_DESKTOP_VIEWPORTS) {
     await page.setViewportSize({ width, height });
     await openClientList(page);
-    const shown = (await clientNamesOnScreen(page, CLIENTS)).filter((occurrence) => occurrence.shown);
+    const shown = await clientNamesShown(page, CLIENTS);
     expectEachNameShownOnceAndWhole(shown, CLIENTS, `at ${width} px`);
     expectNoTwoNamesOverlap(shown, `at ${width} px`);
   }
@@ -385,7 +399,7 @@ test.describe('home page without JavaScript', () => {
   test.use({ javaScriptEnabled: false });
 
   test('without JavaScript, on a phone, down to 320 px wide, and on a desktop, the client names stay still, and every one is shown at once, exactly once, whole, on as many lines as needed', async ({ page }) => {
-    for (const { width, height } of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+    for (const { width, height } of NARROW_PHONE_TO_DESKTOP_VIEWPORTS) {
       const where = `without JavaScript, at ${width} px`;
       await page.setViewportSize({ width, height });
       const list = await openClientList(page);
@@ -398,7 +412,7 @@ test.describe('home page without JavaScript', () => {
       const namesAfter = await namesLeft(list, CLIENTS);
       expectNamesStill(CLIENTS, namesBefore, namesAfter, where);
 
-      const shown = (await clientNamesOnScreen(page, CLIENTS)).filter((occurrence) => occurrence.shown);
+      const shown = await clientNamesShown(page, CLIENTS);
       expectEachNameShownOnceAndWhole(shown, CLIENTS, where);
       expectNoTwoNamesOverlap(shown, where);
     }
@@ -410,7 +424,7 @@ test('when JavaScript is on but the theme’s script does not load, on a phone, 
      scripts still run. Without the script that tells whether the list fits, the names must stay
      readable, as without JavaScript. */
   const blockedScripts = await blockRequests(page, themeScriptUrl());
-  for (const { width, height } of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+  for (const { width, height } of NARROW_PHONE_TO_DESKTOP_VIEWPORTS) {
     const where = `without the theme’s script, at ${width} px`;
     await page.setViewportSize({ width, height });
     const list = await openClientList(page);
@@ -423,7 +437,7 @@ test('when JavaScript is on but the theme’s script does not load, on a phone, 
     const namesAfter = await namesLeft(list, CLIENTS);
     expectNamesStill(CLIENTS, namesBefore, namesAfter, where);
 
-    const shown = (await clientNamesOnScreen(page, CLIENTS)).filter((occurrence) => occurrence.shown);
+    const shown = await clientNamesShown(page, CLIENTS);
     expectEachNameShownOnceAndWhole(shown, CLIENTS, where);
     expectNoTwoNamesOverlap(shown, where);
   }
@@ -432,7 +446,7 @@ test('when JavaScript is on but the theme’s script does not load, on a phone, 
 test('under prefers-reduced-motion: reduce, on a phone and on a desktop, the client band starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window', async ({ page }) => {
   /* The visitor asks for reduced motion. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  for (const { width, height } of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+  for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
     const size = `${width} × ${height}`;
     await page.setViewportSize({ width, height });
     await page.goto('/fr/');
@@ -495,7 +509,7 @@ test('under prefers-reduced-motion: reduce, on a phone held in landscape (844 ×
 });
 
 test('on a phone, down to 320 px wide, and on a desktop, the client band never makes the page scroll horizontally, at any moment of its loop', async ({ page }) => {
-  for (const { width, height } of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+  for (const { width, height } of NARROW_PHONE_TO_DESKTOP_VIEWPORTS) {
     await page.setViewportSize({ width, height });
     const list = await openClientList(page);
     /* The page's animations are frozen, then set to chosen moments of their loop, as a fraction of its length. */
@@ -515,7 +529,7 @@ test('on a phone, down to 320 px wide, and on a desktop, the client band never m
 
 test('on a phone and on a desktop, where the clients do not fit in the band, the band scrolls without ever showing the same name twice at once: at any moment of its loop, each client name shows on screen at most once, even partly', async ({ page }) => {
   /* The example site's five clients are wider than the band on a phone and on a 1280 px desktop. */
-  for (const { width, height } of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+  for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
     const where = `at ${width} px`;
     await page.setViewportSize({ width, height });
     const list = await openClientList(page);
@@ -528,7 +542,7 @@ test('on a phone and on a desktop, where the clients do not fit in the band, the
     for (const fraction of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.999]) {
       const at = `${where}, at ${fraction * 100} % of the loop`;
       await loop.setAt(fraction);
-      const shown = (await clientNamesOnScreen(page, CLIENTS)).filter((occurrence) => occurrence.shown);
+      const shown = await clientNamesShown(page, CLIENTS);
       for (const client of CLIENTS) {
         const copies = shown.filter((occurrence) => occurrence.name === client);
         /* At most once: no second copy of the name peeks in, even partly, while one shows. */
@@ -570,10 +584,10 @@ test('on the French home page, the client band follows a resize of the window wi
   /* Still: one second later, as the visitor lives it (the page's own time runs, untouched),
      every name sits where it was. */
   const namesBefore = await namesLeft(list, CLIENTS);
-  await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
+  await letOneSecondPass(page);
   const namesAfter = await namesLeft(list, CLIENTS);
   expectNamesStill(CLIENTS, namesBefore, namesAfter, where);
-  const shown = (await clientNamesOnScreen(page, CLIENTS)).filter((occurrence) => occurrence.shown);
+  const shown = await clientNamesShown(page, CLIENTS);
   for (const client of CLIENTS) {
     const copies = shown.filter((occurrence) => occurrence.name === client);
     /* Shown once: no copy of the name peeks in, even partly. */
@@ -631,7 +645,7 @@ test.describe('home page of another site, with other clients', () => {
        1024 px wide, they fit in it)… */
     await expectBandWithoutGap(page, `${SITE_WITH_OTHER_CLIENTS.origin}/fr/`, [{ width: 390, height: 844 }, { width: 768, height: 1024 }]);
     /* …and the example site's five, wider than the band on a phone and on a 1280 px desktop. */
-    await expectBandWithoutGap(page, '/fr/', [{ width: 390, height: 844 }, { width: 1280, height: 900 }]);
+    await expectBandWithoutGap(page, '/fr/', PHONE_AND_DESKTOP_VIEWPORTS);
   });
 });
 
@@ -661,7 +675,7 @@ test.describe('home page of another site, with a single short client', () => {
       /* Still: one second later, as the visitor lives it (the page's own time runs, untouched),
          every name sits where it was. */
       const namesBefore = await namesLeft(list, clients);
-      await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
+      await letOneSecondPass(page);
       const namesAfter = await namesLeft(list, clients);
       expectNamesStill(clients, namesBefore, namesAfter, where);
 
@@ -703,7 +717,7 @@ test.describe('home page of another site, with few clients with long names', () 
         ],
       },
     ];
-    for (const { width, height } of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+    for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
       await page.setViewportSize({ width, height });
       /* The pace of each site's names, in pixels per second: how far left they move in one second. */
       const paces: number[] = [];
@@ -742,7 +756,7 @@ test.describe('home page of another site, with few clients with long names', () 
     ];
     await openClientList(page, `${SITE_WITH_LONG_CLIENT_NAMES.origin}/fr/`);
     /* Shown whole: nothing of a name is cut by the band or runs past the window's right edge. */
-    const shown = (await clientNamesOnScreen(page, clients)).filter((occurrence) => occurrence.shown);
+    const shown = await clientNamesShown(page, clients);
     expectEachNameShownOnceAndWhole(shown, clients, `at ${width} × ${height}`);
   });
 

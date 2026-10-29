@@ -20,9 +20,10 @@ import {
   serveSite,
   tryToBuildSite,
 } from './helpers/built-site';
+import { clientBandBox, clientList } from './helpers/clients';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { blockRequests, fontFilesUrl, holdRequests, themeScriptUrl } from './helpers/held-requests';
-import { clientBandBox, clientList, heroRegion } from './helpers/hero';
+import { heroRegion } from './helpers/hero';
 import { tabUntilFocused } from './helpers/keyboard';
 import { clickOrTap, middleOfFirstLine } from './helpers/pointer';
 import {
