@@ -8,15 +8,11 @@ const clientsList = clientsTrack?.querySelector<HTMLElement>(':scope > ul');
 /* The names scroll at this pace, whatever the clients: the loop lasts as long as it takes to
    slide by one list, half of the track. */
 const CLIENTS_PACE_PX_PER_SECOND = 39;
-const MILLISECONDS_PER_SECOND = 1000;
 if (clientsBand && clientsWindow && clientsList && clientsTrack) {
-  /* A running loop keeps its elapsed time when its duration changes (when a font swaps in), so
-     the names would jump: it resumes from the same point of the loop instead. */
+  /* A running loop keeps its elapsed time when its duration changes (when a font swaps in). The
+     pace being the same, the names then stay where they were, modulo one loop: they do not jump. */
   const setLoopDuration = (seconds: number) => {
-    const [loop] = clientsTrack.getAnimations();
-    const progress = loop?.effect?.getComputedTiming().progress;
     clientsTrack.style.animationDuration = `${seconds}s`;
-    if (loop && progress != null) loop.currentTime = progress * seconds * MILLISECONDS_PER_SECOND;
   };
   /* The list width the running loop's duration was set for; undefined while the names are still.
      Resizing the window fires the observer every frame: the loop is left alone (no style write,
