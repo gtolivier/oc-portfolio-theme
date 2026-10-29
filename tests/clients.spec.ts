@@ -15,6 +15,7 @@ import {
 import { clientBandBox, clientList } from './helpers/clients';
 import { blockRequests, holdRequests, themeScriptUrl, themeStylesheetUrl } from './helpers/held-requests';
 import { heroRegion } from './helpers/hero';
+import { tabKey } from './helpers/keyboard';
 import { textOnScreen } from './helpers/text-on-screen';
 
 /* The clients the example site's home pages declare, in their order (proper names, the same in every language). */
@@ -938,6 +939,46 @@ test.describe('home page of another site, with a single short client', () => {
          the last one (textOnScreen drops whitespace). */
       expect.soft(await textOnScreen(list), `${where}, text the client list shows on screen`)
         .toBe(clients.map((client) => client.replace(/ /g, '')).join('|||'));
+    }
+  });
+
+  test('when the client names stay still — because they all fit (a single short client on a phone and on a desktop, the example site’s five on a 1920 px screen) or under prefers-reduced-motion: reduce (the example site on a phone) — the band shows no button "Mettre en pause le défilement": none on screen, none for assistive technologies, none reached from the keyboard', async ({ page, context, browserName }) => {
+    await serveSite(context, SITE_WITH_A_SINGLE_SHORT_CLIENT, siteDirectory);
+    const cases = [
+      /* tests/fixtures/single-short-client/content/_index.md declares a single client, "Oko". */
+      { homePage: `${SITE_WITH_A_SINGLE_SHORT_CLIENT.origin}/fr/`, clients: ['Oko'], width: 390, height: 844, reducedMotion: 'no-preference' as const },
+      { homePage: `${SITE_WITH_A_SINGLE_SHORT_CLIENT.origin}/fr/`, clients: ['Oko'], width: 1280, height: 900, reducedMotion: 'no-preference' as const },
+      /* The example site's five clients fit in the band of a 1920 px wide screen. */
+      { homePage: '/fr/', clients: CLIENTS, width: 1920, height: 1080, reducedMotion: 'no-preference' as const },
+      /* They do not fit on a phone, but the visitor asks for reduced motion. */
+      { homePage: '/fr/', clients: CLIENTS, width: 390, height: 844, reducedMotion: 'reduce' as const },
+    ];
+    for (const { homePage, clients, width, height, reducedMotion } of cases) {
+      const where = `on ${homePage} at ${width} px${reducedMotion === 'reduce' ? ', under reduced motion' : ''}`;
+      await page.emulateMedia({ reducedMotion });
+      await page.setViewportSize({ width, height });
+      const list = await openClientList(page, homePage);
+
+      /* The names stay still: one second later, as the visitor lives it, every name sits where it was. */
+      const namesBefore = await namesLeft(list, clients);
+      await letOneSecondPass(page);
+      expectNamesStill(clients, namesBefore, await namesLeft(list, clients), where);
+
+      /* Assistive technologies get no such button. */
+      await expect.soft(page.getByRole('button', { name: 'Mettre en pause le défilement' }), `${where}, buttons "Mettre en pause le défilement" exposed to assistive technologies`).toHaveCount(0);
+      /* Nothing on screen reads "Mettre en pause le défilement". */
+      await expect.soft(page.getByText('Mettre en pause le défilement'), `${where}, text "Mettre en pause le défilement" shown on screen`).toBeHidden();
+      /* A keyboard visitor tabbing through the whole page never lands on it: the focus goes from
+         one element to the next until it leaves the page. */
+      const tab = tabKey(browserName);
+      const focusedTexts: string[] = [];
+      for (let i = 0; i < 50; i++) {
+        await page.keyboard.press(tab);
+        const focused = await page.evaluate(() => (document.activeElement && document.activeElement !== document.body ? document.activeElement.textContent?.trim() ?? '' : null));
+        if (focused === null) break;
+        focusedTexts.push(focused);
+      }
+      expect.soft(focusedTexts, `${where}, texts of the elements the keyboard reaches`).not.toContain('Mettre en pause le défilement');
     }
   });
 });
