@@ -34,9 +34,10 @@
     <div class="clients" data-label="{{ $label }}">
       <div class="clients-window">
         <div class="clients-track">
-          {{- /* The names are listed twice, so that the band loops without a gap: the copy is hidden from assistive technologies. */}}
-          {{- range $isCopy := slice false true }}
-          <ul {{ if $isCopy }}aria-hidden="true"{{ else }}aria-label="{{ $label }}"{{ end }}>
+          {{- /* The names are listed in two identical halves, each at least 12 names long to cover the widest window, so that the band loops without a gap: only the first list is exposed to assistive technologies. */}}
+          {{- $repeats := math.Ceil (div 12.0 (len $clients)) | int }}
+          {{- range $position := seq (mul 2 $repeats) }}
+          <ul {{ if gt $position 1 }}aria-hidden="true"{{ else }}aria-label="{{ $label }}"{{ end }}>
             {{- range $clients }}
             <li>{{ . }}</li>
             {{- end }}
