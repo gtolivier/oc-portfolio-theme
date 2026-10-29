@@ -889,6 +889,41 @@ test('on the French home page, the client band follows a resize of the window wi
   await expectNamesScroll('narrowed back to 1280 px');
 });
 
+test('on the French home page, after the names scroll at 1280 px wide, widening the window to a width just above the narrowest one where a fresh load shows them still leaves them still too: no button "Mettre en pause le défilement", each name shown once, whole', async ({ page }) => {
+  /* At 1920 px wide, the names fit: read where the last name's text ends, how far the page's
+     visible width stops short of the window's (a scrollbar), and the gap between two names. */
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  const list = await openClientList(page);
+  const shownAt1920 = await clientNamesShown(page, CLIENTS);
+  const lastNameRight = shownAt1920.find((occurrence) => occurrence.name === CLIENTS.at(-1))!.right;
+  const secondNameLeft = shownAt1920.find((occurrence) => occurrence.name === CLIENTS[1])!.left;
+  const firstItem = (await list.getByRole('listitem').filter({ hasText: CLIENTS[0] }).boundingBox())!;
+  const gap = secondNameLeft - (firstItem.x + firstItem.width);
+  const pageWidthShortfall = 1920 - (await page.evaluate(() => document.documentElement.clientWidth));
+
+  /* A window whose right edge stands about half a gap after the end of the last name: just above
+     the narrowest width where the names fit. A fresh load there shows them still. */
+  const width = Math.round(lastNameRight + gap / 2 + pageWidthShortfall);
+  const pauseButton = page.getByRole('button', { name: 'Mettre en pause le défilement' });
+  await page.setViewportSize({ width, height: 900 });
+  await openClientList(page);
+  await expectNamesStillOverOneSecond(list, CLIENTS, `freshly loaded at ${width} px`);
+
+  /* Loaded at 1280 px, where the names scroll. */
+  await page.setViewportSize(DESKTOP_VIEWPORT);
+  await openClientList(page);
+  await expectNamesMoveLeftOverOneSecond(list, CLIENTS, 'at 1280 px, on arrival');
+  await expect(pauseButton, 'at 1280 px, on arrival, the pause button shows').toBeVisible();
+
+  /* Widened, without reloading, to that same width: the names stay still there too. */
+  await page.setViewportSize({ width, height: 900 });
+  await letPageRender(page);
+  const where = `widened from 1280 px to ${width} px (a fresh load there shows the names still)`;
+  await expectNamesStillOverOneSecond(list, CLIENTS, where);
+  await expect.soft(pauseButton, `${where}, the pause button`).toBeHidden();
+  expectEachNameShownOnceAndWhole(await clientNamesShown(page, CLIENTS), CLIENTS, where);
+});
+
 test('on a desktop, when the client names end less than the gap between two names before the window’s right edge, they all fit: they stay still, and each is shown once, whole', async ({ page }) => {
   /* At 1920 px wide, the example site's five clients fit in the band: still, they show where
      they sit whenever they fit, whatever the window's width (on a desktop, what comes before them
