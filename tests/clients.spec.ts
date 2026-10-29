@@ -340,6 +340,32 @@ test('under prefers-reduced-motion: reduce, on a phone and on a desktop, the cli
   }
 });
 
+test('on a desktop, while the pointer rests on the scrolling client band, the names stop moving: one second later, they sit where they were; once the pointer leaves the band, they move left again', async ({ page, hasTouch }) => {
+  test.skip(hasTouch, 'resting the pointer on the band needs a fine pointer; touch screens have none');
+  /* At 1280 px wide, the example site's five clients do not all fit: the band scrolls. */
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const list = await openClientList(page);
+  /* The band starts at the bottom of the first screen: it is brought into view to be pointed at.
+     Scrolled from the page: Playwright's own scrolling waits for the list to stop moving. */
+  await list.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+  const band = await clientBandBox(page);
+  expect(band, 'the client band spans the page width').not.toBeNull();
+  /* One second later, as the visitor lives it: the page's own time runs, untouched. */
+  const oneSecondLater = () => page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
+
+  /* The pointer rests in the middle of the band. */
+  await page.mouse.move((band!.left + band!.right) / 2, (band!.top + band!.bottom) / 2);
+  const namesWhileHovered = await namesLeft(list, CLIENTS);
+  await oneSecondLater();
+  expectNamesStill(CLIENTS, namesWhileHovered, await namesLeft(list, CLIENTS), 'with the pointer resting on the band');
+
+  /* The pointer leaves the band, for a point above it. */
+  await page.mouse.move((band!.left + band!.right) / 2, band!.top / 2);
+  const namesOnceLeft = await namesLeft(list, CLIENTS);
+  await oneSecondLater();
+  expectNamesMovedLeft(CLIENTS, namesOnceLeft, await namesLeft(list, CLIENTS), 'once the pointer has left the band');
+});
+
 test('under prefers-reduced-motion: reduce, on a phone, down to 320 px wide, and on a desktop, every client name is shown at once, each exactly once, whole, on as many lines as needed', async ({ page }) => {
   /* The visitor asks for reduced motion. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
