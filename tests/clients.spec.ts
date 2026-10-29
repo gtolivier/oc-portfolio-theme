@@ -7,6 +7,7 @@ import {
   removeDirectory,
   serveSite,
 } from './helpers/built-site';
+import { clientBandBox, heroRegion } from './helpers/hero';
 import { textOnScreen } from './helpers/text-on-screen';
 
 /* The clients the example site's home pages declare, in their order (proper names, the same in every language). */
@@ -273,6 +274,35 @@ test('under prefers-reduced-motion: reduce, on a phone, down to 320 px wide, and
         expect.soft(overlap, `at ${width} px, "${first.name}" and "${second.name}" overlap`).toBe(false);
       }
     }
+  }
+});
+
+test('under prefers-reduced-motion: reduce, on a phone and on a desktop, the client band starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window', async ({ page }) => {
+  /* The visitor asks for reduced motion. */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const { width, height } of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+    const size = `${width} × ${height}`;
+    await page.setViewportSize({ width, height });
+    await page.goto('/fr/');
+    await page.evaluate(() => document.fonts.ready);
+    const hero = heroRegion(page);
+    await expect(hero.getByRole('heading', { level: 1 }), `heading at ${size}`).toBeVisible();
+    const band = await clientBandBox(page);
+    expect.soft(band, `at ${size}, a strip holding the list "Ils me font confiance" spans the page width`).not.toBeNull();
+    if (!band) continue;
+    /* Page scrolled to the top, on arrival: the hero runs from the bottom of the header to the
+       bottom of the window… */
+    const headerBox = (await page.locator('header').boundingBox())!;
+    const headerBottom = headerBox.y + headerBox.height;
+    const heroBox = (await hero.boundingBox())!;
+    const heroBottom = heroBox.y + heroBox.height;
+    expect.soft(Math.abs(heroBox.y - headerBottom), `at ${size}, top of the hero (${heroBox.y} px) against the bottom of the header (${headerBottom} px)`)
+      .toBeLessThanOrEqual(1);
+    expect.soft(Math.abs(heroBottom - height), `at ${size}, bottom of the hero (${heroBottom} px) against the bottom of the window (${height} px)`)
+      .toBeLessThanOrEqual(1);
+    /* …and the band only begins there, out of sight until the visitor scrolls. */
+    expect.soft(band.top, `at ${size}, top of the client band against the bottom of the window (${height} px)`)
+      .toBeGreaterThanOrEqual(height - 1);
   }
 });
 
