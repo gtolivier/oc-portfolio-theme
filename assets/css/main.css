@@ -638,9 +638,11 @@ tick-field > canvas {
   overflow: hidden;
 }
 
+/* Without clients-fit.ts (without JavaScript, or when the script does not
+   load) nothing tells whether the names fit, and under reduced motion they
+   never loop: by default, the still names wrap on as many lines as needed. */
 .clients-track {
   display: flex;
-  width: max-content;
 }
 
 /* The track holds the list twice: sliding it by half its width loops
@@ -653,7 +655,10 @@ tick-field > canvas {
 
 .clients ul {
   display: flex;
-  flex: none;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  min-width: 0;
+  row-gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -661,10 +666,13 @@ tick-field > canvas {
 
 /* A margin rather than a gap: the last name of each copy keeps its space
    too, so the second copy follows the first as one name follows another,
-   and the loop shows no jump. */
+   and the loop shows no jump. A name wider than the band wraps onto several
+   lines instead of being cut. */
 .clients li {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   margin-right: var(--clients-gap);
+  white-space: normal;
 }
 
 /* Each client name is followed by a decorative separator, which assistive
@@ -698,27 +706,6 @@ tick-field > canvas {
   .clients.is-scrolling:hover .clients-track {
     animation-play-state: paused;
   }
-}
-
-/* Without clients-fit.ts (without JavaScript, or when the script does not
-   load) nothing tells whether the names fit, and under reduced motion they
-   never loop: the still names wrap on as many lines as needed. */
-.clients-track {
-  width: auto;
-}
-
-.clients ul {
-  flex: 0 1 auto;
-  flex-wrap: wrap;
-  min-width: 0;
-  row-gap: 4px;
-}
-
-/* A name wider than the band wraps onto several lines instead of being cut. */
-.clients li {
-  flex: 0 1 auto;
-  min-width: 0;
-  white-space: normal;
 }
 
 /* Once the script runs, and unless the visitor asks for reduced motion, the
