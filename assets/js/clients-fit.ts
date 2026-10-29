@@ -30,6 +30,12 @@ if (clientsBand && clientsWindow && clientsList && clientsTrack) {
     loopListWidth = isScrolling ? listWidth : undefined;
     clientsBand.classList.toggle('is-scrolling', isScrolling);
   };
+  const pauseButton = clientsBand.querySelector<HTMLButtonElement>('.clients-pause');
+  pauseButton?.addEventListener('click', () => {
+    const isPaused = pauseButton.getAttribute('aria-pressed') !== 'true';
+    pauseButton.setAttribute('aria-pressed', String(isPaused));
+    clientsTrack.classList.toggle('is-paused', isPaused);
+  });
   const resizeObserver = new ResizeObserver(update);
   /* Without this class, once head/js.html drops theme-script-pending, the names wrap (see main.css):
      if this script never runs, they stay readable. */

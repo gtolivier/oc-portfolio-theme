@@ -600,6 +600,7 @@ tick-field > canvas {
 }
 
 .clients {
+  position: relative;
   /* The space after the label, and on each side of a separator. */
   --clients-gap: 0.75rem;
   display: flex;
@@ -740,6 +741,26 @@ tick-field > canvas {
 
   .clients.is-scrolling ul[aria-hidden="true"] {
     display: flex;
+  }
+
+  /* The pause button only makes sense while the names move. */
+  .clients.is-scrolling .clients-pause {
+    display: block;
+    /* Out of the flow: showing it must not change the band's height. */
+    position: absolute;
+    top: 2px;
+    right: var(--page-gutter);
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 11px;
+    color: var(--color-paper);
+    cursor: pointer;
+  }
+
+  .clients.is-scrolling .clients-track.is-paused {
+    animation-play-state: paused;
   }
 
   /* The names stop while the pointer rests on the band. On a touch screen,

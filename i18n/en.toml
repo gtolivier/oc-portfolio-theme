@@ -4,5 +4,8 @@ other = 'Skip to content'
 [clients]
 other = 'Trusted by'
 
+[pauseClients]
+other = 'Pause scrolling'
+
 [language]
 other = 'Language'

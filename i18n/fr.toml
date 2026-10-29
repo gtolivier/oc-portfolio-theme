@@ -4,5 +4,8 @@ other = 'Aller au contenu'
 [clients]
 other = 'Ils me font confiance'
 
+[pauseClients]
+other = 'Mettre en pause le défilement'
+
 [language]
 other = 'Langue'
