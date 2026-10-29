@@ -209,6 +209,73 @@ test('under prefers-reduced-motion: reduce, on a phone and on a desktop, the cli
   }
 });
 
+test('under prefers-reduced-motion: reduce, on a phone, down to 320 px wide, and on a desktop, every client name is shown at once, each exactly once, whole, on as many lines as needed', async ({ page }) => {
+  /* The visitor asks for reduced motion. */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const { width, height } of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/fr/');
+    await page.evaluate(() => document.fonts.ready);
+    await expect(page.getByRole('list', { name: 'Ils me font confiance' })).toBeVisible();
+    /* Every piece of text on the page that reads exactly as a client name, whatever the markup
+       and whether assistive technologies get it or not: its box, and the part of it the visitor
+       sees, once cut by every box that clips its overflow and by the window's width. */
+    const occurrences = await page.locator('body').evaluate((body, clients) => {
+      const normalize = (text: string) => text.replace(/\s+/g, ' ').trim();
+      const found: { name: string; box: DOMRect; seen: { left: number; right: number; top: number; bottom: number } }[] = [];
+      const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const name = normalize(node.textContent ?? '');
+        const parent = node.parentElement;
+        if (!clients.includes(name) || !parent) continue;
+        if (!parent.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const box = range.getBoundingClientRect();
+        let { left, right, top, bottom } = box;
+        for (let ancestor: Element | null = parent; ancestor && ancestor !== document.body; ancestor = ancestor.parentElement) {
+          if (getComputedStyle(ancestor).overflow === 'visible') continue;
+          const clip = ancestor.getBoundingClientRect();
+          left = Math.max(left, clip.left);
+          right = Math.min(right, clip.right);
+          top = Math.max(top, clip.top);
+          bottom = Math.min(bottom, clip.bottom);
+        }
+        left = Math.max(left, 0);
+        right = Math.min(right, document.documentElement.clientWidth);
+        found.push({ name, box, seen: { left, right, top, bottom } });
+      }
+      return found.map(({ name, box, seen }) => ({
+        name,
+        left: box.left,
+        right: box.right,
+        top: box.top,
+        bottom: box.bottom,
+        shown: seen.right > seen.left && seen.bottom > seen.top,
+        whole:
+          seen.left <= box.left + 1 && seen.right >= box.right - 1 && seen.top <= box.top + 1 && seen.bottom >= box.bottom - 1,
+      }));
+    }, CLIENTS);
+    const shown = occurrences.filter((occurrence) => occurrence.shown);
+    for (const client of CLIENTS) {
+      const copies = shown.filter((occurrence) => occurrence.name === client);
+      /* Shown once: no copy of the name peeks in, even partly. */
+      expect.soft(copies.length, `at ${width} px, number of times "${client}" shows on screen`).toBe(1);
+      /* Shown whole: nothing of it is cut by the band or the window's edge. */
+      for (const copy of copies) {
+        expect.soft(copy.whole, `at ${width} px, "${client}" shows whole (box: ${copy.left}–${copy.right} × ${copy.top}–${copy.bottom} px)`).toBe(true);
+      }
+    }
+    /* The names wrap onto as many lines as needed rather than pile up: no two overlap. */
+    for (const [index, first] of shown.entries()) {
+      for (const second of shown.slice(index + 1)) {
+        const overlap = first.left < second.right - 1 && second.left < first.right - 1 && first.top < second.bottom - 1 && second.top < first.bottom - 1;
+        expect.soft(overlap, `at ${width} px, "${first.name}" and "${second.name}" overlap`).toBe(false);
+      }
+    }
+  }
+});
+
 test('on a phone, down to 320 px wide, and on a desktop, the client band never makes the page scroll horizontally, at any moment of its loop', async ({ page }) => {
   for (const { width, height } of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1280, height: 900 }]) {
     await page.setViewportSize({ width, height });
