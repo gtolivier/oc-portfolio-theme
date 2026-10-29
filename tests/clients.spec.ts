@@ -153,6 +153,39 @@ test('from 768 px wide, the label "Ils me font confiance" sits to the left of th
   }
 });
 
+test('on a phone and on a desktop, the client names move continuously to the left: one second later, they sit further left, while the label "Ils me font confiance" stays put', async ({ page }) => {
+  for (const { width, height } of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/fr/');
+    await page.evaluate(() => document.fonts.ready);
+    const list = page.getByRole('list', { name: 'Ils me font confiance' });
+    await expect(list).toBeVisible();
+    /* The page's animations are frozen, so that "now" and "one second later" are read at known
+       times, whatever the test's own pace. */
+    await page.evaluate(() => document.getAnimations().forEach((animation) => animation.pause()));
+    const namesLeft = () =>
+      Promise.all(CLIENTS.map(async (client) => (await list.getByRole('listitem').filter({ hasText: client }).boundingBox())!.x));
+    const namesBefore = await namesLeft();
+    const labelBefore = await labelExtent(page, 'Ils me font confiance');
+    expect(labelBefore, `at ${width} px, the label "Ils me font confiance" is shown on screen`).not.toBeNull();
+    /* One second later. */
+    await page.evaluate(() =>
+      document.getAnimations().forEach((animation) => {
+        animation.currentTime = Number(animation.currentTime ?? 0) + 1000;
+      }),
+    );
+    const namesAfter = await namesLeft();
+    CLIENTS.forEach((client, index) => {
+      expect.soft(namesAfter[index], `at ${width} px, left of "${client}" one second later, against before (${namesBefore[index]} px)`)
+        .toBeLessThan(namesBefore[index] - 1);
+    });
+    /* Only the names move: the label keeps its place. */
+    const labelAfter = await labelExtent(page, 'Ils me font confiance');
+    expect.soft(Math.abs(labelAfter!.left - labelBefore!.left), `at ${width} px, horizontal shift of the label`).toBeLessThanOrEqual(1);
+    expect.soft(Math.abs(labelAfter!.top - labelBefore!.top), `at ${width} px, vertical shift of the label`).toBeLessThanOrEqual(1);
+  }
+});
+
 test('on the English home page, assistive technologies get the same clients once each, in order, as the list "Trusted by"', async ({ page }) => {
   await page.goto('/en/');
   await expectClientList(page, 'Trusted by');
