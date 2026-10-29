@@ -694,6 +694,45 @@ test.describe('home page of another site, with few clients with long names', () 
     const shown = (await clientNamesOnScreen(page, clients)).filter((occurrence) => occurrence.shown);
     expectEachNameShownOnceAndWhole(shown, clients, `at ${width} × ${height}`);
   });
+
+  test('under prefers-reduced-motion: reduce, on a phone, down to 320 px wide, and on a desktop, where long names wrap onto several lines, no line of the band starts with a "|||" separator: each separator stays on the line where its name ends', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_LONG_CLIENT_NAMES, siteDirectory);
+    /* The visitor asks for reduced motion. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize({ width: 320, height: 568 });
+    const list = await openClientList(page, `${SITE_WITH_LONG_CLIENT_NAMES.origin}/fr/`);
+    /* A narrow phone, a common phone, a tablet and a desktop: widths where a name's last
+       characters fill its line, so that a separator allowed to break off would drop onto a line
+       of its own. */
+    for (const width of [320, 390, 768, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      /* For each name: the box of the last line its text covers, and the box of its whole item,
+         separator included. The separator is drawn after the name's text, inside the item: if it
+         dropped alone onto a line of its own, the item would end a whole line below the name's
+         last line. */
+      const names = await list.getByRole('listitem').evaluateAll((items) =>
+        items.map((item) => {
+          const range = document.createRange();
+          range.selectNodeContents(item);
+          const lines = Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0);
+          const lastLine = lines.reduce((last, rect) => (rect.bottom > last.bottom ? rect : last), lines[0]);
+          const box = item.getBoundingClientRect();
+          return {
+            name: item.textContent ?? '',
+            lineCount: new Set(lines.map((rect) => Math.round(rect.top))).size,
+            lastLineBottom: lastLine.bottom,
+            lastLineHeight: lastLine.height,
+            itemBottom: box.bottom,
+          };
+        }),
+      );
+      for (const name of names) {
+        /* Within half a line: room for rounding, not for one more line. */
+        expect.soft(name.itemBottom, `at ${width} px, bottom of the item of "${name.name}" (separator included, its text on ${name.lineCount} line(s)) against the bottom of the name's last line (${name.lastLineBottom} px)`)
+          .toBeLessThanOrEqual(name.lastLineBottom + name.lastLineHeight / 2);
+      }
+    }
+  });
 });
 
 /* Checks, at each of the `viewports` sizes (where the list is wider than the band), that the
