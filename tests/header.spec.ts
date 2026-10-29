@@ -8,7 +8,7 @@ import {
   removeDirectory,
 } from './helpers/built-site';
 import { characterWeights } from './helpers/character-weights';
-import { heroRegion } from './helpers/hero';
+import { clientBandBox, heroRegion } from './helpers/hero';
 
 /* The logo is the header link named after the site title. */
 function headerLogo(page: Page): Locator {
@@ -487,9 +487,9 @@ test('from 768 px wide, the header sits on a single row, vertically centred: the
   }
 });
 
-test('after the window is widened from 375 px to 1280 px on the same page, the hero still ends at the bottom of the window, within 1 px', async ({ page }) => {
+test('after the window is widened from 375 px to 1280 px on the same page, the hero still ends where the client band begins, within 1 px', async ({ page }) => {
   /* 900 px high: tall enough for the hero's content at 375 px as at 1280 px, so the hero's
-     height is the window height minus the header height. */
+     height is set by the header above it and the client band below it. */
   const height = 900;
   await page.setViewportSize({ width: 375, height });
   await page.goto('/fr/');
@@ -502,13 +502,14 @@ test('after the window is widened from 375 px to 1280 px on the same page, the h
   const hero = heroRegion(page);
   await expect(hero.getByRole('heading', { level: 1 })).toBeVisible();
 
-  /* How far the hero's bottom sits from the window's bottom; measured again until the layout settles. */
+  /* How far the hero's bottom sits from the client band's top; measured again until the layout settles. */
   const heroBottomOffset = async (): Promise<number> => {
     const heroBox = (await hero.boundingBox())!;
-    return heroBox.y + heroBox.height - height;
+    const band = await clientBandBox(page);
+    return band ? heroBox.y + heroBox.height - band.top : Infinity;
   };
   await expect
-    .poll(async () => Math.abs(await heroBottomOffset()), { message: 'hero bottom against the window bottom after widening to 1280 px' })
+    .poll(async () => Math.abs(await heroBottomOffset()), { message: 'hero bottom against the client band top after widening to 1280 px' })
     .toBeLessThanOrEqual(1);
 });
 

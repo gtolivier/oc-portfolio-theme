@@ -20,7 +20,7 @@ import {
 } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { blockRequests, fontFilesUrl, holdRequests, themeScriptUrl } from './helpers/held-requests';
-import { heroRegion } from './helpers/hero';
+import { clientBandBox, heroRegion } from './helpers/hero';
 import { tabUntilFocused } from './helpers/keyboard';
 import { clickOrTap, middleOfFirstLine } from './helpers/pointer';
 import {
@@ -257,16 +257,20 @@ async function heightBelowHeader(
   return { expectedHeight, headerHeight: headerBox.height };
 }
 
-/* Checks that the open home page's hero, in a window of `viewport` tall enough for its content,
-   ends exactly at the bottom of the window: its height is the window height minus the header
-   height, within 1 px. */
-async function expectHeroToEndAtWindowBottom(page: Page, viewport: { width: number; height: number }, size: string): Promise<void> {
+/* Checks that the open home page's hero, which declares clients, in a window of `viewport` tall
+   enough for its content, ends exactly where the client band begins, without passing under it:
+   its bottom edge meets the band's top edge, within 1 px. */
+async function expectHeroToEndAtClientBand(page: Page, viewport: { width: number; height: number }, size: string): Promise<void> {
   const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
-  const { expectedHeight } = await heightBelowHeader(page, viewport, { heading, buttons }, size);
+  await heightBelowHeader(page, viewport, { heading, buttons }, size);
+  const band = await clientBandBox(page);
+  expect.soft(band, `at ${size}, a strip holding the list "Ils me font confiance" spans the page width`).not.toBeNull();
+  if (!band) return;
   const heroBox = (await hero.boundingBox())!;
+  const heroBottom = heroBox.y + heroBox.height;
   expect.soft(
-    Math.abs(heroBox.height - expectedHeight),
-    `at ${size}, hero height (${heroBox.height} px) against the window height minus the header height (${expectedHeight} px)`,
+    Math.abs(heroBottom - band.top),
+    `at ${size}, bottom of the hero (${heroBottom} px) against the top of the client band (${band.top} px)`,
   ).toBeLessThanOrEqual(1);
 }
 
@@ -408,7 +412,7 @@ test('on phone as on desktop, the second hero button, "Contact", reached by keyb
   });
 });
 
-test('on phone as on desktop, the hero starts right below the header and ends at the bottom of the window', async ({ page }) => {
+test('on phone as on desktop, on a home page with clients, the hero starts right below the header and ends where the client band begins, which it does not cover', async ({ page }) => {
   await page.goto('/fr/');
   /* The hero groups the heading, the tagline, the stack and the buttons. */
   const hero = heroRegion(page);
@@ -417,44 +421,21 @@ test('on phone as on desktop, the hero starts right below the header and ends at
   await expect(hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true })).toBeVisible();
   await expect(hero.getByRole('link', { name: 'Voir les projets' })).toBeVisible();
   await expect(hero.getByRole('link', { name: 'Contact' })).toBeVisible();
-  /* Design reference: minimum height "100vh minus the header height". Page scrolled to the
-     top: the top of the hero touches the bottom of the header, its bottom reaches at least
-     the bottom of the window. */
-  const viewportHeight = page.viewportSize()!.height;
+  /* Page scrolled to the top: the top of the hero touches the bottom of the header. */
   const headerBox = (await page.locator('header').boundingBox())!;
   const heroBox = (await hero.boundingBox())!;
   const headerBottom = headerBox.y + headerBox.height;
   expect(Math.abs(heroBox.y - headerBottom), 'the top of the hero is right below the header').toBeLessThanOrEqual(1);
-  expect(heroBox.y + heroBox.height, 'the bottom of the hero is at the bottom of the window, or lower')
-    .toBeGreaterThanOrEqual(viewportHeight - 1);
 
-  /* In a window tall enough for its content, it ends exactly there. The header is two rows on
-     a phone and one row from 768 px wide: checked at a phone window and at both desktop ones. */
+  /* The French home page declares clients: in a window tall enough for its content, the hero
+     ends where the client band begins. The header is two rows on a phone and one row from
+     768 px wide: checked at a phone window and at both desktop ones. */
   for (const viewport of TALL_VIEWPORTS) {
     const size = `${viewport.width} × ${viewport.height}`;
     await openHomeAt(page, viewport);
-    await expectHeroToEndAtWindowBottom(page, viewport, size);
+    await expectHeroToEndAtClientBand(page, viewport, size);
   }
 });
-
-/* The box, in the window, of the client band of the open home page: the visible strip that holds
-   the list "Ils me font confiance", that is the list itself or its nearest ancestor that spans the
-   page width (the document's client width, within 1 px) without holding the hero's heading.
-   Null when no such strip exists. */
-async function clientBandBox(page: Page): Promise<{ left: number; right: number; top: number; bottom: number } | null> {
-  const list = page.getByRole('list', { name: 'Ils me font confiance' });
-  await expect(list).toBeVisible();
-  return list.evaluate((element) => {
-    const pageWidth = document.documentElement.clientWidth;
-    const heading = document.querySelector('main h1');
-    for (let candidate: Element | null = element; candidate && candidate !== document.body; candidate = candidate.parentElement) {
-      if (heading && candidate.contains(heading)) return null;
-      const { left, right, top, bottom } = candidate.getBoundingClientRect();
-      if (Math.abs(left) <= 1 && Math.abs(right - pageWidth) <= 1) return { left, right, top, bottom };
-    }
-    return null;
-  });
-}
 
 test('on phone as on desktop, in a window tall enough for its content, the hero and the client band fill the window below the header: the band, a strip spanning the page width from edge to edge, sits below the hero’s buttons and its bottom edge meets the bottom of the window', async ({ page }) => {
   /* Design reference: the band is the bottom strip of the first screen, full bleed. Checked at a
@@ -1413,7 +1394,7 @@ test.describe('home page of a single-language site', () => {
        height, which must also hold when the web fonts never arrive. */
     test.use({ javaScriptEnabled: false });
 
-    test('on a single-language site, without JavaScript and with the web font files blocked, in a window tall enough for its content, the hero ends exactly at the bottom of the window: its height is the window height minus the header height, within 1 px, on a phone as on desktop', async ({ page, context }) => {
+    test('on a single-language site, without JavaScript and with the web font files blocked, in a window tall enough for its content, the hero ends exactly where the client band begins, within 1 px, on a phone as on desktop', async ({ page, context }) => {
       await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
       /* The browser then renders the fallback fonts of the stacks. */
       const blockedFonts = await blockRequests(page, fontFilesUrl(SITE_WITH_A_SINGLE_LANGUAGE.origin));
@@ -1428,7 +1409,7 @@ test.describe('home page of a single-language site', () => {
         expect(loadedFonts, `web fonts loaded at ${size}`).toEqual([]);
         /* The site is single-language: the header shows no language switcher. */
         await expect(page.locator('header').getByRole('group', { name: 'Langue' }), `language switcher at ${size}`).toHaveCount(0);
-        await expectHeroToEndAtWindowBottom(page, viewport, size);
+        await expectHeroToEndAtClientBand(page, viewport, size);
       }
     });
   });
@@ -1452,7 +1433,7 @@ test.describe('home page of a site with a long menu', () => {
     removeDirectory(siteDirectory);
   });
 
-  test('on a phone, when the menu wraps onto two lines, in a window tall enough for its content, the hero still ends exactly at the bottom of the window: at 412 × 1100, its height is the window height minus the header height, within 1 px', async ({ page, context }) => {
+  test('on a phone, when the menu wraps onto two lines, in a window tall enough for its content, the hero still ends exactly where the client band begins: at 412 × 1100, within 1 px', async ({ page, context }) => {
     await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
     const viewport = { width: 412, height: 1100 };
     const size = `${viewport.width} × ${viewport.height}`;
@@ -1465,13 +1446,7 @@ test.describe('home page of a site with a long menu', () => {
     const { linkTops, lineCount } = await menuLines(links);
     expect(lineCount, `at ${size}, lines of the menu (top edges of its links: ${linkTops.join(', ')})`).toBe(2);
 
-    const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
-    const { expectedHeight } = await heightBelowHeader(page, viewport, { heading, buttons }, size);
-    const heroBox = (await hero.boundingBox())!;
-    expect(
-      Math.abs(heroBox.height - expectedHeight),
-      `at ${size}, hero height (${heroBox.height} px) against the window height minus the header height (${expectedHeight} px)`,
-    ).toBeLessThanOrEqual(1);
+    await expectHeroToEndAtClientBand(page, viewport, size);
   });
 });
 
