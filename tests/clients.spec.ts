@@ -353,12 +353,13 @@ test.describe('home page of another site, with other clients', () => {
     ]);
   });
 
-  test('with few clients or many, on a phone and on a desktop, the band never shows a gap: at any moment of the loop, names cover its whole width, and the end of a loop looks like its start', async ({ page, context }) => {
+  test('with few clients or many, on a phone and on a desktop, wherever the list is wider than the band, the band never shows a gap: at any moment of the loop, names cover its whole width, and the end of a loop looks like its start', async ({ page, context }) => {
     await serveSite(context, SITE_WITH_OTHER_CLIENTS, siteDirectory);
-    /* This site's three clients, and the example site's five. */
-    for (const homePage of [`${SITE_WITH_OTHER_CLIENTS.origin}/fr/`, '/fr/']) {
-      await expectBandWithoutGap(page, homePage);
-    }
+    /* This site's three clients, wider than the band on a phone and on a 768 px tablet (from
+       1024 px wide, they fit in it)… */
+    await expectBandWithoutGap(page, `${SITE_WITH_OTHER_CLIENTS.origin}/fr/`, [{ width: 390, height: 844 }, { width: 768, height: 1024 }]);
+    /* …and the example site's five, wider than the band on a phone and on a 1280 px desktop. */
+    await expectBandWithoutGap(page, '/fr/', [{ width: 390, height: 844 }, { width: 1280, height: 900 }]);
   });
 });
 
@@ -371,18 +372,88 @@ test.describe('home page of another site, with a single short client', () => {
     removeDirectory(siteDirectory);
   });
 
-  test('with a single client with a short name, on a phone and on a desktop, the band still never shows a gap: at any moment of the loop, names cover its whole width, and the end of a loop looks like its start', async ({ page, context }) => {
+  test('when all the clients fit in the band — a single short client on a phone and on a desktop, the example site’s five on a 1920 px screen — the names stay still, and each is shown once, whole: no copy of a name shows on screen', async ({ page, context }) => {
     await serveSite(context, SITE_WITH_A_SINGLE_SHORT_CLIENT, siteDirectory);
-    /* tests/fixtures/single-short-client/content/_index.md declares a single client, "Oko". */
-    await expectBandWithoutGap(page, `${SITE_WITH_A_SINGLE_SHORT_CLIENT.origin}/fr/`);
+    const cases = [
+      /* tests/fixtures/single-short-client/content/_index.md declares a single client, "Oko". */
+      { homePage: `${SITE_WITH_A_SINGLE_SHORT_CLIENT.origin}/fr/`, clients: ['Oko'], width: 390, height: 844 },
+      { homePage: `${SITE_WITH_A_SINGLE_SHORT_CLIENT.origin}/fr/`, clients: ['Oko'], width: 1280, height: 900 },
+      /* The example site's five clients fit in the band of a 1920 px wide screen. */
+      { homePage: '/fr/', clients: CLIENTS, width: 1920, height: 1080 },
+    ];
+    for (const { homePage, clients, width, height } of cases) {
+      const where = `on ${homePage} at ${width} px`;
+      await page.setViewportSize({ width, height });
+      await page.goto(homePage);
+      await page.evaluate(() => document.fonts.ready);
+      const list = page.getByRole('list', { name: 'Ils me font confiance' });
+      await expect(list).toBeVisible();
+
+      /* Still: one second later, as the visitor lives it (the page's own time runs, untouched),
+         every name sits where it was. */
+      const namesLeft = () =>
+        Promise.all(clients.map(async (client) => (await list.getByRole('listitem').filter({ hasText: client }).boundingBox())!.x));
+      const namesBefore = await namesLeft();
+      await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
+      const namesAfter = await namesLeft();
+      clients.forEach((client, index) => {
+        expect.soft(Math.abs(namesAfter[index] - namesBefore[index]), `${where}, horizontal shift of "${client}" over one second (from ${namesBefore[index]} px)`)
+          .toBeLessThanOrEqual(1);
+      });
+
+      /* Every piece of text on the page that reads exactly as a client name, whatever the markup
+         and whether assistive technologies get it or not: its box, and whether the visitor sees
+         it, wholly or partly, once cut by every box that clips its overflow and by the window. */
+      const occurrences = await page.locator('body').evaluate((body, clients) => {
+        const normalize = (text: string) => text.replace(/\s+/g, ' ').trim();
+        const found: { name: string; left: number; right: number; shown: boolean; whole: boolean }[] = [];
+        const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const name = normalize(node.textContent ?? '');
+          const parent = node.parentElement;
+          if (!clients.includes(name) || !parent) continue;
+          if (!parent.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          const box = range.getBoundingClientRect();
+          let { left, right, top, bottom } = box;
+          for (let ancestor: Element | null = parent; ancestor && ancestor !== document.body; ancestor = ancestor.parentElement) {
+            if (getComputedStyle(ancestor).overflow === 'visible') continue;
+            const clip = ancestor.getBoundingClientRect();
+            left = Math.max(left, clip.left);
+            right = Math.min(right, clip.right);
+            top = Math.max(top, clip.top);
+            bottom = Math.min(bottom, clip.bottom);
+          }
+          left = Math.max(left, 0);
+          right = Math.min(right, document.documentElement.clientWidth);
+          found.push({
+            name,
+            left: box.left,
+            right: box.right,
+            shown: right > left && bottom > top,
+            whole: left <= box.left + 1 && right >= box.right - 1 && top <= box.top + 1 && bottom >= box.bottom - 1,
+          });
+        }
+        return found;
+      }, clients);
+      for (const client of clients) {
+        const copies = occurrences.filter((occurrence) => occurrence.shown && occurrence.name === client);
+        /* Shown once: no copy of the name peeks in, even partly. */
+        expect.soft(copies.length, `${where}, number of times "${client}" shows on screen`).toBe(1);
+        /* Shown whole: nothing of it is cut by the band or the window's edge. */
+        for (const copy of copies) {
+          expect.soft(copy.whole, `${where}, "${client}" shows whole (from ${copy.left} to ${copy.right} px)`).toBe(true);
+        }
+      }
+    }
   });
 });
 
-/* Checks, on a phone and on desktops up to 1920 px wide, that the client band of the home page
-   at `homePage` never shows a gap: at any moment of the loop, names cover its whole width, and
-   the end of a loop looks like its start. */
-async function expectBandWithoutGap(page: Page, homePage: string) {
-  const viewports = [{ width: 390, height: 844 }, { width: 1280, height: 900 }, { width: 1920, height: 1080 }];
+/* Checks, at each of the `viewports` sizes (where the list is wider than the band), that the
+   client band of the home page at `homePage` never shows a gap: at any moment of the loop, names
+   cover its whole width, and the end of a loop looks like its start. */
+async function expectBandWithoutGap(page: Page, homePage: string, viewports: { width: number; height: number }[]) {
   for (const { width, height } of viewports) {
     const where = `on ${homePage} at ${width} px`;
     await page.setViewportSize({ width, height });
