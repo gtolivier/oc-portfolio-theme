@@ -601,7 +601,7 @@ tick-field > canvas {
   flex-wrap: wrap;
   align-items: center;
   gap: 0 0.75rem;
-  height: var(--clients-band-height);
+  min-height: var(--clients-band-height);
   margin: 0;
   padding: 0 var(--page-gutter);
   overflow: hidden;
@@ -609,9 +609,21 @@ tick-field > canvas {
 }
 
 /* The label shown before the names repeats the list's accessible name, so it
-   gets an empty alternative text: assistive technologies read it once. */
+   gets an empty alternative text: assistive technologies read it once. On a
+   phone it takes its own line above the names. */
 .clients::before {
   content: attr(data-label) / "";
+  flex-basis: 100%;
+}
+
+@media (min-width: 768px) {
+  .clients {
+    height: var(--clients-band-height);
+  }
+
+  .clients::before {
+    flex-basis: auto;
+  }
 }
 
 /* Each client name is followed by a decorative separator, which assistive
