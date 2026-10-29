@@ -31,7 +31,10 @@ if (clientsBand && clientsWindow && clientsList && clientsTrack) {
     /* Unrounded widths: a list wider by a fraction of a pixel is cut too. The
        window has no border, padding or scrollbar: its box is what shows. */
     const listWidth = clientsList.getBoundingClientRect().width;
-    const isScrolling = listWidth > clientsWindow.getBoundingClientRect().width;
+    /* The last name's margin is only space after it: names ending within it still fit. */
+    const lastItem = clientsList.lastElementChild;
+    const trailingSpace = lastItem ? parseFloat(getComputedStyle(lastItem).marginRight) || 0 : 0;
+    const isScrolling = listWidth - trailingSpace > clientsWindow.getBoundingClientRect().width;
     /* The pace is set before the loop starts, so that it never starts at another one. */
     if (isScrolling && listWidth !== loopListWidth) {
       setLoopFor(listWidth);
