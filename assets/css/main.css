@@ -794,8 +794,9 @@ tick-field > canvas {
   }
 
   /* The names stop while the pointer rests on the band. On a touch screen,
-     a tap leaves :hover stuck: the names keep moving. */
-  @media (hover: hover) {
+     a tap leaves :hover stuck: the names keep moving. Same on a laptop
+     with a touch screen, whose main pointer is still a mouse. */
+  @media (hover: hover) and (not (any-pointer: coarse)) {
     .clients.is-scrolling:hover .clients-track {
       animation-play-state: paused;
     }
