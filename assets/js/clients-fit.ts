@@ -25,7 +25,15 @@ if (clientsBand && clientsWindow && clientsList && clientsTrack) {
     const isScrolling = listWidth > clientsWindow.getBoundingClientRect().width;
     /* The pace is set before the loop starts, so that it never starts at another one. */
     if (isScrolling && listWidth !== loopListWidth) {
+      const animation = loopListWidth === undefined ? undefined : clientsTrack.getAnimations()[0];
+      const elapsed = Number(animation?.currentTime ?? 0);
+      const oldLoopMs = ((loopListWidth ?? 0) / CLIENTS_PACE_PX_PER_SECOND) * 1000;
       setLoopDuration(listWidth / CLIENTS_PACE_PX_PER_SECOND);
+      /* The elapsed time counts whole loops of the old length, which are not whole loops of the
+         new one: only the part of the current loop is kept, so that the names stay where they were. */
+      if (animation && oldLoopMs > 0) {
+        animation.currentTime = elapsed % oldLoopMs;
+      }
     }
     loopListWidth = isScrolling ? listWidth : undefined;
     clientsBand.classList.toggle('is-scrolling', isScrolling);
