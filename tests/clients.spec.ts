@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import {
   SITE_WITHOUT_HERO,
+  SITE_WITH_A_SINGLE_SHORT_CLIENT,
   SITE_WITH_OTHER_CLIENTS,
   buildSite,
   removeDirectory,
@@ -214,103 +215,125 @@ test.describe('home page of another site, with other clients', () => {
   test('with few clients or many, on a phone and on a desktop, the band never shows a gap: at any moment of the loop, names cover its whole width, and the end of a loop looks like its start', async ({ page, context }) => {
     await serveSite(context, SITE_WITH_OTHER_CLIENTS, siteDirectory);
     /* This site's three clients, and the example site's five. */
-    const homePages = [`${SITE_WITH_OTHER_CLIENTS.origin}/fr/`, '/fr/'];
-    const viewports = [{ width: 390, height: 844 }, { width: 1280, height: 900 }, { width: 1920, height: 1080 }];
-    for (const homePage of homePages) {
-      for (const { width, height } of viewports) {
-        const where = `on ${homePage} at ${width} px`;
-        await page.setViewportSize({ width, height });
-        await page.goto(homePage);
-        await page.evaluate(() => document.fonts.ready);
-        const list = page.getByRole('list', { name: 'Ils me font confiance' });
-        await expect(list).toBeVisible();
-        /* The page's animations are frozen; the band's loop (the animations of the box that clips
-           the names, or of what it holds) is then set to chosen moments, as a fraction of its length. */
-        await page.evaluate(() => document.getAnimations().forEach((animation) => animation.pause()));
-        const loopCount = await list.evaluate((ul) => {
-          let window: Element | null = ul.parentElement;
-          while (window && getComputedStyle(window).overflow === 'visible') window = window.parentElement;
-          return document.getAnimations().filter((animation) => {
-            const target = (animation.effect as KeyframeEffect | null)?.target;
-            return !!window && !!target && window.contains(target);
-          }).length;
-        });
-        expect(loopCount, `${where}, the band loops`).toBeGreaterThan(0);
-
-        /* At a moment of the loop (a fraction of its length, or that length minus a fraction), the
-           part of the window that clips the names, as the visitor sees it, and the box of every name
-           in it, separator included, from left to right, with whether it shows in the window. */
-        const bandAt = (moment: { fraction: number; fromEnd?: boolean }) =>
-          list.evaluate((ul, { fraction, fromEnd }) => {
-            let window: Element | null = ul.parentElement;
-            while (window && getComputedStyle(window).overflow === 'visible') window = window.parentElement;
-            for (const animation of document.getAnimations()) {
-              const target = (animation.effect as KeyframeEffect | null)?.target;
-              if (!window || !target || !window.contains(target)) continue;
-              const length = Number(animation.effect!.getComputedTiming().duration);
-              animation.currentTime = fromEnd ? length * (1 - fraction) : length * fraction;
-            }
-            let { left, right } = window!.getBoundingClientRect();
-            for (let ancestor = window!.parentElement; ancestor && ancestor !== document.body; ancestor = ancestor.parentElement) {
-              if (getComputedStyle(ancestor).overflow === 'visible') continue;
-              const clip = ancestor.getBoundingClientRect();
-              left = Math.max(left, clip.left);
-              right = Math.min(right, clip.right);
-            }
-            right = Math.min(right, document.documentElement.clientWidth);
-            const names = Array.from(window!.querySelectorAll('li'))
-              .map((item) => {
-                const box = item.getBoundingClientRect();
-                return { name: item.textContent ?? '', left: box.left, right: box.right, shown: box.right > left && box.left < right };
-              })
-              .sort((a, b) => a.left - b.left);
-            return { left, right, names };
-          }, moment);
-
-        /* The usual space between two names that follow each other: no stretch of the window may be
-           left emptier than that. */
-        const start = await bandAt({ fraction: 0 });
-        const usualSpace = start.names[1].left - start.names[0].right;
-
-        for (const fraction of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.999]) {
-          const band = await bandAt({ fraction });
-          const shown = band.names.filter((name) => name.shown);
-          const at = `${where}, at ${fraction * 100} % of the loop`;
-          expect.soft(shown.length, `${at}, names are shown`).toBeGreaterThan(0);
-          if (shown.length === 0) continue;
-          expect.soft(shown[0].left, `${at}, left of the first name shown against the left of the window (${band.left} px)`)
-            .toBeLessThanOrEqual(band.left + usualSpace + 1);
-          let coveredUpTo = shown[0].right;
-          for (const name of shown.slice(1)) {
-            expect.soft(name.left - coveredUpTo, `${at}, empty space before "${name.name}" against the usual space between two names (${usualSpace} px)`)
-              .toBeLessThanOrEqual(usualSpace + 1);
-            coveredUpTo = Math.max(coveredUpTo, name.right);
-          }
-          expect.soft(coveredUpTo, `${at}, right of the last name shown against the right of the window (${band.right} px)`)
-            .toBeGreaterThanOrEqual(band.right - usualSpace - 1);
-        }
-
-        /* Just before the end of a loop, the band shows the same names at the same places as at its
-           start, give or take the distance the names travel in that short time. */
-        const justAfterStart = await bandAt({ fraction: 0.001 });
-        const justBeforeEnd = await bandAt({ fraction: 0.001, fromEnd: true });
-        const travel = Math.abs(justAfterStart.names[0].left - start.names[0].left);
-        for (const [shownIn, foundIn, label] of [
-          [start, justBeforeEnd, 'at the start, found just before the end'],
-          [justBeforeEnd, start, 'just before the end, found at the start'],
-        ] as const) {
-          for (const name of shownIn.names.filter((name) => name.shown)) {
-            const closest = Math.min(
-              ...foundIn.names.filter((other) => other.name === name.name).map((other) => Math.abs(other.left - name.left)),
-            );
-            expect.soft(closest, `${where}, "${name.name}" shown ${label}: distance to the same name (travel: ${travel} px)`)
-              .toBeLessThanOrEqual(travel + 1);
-          }
-        }
-      }
+    for (const homePage of [`${SITE_WITH_OTHER_CLIENTS.origin}/fr/`, '/fr/']) {
+      await expectBandWithoutGap(page, homePage);
     }
   });
 });
+
+test.describe('home page of another site, with a single short client', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_SINGLE_SHORT_CLIENT);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('with a single client with a short name, on a phone and on a desktop, the band still never shows a gap: at any moment of the loop, names cover its whole width, and the end of a loop looks like its start', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_SINGLE_SHORT_CLIENT, siteDirectory);
+    /* tests/fixtures/single-short-client/content/_index.md declares a single client, "Oko". */
+    await expectBandWithoutGap(page, `${SITE_WITH_A_SINGLE_SHORT_CLIENT.origin}/fr/`);
+  });
+});
+
+/* Checks, on a phone and on desktops up to 1920 px wide, that the client band of the home page
+   at `homePage` never shows a gap: at any moment of the loop, names cover its whole width, and
+   the end of a loop looks like its start. */
+async function expectBandWithoutGap(page: Page, homePage: string) {
+  const viewports = [{ width: 390, height: 844 }, { width: 1280, height: 900 }, { width: 1920, height: 1080 }];
+  for (const { width, height } of viewports) {
+    const where = `on ${homePage} at ${width} px`;
+    await page.setViewportSize({ width, height });
+    await page.goto(homePage);
+    await page.evaluate(() => document.fonts.ready);
+    const list = page.getByRole('list', { name: 'Ils me font confiance' });
+    await expect(list).toBeVisible();
+    /* The page's animations are frozen; the band's loop (the animations of the box that clips
+       the names, or of what it holds) is then set to chosen moments, as a fraction of its length. */
+    await page.evaluate(() => document.getAnimations().forEach((animation) => animation.pause()));
+    const loopCount = await list.evaluate((ul) => {
+      let window: Element | null = ul.parentElement;
+      while (window && getComputedStyle(window).overflow === 'visible') window = window.parentElement;
+      return document.getAnimations().filter((animation) => {
+        const target = (animation.effect as KeyframeEffect | null)?.target;
+        return !!window && !!target && window.contains(target);
+      }).length;
+    });
+    expect(loopCount, `${where}, the band loops`).toBeGreaterThan(0);
+
+    /* At a moment of the loop (a fraction of its length, or that length minus a fraction), the
+       part of the window that clips the names, as the visitor sees it, and the box of every name
+       in it, separator included, from left to right, with whether it shows in the window. */
+    const bandAt = (moment: { fraction: number; fromEnd?: boolean }) =>
+      list.evaluate((ul, { fraction, fromEnd }) => {
+        let window: Element | null = ul.parentElement;
+        while (window && getComputedStyle(window).overflow === 'visible') window = window.parentElement;
+        for (const animation of document.getAnimations()) {
+          const target = (animation.effect as KeyframeEffect | null)?.target;
+          if (!window || !target || !window.contains(target)) continue;
+          const length = Number(animation.effect!.getComputedTiming().duration);
+          animation.currentTime = fromEnd ? length * (1 - fraction) : length * fraction;
+        }
+        let { left, right } = window!.getBoundingClientRect();
+        for (let ancestor = window!.parentElement; ancestor && ancestor !== document.body; ancestor = ancestor.parentElement) {
+          if (getComputedStyle(ancestor).overflow === 'visible') continue;
+          const clip = ancestor.getBoundingClientRect();
+          left = Math.max(left, clip.left);
+          right = Math.min(right, clip.right);
+        }
+        right = Math.min(right, document.documentElement.clientWidth);
+        const names = Array.from(window!.querySelectorAll('li'))
+          .map((item) => {
+            const box = item.getBoundingClientRect();
+            return { name: item.textContent ?? '', left: box.left, right: box.right, shown: box.right > left && box.left < right };
+          })
+          .sort((a, b) => a.left - b.left);
+        return { left, right, names };
+      }, moment);
+
+    /* The usual space between two names that follow each other: no stretch of the window may be
+       left emptier than that. */
+    const start = await bandAt({ fraction: 0 });
+    const usualSpace = start.names[1].left - start.names[0].right;
+
+    for (const fraction of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.999]) {
+      const band = await bandAt({ fraction });
+      const shown = band.names.filter((name) => name.shown);
+      const at = `${where}, at ${fraction * 100} % of the loop`;
+      expect.soft(shown.length, `${at}, names are shown`).toBeGreaterThan(0);
+      if (shown.length === 0) continue;
+      expect.soft(shown[0].left, `${at}, left of the first name shown against the left of the window (${band.left} px)`)
+        .toBeLessThanOrEqual(band.left + usualSpace + 1);
+      let coveredUpTo = shown[0].right;
+      for (const name of shown.slice(1)) {
+        expect.soft(name.left - coveredUpTo, `${at}, empty space before "${name.name}" against the usual space between two names (${usualSpace} px)`)
+          .toBeLessThanOrEqual(usualSpace + 1);
+        coveredUpTo = Math.max(coveredUpTo, name.right);
+      }
+      expect.soft(coveredUpTo, `${at}, right of the last name shown against the right of the window (${band.right} px)`)
+        .toBeGreaterThanOrEqual(band.right - usualSpace - 1);
+    }
+
+    /* Just before the end of a loop, the band shows the same names at the same places as at its
+       start, give or take the distance the names travel in that short time. */
+    const justAfterStart = await bandAt({ fraction: 0.001 });
+    const justBeforeEnd = await bandAt({ fraction: 0.001, fromEnd: true });
+    const travel = Math.abs(justAfterStart.names[0].left - start.names[0].left);
+    for (const [shownIn, foundIn, label] of [
+      [start, justBeforeEnd, 'at the start, found just before the end'],
+      [justBeforeEnd, start, 'just before the end, found at the start'],
+    ] as const) {
+      for (const name of shownIn.names.filter((name) => name.shown)) {
+        const closest = Math.min(
+          ...foundIn.names.filter((other) => other.name === name.name).map((other) => Math.abs(other.left - name.left)),
+        );
+        expect.soft(closest, `${where}, "${name.name}" shown ${label}: distance to the same name (travel: ${travel} px)`)
+          .toBeLessThanOrEqual(travel + 1);
+      }
+    }
+  }
+}
 
 test.describe('home page of another site, without clients', () => {
   let siteDirectory: string;

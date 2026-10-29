@@ -162,6 +162,12 @@ export const SITE_WITH_A_LONG_MENU = testSite('long-menu');
    "Reliure Marchetti", "Atelier Bonnefoy", "Librairie Castagne". */
 export const SITE_WITH_OTHER_CLIENTS = testSite('other-clients');
 
+/* The example site's French home page declares five clients: this site
+   replaces that home page with the one of
+   tests/fixtures/single-short-client/content, without a hero, which declares
+   a single fictional client with a three-letter name, "Oko". */
+export const SITE_WITH_A_SINGLE_SHORT_CLIENT = testSite('single-short-client');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
