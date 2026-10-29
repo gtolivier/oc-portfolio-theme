@@ -687,6 +687,12 @@ tick-field > canvas {
   margin-left: var(--clients-gap);
 }
 
+/* Still names: one separator between two names, none after the last one.
+   When the names loop, the last separator links the two copies. */
+.clients:not(.is-scrolling) li:last-child::after {
+  display: none;
+}
+
 /* Still names, the default: only the exposed list shows, the copy that makes
    the loop seamless stays hidden. */
 .clients ul[aria-hidden="true"] {
