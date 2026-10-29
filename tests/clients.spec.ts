@@ -328,6 +328,77 @@ test('on a phone, down to 320 px wide, and on a desktop, the client band never m
   }
 });
 
+test('on a phone and on a desktop, where the clients do not fit in the band, the band scrolls without ever showing the same name twice at once: at any moment of its loop, each client name shows on screen at most once, even partly', async ({ page }) => {
+  /* The example site's five clients are wider than the band on a phone and on a 1280 px desktop. */
+  for (const { width, height } of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+    const where = `at ${width} px`;
+    await page.setViewportSize({ width, height });
+    await page.goto('/fr/');
+    await page.evaluate(() => document.fonts.ready);
+    const list = page.getByRole('list', { name: 'Ils me font confiance' });
+    await expect(list).toBeVisible();
+    /* The page's animations are frozen; the band's loop (the animations of the box that clips
+       the names, or of what it holds) is then set to chosen moments, as a fraction of its length. */
+    await page.evaluate(() => document.getAnimations().forEach((animation) => animation.pause()));
+    const loopCount = await list.evaluate((ul) => {
+      let window: Element | null = ul.parentElement;
+      while (window && getComputedStyle(window).overflow === 'visible') window = window.parentElement;
+      return document.getAnimations().filter((animation) => {
+        const target = (animation.effect as KeyframeEffect | null)?.target;
+        return !!window && !!target && window.contains(target);
+      }).length;
+    });
+    expect(loopCount, `${where}, the band loops`).toBeGreaterThan(0);
+
+    for (const fraction of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.999]) {
+      const at = `${where}, at ${fraction * 100} % of the loop`;
+      /* Every piece of text on the page that reads exactly as a client name, whatever the markup
+         and whether assistive technologies get it or not, that the visitor sees, wholly or partly,
+         once cut by every box that clips its overflow and by the window's width. */
+      const shown = await list.evaluate((ul, { fraction, clients }) => {
+        let window: Element | null = ul.parentElement;
+        while (window && getComputedStyle(window).overflow === 'visible') window = window.parentElement;
+        for (const animation of document.getAnimations()) {
+          const target = (animation.effect as KeyframeEffect | null)?.target;
+          if (!window || !target || !window.contains(target)) continue;
+          animation.currentTime = Number(animation.effect!.getComputedTiming().duration) * fraction;
+        }
+        const normalize = (text: string) => text.replace(/\s+/g, ' ').trim();
+        const found: { name: string; left: number; right: number }[] = [];
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const name = normalize(node.textContent ?? '');
+          const parent = node.parentElement;
+          if (!clients.includes(name) || !parent) continue;
+          if (!parent.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          const box = range.getBoundingClientRect();
+          let { left, right, top, bottom } = box;
+          for (let ancestor: Element | null = parent; ancestor && ancestor !== document.body; ancestor = ancestor.parentElement) {
+            if (getComputedStyle(ancestor).overflow === 'visible') continue;
+            const clip = ancestor.getBoundingClientRect();
+            left = Math.max(left, clip.left);
+            right = Math.min(right, clip.right);
+            top = Math.max(top, clip.top);
+            bottom = Math.min(bottom, clip.bottom);
+          }
+          left = Math.max(left, 0);
+          right = Math.min(right, document.documentElement.clientWidth);
+          if (right > left && bottom > top) found.push({ name, left: box.left, right: box.right });
+        }
+        return found;
+      }, { fraction, clients: CLIENTS });
+      for (const client of CLIENTS) {
+        const copies = shown.filter((occurrence) => occurrence.name === client);
+        /* At most once: no second copy of the name peeks in, even partly, while one shows. */
+        expect.soft(copies.length, `${at}, number of times "${client}" shows on screen (${copies.map((copy) => `${copy.left}–${copy.right} px`).join(', ')})`)
+          .toBeLessThanOrEqual(1);
+      }
+    }
+  }
+});
+
 test('on the English home page, assistive technologies get the same clients once each, in order, as the list "Trusted by"', async ({ page }) => {
   await page.goto('/en/');
   await expectClientList(page, 'Trusted by');
