@@ -382,6 +382,23 @@ test('on a desktop, while the pointer rests on the scrolling client band, the na
   expectNamesMovedLeft(CLIENTS, namesOnceLeft, await namesLeft(list, CLIENTS), 'once the pointer has left the band');
 });
 
+test('on a touch screen, after a tap on the scrolling client band, the names keep moving: one second later, they sit further left', async ({ page, hasTouch }) => {
+  test.skip(!hasTouch, 'a tap needs a touch screen');
+  /* At the phone's own width, the example site's five clients do not all fit: the band scrolls. */
+  const list = await openClientList(page);
+  /* The band starts at the bottom of the first screen: it is brought into view to be tapped.
+     Scrolled from the page: Playwright's own scrolling waits for the list to stop moving. */
+  await list.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+  const band = await clientBandBox(page);
+  expect(band, 'the client band spans the page width').not.toBeNull();
+
+  /* The visitor taps the middle of the band. */
+  await page.touchscreen.tap((band!.left + band!.right) / 2, (band!.top + band!.bottom) / 2);
+  const namesAfterTap = await namesLeft(list, CLIENTS);
+  await letOneSecondPass(page);
+  expectNamesMovedLeft(CLIENTS, namesAfterTap, await namesLeft(list, CLIENTS), 'after a tap on the band');
+});
+
 test('under prefers-reduced-motion: reduce, on a phone, down to 320 px wide, and on a desktop, every client name is shown at once, each exactly once, whole, on as many lines as needed', async ({ page }) => {
   /* The visitor asks for reduced motion. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
