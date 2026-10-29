@@ -428,6 +428,30 @@ test('on a touch screen, after a tap on the scrolling client band, the names kee
   expectNamesMovedLeft(CLIENTS, namesAfterTap, await namesLeft(list, CLIENTS), 'after a tap on the band');
 });
 
+test('on a phone and on a desktop, while the client names scroll, pressing the button "Mettre en pause le défilement" stops them: one second later, they sit where they were; pressing it again makes them move left again', async ({ page }) => {
+  for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
+    /* At these widths, the example site's five clients do not all fit: the band scrolls. */
+    await page.setViewportSize({ width, height });
+    const list = await openClientList(page);
+    const pause = page.getByRole('button', { name: 'Mettre en pause le défilement' });
+    await expect(pause, `at ${width} px, the page has one button "Mettre en pause le défilement"`).toHaveCount(1);
+
+    /* The visitor reaches the button from the keyboard and presses it: it keeps the focus, so the
+       second press lands on the same button, whatever it is named once pressed. */
+    await pause.focus();
+    await page.keyboard.press('Enter');
+    const namesWhilePaused = await namesLeft(list, CLIENTS);
+    await letOneSecondPass(page);
+    expectNamesStill(CLIENTS, namesWhilePaused, await namesLeft(list, CLIENTS), `at ${width} px, once the button is pressed`);
+
+    /* The visitor presses it again. */
+    await page.keyboard.press('Enter');
+    const namesOnceResumed = await namesLeft(list, CLIENTS);
+    await letOneSecondPass(page);
+    expectNamesMovedLeft(CLIENTS, namesOnceResumed, await namesLeft(list, CLIENTS), `at ${width} px, once the button is pressed again`);
+  }
+});
+
 test('on a phone and on a desktop, when the client names grow wider while they scroll (their font gets larger, as when a web font swaps in), they do not jump: the first name stays where it was, modulo one loop', async ({ page }) => {
   for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
     await page.setViewportSize({ width, height });
