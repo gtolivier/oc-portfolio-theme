@@ -35,10 +35,12 @@ async function expectClientList(page: Page, name: string, clients: string[] = CL
   }
 }
 
-/* Opens the home page at `homePage`, waits for its fonts, and returns its client list, once visible. */
+/* Opens the home page at `homePage`, waits for its fonts to finish loading, and returns its client
+   list, once visible. It polls `document.fonts.status` rather than awaiting `document.fonts.ready`:
+   without JavaScript, Firefox never resolves a page promise awaited from the test. */
 async function openClientList(page: Page, homePage = '/fr/'): Promise<Locator> {
   await page.goto(homePage);
-  await page.evaluate(() => document.fonts.ready);
+  await expect.poll(() => page.evaluate(() => document.fonts.status)).toBe('loaded');
   const list = clientList(page);
   await expect(list).toBeVisible();
   return list;
