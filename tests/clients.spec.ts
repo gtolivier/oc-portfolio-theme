@@ -5,9 +5,11 @@ import {
   SITE_WITH_LONG_CLIENT_NAMES,
   SITE_WITH_A_ONE_WORD_CLIENT_NAME,
   SITE_WITH_OTHER_CLIENTS,
+  SITE_WITH_CLIENTS_AS_TEXT,
   buildSite,
   removeDirectory,
   serveSite,
+  tryToBuildSite,
 } from './helpers/built-site';
 import { clientBandBox, clientList } from './helpers/clients';
 import { blockRequests, themeScriptUrl, themeStylesheetUrl } from './helpers/held-requests';
@@ -1006,5 +1008,28 @@ test.describe('home page of another site, without clients', () => {
     for (const client of CLIENTS) {
       await expect(page.getByText(client)).toHaveCount(0);
     }
+  });
+});
+
+/* These tests only run hugo build, without a browser: running them in every Playwright
+   project would repeat the same build five times. */
+const BUILD_TESTS_PROJECT = 'chromium';
+
+test.describe('client content errors: build failure', () => {
+  test.skip(
+    () => test.info().project.name !== BUILD_TESTS_PROJECT,
+    `build without a browser, identical in every project: run in ${BUILD_TESTS_PROJECT} only`,
+  );
+
+  test('a home page whose clients parameter is a text instead of a list makes the site build fail, with a French error message that names the clients parameter', () => {
+    /* tests/fixtures/name-as-text/content/_index.md declares clients = 'Maison Delorme', a
+       text rather than a list of names. Rather than a band built from that text, the person
+       building the site must get a failure whose French message names the clients parameter
+       of the front matter, in the style of the hero's messages ("le paramètre author…"),
+       whatever the rest of the wording. Requiring "paramètre clients" also keeps a template
+       execution error that merely quotes $clients or .Params.clients from passing. */
+    const build = tryToBuildSite(SITE_WITH_CLIENTS_AS_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors).toMatch(/\bparamètre\s+clients\b/);
   });
 });

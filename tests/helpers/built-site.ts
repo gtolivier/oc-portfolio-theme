@@ -191,6 +191,13 @@ export const SITE_WITH_A_HERO_WITHOUT_CLIENTS = testSite('hero-without-clients')
    band of a 320 px phone, and "Atelier Bonnefoy". */
 export const SITE_WITH_A_ONE_WORD_CLIENT_NAME = testSite('one-word-client-name');
 
+/* The example site's French home page declares its clients as a list: this
+   site replaces that home page with the one of
+   tests/fixtures/name-as-text/content, without a hero, whose params.clients
+   is a text, 'Maison Delorme', instead of a list of names. Its folder name
+   avoids the word clients, which the error-message assertion looks for. */
+export const SITE_WITH_CLIENTS_AS_TEXT = testSite('name-as-text');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
