@@ -540,6 +540,20 @@ test('on the English home page, assistive technologies get the same clients once
   await expectClientList(page, 'Trusted by');
 });
 
+test('in French and in English, the client list keeps its list semantics in every browser: with its bullets removed, the list exposed to assistive technologies declares itself a list, alongside its label', async ({ page }) => {
+  /* WebKit drops the list role of a list without bullets unless the list declares it: a computed
+     role in Chromium would not show that, so the test checks what the page declares. */
+  for (const [homePage, name] of [
+    ['/fr/', 'Ils me font confiance'],
+    ['/en/', 'Trusted by'],
+  ]) {
+    await page.goto(homePage);
+    const list = page.getByRole('list', { name });
+    await expect(list, `${homePage}: the list "${name}"`).toHaveAttribute('role', 'list');
+    await expect(list, `${homePage}: the list "${name}"`).toHaveAttribute('aria-label', name);
+  }
+});
+
 test.describe('home page of another site, with other clients', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
