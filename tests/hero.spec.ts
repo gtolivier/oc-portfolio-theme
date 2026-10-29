@@ -10,6 +10,7 @@ import {
   SITE_WITH_A_HERO_WITHOUT_AUTHOR,
   SITE_WITH_A_HERO_WITH_LONG_WORDS,
   SITE_WITH_A_HERO_WITHOUT_TITLE,
+  SITE_WITH_A_HERO_WITHOUT_CLIENTS,
   SITE_WITH_A_LONG_MENU,
   SITE_WITH_A_PAGE_REF_NOT_FOUND,
   SITE_WITH_A_SINGLE_LANGUAGE,
@@ -21,7 +22,7 @@ import {
 } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { blockRequests, fontFilesUrl, holdRequests, themeScriptUrl } from './helpers/held-requests';
-import { clientBandBox, heroRegion } from './helpers/hero';
+import { clientBandBox, clientList, heroRegion } from './helpers/hero';
 import { tabUntilFocused } from './helpers/keyboard';
 import { clickOrTap, middleOfFirstLine } from './helpers/pointer';
 import {
@@ -1411,6 +1412,39 @@ test.describe('home page without a hero, with or without clients', () => {
       const textTopWithClients = (await textWithClients.boundingBox())!.y;
       expect(textTopWithClients, `text below the client band at ${size}`).toBeGreaterThanOrEqual(band!.bottom - 1);
       expect(textTopWithClients - band!.bottom, `gap between the client band and the text at ${size}`).toBeLessThan(closeGap);
+    }
+  });
+});
+
+test.describe('home page with a hero and no clients', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_HERO_WITHOUT_CLIENTS);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on phone as on desktop, on a home page with a hero and no clients, in a window tall enough for its content, the hero alone fills the window below the header: it starts right below the header and its bottom edge meets the bottom of the window', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_HERO_WITHOUT_CLIENTS, siteDirectory);
+    /* Checked at a tall phone window and at both desktop ones, where the hero's content does
+       not set its height. */
+    for (const viewport of TALL_VIEWPORTS) {
+      const size = `${viewport.width} × ${viewport.height}`;
+      await openHomeAt(page, viewport, SITE_WITH_A_HERO_WITHOUT_CLIENTS.origin);
+      const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
+      /* The home page (tests/fixtures/hero-without-clients/content/_index.md) declares no
+         clients: no client band shares the first screen with the hero. */
+      await expect(clientList(page), `client list at ${size}`).toHaveCount(0);
+      await heightBelowHeader(page, viewport, { heading, buttons }, size);
+      const headerBox = (await page.locator('header').boundingBox())!;
+      const headerBottom = headerBox.y + headerBox.height;
+      const heroBox = (await hero.boundingBox())!;
+      const heroBottom = heroBox.y + heroBox.height;
+      expect.soft(Math.abs(heroBox.y - headerBottom), `at ${size}, top of the hero (${heroBox.y} px) against the bottom of the header (${headerBottom} px)`)
+        .toBeLessThanOrEqual(1);
+      expect.soft(Math.abs(heroBottom - viewport.height), `at ${size}, bottom of the hero (${heroBottom} px) against the bottom of the window (${viewport.height} px)`)
+        .toBeLessThanOrEqual(1);
     }
   });
 });

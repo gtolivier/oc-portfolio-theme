@@ -177,6 +177,12 @@ export const SITE_WITH_A_SINGLE_SHORT_CLIENT = testSite('single-short-client');
    than the band on a phone and on a 1280 px desktop. */
 export const SITE_WITH_LONG_CLIENT_NAMES = testSite('long-client-names');
 
+/* The example site's French home page has a hero followed by a client band:
+   this site replaces that home page with the one of
+   tests/fixtures/hero-without-clients/content, with the same hero but
+   without params.clients, so that its first screen holds the hero alone. */
+export const SITE_WITH_A_HERO_WITHOUT_CLIENTS = testSite('hero-without-clients');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
