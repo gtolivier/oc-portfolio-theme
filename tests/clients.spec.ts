@@ -64,6 +64,52 @@ test('on the French home page, the label "Ils me font confiance" is shown on scr
   expect(accessibilityTree.split('Ils me font confiance').length - 1, '"Ils me font confiance" exposed once').toBe(1);
 });
 
+/* The vertical extent, in the window, of the label "Ils me font confiance" shown on screen on the
+   open page, whatever the markup: a text node holding it, or an element's ::before generated
+   content. The browser gives no box for generated content: its top is taken as the top of its
+   element's content box, where the label, first in reading order, starts at the earliest, and
+   its height is the pseudo-element's used height. Null when the label is not shown. */
+async function labelVerticalExtent(page: Page, label: string): Promise<{ top: number; bottom: number } | null> {
+  return page.locator('body').evaluate((body, label) => {
+    const normalize = (text: string) => text.replace(/\s+/g, ' ').trim();
+    const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (normalize(node.textContent ?? '') !== label) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const { top, bottom, height } = range.getBoundingClientRect();
+      if (height > 0) return { top, bottom };
+    }
+    for (const element of Array.from(body.querySelectorAll('*'))) {
+      const style = getComputedStyle(element, '::before');
+      const shown = (style.content.split(/\s+\/\s+/)[0].match(/"(?:[^"\\]|\\.)*"/g) ?? [])
+        .map((string) => JSON.parse(string) as string)
+        .join('');
+      if (normalize(shown) !== label || style.display === 'none') continue;
+      const host = getComputedStyle(element);
+      const top = element.getBoundingClientRect().top + parseFloat(host.borderTopWidth) + parseFloat(host.paddingTop);
+      return { top, bottom: top + parseFloat(style.height) };
+    }
+    return null;
+  }, label);
+}
+
+test('on a phone, the label "Ils me font confiance" sits above the client names, not on their line', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/fr/');
+  await page.evaluate(() => document.fonts.ready);
+  const list = page.getByRole('list', { name: 'Ils me font confiance' });
+  await expect(list).toBeVisible();
+  const labelBox = await labelVerticalExtent(page, 'Ils me font confiance');
+  expect(labelBox, 'the label "Ils me font confiance" is shown on screen').not.toBeNull();
+  /* Vertical positions only: the names may slide sideways, but they stay below the label. */
+  for (const client of CLIENTS) {
+    const box = (await list.getByRole('listitem').filter({ hasText: client }).boundingBox())!;
+    expect.soft(box.y, `top of "${client}" against the bottom of the label (${labelBox!.bottom} px)`)
+      .toBeGreaterThanOrEqual(labelBox!.bottom - 1);
+  }
+});
+
 test('on the English home page, assistive technologies get the same clients once each, in order, as the list "Trusted by"', async ({ page }) => {
   await page.goto('/en/');
   await expectClientList(page, 'Trusted by');
