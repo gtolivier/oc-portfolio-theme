@@ -435,6 +435,11 @@ test.describe('home page without JavaScript', () => {
       expectNoTwoNamesOverlap(shown, where);
     }
   });
+
+  test('without JavaScript, on a phone and on a desktop, the client band starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window', async ({ page }) => {
+    /* The names wrap, so the band grows taller: it must not shrink the hero above it. */
+    await expectBandBelowTheFold(page);
+  });
 });
 
 test('when JavaScript is on but the theme’s script does not load, on a phone, down to 320 px wide, and on a desktop, the client names stay still, and every one is shown at once, exactly once, whole, on as many lines as needed', async ({ page }) => {
@@ -464,6 +469,12 @@ test('when JavaScript is on but the theme’s script does not load, on a phone, 
 test('under prefers-reduced-motion: reduce, on a phone and on a desktop, the client band starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window', async ({ page }) => {
   /* The visitor asks for reduced motion. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expectBandBelowTheFold(page);
+});
+
+/* Checks, on a phone and on a desktop, that on arrival on the French home page the hero alone fills
+   the window below the header, and the client band begins at the bottom edge of the window. */
+async function expectBandBelowTheFold(page: Page) {
   for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
     const size = `${width} × ${height}`;
     await page.setViewportSize({ width, height });
@@ -488,7 +499,7 @@ test('under prefers-reduced-motion: reduce, on a phone and on a desktop, the cli
     expect.soft(band.top, `at ${size}, top of the client band against the bottom of the window (${height} px)`)
       .toBeGreaterThanOrEqual(height - 1);
   }
-});
+}
 
 test('under prefers-reduced-motion: reduce, on a phone held in landscape (844 × 390), a hero taller than the window below the header grows with its content and pushes the client band down: all of the hero’s content ends above the band', async ({ page }) => {
   /* The visitor asks for reduced motion, on a phone turned sideways: a window too short for the
