@@ -575,15 +575,15 @@ tick-field > canvas {
   font-weight: 700;
 }
 
-/* The first screen fills the window below the header: the hero takes the
-   room the client band, the strip below it, leaves. */
+/* The hero takes the room the client band, the strip below it, leaves. */
 .first-screen {
   --clients-band-height: 2.5rem;
   display: grid;
   grid-template-rows: 1fr auto;
 }
 
-/* Without a hero, nothing stretches the first screen: the content follows. */
+/* With a hero, the first screen fills the window below the header. Without
+   one, nothing stretches it: the content follows. */
 .first-screen:has(> .hero) {
   /* For browsers without svh, which drop the declaration below. */
   min-height: calc(100vh - var(--header-height));
