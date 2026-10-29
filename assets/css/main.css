@@ -671,7 +671,28 @@ tick-field > canvas {
 
 @media (prefers-reduced-motion: reduce) {
   .clients-track {
+    width: auto;
     animation: none;
+  }
+
+  /* Still names: only the exposed list stays, wrapped on as many lines as
+     needed; the copies that made the loop seamless go away. */
+  .clients ul[aria-hidden="true"] {
+    display: none;
+  }
+
+  .clients ul {
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+}
+
+/* Wrapped names make the band taller and the hero shorter: on a desktop,
+   the band's padding gives some of that room back. */
+@media (prefers-reduced-motion: reduce) and (min-width: 768px) {
+  .clients {
+    padding-block: 12px;
   }
 }
 
