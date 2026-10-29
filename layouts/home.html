@@ -29,21 +29,19 @@
     </tick-field>
     {{- end }}
     {{- with .Params.clients }}
+    {{- $clients := . }}
     {{- $label := i18n "clients" }}
-    {{- /* The names are listed twice, so that the band loops without a gap: the copy is hidden from assistive technologies. */}}
     <div class="clients" data-label="{{ $label }}">
       <div class="clients-window">
         <div class="clients-track">
-          <ul aria-label="{{ $label }}">
-            {{- range . }}
+          {{- /* The names are listed twice, so that the band loops without a gap: the copy is hidden from assistive technologies. */}}
+          {{- range $isCopy := slice false true }}
+          <ul {{ if $isCopy }}aria-hidden="true"{{ else }}aria-label="{{ $label }}"{{ end }}>
+            {{- range $clients }}
             <li>{{ . }}</li>
             {{- end }}
           </ul>
-          <ul aria-hidden="true">
-            {{- range . }}
-            <li>{{ . }}</li>
-            {{- end }}
-          </ul>
+          {{- end }}
         </div>
       </div>
     </div>
