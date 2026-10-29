@@ -198,6 +198,14 @@ export const SITE_WITH_A_ONE_WORD_CLIENT_NAME = testSite('one-word-client-name')
    avoids the word clients, which the error-message assertion looks for. */
 export const SITE_WITH_CLIENTS_AS_TEXT = testSite('name-as-text');
 
+/* The example site's French home page declares its clients as a list of
+   names: this site replaces that home page with the one of
+   tests/fixtures/name-as-map/content, without a hero, whose params.clients
+   is a list, as expected, but whose second entry is a table,
+   { name = 'Maison Delorme' }, instead of a name. Its folder name avoids
+   the word clients, which the error-message assertion looks for. */
+export const SITE_WITH_A_CLIENT_AS_MAP = testSite('name-as-map');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

@@ -6,6 +6,7 @@ import {
   SITE_WITH_A_ONE_WORD_CLIENT_NAME,
   SITE_WITH_OTHER_CLIENTS,
   SITE_WITH_CLIENTS_AS_TEXT,
+  SITE_WITH_A_CLIENT_AS_MAP,
   buildSite,
   removeDirectory,
   serveSite,
@@ -1029,6 +1030,17 @@ test.describe('client content errors: build failure', () => {
        whatever the rest of the wording. Requiring "paramètre clients" also keeps a template
        execution error that merely quotes $clients or .Params.clients from passing. */
     const build = tryToBuildSite(SITE_WITH_CLIENTS_AS_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors).toMatch(/\bparamètre\s+clients\b/);
+  });
+
+  test('a home page whose clients list holds an entry that is not a name makes the site build fail, with a French error message that names the clients parameter', () => {
+    /* tests/fixtures/name-as-map/content/_index.md declares clients as a list, so the check
+       that clients is a list lets it through, but its second entry is a table,
+       { name = 'Maison Delorme' }, rather than a name. Rather than a band showing that table
+       as raw text, the person building the site must get a failure whose French message names
+       the clients parameter of the front matter, whatever the rest of the wording. */
+    const build = tryToBuildSite(SITE_WITH_A_CLIENT_AS_MAP);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors).toMatch(/\bparamètre\s+clients\b/);
   });
