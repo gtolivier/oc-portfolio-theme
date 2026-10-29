@@ -777,6 +777,16 @@ test('on the English home page, assistive technologies get the same clients once
   await expectClientList(page, 'Trusted by');
 });
 
+test('on the English home page, while the client names scroll, the button that pauses them is named "Pause scrolling"', async ({ page }) => {
+  /* At 1280 px wide, the example site's five clients do not all fit: the band scrolls. */
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/en/');
+  await expect(page.getByRole('list', { name: 'Trusted by' })).toBeVisible();
+  const pause = page.getByRole('button', { name: 'Pause scrolling', exact: true });
+  await expect(pause, 'the page has one button "Pause scrolling"').toHaveCount(1);
+  await expect(pause).toBeVisible();
+});
+
 test('in French and in English, the client list keeps its list semantics in every browser: with its bullets removed, the list exposed to assistive technologies declares itself a list, alongside its label', async ({ page }) => {
   /* WebKit drops the list role of a list without bullets unless the list declares it: a computed
      role in Chromium would not show that, so the test checks what the page declares. */
