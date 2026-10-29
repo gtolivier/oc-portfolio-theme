@@ -4,8 +4,8 @@ import { type Locator } from '@playwright/test';
 export const SIGNS = '|/\\<>[]{}=+#·';
 
 /* Text an element shows on screen, in rendering order: its text nodes and the generated
-   content of its ::before and ::after pseudo-elements (without the alternative text of a
-   `content: "…" / "…"`), whitespace excluded. Text that only assistive technologies get is
+   content of its ::before and ::after pseudo-elements that show (without the alternative text
+   of a `content: "…" / "…"`), whitespace excluded. Text that only assistive technologies get is
    left out: under an element that is not displayed, invisible, fully transparent, clipped,
    or reduced to a box of at most 1px with its overflow hidden. Independent of the chosen
    markup. */
@@ -30,7 +30,11 @@ async function textOnScreenWithSpaces(element: Locator): Promise<string> {
       );
     };
     const generated = (el: Element, pseudo: '::before' | '::after') => {
-      const content = getComputedStyle(el, pseudo).content;
+      const style = getComputedStyle(el, pseudo);
+      /* A pseudo-element that is not displayed, invisible or fully transparent shows nothing,
+         whatever its content. */
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return '';
+      const content = style.content;
       const strings = content.split(/\s+\/\s+/)[0].match(/"(?:[^"\\]|\\.)*"/g) ?? [];
       return strings.map((string) => JSON.parse(string) as string).join('');
     };

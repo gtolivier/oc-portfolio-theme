@@ -97,12 +97,12 @@
     + var(--header-nav-row-height)
     + var(--header-border-width)
   );
-  /* Height of the sticky header; the hero subtracts it from the viewport
-     so it fills the space right below the header. Once it runs, the theme
-     script replaces it with the measured height, which differs from the
-     estimate when the menu wraps. The header's own min-height reads the
-     estimate instead, so a measured height never keeps the header tall
-     after the window widens. */
+  /* Height of the sticky header; the first screen subtracts it from the
+     viewport so it fills the space right below the header. Once it runs,
+     the theme script replaces it with the measured height, which differs
+     from the estimate when the menu wraps. The header's own min-height
+     reads the estimate instead, so a measured height never keeps the
+     header tall after the window widens. */
   --header-height: var(--header-estimated-height);
   /* Space left above an anchor target so the sticky header does not
      hide it: the header's height, plus some breathing room. */
@@ -175,18 +175,13 @@ h1 {
 
 /* The design centres the text block vertically. A flex container also keeps
    the heading and paragraph margins inside the section: they do not leak
-   out and the section fills the viewport. */
+   out and the section fills the room the first screen gives it. */
 .hero {
   /* Least space kept above the text (on a phone) and below it. */
   --hero-edge-space: 40px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  /* For browsers without svh, which drop the declaration below. */
-  min-height: calc(100vh - var(--header-height));
-  /* svh: the height left when a phone browser shows its toolbars, so the
-     buttons are not hidden under them on arrival. */
-  min-height: calc(100svh - var(--header-height));
   padding-inline: var(--page-gutter);
   padding-bottom: var(--hero-edge-space);
   /* A phone's narrow screen spares little width: the hero's field gives
@@ -495,9 +490,9 @@ scramble-text {
 
 /* Until the theme script has defined it, the text stays hidden rather than
    flash in clear before being scrambled. Only while head/js.html sets the
-   scramble-text-pending class: never without JavaScript, and removed once the
-   page is parsed if the element is still undefined. */
-.scramble-text-pending scramble-text:not(:defined) {
+   theme-script-pending class: never without JavaScript, and removed once the
+   page is parsed, when the script has defined the element or failed to. */
+.theme-script-pending scramble-text:not(:defined) {
   visibility: hidden;
   /* A script that never arrives nor fails would keep the text hidden for good:
      reveal it after a long wait. */
@@ -578,4 +573,247 @@ tick-field > canvas {
 /* The first bar of each initial. */
 .logo b {
   font-weight: 700;
+}
+
+/* With a hero, the hero alone fills the window below the header: still names
+   (the default) may wrap and make the band taller, so it starts below the
+   fold; the client band is the strip below it. Without a hero, nothing
+   stretches the first screen: the content follows. */
+.first-screen.has-hero {
+  /* The height of the window below the header; for browsers without svh. */
+  --window-below-header: calc(100vh - var(--header-height));
+  display: grid;
+  grid-template-rows: minmax(var(--window-below-header), auto) auto;
+}
+
+/* svh: the height left when a phone browser shows its toolbars, so the
+   hero's buttons are not hidden under them on arrival. */
+@supports (height: 100svh) {
+  .first-screen.has-hero {
+    --window-below-header: calc(100svh - var(--header-height));
+  }
+}
+
+.clients {
+  /* The space after the label, and on each side of a separator. */
+  --clients-gap: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px var(--clients-gap);
+  /* The page gutter on both sides, whether the names are still or scroll (the
+     pause button then sits against the right gutter). */
+  padding: 20px var(--page-gutter);
+  border-top: 1px solid rgb(var(--color-paper-channels) / 0.14);
+  /* Not only clipping: as an item of the first screen's grid, the band would
+     otherwise be at least as wide as the whole track, and widen the page. */
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 17px;
+  letter-spacing: 0.06em;
+  color: var(--color-accent);
+  white-space: nowrap;
+}
+
+/* The label shown before the names repeats the list's accessible name, so it
+   gets an empty alternative text: assistive technologies read it once (the
+   first declaration is a fallback for browsers without that syntax). On a
+   phone it takes its own line above the names. */
+.clients::before {
+  content: attr(data-label);
+  content: attr(data-label) / "";
+  flex-basis: 100%;
+  /* Wraps on a narrow phone when the visitor enlarged the text, instead of
+     being cut by the band. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 12.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-paper);
+}
+
+/* The names slide through the window; the label stays put. */
+.clients-window {
+  flex: 1 1 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Without clients-fit.ts (without JavaScript, or when the script does not
+   load) nothing tells whether the names fit, and under reduced motion they
+   never loop: by default, the still names wrap on as many lines as needed. */
+.clients-track {
+  display: flex;
+}
+
+/* The track holds the list twice: sliding it by half its width loops
+   seamlessly. */
+@keyframes clients-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.clients ul {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  min-width: 0;
+  row-gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A margin rather than a gap: the last name of each copy keeps its space
+   too, so the second copy follows the first as one name follows another,
+   and the loop shows no jump. A name wider than the band wraps onto several
+   lines instead of being cut. */
+.clients li {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-right: var(--clients-gap);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Each client name is followed by a decorative separator, which assistive
+   technologies do not get (empty alternative text; the first declaration is
+   a fallback for browsers without that syntax). */
+.clients li::after {
+  content: "|||";
+  content: "|||" / "";
+  margin-left: var(--clients-gap);
+}
+
+/* Still names: one separator between two names, none after the last one.
+   When the names loop, the last separator links the two copies. */
+.clients:not(.is-scrolling) li:last-child::after {
+  display: none;
+}
+
+/* Still names, the default: only the exposed list shows, the copy that makes
+   the loop seamless stays hidden. */
+.clients ul[aria-hidden="true"] {
+  display: none;
+}
+
+/* Unless the visitor asks for reduced motion, the names stay on one line, and
+   loop when they do not all fit. */
+@media (prefers-reduced-motion: no-preference) {
+  /* Once the script runs, the names stay on one line. So that the band does
+     not change height when the script runs, they stay on one line from the
+     first paint too, while head/js.html sets the theme-script-pending class:
+     until the page is parsed, when the deferred script has run or failed. */
+  :is(.theme-script-pending, .clients-measured) .clients-track {
+    width: max-content;
+  }
+
+  /* One line of names: the band keeps its height, so the whole first screen,
+     band included, fills the window below the header; the hero takes the
+     room the band leaves. */
+  :is(.theme-script-pending, .clients-measured) .first-screen.has-hero {
+    min-height: var(--window-below-header);
+    grid-template-rows: 1fr auto;
+  }
+
+  :is(.theme-script-pending, .clients-measured) .clients ul {
+    flex: none;
+    flex-wrap: nowrap;
+  }
+
+  :is(.theme-script-pending, .clients-measured) .clients li {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  /* The names do not all fit in the band (see clients-fit.ts, which also
+     sets the loop's duration): they loop. */
+  .clients.is-scrolling .clients-track {
+    animation: clients-scroll linear infinite;
+  }
+
+  .clients.is-scrolling ul[aria-hidden="true"] {
+    display: flex;
+  }
+
+  /* The window shares the line with the pause button. */
+  .clients.is-scrolling .clients-window {
+    flex-basis: 0;
+  }
+
+  /* The pause button only makes sense while the names move. */
+  .clients.is-scrolling .clients-pause {
+    /* On the line of names, after the window, which gives it room; the band
+       centres it vertically on that line. */
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    /* A target large enough to tap, whose overflow does not make the band
+       taller than the names do. */
+    min-width: 24px;
+    min-height: 24px;
+    margin-block: -4px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 12.5px;
+    letter-spacing: 0;
+    line-height: 1;
+    color: var(--color-paper);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Under the pointer, the icon takes the names' accent (not on a phone,
+     where a tap would leave it stuck; on a laptop with a touch screen, a tap
+     may, which only tints the icon, unlike the band's pause below); keyboard
+     focus keeps the browser's own outline. */
+  @media (hover: hover) {
+    .clients.is-scrolling .clients-pause:hover {
+      color: var(--color-accent);
+    }
+  }
+
+  /* A small icon, as discreet as the label: pause while the names move,
+     play once they stop. The button's label names it. */
+  .clients-pause::before {
+    content: "\275A\275A";
+    content: "\275A\275A" / "";
+  }
+
+  .clients-pause[aria-pressed="true"]::before {
+    content: "\25B6\FE0E";
+    content: "\25B6\FE0E" / "";
+  }
+
+  .clients.is-scrolling .clients-track.is-paused {
+    animation-play-state: paused;
+  }
+
+  /* The names stop while the pointer rests on the band. On a touch screen,
+     a tap leaves :hover stuck: the names keep moving. Same on a laptop
+     with a touch screen, whose main pointer is still a mouse. */
+  @media (hover: hover) and (not (any-pointer: coarse)) {
+    .clients.is-scrolling:hover .clients-track {
+      animation-play-state: paused;
+    }
+  }
+}
+
+@media (min-width: 768px) {
+  .clients {
+    flex-wrap: nowrap;
+  }
+
+  .clients::before {
+    flex-basis: auto;
+  }
+
+  .clients-window {
+    flex-basis: 0;
+  }
 }

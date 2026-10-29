@@ -10,14 +10,18 @@ import {
   SITE_WITH_A_HERO_WITHOUT_AUTHOR,
   SITE_WITH_A_HERO_WITH_LONG_WORDS,
   SITE_WITH_A_HERO_WITHOUT_TITLE,
+  SITE_WITH_A_HERO_WITHOUT_CLIENTS,
   SITE_WITH_A_LONG_MENU,
   SITE_WITH_A_PAGE_REF_NOT_FOUND,
   SITE_WITH_A_SINGLE_LANGUAGE,
+  SITE_WITH_OTHER_CLIENTS,
   buildSite,
   removeDirectory,
+  runBuildTestsInOneProjectOnly,
   serveSite,
   tryToBuildSite,
 } from './helpers/built-site';
+import { clientBandBox, clientList } from './helpers/clients';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { blockRequests, fontFilesUrl, holdRequests, themeScriptUrl } from './helpers/held-requests';
 import { heroRegion } from './helpers/hero';
@@ -257,16 +261,34 @@ async function heightBelowHeader(
   return { expectedHeight, headerHeight: headerBox.height };
 }
 
-/* Checks that the open home page's hero, in a window of `viewport` tall enough for its content,
-   ends exactly at the bottom of the window: its height is the window height minus the header
-   height, within 1 px. */
-async function expectHeroToEndAtWindowBottom(page: Page, viewport: { width: number; height: number }, size: string): Promise<void> {
+/* Checks that the open home page's hero, which declares clients, in a window of `viewport` tall
+   enough for its content, ends exactly where the client band begins, without passing under it:
+   its bottom edge meets the band's top edge, within 1 px. And that the first screen fills the
+   window below the header, which a wrong header height would break: the edge named by
+   `endsAtWindowBottom` meets the window's bottom edge, within 1 px. With JavaScript, the band's
+   bottom edge, the hero and the band filling the window together; without it, the hero's
+   bottom edge, the hero alone filling the window and the band starting below the fold. */
+async function expectHeroToEndAtClientBand(
+  page: Page,
+  viewport: { width: number; height: number },
+  size: string,
+  endsAtWindowBottom: 'band' | 'hero' = 'band',
+): Promise<void> {
   const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
-  const { expectedHeight } = await heightBelowHeader(page, viewport, { heading, buttons }, size);
+  await heightBelowHeader(page, viewport, { heading, buttons }, size);
+  const band = await clientBandBox(page);
+  expect.soft(band, `at ${size}, a strip holding the list "Ils me font confiance" spans the page width`).not.toBeNull();
+  if (!band) return;
   const heroBox = (await hero.boundingBox())!;
+  const heroBottom = heroBox.y + heroBox.height;
   expect.soft(
-    Math.abs(heroBox.height - expectedHeight),
-    `at ${size}, hero height (${heroBox.height} px) against the window height minus the header height (${expectedHeight} px)`,
+    Math.abs(heroBottom - band.top),
+    `at ${size}, bottom of the hero (${heroBottom} px) against the top of the client band (${band.top} px)`,
+  ).toBeLessThanOrEqual(1);
+  const [name, bottom] = endsAtWindowBottom === 'band' ? ['the client band', band.bottom] : ['the hero', heroBottom];
+  expect.soft(
+    Math.abs(bottom - viewport.height),
+    `at ${size}, bottom of ${name} (${bottom} px) against the bottom of the window (${viewport.height} px)`,
   ).toBeLessThanOrEqual(1);
 }
 
@@ -408,7 +430,7 @@ test('on phone as on desktop, the second hero button, "Contact", reached by keyb
   });
 });
 
-test('on phone as on desktop, the hero starts right below the header and ends at the bottom of the window', async ({ page }) => {
+test('on phone as on desktop, on a home page with clients, the hero starts right below the header and ends where the client band begins, which it does not cover, and the band’s bottom edge meets the bottom of the window', async ({ page }) => {
   await page.goto('/fr/');
   /* The hero groups the heading, the tagline, the stack and the buttons. */
   const hero = heroRegion(page);
@@ -417,23 +439,39 @@ test('on phone as on desktop, the hero starts right below the header and ends at
   await expect(hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true })).toBeVisible();
   await expect(hero.getByRole('link', { name: 'Voir les projets' })).toBeVisible();
   await expect(hero.getByRole('link', { name: 'Contact' })).toBeVisible();
-  /* Design reference: minimum height "100vh minus the header height". Page scrolled to the
-     top: the top of the hero touches the bottom of the header, its bottom reaches at least
-     the bottom of the window. */
-  const viewportHeight = page.viewportSize()!.height;
+  /* Page scrolled to the top: the top of the hero touches the bottom of the header. */
   const headerBox = (await page.locator('header').boundingBox())!;
   const heroBox = (await hero.boundingBox())!;
   const headerBottom = headerBox.y + headerBox.height;
   expect(Math.abs(heroBox.y - headerBottom), 'the top of the hero is right below the header').toBeLessThanOrEqual(1);
-  expect(heroBox.y + heroBox.height, 'the bottom of the hero is at the bottom of the window, or lower')
-    .toBeGreaterThanOrEqual(viewportHeight - 1);
 
-  /* In a window tall enough for its content, it ends exactly there. The header is two rows on
-     a phone and one row from 768 px wide: checked at a phone window and at both desktop ones. */
+  /* The French home page declares clients: in a window tall enough for its content, the hero
+     ends where the client band begins, and the band ends at the window's bottom. The header is
+     two rows on a phone and one row from 768 px wide: checked at a phone window and at both
+     desktop ones. */
   for (const viewport of TALL_VIEWPORTS) {
     const size = `${viewport.width} × ${viewport.height}`;
     await openHomeAt(page, viewport);
-    await expectHeroToEndAtWindowBottom(page, viewport, size);
+    await expectHeroToEndAtClientBand(page, viewport, size);
+  }
+});
+
+test('on phone as on desktop, in a window tall enough for its content, the hero and the client band fill the window below the header: the band, a strip spanning the page width from edge to edge, sits below the hero’s buttons and its bottom edge meets the bottom of the window', async ({ page }) => {
+  /* Design reference: the band is the bottom strip of the first screen, full bleed. Checked at a
+     tall phone window and at both desktop ones, where the hero's content does not set its height. */
+  for (const viewport of TALL_VIEWPORTS) {
+    const size = `${viewport.width} × ${viewport.height}`;
+    await openHomeAt(page, viewport);
+    const { buttons } = await heroHeadingAndButtons(page, size);
+    const pageWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    const band = await clientBandBox(page);
+    expect.soft(band, `at ${size}, a strip holding the list "Ils me font confiance" spans the page width (${pageWidth} px)`).not.toBeNull();
+    if (!band) continue;
+    const buttonsBottom = await bottomOfButtons(buttons);
+    expect.soft(band.top, `at ${size}, top of the band against the bottom of the hero's buttons (${buttonsBottom} px)`)
+      .toBeGreaterThanOrEqual(buttonsBottom);
+    expect.soft(Math.abs(band.bottom - viewport.height), `at ${size}, bottom of the band (${band.bottom} px) against the bottom of the window (${viewport.height} px)`)
+      .toBeLessThanOrEqual(1);
   }
 });
 
@@ -975,17 +1013,19 @@ test('on phone as on desktop, the hero’s veil darkens its text zone: with the 
 
 /* Leaves only the still hero's field showing: its text and its veil are hidden without moving
    anything, and the hero is given the page's background colour, which shows through it, so
-   that the pixels that differ from the hero's background are the ticks'. The site header is
-   hidden too, still without moving anything: the hero starts right below it at a fractional
-   position, and a screenshot of the hero rounded out to whole device pixels (WebKit at a
-   device pixel ratio of 3) holds the header's bottom border on its first row, which would
-   look like ticks drawn in every column. */
+   that the pixels that differ from the hero's background are the ticks'. The site header and
+   the client band are hidden too, still without moving anything: the hero sits between them
+   at fractional positions, and a screenshot of the hero rounded out to whole device pixels
+   holds the header's bottom border on its first row, or the band's top border on its last
+   one, which would look like ticks drawn in every column. */
 async function showOnlyTheField(hero: Locator, text: Record<string, Locator>): Promise<void> {
   const veil = hero.locator('.veil');
   await expect(veil).toHaveCount(1);
   const header = hero.page().locator('.site-header');
   await expect(header).toHaveCount(1);
-  for (const element of [...Object.values(text), veil, header]) {
+  const clients = hero.page().locator('.clients');
+  await expect(clients).toHaveCount(1);
+  for (const element of [...Object.values(text), veil, header, clients]) {
     await element.evaluate((el) => {
       (el as HTMLElement).style.visibility = 'hidden';
     });
@@ -1343,6 +1383,89 @@ test.describe('home page without a hero', () => {
   });
 });
 
+test.describe('home page without a hero, with or without clients', () => {
+  let directoryWithoutClients: string;
+  let directoryWithClients: string;
+  test.beforeAll(() => {
+    directoryWithoutClients = buildSite(SITE_WITHOUT_HERO);
+    directoryWithClients = buildSite(SITE_WITH_OTHER_CLIENTS);
+  });
+  test.afterAll(() => {
+    removeDirectory(directoryWithoutClients);
+    removeDirectory(directoryWithClients);
+  });
+
+  test('on a home page without a hero, the page content comes right below the header, or right below a client band itself right below the header: no empty first screen, on a phone as on desktop', async ({ page, context }) => {
+    await serveSite(context, SITE_WITHOUT_HERO, directoryWithoutClients);
+    await serveSite(context, SITE_WITH_OTHER_CLIENTS, directoryWithClients);
+    /* "Right below" is a relation, not an exact spacing: each gap stays under a quarter of the
+       window's height, far from the window-high gap an empty first screen leaves. */
+    for (const viewport of [{ width: 390, height: 844 }, ...DESKTOP_VIEWPORTS]) {
+      const size = `${viewport.width} × ${viewport.height}`;
+      const closeGap = viewport.height / 4;
+
+      /* Without clients (tests/fixtures/without-hero/content/_index.md): the home page text
+         starts right below the header. */
+      await openHomeAt(page, viewport, SITE_WITHOUT_HERO.origin);
+      const headerBox = (await page.locator('header').boundingBox())!;
+      const headerBottom = headerBox.y + headerBox.height;
+      const textWithoutClients = page.getByRole('main').getByText('Accueil fictif sans hero');
+      await expect(textWithoutClients, `text without clients at ${size}`).toBeVisible();
+      const textTopWithoutClients = (await textWithoutClients.boundingBox())!.y;
+      expect(textTopWithoutClients, `text below the header, without clients, at ${size}`).toBeGreaterThanOrEqual(headerBottom - 1);
+      expect(textTopWithoutClients - headerBottom, `gap between the header and the text, without clients, at ${size}`).toBeLessThan(closeGap);
+
+      /* With clients (tests/fixtures/other-clients/content/_index.md): the client band starts
+         right below the header, and the home page text right below the band. */
+      await openHomeAt(page, viewport, SITE_WITH_OTHER_CLIENTS.origin);
+      const headerBoxWithClients = (await page.locator('header').boundingBox())!;
+      const headerBottomWithClients = headerBoxWithClients.y + headerBoxWithClients.height;
+      const band = await clientBandBox(page);
+      expect(band, `client band at ${size}`).not.toBeNull();
+      expect(band!.top, `client band below the header at ${size}`).toBeGreaterThanOrEqual(headerBottomWithClients - 1);
+      expect(band!.top - headerBottomWithClients, `gap between the header and the client band at ${size}`).toBeLessThan(closeGap);
+      const textWithClients = page.getByRole('main').getByText('Accueil fictif d’un site qui déclare d’autres clients');
+      await expect(textWithClients, `text with clients at ${size}`).toBeVisible();
+      const textTopWithClients = (await textWithClients.boundingBox())!.y;
+      expect(textTopWithClients, `text below the client band at ${size}`).toBeGreaterThanOrEqual(band!.bottom - 1);
+      expect(textTopWithClients - band!.bottom, `gap between the client band and the text at ${size}`).toBeLessThan(closeGap);
+    }
+  });
+});
+
+test.describe('home page with a hero and no clients', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_HERO_WITHOUT_CLIENTS);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on phone as on desktop, on a home page with a hero and no clients, in a window tall enough for its content, the hero alone fills the window below the header: it starts right below the header and its bottom edge meets the bottom of the window', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_HERO_WITHOUT_CLIENTS, siteDirectory);
+    /* Checked at a tall phone window and at both desktop ones, where the hero's content does
+       not set its height. */
+    for (const viewport of TALL_VIEWPORTS) {
+      const size = `${viewport.width} × ${viewport.height}`;
+      await openHomeAt(page, viewport, SITE_WITH_A_HERO_WITHOUT_CLIENTS.origin);
+      const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
+      /* The home page (tests/fixtures/hero-without-clients/content/_index.md) declares no
+         clients: no client band shares the first screen with the hero. */
+      await expect(clientList(page), `client list at ${size}`).toHaveCount(0);
+      await heightBelowHeader(page, viewport, { heading, buttons }, size);
+      const headerBox = (await page.locator('header').boundingBox())!;
+      const headerBottom = headerBox.y + headerBox.height;
+      const heroBox = (await hero.boundingBox())!;
+      const heroBottom = heroBox.y + heroBox.height;
+      expect.soft(Math.abs(heroBox.y - headerBottom), `at ${size}, top of the hero (${heroBox.y} px) against the bottom of the header (${headerBottom} px)`)
+        .toBeLessThanOrEqual(1);
+      expect.soft(Math.abs(heroBottom - viewport.height), `at ${size}, bottom of the hero (${heroBottom} px) against the bottom of the window (${viewport.height} px)`)
+        .toBeLessThanOrEqual(1);
+    }
+  });
+});
+
 /* Sizes the window to `viewport`, then opens the French home page of the test site served at
    `origin`, JavaScript off, and waits for its fonts. Not through `document.fonts.ready`: with
    JavaScript off, Firefox can leave it pending, whether the font files are served or blocked.
@@ -1375,7 +1498,7 @@ test.describe('home page of a single-language site', () => {
        height, which must also hold when the web fonts never arrive. */
     test.use({ javaScriptEnabled: false });
 
-    test('on a single-language site, without JavaScript and with the web font files blocked, in a window tall enough for its content, the hero ends exactly at the bottom of the window: its height is the window height minus the header height, within 1 px, on a phone as on desktop', async ({ page, context }) => {
+    test('on a single-language site, without JavaScript and with the web font files blocked, in a window tall enough for its content, the hero ends exactly where the client band begins and its bottom edge meets the bottom of the window, the band starting below the fold, within 1 px, on a phone as on desktop', async ({ page, context }) => {
       await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
       /* The browser then renders the fallback fonts of the stacks. */
       const blockedFonts = await blockRequests(page, fontFilesUrl(SITE_WITH_A_SINGLE_LANGUAGE.origin));
@@ -1390,7 +1513,8 @@ test.describe('home page of a single-language site', () => {
         expect(loadedFonts, `web fonts loaded at ${size}`).toEqual([]);
         /* The site is single-language: the header shows no language switcher. */
         await expect(page.locator('header').getByRole('group', { name: 'Langue' }), `language switcher at ${size}`).toHaveCount(0);
-        await expectHeroToEndAtWindowBottom(page, viewport, size);
+        /* Without JavaScript the hero alone fills the window: the band starts below the fold. */
+        await expectHeroToEndAtClientBand(page, viewport, size, 'hero');
       }
     });
   });
@@ -1414,7 +1538,7 @@ test.describe('home page of a site with a long menu', () => {
     removeDirectory(siteDirectory);
   });
 
-  test('on a phone, when the menu wraps onto two lines, in a window tall enough for its content, the hero still ends exactly at the bottom of the window: at 412 × 1100, its height is the window height minus the header height, within 1 px', async ({ page, context }) => {
+  test('on a phone, when the menu wraps onto two lines, in a window tall enough for its content, the hero still ends exactly where the client band begins and the band’s bottom edge meets the bottom of the window: at 412 × 1100, within 1 px', async ({ page, context }) => {
     await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
     const viewport = { width: 412, height: 1100 };
     const size = `${viewport.width} × ${viewport.height}`;
@@ -1427,13 +1551,7 @@ test.describe('home page of a site with a long menu', () => {
     const { linkTops, lineCount } = await menuLines(links);
     expect(lineCount, `at ${size}, lines of the menu (top edges of its links: ${linkTops.join(', ')})`).toBe(2);
 
-    const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
-    const { expectedHeight } = await heightBelowHeader(page, viewport, { heading, buttons }, size);
-    const heroBox = (await hero.boundingBox())!;
-    expect(
-      Math.abs(heroBox.height - expectedHeight),
-      `at ${size}, hero height (${heroBox.height} px) against the window height minus the header height (${expectedHeight} px)`,
-    ).toBeLessThanOrEqual(1);
+    await expectHeroToEndAtClientBand(page, viewport, size);
   });
 });
 
@@ -1624,15 +1742,8 @@ test.describe('home page of a site served under /portfolio/, with a button decla
   });
 });
 
-/* These tests only run hugo build, without a browser: running them in every Playwright
-   project would repeat the same build five times. */
-const BUILD_TESTS_PROJECT = 'chromium';
-
 test.describe('hero content errors: build failure', () => {
-  test.skip(
-    () => test.info().project.name !== BUILD_TESTS_PROJECT,
-    `build without a browser, identical in every project: run in ${BUILD_TESTS_PROJECT} only`,
-  );
+  runBuildTestsInOneProjectOnly();
 
   test('a home page where a hero button declares a pageRef to a page that does not exist makes the site build fail with only the message that cites this pageRef, without the "ni champ url ni champ pageRef" message', () => {
     /* The first button of tests/fixtures/page-ref-not-found/content/_index.md declares

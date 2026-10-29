@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { BrowserContext } from '@playwright/test';
+import { test, type BrowserContext } from '@playwright/test';
 
 /* A site built for a test: the example site, modified by a fixture, built
    in a temporary directory and served to the browsers by intercepting the
@@ -155,6 +155,71 @@ export const SITE_WITH_ENGLISH_BY_DEFAULT = testSite('english-by-default');
    tests/fixtures/long-menu/hugo.toml). */
 export const SITE_WITH_A_LONG_MENU = testSite('long-menu');
 
+/* The example site's French home page declares five clients: this site
+   replaces that home page with the one of
+   tests/fixtures/other-clients/content, without a hero, which declares
+   three other fictional clients, in an order that is not alphabetical:
+   "Reliure Marchetti", "Atelier Bonnefoy", "Librairie Castagne". */
+export const SITE_WITH_OTHER_CLIENTS = testSite('other-clients');
+
+/* The example site's French home page declares five clients: this site
+   replaces that home page with the one of
+   tests/fixtures/single-short-client/content, without a hero, which declares
+   a single fictional client with a three-letter name, "Oko". */
+export const SITE_WITH_A_SINGLE_SHORT_CLIENT = testSite('single-short-client');
+
+/* The example site's French home page declares five clients with names of
+   14 to 19 characters: this site replaces that home page with the one of
+   tests/fixtures/long-client-names/content, without a hero, which declares
+   three fictional clients with names of 36 to 40 characters,
+   "Manufacture de porcelaine Vercors-Aubrac", "Fonderie Castellane et fils
+   associés" and "Ateliers réunis de lutherie Sainte-Odile", wider together
+   than the band on a phone and on a 1280 px desktop. */
+export const SITE_WITH_LONG_CLIENT_NAMES = testSite('long-client-names');
+
+/* The example site's French home page has a hero followed by a client band:
+   this site replaces that home page with the one of
+   tests/fixtures/hero-without-clients/content, with the same hero but
+   without params.clients, so that its first screen holds the hero alone. */
+export const SITE_WITH_A_HERO_WITHOUT_CLIENTS = testSite('hero-without-clients');
+
+/* The example site's French home page declares five clients whose names
+   are made of short words: this site replaces that home page with the one
+   of tests/fixtures/one-word-client-name/content, without a hero, which
+   declares two fictional clients, "Kunstschmiedewerkstattgenossenschaft",
+   a single word of 36 letters, without space or hyphen, wider than the
+   band of a 320 px phone, and "Atelier Bonnefoy". */
+export const SITE_WITH_A_ONE_WORD_CLIENT_NAME = testSite('one-word-client-name');
+
+/* The example site's French home page declares its clients as a list: this
+   site replaces that home page with the one of
+   tests/fixtures/text-instead-of-list/content, without a hero, whose
+   params.clients is a text, 'Maison Delorme', instead of a list of names. Its
+   folder name avoids the word clients, which the error-message assertion
+   looks for. */
+export const SITE_WITH_CLIENTS_AS_TEXT = testSite('text-instead-of-list');
+
+/* The example site's French home page declares its clients as a list of
+   names: this site replaces that home page with the one of
+   tests/fixtures/map-instead-of-name/content, without a hero, whose
+   params.clients is a list, as expected, but whose second entry is a table,
+   { name = 'Maison Delorme' }, instead of a name. Its folder name avoids
+   the word clients, which the error-message assertion looks for. */
+export const SITE_WITH_A_CLIENT_AS_MAP = testSite('map-instead-of-name');
+
+/* The example site's French home page declares its clients as a list of
+   names: this site replaces that home page with the one of
+   tests/fixtures/empty-name/content, without a hero, whose params.clients
+   is a list of texts, as expected, but whose second entry is an empty
+   text, '', instead of a name. Its folder name avoids the word clients,
+   which the error-message assertion looks for. */
+export const SITE_WITH_AN_EMPTY_CLIENT_NAME = testSite('empty-name');
+
+/* Same as SITE_WITH_AN_EMPTY_CLIENT_NAME, with the home page of
+   tests/fixtures/whitespace-only-name/content, whose second entry is a
+   text made of three spaces only, '   ', instead of a name. */
+export const SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME = testSite('whitespace-only-name');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
@@ -261,6 +326,19 @@ export function tryToBuildSite(site: BuiltSite): BuildAttempt {
   } finally {
     removeDirectory(destination);
   }
+}
+
+/* Tests that only run hugo build, without a browser: running them in every
+   Playwright project would repeat the same build five times. */
+const BUILD_TESTS_PROJECT = 'chromium';
+
+/* Called inside a test.describe of such tests, runs them in BUILD_TESTS_PROJECT
+   only and skips them in the other projects. */
+export function runBuildTestsInOneProjectOnly(): void {
+  test.skip(
+    () => test.info().project.name !== BUILD_TESTS_PROJECT,
+    `build without a browser, identical in every project: run in ${BUILD_TESTS_PROJECT} only`,
+  );
 }
 
 export function removeDirectory(directory: string): void {

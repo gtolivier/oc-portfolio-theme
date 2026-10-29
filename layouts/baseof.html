@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 {{/* Marked on the root element: the header's height, which depends on the
-  switcher and the main menu, is read outside the header too (the hero, the
-  anchor scroll padding). */ -}}
+  switcher and the main menu, is read outside the header too (the first
+  screen below it, the anchor scroll padding). */ -}}
 {{ $hasLanguageSwitcher := gt (len hugo.Sites) 1 -}}
 {{ $hasMainMenu := false -}}
 {{ with site.Menus.main }}{{ $hasMainMenu = true }}{{ end -}}

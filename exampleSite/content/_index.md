@@ -1,6 +1,15 @@
 +++
 title = 'Accueil'
 
+[params]
+clients = [
+  'Bijouterie Valmont',
+  'Antiquités Roussel',
+  'Château de Mirevent',
+  'Galerie Aubertin',
+  'Maison Delorme',
+]
+
 [params.hero]
 title = 'Horloger indépendant'
 tagline = [

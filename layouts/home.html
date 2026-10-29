@@ -1,31 +1,58 @@
 {{ define "main" }}
-  {{- with .Params.hero }}
-  {{- if not site.Params.author }}{{ errorf "hero : le paramètre author du site n’est pas renseigné" }}{{ end }}
-  <tick-field class="hero" role="region" aria-labelledby="hero-heading">
-    {{- /* The hero decodes faster than the default pace. The name and the title start decoding together. */}}
-    {{- $heroLetterMs := 40 }}
-    <h1 id="hero-heading"><scramble-text duration="{{ mul (strings.RuneCount site.Params.author) $heroLetterMs }}">{{ site.Params.author }}</scramble-text>
-      {{- with .title }}
-      <span class="hero-title"><scramble-text duration="{{ mul (strings.RuneCount .) $heroLetterMs }}">{{ . }}</scramble-text></span>
+  {{- if or .Params.hero .Params.clients }}
+  <div class="first-screen{{ if .Params.hero }} has-hero{{ end }}">
+    {{- with .Params.hero }}
+    {{- if not site.Params.author }}{{ errorf "hero : le paramètre author du site n’est pas renseigné" }}{{ end }}
+    <tick-field class="hero" role="region" aria-labelledby="hero-heading">
+      {{- /* The hero decodes faster than the default pace. The name and the title start decoding together. */}}
+      {{- $heroLetterMs := 40 }}
+      <h1 id="hero-heading"><scramble-text duration="{{ mul (strings.RuneCount site.Params.author) $heroLetterMs }}">{{ site.Params.author }}</scramble-text>
+        {{- with .title }}
+        <span class="hero-title"><scramble-text duration="{{ mul (strings.RuneCount .) $heroLetterMs }}">{{ . }}</scramble-text></span>
+        {{- end }}
+      </h1>
+      {{- with .tagline }}
+      <p class="hero-tagline">
+        {{- range $index, $line := . }}{{ if $index }}<br>{{ end }}{{ $line }}{{ end -}}
+      </p>
       {{- end }}
-    </h1>
-    {{- with .tagline }}
-    <p class="hero-tagline">
-      {{- range $index, $line := . }}{{ if $index }}<br>{{ end }}{{ $line }}{{ end -}}
-    </p>
-    {{- end }}
-    {{- with .stack }}
-    <p class="hero-stack">{{ delimit . " · " }}</p>
-    {{- end }}
-    {{- with .actions }}
-    <p class="hero-actions">
-      {{- range . }}
-      {{ partial "hero/action.html" . }}
+      {{- with .stack }}
+      <p class="hero-stack">{{ delimit . " · " }}</p>
       {{- end }}
-    </p>
+      {{- with .actions }}
+      <p class="hero-actions">
+        {{- range . }}
+        {{ partial "hero/action.html" . }}
+        {{- end }}
+      </p>
+      {{- end }}
+      <div class="veil" aria-hidden="true"></div>
+    </tick-field>
     {{- end }}
-    <div class="veil" aria-hidden="true"></div>
-  </tick-field>
+    {{- with .Params.clients }}
+    {{- $clients := . }}
+    {{- /* errorf does not stop the template: after an error, the checks below and the band get an empty list, so that no template execution error buries the French message. */}}
+    {{- if not (reflect.IsSlice $clients) }}{{ errorf "clients : le paramètre clients de la page d’accueil doit être une liste de noms" }}{{ $clients = slice }}{{ end }}
+    {{- range $clients }}{{ if not (eq (printf "%T" .) "string") }}{{ errorf "clients : chaque entrée du paramètre clients de la page d’accueil doit être un nom" }}{{ $clients = slice }}{{ else if eq (strings.TrimSpace .) "" }}{{ errorf "clients : chaque entrée du paramètre clients de la page d’accueil doit être un nom non vide" }}{{ $clients = slice }}{{ end }}{{ end }}
+    {{- $label := i18n "clients" }}
+    <div class="clients" data-label="{{ $label }}">
+      <div class="clients-window">
+        <div class="clients-track">
+          {{- /* The names are listed twice, so that the band loops without a gap: it only scrolls when one list is wider than it (see clients-fit.ts). Only the first list is exposed to assistive technologies. The copy also carries hidden, so that a page read without the stylesheet shows each name once; main.css shows it only while the names loop. */}}
+          {{- range $position := seq 2 }}
+          <ul {{ if gt $position 1 }}aria-hidden="true" hidden{{ else }}role="list" aria-label="{{ $label }}"{{ end }}>
+            {{- range $clients }}
+            <li>{{ . }}</li>
+            {{- end }}
+          </ul>
+          {{- end }}
+        </div>
+      </div>
+      {{- /* The button shows an icon (see main.css): its name is the label. */}}
+      <button type="button" class="clients-pause" aria-label="{{ i18n "pauseClients" }}" aria-pressed="false" hidden></button>
+    </div>
+    {{- end }}
+  </div>
   {{- end }}
   {{ .Content }}
 {{ end }}
