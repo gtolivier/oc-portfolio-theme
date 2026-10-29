@@ -728,6 +728,32 @@ test.describe('home page of another site, with a single short client', () => {
       }
     }
   });
+
+  test('when the client names stay still because they all fit — a single short client on a phone and on a desktop, the example site’s five on a 1920 px screen — the last name is not followed by a "|||" separator: one separates each name from the next, and none ends the list', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_SINGLE_SHORT_CLIENT, siteDirectory);
+    const cases = [
+      /* tests/fixtures/single-short-client/content/_index.md declares a single client, "Oko". */
+      { homePage: `${SITE_WITH_A_SINGLE_SHORT_CLIENT.origin}/fr/`, clients: ['Oko'], width: 390, height: 844 },
+      { homePage: `${SITE_WITH_A_SINGLE_SHORT_CLIENT.origin}/fr/`, clients: ['Oko'], width: 1280, height: 900 },
+      /* The example site's five clients fit in the band of a 1920 px wide screen. */
+      { homePage: '/fr/', clients: CLIENTS, width: 1920, height: 1080 },
+    ];
+    for (const { homePage, clients, width, height } of cases) {
+      const where = `on ${homePage} at ${width} px`;
+      await page.setViewportSize({ width, height });
+      const list = await openClientList(page, homePage);
+
+      /* The names stay still: one second later, as the visitor lives it, every name sits where it was. */
+      const namesBefore = await namesLeft(list, clients);
+      await letOneSecondPass(page);
+      expectNamesStill(clients, namesBefore, await namesLeft(list, clients), where);
+
+      /* On screen, in reading order, the names with a "|||" between two of them, and nothing after
+         the last one (textOnScreen drops whitespace). */
+      expect.soft(await textOnScreen(list), `${where}, text the client list shows on screen`)
+        .toBe(clients.map((client) => client.replace(/ /g, '')).join('|||'));
+    }
+  });
 });
 
 test.describe('home page of another site, with few clients with long names', () => {
