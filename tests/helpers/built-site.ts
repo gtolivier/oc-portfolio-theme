@@ -207,6 +207,19 @@ export const SITE_WITH_CLIENTS_AS_TEXT = testSite('text-instead-of-list');
    the word clients, which the error-message assertion looks for. */
 export const SITE_WITH_A_CLIENT_AS_MAP = testSite('map-instead-of-name');
 
+/* The example site's French home page declares its clients as a list of
+   names: this site replaces that home page with the one of
+   tests/fixtures/empty-name/content, without a hero, whose params.clients
+   is a list of texts, as expected, but whose second entry is an empty
+   text, '', instead of a name. Its folder name avoids the word clients,
+   which the error-message assertion looks for. */
+export const SITE_WITH_AN_EMPTY_CLIENT_NAME = testSite('empty-name');
+
+/* Same as SITE_WITH_AN_EMPTY_CLIENT_NAME, with the home page of
+   tests/fixtures/whitespace-only-name/content, whose second entry is a
+   text made of three spaces only, '   ', instead of a name. */
+export const SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME = testSite('whitespace-only-name');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

@@ -7,6 +7,8 @@ import {
   SITE_WITH_OTHER_CLIENTS,
   SITE_WITH_CLIENTS_AS_TEXT,
   SITE_WITH_A_CLIENT_AS_MAP,
+  SITE_WITH_AN_EMPTY_CLIENT_NAME,
+  SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1358,5 +1360,23 @@ test.describe('client content errors: build failure', () => {
     const build = tryToBuildSite(SITE_WITH_A_CLIENT_AS_MAP);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors).toMatch(/\bparamètre\s+clients\b/);
+  });
+
+  test('a home page whose clients list holds an empty or whitespace-only name makes the site build fail, with a French error message that names the clients parameter', () => {
+    /* tests/fixtures/empty-name and tests/fixtures/whitespace-only-name declare clients as a list
+       of texts, so the checks on the list and on its entries let them through, but their second
+       entry is '' in one and '   ' in the other: a name that shows nothing. Rather than a band
+       with a blank slot, the person building the site must get, in both cases, a failure whose
+       French message names the clients parameter of the front matter, whatever the rest of the
+       wording. Two fixtures, so that rejecting only the empty name does not pass. */
+    const cases = [
+      { name: 'an empty name', site: SITE_WITH_AN_EMPTY_CLIENT_NAME },
+      { name: 'a whitespace-only name', site: SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(build.errors).toMatch(/\bparamètre\s+clients\b/);
+    }
   });
 });
