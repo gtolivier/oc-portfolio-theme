@@ -49,6 +49,21 @@ test('on the French home page, each client name is followed on screen by a "|||"
   expect(await body.ariaSnapshot()).not.toContain('|||');
 });
 
+test('on the French home page, the label "Ils me font confiance" is shown on screen just before the client names, and assistive technologies get it once, as the list’s name', async ({ page }) => {
+  await page.goto('/fr/');
+  /* On screen, in reading order, the label directly precedes the first name: nothing but
+     punctuation or decoration between them (textOnScreen drops whitespace). */
+  const body = page.locator('body');
+  await expect
+    .poll(() => textOnScreen(body))
+    .toMatch(new RegExp(`Ilsmefontconfiance[^\\p{L}\\p{N}]*${CLIENTS[0].replace(/ /g, '')}`, 'u'));
+  /* Assistive technologies still get the label as the list's name, and only there: it is not
+     announced a second time as separate content. */
+  await expectClientList(page, 'Ils me font confiance');
+  const accessibilityTree = await body.ariaSnapshot();
+  expect(accessibilityTree.split('Ils me font confiance').length - 1, '"Ils me font confiance" exposed once').toBe(1);
+});
+
 test('on the English home page, assistive technologies get the same clients once each, in order, as the list "Trusted by"', async ({ page }) => {
   await page.goto('/en/');
   await expectClientList(page, 'Trusted by');
