@@ -586,7 +586,8 @@ tick-field > canvas {
 .first-screen.has-hero {
   /* The height of the window below the header; for browsers without svh. */
   --window-below-header: calc(100vh - var(--header-height));
-  min-height: var(--window-below-header);
+  min-height: 0;
+  grid-template-rows: minmax(var(--window-below-header), auto) auto;
 }
 
 /* svh: the height left when a phone browser shows its toolbars, so the
@@ -702,6 +703,15 @@ tick-field > canvas {
     width: max-content;
   }
 
+  /* One line of names: the band keeps its height, and the first screen fills
+     the window. Wrapped names (the default) make the band taller: it starts
+     below the fold, so the hero alone fills the window below the header. */
+  .first-screen.has-hero:has(.clients.is-measured),
+  .theme-script-pending .first-screen.has-hero {
+    min-height: var(--window-below-header);
+    grid-template-rows: 1fr auto;
+  }
+
   :is(.theme-script-pending .clients, .clients.is-measured) ul {
     flex: none;
     flex-wrap: nowrap;
@@ -731,14 +741,6 @@ tick-field > canvas {
   }
 }
 
-/* Wrapped names make the band taller: it starts below the fold, so the hero
-   alone fills the window below the header. */
-@media (prefers-reduced-motion: reduce) {
-  .first-screen.has-hero {
-    min-height: 0;
-    grid-template-rows: minmax(var(--window-below-header), auto) auto;
-  }
-}
 
 @media (min-width: 768px) {
   .clients {
