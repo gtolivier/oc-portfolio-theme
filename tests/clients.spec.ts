@@ -64,12 +64,15 @@ test('on the French home page, the label "Ils me font confiance" is shown on scr
   expect(accessibilityTree.split('Ils me font confiance').length - 1, '"Ils me font confiance" exposed once').toBe(1);
 });
 
-/* The vertical extent, in the window, of the label "Ils me font confiance" shown on screen on the
-   open page, whatever the markup: a text node holding it, or an element's ::before generated
-   content. The browser gives no box for generated content: its top is taken as the top of its
-   element's content box, where the label, first in reading order, starts at the earliest, and
-   its height is the pseudo-element's used height. Null when the label is not shown. */
-async function labelVerticalExtent(page: Page, label: string): Promise<{ top: number; bottom: number } | null> {
+/* The extent, in the window, of the label "Ils me font confiance" shown on screen on the open
+   page, whatever the markup: a text node holding it, or an element's ::before generated content.
+   The browser gives no box for generated content: its top left corner is taken as the top left
+   corner of its element's content box, where the label, first in reading order, starts at the
+   earliest, and its size is the pseudo-element's used size. Null when the label is not shown. */
+async function labelExtent(
+  page: Page,
+  label: string,
+): Promise<{ top: number; bottom: number; left: number; right: number } | null> {
   return page.locator('body').evaluate((body, label) => {
     const normalize = (text: string) => text.replace(/\s+/g, ' ').trim();
     const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
@@ -77,8 +80,8 @@ async function labelVerticalExtent(page: Page, label: string): Promise<{ top: nu
       if (normalize(node.textContent ?? '') !== label) continue;
       const range = document.createRange();
       range.selectNodeContents(node);
-      const { top, bottom, height } = range.getBoundingClientRect();
-      if (height > 0) return { top, bottom };
+      const { top, bottom, left, right, height } = range.getBoundingClientRect();
+      if (height > 0) return { top, bottom, left, right };
     }
     for (const element of Array.from(body.querySelectorAll('*'))) {
       const style = getComputedStyle(element, '::before');
@@ -87,8 +90,10 @@ async function labelVerticalExtent(page: Page, label: string): Promise<{ top: nu
         .join('');
       if (normalize(shown) !== label || style.display === 'none') continue;
       const host = getComputedStyle(element);
-      const top = element.getBoundingClientRect().top + parseFloat(host.borderTopWidth) + parseFloat(host.paddingTop);
-      return { top, bottom: top + parseFloat(style.height) };
+      const hostBox = element.getBoundingClientRect();
+      const top = hostBox.top + parseFloat(host.borderTopWidth) + parseFloat(host.paddingTop);
+      const left = hostBox.left + parseFloat(host.borderLeftWidth) + parseFloat(host.paddingLeft);
+      return { top, bottom: top + parseFloat(style.height), left, right: left + parseFloat(style.width) };
     }
     return null;
   }, label);
@@ -100,13 +105,51 @@ test('on a phone, the label "Ils me font confiance" sits above the client names,
   await page.evaluate(() => document.fonts.ready);
   const list = page.getByRole('list', { name: 'Ils me font confiance' });
   await expect(list).toBeVisible();
-  const labelBox = await labelVerticalExtent(page, 'Ils me font confiance');
+  const labelBox = await labelExtent(page, 'Ils me font confiance');
   expect(labelBox, 'the label "Ils me font confiance" is shown on screen').not.toBeNull();
   /* Vertical positions only: the names may slide sideways, but they stay below the label. */
   for (const client of CLIENTS) {
     const box = (await list.getByRole('listitem').filter({ hasText: client }).boundingBox())!;
     expect.soft(box.y, `top of "${client}" against the bottom of the label (${labelBox!.bottom} px)`)
       .toBeGreaterThanOrEqual(labelBox!.bottom - 1);
+  }
+});
+
+test('from 768 px wide, the label "Ils me font confiance" sits to the left of the client names, on their line', async ({ page }) => {
+  for (const width of [768, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/fr/');
+    await page.evaluate(() => document.fonts.ready);
+    const list = page.getByRole('list', { name: 'Ils me font confiance' });
+    await expect(list).toBeVisible();
+    const labelBox = await labelExtent(page, 'Ils me font confiance');
+    expect(labelBox, `at ${width} px, the label "Ils me font confiance" is shown on screen`).not.toBeNull();
+    /* The part of each name left visible by the boxes that clip it: the names may slide sideways
+       and be partly hidden, but what shows of them begins right of the label, on its line. */
+    const visibleBoxes = await list.getByRole('listitem').evaluateAll((items) =>
+      items.map((item) => {
+        let { left, right, top, bottom } = item.getBoundingClientRect();
+        for (let ancestor = item.parentElement; ancestor && ancestor !== document.body; ancestor = ancestor.parentElement) {
+          if (getComputedStyle(ancestor).overflow === 'visible') continue;
+          const clip = ancestor.getBoundingClientRect();
+          left = Math.max(left, clip.left);
+          right = Math.min(right, clip.right);
+          top = Math.max(top, clip.top);
+          bottom = Math.min(bottom, clip.bottom);
+        }
+        return { name: item.textContent ?? '', left, right, top, bottom, shown: right > left && bottom > top };
+      }),
+    );
+    const shownBoxes = visibleBoxes.filter((box) => box.shown);
+    expect(shownBoxes.length, `at ${width} px, client names are shown`).toBeGreaterThan(0);
+    for (const box of shownBoxes) {
+      expect.soft(box.left, `at ${width} px, left of what shows of "${box.name}" against the right of the label (${labelBox!.right} px)`)
+        .toBeGreaterThanOrEqual(labelBox!.right - 1);
+      expect.soft(box.top, `at ${width} px, top of what shows of "${box.name}" against the bottom of the label (${labelBox!.bottom} px)`)
+        .toBeLessThan(labelBox!.bottom);
+      expect.soft(box.bottom, `at ${width} px, bottom of what shows of "${box.name}" against the top of the label (${labelBox!.top} px)`)
+        .toBeGreaterThan(labelBox!.top);
+    }
   }
 });
 
