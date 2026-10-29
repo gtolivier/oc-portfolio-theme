@@ -176,7 +176,8 @@ function expectNoTwoNamesOverlap(shown: ClientNameOnScreen[], where: string): vo
 /* The loop of the client band whose list is `list`, on the open page, its animations frozen: the
    box that clips the names (the list's nearest ancestor that clips its overflow), the number of
    animations the loop is made of (those of that box or of what it holds), and a way to set them at
-   a moment of the loop, as a fraction of its length. */
+   a moment of the loop, as a number of loop lengths elapsed since it started: a fraction of the
+   first loop, or more than 1 once whole loops have run (3.4: three loops, then 0.4 of the fourth). */
 async function bandLoop(list: Locator): Promise<{
   window: JSHandle<Element | null>;
   animationCount: () => Promise<number>;
@@ -509,6 +510,38 @@ test('on a phone and on a desktop, when the client names grow wider while they s
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     const loopWidth = (await list.boundingBox())!.width;
     expect(loopWidth, `at ${width} px, the list grows wider with its font (from ${listWidthBefore} px)`).toBeGreaterThan(listWidthBefore * 1.2);
+    const [firstNameAfter] = await namesLeft(list, [CLIENTS[0]]);
+
+    /* The band loops by one list: a shift by a whole number of lists shows the same picture. */
+    const shift = (((firstNameAfter - firstNameBefore) % loopWidth) + loopWidth) % loopWidth;
+    expect.soft(Math.min(shift, loopWidth - shift), `at ${width} px, shift of "${CLIENTS[0]}" (from ${firstNameBefore} px to ${firstNameAfter} px), modulo one loop (${loopWidth} px)`)
+      .toBeLessThanOrEqual(3);
+  }
+});
+
+test('on a phone and on a desktop, when the client names grow wider after they have already looped several times (their font gets larger, as when a web font swaps in), they do not jump: the first name stays where it was, modulo one loop', async ({ page }) => {
+  /* Three whole loops have run, and the band is 0.4 into the fourth. */
+  const loopsRun = 3;
+  for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
+    await page.setViewportSize({ width, height });
+    const list = await openClientList(page);
+    await freezeAnimations(page);
+    await (await bandLoop(list)).setAt(loopsRun + 0.4);
+    const listWidthBefore = (await list.boundingBox())!.width;
+    const [firstNameBefore] = await namesLeft(list, [CLIENTS[0]]);
+
+    /* The names' font gets larger, as when a wider web font swaps in; the page then renders it. */
+    await page.addStyleTag({ content: '.clients li { font-size: 26px !important; }' });
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const loopWidth = (await list.boundingBox())!.width;
+    expect(loopWidth, `at ${width} px, the list grows wider with its font (from ${listWidthBefore} px)`).toBeGreaterThan(listWidthBefore * 1.2);
+    /* The moment is chosen so that a jump would show: the distance the names have slid since the
+       loop started (three lists and 0.4 of one) does not fall, modulo the new loop, where they
+       stood within the current loop. */
+    const slidSinceStart = loopsRun * listWidthBefore;
+    const slidModuloLoop = ((slidSinceStart % loopWidth) + loopWidth) % loopWidth;
+    expect(Math.min(slidModuloLoop, loopWidth - slidModuloLoop), `at ${width} px, ${loopsRun} lists of ${listWidthBefore} px, modulo the new loop (${loopWidth} px), stay away from a whole loop`)
+      .toBeGreaterThan(20);
     const [firstNameAfter] = await namesLeft(list, [CLIENTS[0]]);
 
     /* The band loops by one list: a shift by a whole number of lists shows the same picture. */
