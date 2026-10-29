@@ -581,12 +581,13 @@ tick-field > canvas {
   grid-template-rows: 1fr auto;
 }
 
-/* With a hero, the first screen fills the window below the header. Without
-   one, nothing stretches it: the content follows. */
+/* With a hero, the hero alone fills the window below the header: still names
+   (the default) may wrap and make the band taller, so it starts below the
+   fold. Without a hero, nothing stretches the first screen: the content
+   follows. */
 .first-screen.has-hero {
   /* The height of the window below the header; for browsers without svh. */
   --window-below-header: calc(100vh - var(--header-height));
-  min-height: 0;
   grid-template-rows: minmax(var(--window-below-header), auto) auto;
 }
 
@@ -703,9 +704,8 @@ tick-field > canvas {
     width: max-content;
   }
 
-  /* One line of names: the band keeps its height, and the first screen fills
-     the window. Wrapped names (the default) make the band taller: it starts
-     below the fold, so the hero alone fills the window below the header. */
+  /* One line of names: the band keeps its height, so the whole first screen,
+     band included, fills the window below the header. */
   .first-screen.has-hero:has(.clients.is-measured),
   .theme-script-pending .first-screen.has-hero {
     min-height: var(--window-below-header);
@@ -740,7 +740,6 @@ tick-field > canvas {
     }
   }
 }
-
 
 @media (min-width: 768px) {
   .clients {
