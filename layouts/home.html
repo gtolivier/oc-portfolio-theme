@@ -32,7 +32,7 @@
     {{- with .Params.clients }}
     {{- $clients := . }}
     {{- if not (reflect.IsSlice $clients) }}{{ errorf "clients : le paramètre clients de la page d’accueil doit être une liste de noms" }}{{ end }}
-    {{- range $clients }}{{ if not (eq (printf "%T" .) "string") }}{{ errorf "clients : chaque entrée du paramètre clients de la page d’accueil doit être un nom" }}{{ end }}{{ end }}
+    {{- range $clients }}{{ if not (eq (printf "%T" .) "string") }}{{ errorf "clients : chaque entrée du paramètre clients de la page d’accueil doit être un nom" }}{{ end }}{{ if eq (strings.TrimSpace .) "" }}{{ errorf "clients : chaque entrée du paramètre clients de la page d’accueil doit être un nom non vide" }}{{ end }}{{ end }}
     {{- $label := i18n "clients" }}
     <div class="clients" data-label="{{ $label }}">
       <div class="clients-window">
