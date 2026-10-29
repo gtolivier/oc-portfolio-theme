@@ -35,7 +35,7 @@
     <div class="clients" data-label="{{ $label }}">
       <div class="clients-window">
         <div class="clients-track">
-          {{- /* The names are listed twice, so that the band loops without a gap: it only scrolls when one list is wider than it (see clients-fit.ts). Only the first list is exposed to assistive technologies. */}}
+          {{- /* The names are listed twice, so that the band loops without a gap: it only scrolls when one list is wider than it (see clients-fit.ts). Only the first list is exposed to assistive technologies. The copy also carries hidden, so that a page read without the stylesheet shows each name once; main.css shows it only while the names loop. */}}
           {{- range $position := seq 2 }}
           <ul {{ if gt $position 1 }}aria-hidden="true" hidden{{ else }}role="list" aria-label="{{ $label }}"{{ end }}>
             {{- range $clients }}
