@@ -277,6 +277,93 @@ test('under prefers-reduced-motion: reduce, on a phone, down to 320 px wide, and
   }
 });
 
+test.describe('home page without JavaScript', () => {
+  /* The theme rule: no JavaScript is required to read the content. The band's loop is an
+     enhancement: without the script that tells whether the list fits, the names must stay readable. */
+  test.use({ javaScriptEnabled: false });
+
+  test('without JavaScript, on a phone, down to 320 px wide, and on a desktop, the client names stay still, and every one is shown at once, exactly once, whole, on as many lines as needed', async ({ page }) => {
+    for (const { width, height } of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+      const where = `without JavaScript, at ${width} px`;
+      await page.setViewportSize({ width, height });
+      await page.goto('/fr/');
+      await page.evaluate(() => document.fonts.ready);
+      const list = page.getByRole('list', { name: 'Ils me font confiance' });
+      await expect(list).toBeVisible();
+
+      /* Still: one second later, as the visitor lives it (the page's own time runs, untouched;
+         without JavaScript, the page's timers never fire, so the test waits on its side), every
+         name sits where it was. */
+      const namesLeft = () =>
+        Promise.all(CLIENTS.map(async (client) => (await list.getByRole('listitem').filter({ hasText: client }).boundingBox())!.x));
+      const namesBefore = await namesLeft();
+      await page.waitForTimeout(1000);
+      const namesAfter = await namesLeft();
+      CLIENTS.forEach((client, index) => {
+        expect.soft(Math.abs(namesAfter[index] - namesBefore[index]), `${where}, horizontal shift of "${client}" over one second (from ${namesBefore[index]} px)`)
+          .toBeLessThanOrEqual(1);
+      });
+
+      /* Every piece of text on the page that reads exactly as a client name, whatever the markup
+         and whether assistive technologies get it or not: its box, and the part of it the visitor
+         sees, once cut by every box that clips its overflow and by the window's width. */
+      const occurrences = await page.locator('body').evaluate((body, clients) => {
+        const normalize = (text: string) => text.replace(/\s+/g, ' ').trim();
+        const found: { name: string; box: DOMRect; seen: { left: number; right: number; top: number; bottom: number } }[] = [];
+        const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const name = normalize(node.textContent ?? '');
+          const parent = node.parentElement;
+          if (!clients.includes(name) || !parent) continue;
+          if (!parent.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          const box = range.getBoundingClientRect();
+          let { left, right, top, bottom } = box;
+          for (let ancestor: Element | null = parent; ancestor && ancestor !== document.body; ancestor = ancestor.parentElement) {
+            if (getComputedStyle(ancestor).overflow === 'visible') continue;
+            const clip = ancestor.getBoundingClientRect();
+            left = Math.max(left, clip.left);
+            right = Math.min(right, clip.right);
+            top = Math.max(top, clip.top);
+            bottom = Math.min(bottom, clip.bottom);
+          }
+          left = Math.max(left, 0);
+          right = Math.min(right, document.documentElement.clientWidth);
+          found.push({ name, box, seen: { left, right, top, bottom } });
+        }
+        return found.map(({ name, box, seen }) => ({
+          name,
+          left: box.left,
+          right: box.right,
+          top: box.top,
+          bottom: box.bottom,
+          shown: seen.right > seen.left && seen.bottom > seen.top,
+          whole:
+            seen.left <= box.left + 1 && seen.right >= box.right - 1 && seen.top <= box.top + 1 && seen.bottom >= box.bottom - 1,
+        }));
+      }, CLIENTS);
+      const shown = occurrences.filter((occurrence) => occurrence.shown);
+      for (const client of CLIENTS) {
+        const copies = shown.filter((occurrence) => occurrence.name === client);
+        /* Shown once: no copy of the name peeks in, even partly. */
+        expect.soft(copies.length, `${where}, number of times "${client}" shows on screen`).toBe(1);
+        /* Shown whole: nothing of it is cut by the band or the window's edge. */
+        for (const copy of copies) {
+          expect.soft(copy.whole, `${where}, "${client}" shows whole (box: ${copy.left}–${copy.right} × ${copy.top}–${copy.bottom} px)`).toBe(true);
+        }
+      }
+      /* The names wrap onto as many lines as needed rather than pile up: no two overlap. */
+      for (const [index, first] of shown.entries()) {
+        for (const second of shown.slice(index + 1)) {
+          const overlap = first.left < second.right - 1 && second.left < first.right - 1 && first.top < second.bottom - 1 && second.top < first.bottom - 1;
+          expect.soft(overlap, `${where}, "${first.name}" and "${second.name}" overlap`).toBe(false);
+        }
+      }
+    }
+  });
+});
+
 test('under prefers-reduced-motion: reduce, on a phone and on a desktop, the client band starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window', async ({ page }) => {
   /* The visitor asks for reduced motion. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
