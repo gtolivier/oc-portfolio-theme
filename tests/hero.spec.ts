@@ -263,8 +263,17 @@ async function heightBelowHeader(
 
 /* Checks that the open home page's hero, which declares clients, in a window of `viewport` tall
    enough for its content, ends exactly where the client band begins, without passing under it:
-   its bottom edge meets the band's top edge, within 1 px. */
-async function expectHeroToEndAtClientBand(page: Page, viewport: { width: number; height: number }, size: string): Promise<void> {
+   its bottom edge meets the band's top edge, within 1 px. And that the first screen fills the
+   window below the header, which a wrong header height would break: the edge named by
+   `endsAtWindowBottom` meets the window's bottom edge, within 1 px. With JavaScript, the band's
+   bottom edge, the hero and the band filling the window together; without it, the hero's
+   bottom edge, the hero alone filling the window and the band starting below the fold. */
+async function expectHeroToEndAtClientBand(
+  page: Page,
+  viewport: { width: number; height: number },
+  size: string,
+  endsAtWindowBottom: 'band' | 'hero' = 'band',
+): Promise<void> {
   const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
   await heightBelowHeader(page, viewport, { heading, buttons }, size);
   const band = await clientBandBox(page);
@@ -275,6 +284,11 @@ async function expectHeroToEndAtClientBand(page: Page, viewport: { width: number
   expect.soft(
     Math.abs(heroBottom - band.top),
     `at ${size}, bottom of the hero (${heroBottom} px) against the top of the client band (${band.top} px)`,
+  ).toBeLessThanOrEqual(1);
+  const [name, bottom] = endsAtWindowBottom === 'band' ? ['the client band', band.bottom] : ['the hero', heroBottom];
+  expect.soft(
+    Math.abs(bottom - viewport.height),
+    `at ${size}, bottom of ${name} (${bottom} px) against the bottom of the window (${viewport.height} px)`,
   ).toBeLessThanOrEqual(1);
 }
 
@@ -416,7 +430,7 @@ test('on phone as on desktop, the second hero button, "Contact", reached by keyb
   });
 });
 
-test('on phone as on desktop, on a home page with clients, the hero starts right below the header and ends where the client band begins, which it does not cover', async ({ page }) => {
+test('on phone as on desktop, on a home page with clients, the hero starts right below the header and ends where the client band begins, which it does not cover, and the band’s bottom edge meets the bottom of the window', async ({ page }) => {
   await page.goto('/fr/');
   /* The hero groups the heading, the tagline, the stack and the buttons. */
   const hero = heroRegion(page);
@@ -432,7 +446,7 @@ test('on phone as on desktop, on a home page with clients, the hero starts right
   expect(Math.abs(heroBox.y - headerBottom), 'the top of the hero is right below the header').toBeLessThanOrEqual(1);
 
   /* The French home page declares clients: in a window tall enough for its content, the hero
-     ends where the client band begins. The header is two rows on a phone and one row from
+     ends where the client band begins, and the band ends at the window's bottom. The header is two rows on a phone and one row from
      768 px wide: checked at a phone window and at both desktop ones. */
   for (const viewport of TALL_VIEWPORTS) {
     const size = `${viewport.width} × ${viewport.height}`;
@@ -1483,7 +1497,7 @@ test.describe('home page of a single-language site', () => {
        height, which must also hold when the web fonts never arrive. */
     test.use({ javaScriptEnabled: false });
 
-    test('on a single-language site, without JavaScript and with the web font files blocked, in a window tall enough for its content, the hero ends exactly where the client band begins, within 1 px, on a phone as on desktop', async ({ page, context }) => {
+    test('on a single-language site, without JavaScript and with the web font files blocked, in a window tall enough for its content, the hero ends exactly where the client band begins and its bottom edge meets the bottom of the window, the band starting below the fold, within 1 px, on a phone as on desktop',async ({ page, context }) => {
       await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
       /* The browser then renders the fallback fonts of the stacks. */
       const blockedFonts = await blockRequests(page, fontFilesUrl(SITE_WITH_A_SINGLE_LANGUAGE.origin));
@@ -1498,7 +1512,8 @@ test.describe('home page of a single-language site', () => {
         expect(loadedFonts, `web fonts loaded at ${size}`).toEqual([]);
         /* The site is single-language: the header shows no language switcher. */
         await expect(page.locator('header').getByRole('group', { name: 'Langue' }), `language switcher at ${size}`).toHaveCount(0);
-        await expectHeroToEndAtClientBand(page, viewport, size);
+        /* Without JavaScript the hero alone fills the window: the band starts below the fold. */
+        await expectHeroToEndAtClientBand(page, viewport, size, 'hero');
       }
     });
   });
@@ -1522,7 +1537,7 @@ test.describe('home page of a site with a long menu', () => {
     removeDirectory(siteDirectory);
   });
 
-  test('on a phone, when the menu wraps onto two lines, in a window tall enough for its content, the hero still ends exactly where the client band begins: at 412 × 1100, within 1 px', async ({ page, context }) => {
+  test('on a phone, when the menu wraps onto two lines, in a window tall enough for its content, the hero still ends exactly where the client band begins and the band’s bottom edge meets the bottom of the window: at 412 × 1100, within 1 px', async ({ page, context }) => {
     await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
     const viewport = { width: 412, height: 1100 };
     const size = `${viewport.width} × ${viewport.height}`;

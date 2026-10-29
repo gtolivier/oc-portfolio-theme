@@ -488,7 +488,7 @@ test('from 768 px wide, the header sits on a single row, vertically centred: the
   }
 });
 
-test('after the window is widened from 375 px to 1280 px on the same page, the hero still ends where the client band begins, within 1 px', async ({ page }) => {
+test('after the window is widened from 375 px to 1280 px on the same page, the hero still ends where the client band begins and the band’s bottom edge meets the bottom of the window, within 1 px', async ({ page }) => {
   /* 900 px high: tall enough for the hero's content at 375 px as at 1280 px, so the hero's
      height is set by the header above it and the client band below it. */
   const height = 900;
@@ -511,6 +511,14 @@ test('after the window is widened from 375 px to 1280 px on the same page, the h
   };
   await expect
     .poll(async () => Math.abs(await heroBottomOffset()), { message: 'hero bottom against the client band top after widening to 1280 px' })
+    .toBeLessThanOrEqual(1);
+  /* The hero and the band fill the window below the header: the band's bottom meets the window's
+     bottom, which a header height left over from the 375 px layout would break. */
+  await expect
+    .poll(async () => {
+      const band = await clientBandBox(page);
+      return band ? Math.abs(band.bottom - height) : Infinity;
+    }, { message: `client band bottom against the window bottom (${height} px) after widening to 1280 px` })
     .toBeLessThanOrEqual(1);
 });
 
