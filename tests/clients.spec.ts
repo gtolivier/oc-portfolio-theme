@@ -466,6 +466,14 @@ test('when JavaScript is on but the theme’s script does not load, on a phone, 
   }
 });
 
+test('when JavaScript is on but the theme’s script does not load, on a phone and on a desktop, the client band starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window', async ({ page }) => {
+  /* The theme's bundle fails to load; the names wrap, as without JavaScript, so the band grows
+     taller: it must not shrink the hero above it. */
+  const blockedScripts = await blockRequests(page, themeScriptUrl());
+  await expectBandBelowTheFold(page);
+  expect(blockedScripts, 'theme script request blocked').not.toEqual([]);
+});
+
 test('under prefers-reduced-motion: reduce, on a phone and on a desktop, the client band starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window', async ({ page }) => {
   /* The visitor asks for reduced motion. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
