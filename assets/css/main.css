@@ -581,6 +581,10 @@ tick-field > canvas {
   --clients-band-height: 2.5rem;
   display: grid;
   grid-template-rows: 1fr auto;
+}
+
+/* Without a hero, nothing stretches the first screen: the content follows. */
+.first-screen:has(> .hero) {
   /* For browsers without svh, which drop the declaration below. */
   min-height: calc(100vh - var(--header-height));
   /* svh: the height left when a phone browser shows its toolbars, so the
