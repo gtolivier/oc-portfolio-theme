@@ -30,10 +30,12 @@ const CLIENTS = [
   'Maison Delorme',
 ];
 
-/* A narrow phone window, 320 px wide, a common phone window and a desktop one. */
+/* A narrow phone window, 320 px wide, a common phone window, a desktop one, and a wide desktop
+   one, where the example site's five clients fit in the band. */
 const NARROW_PHONE_VIEWPORT = { width: 320, height: 568 };
 const PHONE_VIEWPORT = { width: 390, height: 844 };
 const DESKTOP_VIEWPORT = { width: 1280, height: 900 };
+const WIDE_DESKTOP_VIEWPORT = { width: 1920, height: 1080 };
 
 const PHONE_AND_DESKTOP_VIEWPORTS = [PHONE_VIEWPORT, DESKTOP_VIEWPORT];
 
@@ -329,6 +331,12 @@ async function labelExtent(
   }, label);
 }
 
+/* The page gutter: how far the label (its extent, from labelExtent) stands inside the left edge of
+   the client band (its box, from clientBandBox). */
+function pageGutter(band: { left: number }, label: { left: number }): number {
+  return label.left - band.left;
+}
+
 test('on a phone, the label "Ils me font confiance" sits above the client names, not on their line', async ({ page }) => {
   await page.setViewportSize(PHONE_VIEWPORT);
   const list = await openClientList(page);
@@ -441,6 +449,12 @@ async function bringBandIntoView(list: Locator): Promise<{ left: number; right: 
   return band!;
 }
 
+/* The middle of the client band whose box is `band`, in the window: where the tests point at it
+   or tap it. */
+function bandMiddle(band: { left: number; right: number; top: number; bottom: number }): { x: number; y: number } {
+  return { x: (band.left + band.right) / 2, y: (band.top + band.bottom) / 2 };
+}
+
 test('on a desktop, while the pointer rests on the scrolling client band, the names stop moving: one second later, they sit where they were; once the pointer leaves the band, they move left again', async ({ page, hasTouch }) => {
   test.skip(hasTouch, 'resting the pointer on the band needs a fine pointer; touch screens have none');
   /* At 1280 px wide, the example site's five clients do not all fit: the band scrolls. */
@@ -449,11 +463,12 @@ test('on a desktop, while the pointer rests on the scrolling client band, the na
   const band = await bringBandIntoView(list);
 
   /* The pointer rests in the middle of the band. */
-  await page.mouse.move((band.left + band.right) / 2, (band.top + band.bottom) / 2);
+  const middle = bandMiddle(band);
+  await page.mouse.move(middle.x, middle.y);
   await expectNamesStillOverOneSecond(list, CLIENTS, 'with the pointer resting on the band');
 
   /* The pointer leaves the band, for a point above it. */
-  await page.mouse.move((band.left + band.right) / 2, band.top / 2);
+  await page.mouse.move(middle.x, band.top / 2);
   await expectNamesMoveLeftOverOneSecond(list, CLIENTS, 'once the pointer has left the band');
 });
 
@@ -464,7 +479,8 @@ test('on a touch screen, after a tap on the scrolling client band, the names kee
   const band = await bringBandIntoView(list);
 
   /* The visitor taps the middle of the band. */
-  await page.touchscreen.tap((band.left + band.right) / 2, (band.top + band.bottom) / 2);
+  const middle = bandMiddle(band);
+  await page.touchscreen.tap(middle.x, middle.y);
   await expectNamesMoveLeftOverOneSecond(list, CLIENTS, 'after a tap on the band');
 });
 
@@ -483,9 +499,8 @@ test('on a laptop whose main pointer is a mouse but that also has a touch screen
     const band = await bringBandIntoView(list);
 
     /* The visitor taps the middle of the band, on the touch screen. */
-    const touchPoint = { x: (band.left + band.right) / 2, y: (band.top + band.bottom) / 2 };
     const session = await context.newCDPSession(page);
-    await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [touchPoint] });
+    await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [bandMiddle(band)] });
     await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expectNamesMoveLeftOverOneSecond(list, CLIENTS, 'after a tap on the band');
   } finally {
@@ -530,7 +545,7 @@ test('on a phone and on a desktop, while the client names scroll, the button "Me
     expect(labelBox, `${where}, the label "Ils me font confiance" is shown on screen`).not.toBeNull();
     const button = (await pause.boundingBox())!;
     const rightGap = band!.right - (button.x + button.width);
-    const leftGap = labelBox!.left - band!.left;
+    const leftGap = pageGutter(band!, labelBox!);
     expect.soft(Math.abs(rightGap - leftGap), `${where}, gap between the button's right side and the band's right edge (${rightGap} px) against the gap between the label's left side and the band's left edge (${leftGap} px)`)
       .toBeLessThanOrEqual(2);
 
@@ -876,15 +891,16 @@ test('on a phone and on a desktop, where the clients do not fit in the band, the
   }
 });
 
+/* Resizes the window to `size` without reloading the page, and gives the page a couple of frames to
+   lay itself out again. */
+async function resizeWithoutReloading(page: Page, size: { width: number; height: number }): Promise<void> {
+  await page.setViewportSize(size);
+  await letPageRender(page);
+}
+
 test('on the French home page, the client band follows a resize of the window without reloading: the names scroll at 1280 px wide, stay still, each shown once, once the window widens to 1920 px, and scroll again once it narrows back to 1280 px', async ({ page }) => {
   await page.setViewportSize(DESKTOP_VIEWPORT);
   const list = await openClientList(page);
-  /* The window is resized without reloading the page; the page gets a couple of frames to lay
-     itself out again. */
-  const resizeTo = async (width: number, height: number) => {
-    await page.setViewportSize({ width, height });
-    await letPageRender(page);
-  };
 
   /* Scrolling: with the page's animations frozen, so that "now" and "one second later" are read
      at known times, the names sit further left one second later. They are let run again after. */
@@ -900,7 +916,7 @@ test('on the French home page, the client band follows a resize of the window wi
   await expectNamesScroll('at 1280 px, on arrival');
 
   /* Widened to 1920 px, where the example site's five clients fit in the band. */
-  await resizeTo(1920, 1080);
+  await resizeWithoutReloading(page, WIDE_DESKTOP_VIEWPORT);
   const where = 'widened to 1920 px';
   await expectNamesStillOverOneSecond(list, CLIENTS, where);
   const shown = await clientNamesShown(page, CLIENTS);
@@ -912,30 +928,51 @@ test('on the French home page, the client band follows a resize of the window wi
   }
 
   /* Narrowed back to 1280 px, where they no longer fit: the band scrolls again. */
-  await resizeTo(1280, 900);
+  await resizeWithoutReloading(page, DESKTOP_VIEWPORT);
   await expectNamesScroll('narrowed back to 1280 px');
 });
 
-test('on the French home page, after the names scroll at 1280 px wide, widening the window to a width just above the narrowest one where a fresh load shows them still leaves them still too: no button "Mettre en pause le défilement", each name shown once, whole', async ({ page }) => {
-  /* At 1920 px wide, the names fit: read where the last name's text ends, how far the page's
-     visible width stops short of the window's (a scrollbar), and the gap between two names. */
-  await page.setViewportSize({ width: 1920, height: 1080 });
-  const list = await openClientList(page);
-  const shownAt1920 = await clientNamesShown(page, CLIENTS);
-  const lastNameRight = shownAt1920.find((occurrence) => occurrence.name === CLIENTS.at(-1))!.right;
-  const secondNameLeft = shownAt1920.find((occurrence) => occurrence.name === CLIENTS[1])!.left;
+interface StillNamesLayout {
+  /* Where the last name's text ends, in the window. */
+  lastNameRight: number;
+  /* The gap between two names, from the "|||" that ends a name to the next name. */
+  gap: number;
+  /* The page gutter (see pageGutter); the band's inner right edge stands as far inside the
+     window's right edge. */
+  gutter: number;
+  /* How far the page's visible width stops short of the window's (a scrollbar). */
+  pageWidthShortfall: number;
+}
+
+/* Reads, on the open page, where the example site's names sit in the client list `list`, while
+   they fit and stay still. */
+async function readStillNamesLayout(list: Locator): Promise<StillNamesLayout> {
+  const page = list.page();
+  const shown = await clientNamesShown(page, CLIENTS);
+  const lastNameRight = shown.find((occurrence) => occurrence.name === CLIENTS.at(-1))!.right;
+  const secondNameLeft = shown.find((occurrence) => occurrence.name === CLIENTS[1])!.left;
+  /* The first name's item ends with its "|||". */
   const firstItem = (await list.getByRole('listitem').filter({ hasText: CLIENTS[0] }).boundingBox())!;
   const gap = secondNameLeft - (firstItem.x + firstItem.width);
-  const pageWidthShortfall = 1920 - (await page.evaluate(() => document.documentElement.clientWidth));
-  /* The page gutter: how far the label "Ils me font confiance" stands inside the band's left edge.
-     The band's inner right edge stands as far inside the window's right edge. */
-  const band = (await clientBandBox(page))!;
-  const gutter = (await labelExtent(page, 'Ils me font confiance'))!.left - band.left;
+  const pageWidthShortfall = page.viewportSize()!.width - (await page.evaluate(() => document.documentElement.clientWidth));
+  const gutter = pageGutter((await clientBandBox(page))!, (await labelExtent(page, 'Ils me font confiance'))!);
+  return { lastNameRight, gap, gutter, pageWidthShortfall };
+}
 
-  /* A window whose band's inner right edge, one page gutter inside the window's right edge, stands
-     about half a gap after the end of the last name: just above the narrowest width where the
-     names fit. A fresh load there shows them still. */
-  const width = Math.round(lastNameRight + gap / 2 + gutter + pageWidthShortfall);
+/* The width of a window whose band's inner right edge, one page gutter inside the window's right
+   edge, stands about half a gap after the end of the last name, as read in `layout`: just above
+   the narrowest width where the names fit. */
+function widthJustAboveFit({ lastNameRight, gap, gutter, pageWidthShortfall }: StillNamesLayout): number {
+  return Math.round(lastNameRight + gap / 2 + gutter + pageWidthShortfall);
+}
+
+test('on the French home page, after the names scroll at 1280 px wide, widening the window to a width just above the narrowest one where a fresh load shows them still leaves them still too: no button "Mettre en pause le défilement", each name shown once, whole', async ({ page }) => {
+  /* At 1920 px wide, the names fit: read where they sit. */
+  await page.setViewportSize(WIDE_DESKTOP_VIEWPORT);
+  const list = await openClientList(page);
+
+  /* A fresh load at a width just above the narrowest one where the names fit shows them still. */
+  const width = widthJustAboveFit(await readStillNamesLayout(list));
   const pauseButton = page.getByRole('button', { name: 'Mettre en pause le défilement' });
   await page.setViewportSize({ width, height: 900 });
   await openClientList(page);
@@ -948,8 +985,7 @@ test('on the French home page, after the names scroll at 1280 px wide, widening 
   await expect(pauseButton, 'at 1280 px, on arrival, the pause button shows').toBeVisible();
 
   /* Widened, without reloading, to that same width: the names stay still there too. */
-  await page.setViewportSize({ width, height: 900 });
-  await letPageRender(page);
+  await resizeWithoutReloading(page, { width, height: 900 });
   const where = `widened from 1280 px to ${width} px (a fresh load there shows the names still)`;
   await expectNamesStillOverOneSecond(list, CLIENTS, where);
   await expect.soft(pauseButton, `${where}, the pause button`).toBeHidden();
@@ -959,28 +995,17 @@ test('on the French home page, after the names scroll at 1280 px wide, widening 
 test('on a desktop, when the client names end less than the gap between two names before the band’s inner right edge, one page gutter inside the window’s right edge, they all fit: they stay still, and each is shown once, whole', async ({ page }) => {
   /* At 1920 px wide, the example site's five clients fit in the band: still, they show where
      they sit whenever they fit, whatever the window's width (on a desktop, what comes before them
-     does not change width). Read there: where the last name's text ends, how far the page's
-     visible width stops short of the window's (a scrollbar), and the gap between two names, from
-     the "|||" that ends a name to the next name. */
-  await page.setViewportSize({ width: 1920, height: 1080 });
+     does not change width). Read there where they sit. */
+  await page.setViewportSize(WIDE_DESKTOP_VIEWPORT);
   const list = await openClientList(page);
   await expectNamesStillOverOneSecond(list, CLIENTS, 'at 1920 px');
-  const shownAt1920 = await clientNamesShown(page, CLIENTS);
-  const lastNameRight = shownAt1920.find((occurrence) => occurrence.name === CLIENTS.at(-1))!.right;
-  const secondNameLeft = shownAt1920.find((occurrence) => occurrence.name === CLIENTS[1])!.left;
-  /* The first name's item ends with its "|||". */
-  const firstItem = (await list.getByRole('listitem').filter({ hasText: CLIENTS[0] }).boundingBox())!;
-  const gap = secondNameLeft - (firstItem.x + firstItem.width);
-  const pageWidthShortfall = 1920 - (await page.evaluate(() => document.documentElement.clientWidth));
+  const layout = await readStillNamesLayout(list);
+  const { lastNameRight, gap, gutter } = layout;
   expect(gap, 'at 1920 px, gap between the "|||" after the first name and the second name').toBeGreaterThan(4);
-  /* The page gutter: how far the label "Ils me font confiance" stands inside the band's left edge.
-     The band's inner right edge stands as far inside the window's right edge. */
-  const band = (await clientBandBox(page))!;
-  const gutter = (await labelExtent(page, 'Ils me font confiance'))!.left - band.left;
 
   /* A window whose band's inner right edge, one page gutter inside the window's right edge, stands
      about half a gap after the end of the last name. */
-  const width = Math.round(lastNameRight + gap / 2 + gutter + pageWidthShortfall);
+  const width = widthJustAboveFit(layout);
   const where = `at ${width} px, with the band's inner right edge (one page gutter of ${gutter} px inside the window's right edge) about half a gap (${gap} px) after the end of the last name (${lastNameRight} px at 1920 px)`;
   await page.setViewportSize({ width, height: 900 });
   await openClientList(page);
@@ -1057,7 +1082,7 @@ test.describe('home page of another site, with other clients', () => {
         reference: { width: 767, height: 1024 },
       },
       /* …and the example site's five, in that of a 1920 px wide desktop. */
-      { homePage: '/fr/', clients: CLIENTS, reference: { width: 1920, height: 1080 } },
+      { homePage: '/fr/', clients: CLIENTS, reference: WIDE_DESKTOP_VIEWPORT },
     ];
     for (const { homePage, clients, reference } of sites) {
       const lastClient = clients.at(-1)!;
@@ -1084,7 +1109,7 @@ test.describe('home page of another site, with other clients', () => {
          ends at the same place whatever the window's width, as long as they stay still. */
       const atReference = await readBand(reference.width, reference.height);
       expect(atReference.still, `on ${homePage} at ${reference.width} px, the names stay still`).toBe(true);
-      const gutter = atReference.label.left - atReference.band.left;
+      const gutter = pageGutter(atReference.band, atReference.label);
       const lastNameRight = atReference.lastNameRight!;
       /* Widths where the names only just fit: the window's right edge stands half a gutter after
          the end of the last name, or just over one gutter after it. */
@@ -1098,7 +1123,7 @@ test.describe('home page of another site, with other clients', () => {
         const { still, band, label, lastNameRight: right } = width === reference.width ? atReference : await readBand(width, reference.height);
         if (!still) continue;
         if (width !== reference.width) stillJustFitWidths++;
-        const leftGap = label.left - band.left;
+        const leftGap = pageGutter(band, label);
         const rightGap = band.right - right!;
         expect.soft(rightGap, `on ${homePage} at ${width} px, with the names still, gap between the end of "${lastClient}" (${right} px) and the band's right edge (${band.right} px), against the gap between the label's left side and the band's left edge (${leftGap} px)`)
           .toBeGreaterThanOrEqual(leftGap - 1);
@@ -1125,7 +1150,7 @@ test.describe('home page of another site, with a single short client', () => {
     { homePage: `${SITE_WITH_A_SINGLE_SHORT_CLIENT.origin}/fr/`, clients: ['Oko'], ...PHONE_VIEWPORT },
     { homePage: `${SITE_WITH_A_SINGLE_SHORT_CLIENT.origin}/fr/`, clients: ['Oko'], ...DESKTOP_VIEWPORT },
     /* The example site's five clients fit in the band of a 1920 px wide screen. */
-    { homePage: '/fr/', clients: CLIENTS, width: 1920, height: 1080 },
+    { homePage: '/fr/', clients: CLIENTS, ...WIDE_DESKTOP_VIEWPORT },
   ];
 
   test('when all the clients fit in the band — a single short client on a phone and on a desktop, the example site’s five on a 1920 px screen — the names stay still, and each is shown once, whole: no copy of a name shows on screen', async ({ page, context }) => {
