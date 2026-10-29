@@ -995,17 +995,19 @@ test('on phone as on desktop, the hero’s veil darkens its text zone: with the 
 
 /* Leaves only the still hero's field showing: its text and its veil are hidden without moving
    anything, and the hero is given the page's background colour, which shows through it, so
-   that the pixels that differ from the hero's background are the ticks'. The site header is
-   hidden too, still without moving anything: the hero starts right below it at a fractional
-   position, and a screenshot of the hero rounded out to whole device pixels (WebKit at a
-   device pixel ratio of 3) holds the header's bottom border on its first row, which would
-   look like ticks drawn in every column. */
+   that the pixels that differ from the hero's background are the ticks'. The site header and
+   the client band are hidden too, still without moving anything: the hero sits between them
+   at fractional positions, and a screenshot of the hero rounded out to whole device pixels
+   holds the header's bottom border on its first row, or the band's top border on its last
+   one, which would look like ticks drawn in every column. */
 async function showOnlyTheField(hero: Locator, text: Record<string, Locator>): Promise<void> {
   const veil = hero.locator('.veil');
   await expect(veil).toHaveCount(1);
   const header = hero.page().locator('.site-header');
   await expect(header).toHaveCount(1);
-  for (const element of [...Object.values(text), veil, header]) {
+  const clients = hero.page().locator('.clients');
+  await expect(clients).toHaveCount(1);
+  for (const element of [...Object.values(text), veil, header, clients]) {
     await element.evaluate((el) => {
       (el as HTMLElement).style.visibility = 'hidden';
     });
