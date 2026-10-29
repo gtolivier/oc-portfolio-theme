@@ -714,12 +714,6 @@ tick-field > canvas {
   }
 }
 
-@media (prefers-reduced-motion: reduce) and (min-width: 768px) {
-  .clients {
-    padding-block: 12px;
-  }
-}
-
 @media (min-width: 768px) {
   .clients {
     flex-wrap: nowrap;
