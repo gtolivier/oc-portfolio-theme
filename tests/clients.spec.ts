@@ -187,6 +187,28 @@ test('on a phone and on a desktop, the client names move continuously to the lef
   }
 });
 
+test('under prefers-reduced-motion: reduce, on a phone and on a desktop, the client names stay still: one second later, they sit where they were', async ({ page }) => {
+  /* The visitor asks for reduced motion. */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const { width, height } of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/fr/');
+    await page.evaluate(() => document.fonts.ready);
+    const list = page.getByRole('list', { name: 'Ils me font confiance' });
+    await expect(list).toBeVisible();
+    const namesLeft = () =>
+      Promise.all(CLIENTS.map(async (client) => (await list.getByRole('listitem').filter({ hasText: client }).boundingBox())!.x));
+    const namesBefore = await namesLeft();
+    /* One second later, as the visitor lives it: the page's own time runs, untouched. */
+    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
+    const namesAfter = await namesLeft();
+    CLIENTS.forEach((client, index) => {
+      expect.soft(Math.abs(namesAfter[index] - namesBefore[index]), `at ${width} px, horizontal shift of "${client}" over one second (from ${namesBefore[index]} px)`)
+        .toBeLessThanOrEqual(1);
+    });
+  }
+});
+
 test('on a phone, down to 320 px wide, and on a desktop, the client band never makes the page scroll horizontally, at any moment of its loop', async ({ page }) => {
   for (const { width, height } of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1280, height: 900 }]) {
     await page.setViewportSize({ width, height });
