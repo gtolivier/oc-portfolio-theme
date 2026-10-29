@@ -30,11 +30,23 @@
     {{- end }}
     {{- with .Params.clients }}
     {{- $label := i18n "clients" }}
-    <ul class="clients" aria-label="{{ $label }}" data-label="{{ $label }}">
-      {{- range . }}
-      <li>{{ . }}</li>
-      {{- end }}
-    </ul>
+    {{- /* The names are listed twice, so that the band loops without a gap: the copy is hidden from assistive technologies. */}}
+    <div class="clients" data-label="{{ $label }}">
+      <div class="clients-window">
+        <div class="clients-track">
+          <ul aria-label="{{ $label }}">
+            {{- range . }}
+            <li>{{ . }}</li>
+            {{- end }}
+          </ul>
+          <ul aria-hidden="true">
+            {{- range . }}
+            <li>{{ . }}</li>
+            {{- end }}
+          </ul>
+        </div>
+      </div>
+    </div>
     {{- end }}
   </div>
   {{ .Content }}

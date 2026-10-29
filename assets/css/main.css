@@ -605,7 +605,6 @@ tick-field > canvas {
   margin: 0;
   padding: 0 var(--page-gutter);
   overflow: hidden;
-  list-style: none;
 }
 
 /* The label shown before the names repeats the list's accessible name, so it
@@ -616,18 +615,53 @@ tick-field > canvas {
   flex-basis: 100%;
 }
 
+/* The names slide through the window; the label stays put. */
+.clients-window {
+  flex: 1 1 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.clients-track {
+  display: flex;
+  width: max-content;
+  animation: clients-scroll 30s linear infinite;
+}
+
+/* The track holds the list twice: sliding it by half its width loops
+   seamlessly. */
+@keyframes clients-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.clients ul {
+  display: flex;
+  flex: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clients li {
+  flex: none;
+  margin-right: 0.75rem;
+}
+
 @media (min-width: 768px) {
   .clients {
     flex-wrap: nowrap;
     height: var(--clients-band-height);
   }
 
-  .clients li {
-    flex: none;
-  }
-
   .clients::before {
     flex-basis: auto;
+    margin-right: 0.75rem;
+  }
+
+  .clients-window {
+    flex-basis: 0;
   }
 }
 
