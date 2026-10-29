@@ -771,6 +771,15 @@ tick-field > canvas {
     line-height: 1;
     color: var(--color-paper);
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* No box around the icon: under the pointer and keyboard focus, it takes
+     the names' accent instead. The outline stays transparent, so that it
+     still shows in forced colors. */
+  .clients.is-scrolling .clients-pause:is(:hover, :focus-visible) {
+    outline: 2px solid transparent;
+    color: var(--color-accent);
   }
 
   /* A small icon, as discreet as the label: pause while the names move,
