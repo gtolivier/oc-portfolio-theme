@@ -27,17 +27,30 @@ if (clientsBand && clientsWindow && clientsList && clientsTrack) {
       runningLoop.currentTime = elapsedMs % (loopSeconds(loopListWidth) * MS_PER_SECOND);
     }
   };
-  /* The last name's margin is only space after it: names ending within it still fit. */
+  /* Where the last name's text ends: its margin and its separator, which shows only while the
+     names loop, are space after it, and names ending within that space still fit. */
   const namesWidth = (listWidth: number): number => {
     const lastItem = clientsList.lastElementChild;
-    const trailingSpace = lastItem ? parseFloat(getComputedStyle(lastItem).marginRight) || 0 : 0;
-    return listWidth - trailingSpace;
+    if (!lastItem) {
+      return listWidth;
+    }
+    const range = document.createRange();
+    range.selectNodeContents(lastItem);
+    return range.getBoundingClientRect().right - clientsList.getBoundingClientRect().left;
   };
+  const pauseButton = clientsBand.querySelector<HTMLButtonElement>('.clients-pause');
   const update = () => {
     /* Unrounded widths: a list wider by a fraction of a pixel is cut too. The
        window has no border, padding or scrollbar: its box is what shows. */
     const listWidth = clientsList.getBoundingClientRect().width;
-    const isScrolling = namesWidth(listWidth) > clientsWindow.getBoundingClientRect().width;
+    /* While the names scroll, the pause button takes room from the window: that room is the
+       window's too once they stop, so it counts as available, or they would never stop. */
+    const pauseStyle = pauseButton && getComputedStyle(pauseButton);
+    const pauseRoom = pauseButton && pauseStyle && pauseStyle.display !== 'none'
+      ? pauseButton.getBoundingClientRect().width + (parseFloat(pauseStyle.marginLeft) || 0) + (parseFloat(pauseStyle.marginRight) || 0)
+        + (parseFloat(getComputedStyle(clientsBand).columnGap) || 0)
+      : 0;
+    const isScrolling = namesWidth(listWidth) > clientsWindow.getBoundingClientRect().width + pauseRoom;
     /* The pace is set before the loop starts, so that it never starts at another one. */
     if (isScrolling && listWidth !== loopListWidth) {
       setLoopFor(listWidth);
@@ -45,7 +58,6 @@ if (clientsBand && clientsWindow && clientsList && clientsTrack) {
     loopListWidth = isScrolling ? listWidth : undefined;
     clientsBand.classList.toggle('is-scrolling', isScrolling);
   };
-  const pauseButton = clientsBand.querySelector<HTMLButtonElement>('.clients-pause');
   pauseButton?.addEventListener('click', () => {
     const isPaused = pauseButton.getAttribute('aria-pressed') !== 'true';
     pauseButton.setAttribute('aria-pressed', String(isPaused));
