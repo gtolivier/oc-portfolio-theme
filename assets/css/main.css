@@ -669,6 +669,12 @@ tick-field > canvas {
   margin-left: var(--clients-gap);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .clients-track {
+    animation: none;
+  }
+}
+
 @media (min-width: 768px) {
   .clients {
     flex-wrap: nowrap;
