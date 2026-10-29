@@ -39,18 +39,25 @@ if (clientsBand && clientsWindow && clientsList && clientsTrack) {
     return range.getBoundingClientRect().right - clientsList.getBoundingClientRect().left;
   };
   const pauseButton = clientsBand.querySelector<HTMLButtonElement>('.clients-pause');
+  /* While the names scroll, the pause button takes room from the window: that room is the
+     window's too once they stop, so it counts as available, or they would never stop. */
+  const pauseButtonRoom = (): number => {
+    if (!pauseButton) {
+      return 0;
+    }
+    const pauseStyle = getComputedStyle(pauseButton);
+    if (pauseStyle.display === 'none') {
+      return 0;
+    }
+    const pixels = (length: string): number => parseFloat(length) || 0;
+    return pauseButton.getBoundingClientRect().width + pixels(pauseStyle.marginLeft) + pixels(pauseStyle.marginRight)
+      + pixels(getComputedStyle(clientsBand).columnGap);
+  };
   const update = () => {
     /* Unrounded widths: a list wider by a fraction of a pixel is cut too. The
        window has no border, padding or scrollbar: its box is what shows. */
     const listWidth = clientsList.getBoundingClientRect().width;
-    /* While the names scroll, the pause button takes room from the window: that room is the
-       window's too once they stop, so it counts as available, or they would never stop. */
-    const pauseStyle = pauseButton && getComputedStyle(pauseButton);
-    const pauseRoom = pauseButton && pauseStyle && pauseStyle.display !== 'none'
-      ? pauseButton.getBoundingClientRect().width + (parseFloat(pauseStyle.marginLeft) || 0) + (parseFloat(pauseStyle.marginRight) || 0)
-        + (parseFloat(getComputedStyle(clientsBand).columnGap) || 0)
-      : 0;
-    const isScrolling = namesWidth(listWidth) > clientsWindow.getBoundingClientRect().width + pauseRoom;
+    const isScrolling = namesWidth(listWidth) > clientsWindow.getBoundingClientRect().width + pauseButtonRoom();
     /* The pace is set before the loop starts, so that it never starts at another one. */
     if (isScrolling && listWidth !== loopListWidth) {
       setLoopFor(listWidth);
