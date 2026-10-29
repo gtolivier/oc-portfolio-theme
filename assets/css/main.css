@@ -675,6 +675,15 @@ tick-field > canvas {
   margin-left: var(--clients-gap);
 }
 
+/* All the names fit in the band (see clients-fit.ts): nothing to loop. */
+.clients.is-still .clients-track {
+  animation: none;
+}
+
+.clients.is-still ul[aria-hidden="true"] {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .clients-track {
     width: auto;
