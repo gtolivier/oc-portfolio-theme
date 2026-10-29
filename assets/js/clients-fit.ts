@@ -27,10 +27,12 @@ if (clientsBand && clientsWindow && clientsList && clientsTrack) {
     if (isScrolling) setLoopDuration(listWidth / CLIENTS_PACE_PX_PER_SECOND);
     clientsBand.classList.toggle('is-scrolling', isScrolling);
   };
-  /* The observer also calls update once each element is first laid out. */
   const resizeObserver = new ResizeObserver(update);
   resizeObserver.observe(clientsWindow);
   /* The width of the names depends on the font: the list can change width
      on its own, when a font swaps in, while the window keeps its size. */
   resizeObserver.observe(clientsList);
+  /* Measured at once, so that the band scrolls as soon as the script runs: some browsers
+     deliver the observer's first callback later. */
+  update();
 }
