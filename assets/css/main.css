@@ -688,8 +688,16 @@ tick-field > canvas {
   }
 }
 
-/* Wrapped names make the band taller and the hero shorter: on a desktop,
-   the band's padding gives some of that room back. */
+/* Wrapped names make the band taller: it starts below the fold, so the hero
+   alone fills the window below the header. */
+@media (prefers-reduced-motion: reduce) {
+  .first-screen:has(> .hero) {
+    min-height: 0;
+    grid-template-rows: calc(100vh - var(--header-height)) auto;
+    grid-template-rows: calc(100svh - var(--header-height)) auto;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) and (min-width: 768px) {
   .clients {
     padding-block: 12px;
