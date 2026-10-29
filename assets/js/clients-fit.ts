@@ -15,8 +15,8 @@ if (clientsBand && clientsWindow && clientsList && clientsTrack) {
     clientsTrack.style.animationDuration = `${seconds}s`;
   };
   /* The list width the running loop's duration was set for; undefined while the names are still.
-     Resizing the window fires the observer every frame: the loop is left alone (no style write,
-     no seek) unless it starts or the list changes width. */
+     Resizing the window fires the observer every frame: the loop is left alone (no style write)
+     unless it starts or the list changes width. */
   let loopListWidth: number | undefined;
   const update = () => {
     /* Unrounded widths: a list wider by a fraction of a pixel is cut too. The
