@@ -733,6 +733,7 @@ tick-field > canvas {
   .clients.is-scrolling .clients-track {
     animation: clients-scroll linear infinite;
   }
+
   .clients.is-scrolling ul[aria-hidden="true"] {
     display: flex;
   }
