@@ -693,6 +693,11 @@ tick-field > canvas {
   .clients.is-scrolling ul[aria-hidden="true"] {
     display: flex;
   }
+
+  /* The names stop while the pointer rests on the band. */
+  .clients.is-scrolling:hover .clients-track {
+    animation-play-state: paused;
+  }
 }
 
 /* Under reduced motion, and without JavaScript, where clients-fit.ts cannot
