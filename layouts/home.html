@@ -34,10 +34,8 @@
     <div class="clients" data-label="{{ $label }}">
       <div class="clients-window">
         <div class="clients-track">
-          {{- /* The names are listed in two identical halves, each long enough to cover the widest window, so that the band loops without a gap: only the first list is exposed to assistive technologies. */}}
-          {{- $minNamesPerHalf := 24.0 }}
-          {{- $listsPerHalf := math.Ceil (div $minNamesPerHalf (len $clients)) | int }}
-          {{- range $position := seq (mul 2 $listsPerHalf) }}
+          {{- /* The names are listed twice, so that the band loops without a gap: it only scrolls when one list is wider than it (see clients-fit.ts). Only the first list is exposed to assistive technologies. */}}
+          {{- range $position := seq 2 }}
           <ul {{ if gt $position 1 }}aria-hidden="true"{{ else }}aria-label="{{ $label }}"{{ end }}>
             {{- range $clients }}
             <li>{{ . }}</li>
