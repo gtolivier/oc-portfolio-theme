@@ -575,19 +575,14 @@ tick-field > canvas {
   font-weight: 700;
 }
 
-/* The hero takes the room the client band, the strip below it, leaves. */
-.first-screen {
-  display: grid;
-  grid-template-rows: 1fr auto;
-}
-
 /* With a hero, the hero alone fills the window below the header: still names
    (the default) may wrap and make the band taller, so it starts below the
-   fold. Without a hero, nothing stretches the first screen: the content
-   follows. */
+   fold; the client band is the strip below it. Without a hero, nothing
+   stretches the first screen: the content follows. */
 .first-screen.has-hero {
   /* The height of the window below the header; for browsers without svh. */
   --window-below-header: calc(100vh - var(--header-height));
+  display: grid;
   grid-template-rows: minmax(var(--window-below-header), auto) auto;
 }
 
@@ -716,7 +711,8 @@ tick-field > canvas {
   }
 
   /* One line of names: the band keeps its height, so the whole first screen,
-     band included, fills the window below the header. */
+     band included, fills the window below the header; the hero takes the
+     room the band leaves. */
   :is(.theme-script-pending, .clients-measured) .first-screen.has-hero {
     min-height: var(--window-below-header);
     grid-template-rows: 1fr auto;

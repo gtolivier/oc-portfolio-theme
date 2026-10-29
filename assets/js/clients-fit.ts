@@ -29,35 +29,27 @@ if (clientsBand && clientsWindow && clientsList && clientsTrack) {
   };
   /* Where the last name's text ends: its margin and its separator, which shows only while the
      names loop, are space after it, and names ending within that space still fit. */
-  const namesWidth = (listWidth: number): number => {
+  const namesWidth = (): number => {
     const lastItem = clientsList.lastElementChild;
     if (!lastItem) {
-      return listWidth;
+      return 0;
     }
     const range = document.createRange();
     range.selectNodeContents(lastItem);
     return range.getBoundingClientRect().right - clientsList.getBoundingClientRect().left;
   };
-  const pauseButton = clientsBand.querySelector<HTMLButtonElement>('.clients-pause');
-  /* While the names scroll, the pause button takes room from the window: that room is the
-     window's too once they stop, so it counts as available, or they would never stop. */
-  const pauseButtonRoom = (): number => {
-    if (!pauseButton) {
-      return 0;
-    }
-    const pauseStyle = getComputedStyle(pauseButton);
-    if (pauseStyle.display === 'none') {
-      return 0;
-    }
-    const pixels = (length: string): number => parseFloat(length) || 0;
-    return pauseButton.getBoundingClientRect().width + pixels(pauseStyle.marginLeft) + pixels(pauseStyle.marginRight)
-      + pixels(getComputedStyle(clientsBand).columnGap);
+  /* The room the names have: from the window's left edge to the band's content edge. While the
+     names scroll, the pause button takes part of it from the window; once they stop, the window
+     gets it back. Measured the same way in both states, or the names would never stop. */
+  const namesRoom = (): number => {
+    const bandStyle = getComputedStyle(clientsBand);
+    const contentRight = clientsBand.getBoundingClientRect().right
+      - parseFloat(bandStyle.borderRightWidth) - parseFloat(bandStyle.paddingRight);
+    return contentRight - clientsWindow.getBoundingClientRect().left;
   };
   const update = () => {
-    /* Unrounded widths: a list wider by a fraction of a pixel is cut too. The
-       window has no border, padding or scrollbar: its box is what shows. */
-    const isScrolling = namesWidth(clientsList.getBoundingClientRect().width)
-      > clientsWindow.getBoundingClientRect().width + pauseButtonRoom();
+    /* Unrounded widths: a list wider by a fraction of a pixel is cut too. */
+    const isScrolling = namesWidth() > namesRoom();
     clientsBand.classList.toggle('is-scrolling', isScrolling);
     if (!isScrolling) {
       loopListWidth = undefined;
@@ -71,6 +63,7 @@ if (clientsBand && clientsWindow && clientsList && clientsTrack) {
     }
     loopListWidth = listWidth;
   };
+  const pauseButton = clientsBand.querySelector<HTMLButtonElement>('.clients-pause');
   pauseButton?.addEventListener('click', () => {
     const isPaused = pauseButton.getAttribute('aria-pressed') !== 'true';
     pauseButton.setAttribute('aria-pressed', String(isPaused));
