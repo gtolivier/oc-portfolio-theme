@@ -889,6 +889,33 @@ test('on the French home page, the client band follows a resize of the window wi
   await expectNamesScroll('narrowed back to 1280 px');
 });
 
+test('on a desktop, when the client names end less than the gap between two names before the window’s right edge, they all fit: they stay still, and each is shown once, whole', async ({ page }) => {
+  /* At 1920 px wide, the example site's five clients fit in the band: still, they show where
+     they sit whenever they fit, whatever the window's width (on a desktop, what comes before them
+     does not change width). Read there: where the last name's text ends, how far the page's
+     visible width stops short of the window's (a scrollbar), and the gap between two names, from
+     the "|||" that ends a name to the next name. */
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  const list = await openClientList(page);
+  await expectNamesStillOverOneSecond(list, CLIENTS, 'at 1920 px');
+  const shownAt1920 = await clientNamesShown(page, CLIENTS);
+  const lastNameRight = shownAt1920.find((occurrence) => occurrence.name === CLIENTS.at(-1))!.right;
+  const secondNameLeft = shownAt1920.find((occurrence) => occurrence.name === CLIENTS[1])!.left;
+  /* The first name's item ends with its "|||". */
+  const firstItem = (await list.getByRole('listitem').filter({ hasText: CLIENTS[0] }).boundingBox())!;
+  const gap = secondNameLeft - (firstItem.x + firstItem.width);
+  const pageWidthShortfall = 1920 - (await page.evaluate(() => document.documentElement.clientWidth));
+  expect(gap, 'at 1920 px, gap between the "|||" after the first name and the second name').toBeGreaterThan(4);
+
+  /* A window whose right edge stands about half a gap after the end of the last name. */
+  const width = Math.round(lastNameRight + gap / 2 + pageWidthShortfall);
+  const where = `at ${width} px, about half a gap (${gap} px) after the end of the last name (${lastNameRight} px at 1920 px)`;
+  await page.setViewportSize({ width, height: 900 });
+  await openClientList(page);
+  await expectNamesStillOverOneSecond(list, CLIENTS, where);
+  expectEachNameShownOnceAndWhole(await clientNamesShown(page, CLIENTS), CLIENTS, where);
+});
+
 test('on the English home page, assistive technologies get the same clients once each, in order, as the list "Trusted by"', async ({ page }) => {
   await page.goto('/en/');
   await expectClientList(page, 'Trusted by');
