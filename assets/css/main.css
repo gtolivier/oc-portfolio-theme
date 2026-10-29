@@ -583,7 +583,7 @@ tick-field > canvas {
 
 /* With a hero, the first screen fills the window below the header. Without
    one, nothing stretches it: the content follows. */
-.first-screen:has(> .hero) {
+.first-screen.has-hero {
   /* The height of the window below the header; for browsers without svh. */
   --window-below-header: calc(100vh - var(--header-height));
   min-height: var(--window-below-header);
@@ -592,13 +592,9 @@ tick-field > canvas {
 /* svh: the height left when a phone browser shows its toolbars, so the
    hero's buttons are not hidden under them on arrival. */
 @supports (height: 100svh) {
-  .first-screen:has(> .hero) {
+  .first-screen.has-hero {
     --window-below-header: calc(100svh - var(--header-height));
   }
-}
-
-.first-screen > .hero {
-  min-height: 0;
 }
 
 .clients {
@@ -643,7 +639,6 @@ tick-field > canvas {
 .clients-track {
   display: flex;
   width: max-content;
-  animation: clients-scroll 34s linear infinite;
 }
 
 /* The track holds the list twice: sliding it by half its width loops
@@ -679,27 +674,31 @@ tick-field > canvas {
   margin-left: var(--clients-gap);
 }
 
-/* All the names fit in the band (see clients-fit.ts): nothing to loop. */
-.clients.is-still .clients-track {
-  animation: none;
-}
-
-.clients.is-still ul[aria-hidden="true"] {
+/* Still names, the default: only the exposed list shows, the copy that makes
+   the loop seamless stays hidden. */
+.clients ul[aria-hidden="true"] {
   display: none;
 }
 
-/* Without JavaScript, clients-fit.ts cannot tell whether the names fit, so
-   they stay still too. */
+/* The names do not all fit in the band (see clients-fit.ts, which also sets
+   the loop's duration): they loop, unless the visitor asks for reduced
+   motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .clients.is-scrolling .clients-track {
+    animation: clients-scroll linear infinite;
+  }
+
+  .clients.is-scrolling ul[aria-hidden="true"] {
+    display: flex;
+  }
+}
+
+/* Under reduced motion, and without JavaScript, where clients-fit.ts cannot
+   tell whether the names fit, the still names wrap on as many lines as
+   needed. */
 @media (prefers-reduced-motion: reduce), (scripting: none) {
   .clients-track {
     width: auto;
-    animation: none;
-  }
-
-  /* Still names: only the exposed list stays, wrapped on as many lines as
-     needed; the copies that made the loop seamless go away. */
-  .clients ul[aria-hidden="true"] {
-    display: none;
   }
 
   .clients ul {
@@ -720,7 +719,7 @@ tick-field > canvas {
 /* Wrapped names make the band taller: it starts below the fold, so the hero
    alone fills the window below the header. */
 @media (prefers-reduced-motion: reduce) {
-  .first-screen:has(> .hero) {
+  .first-screen.has-hero {
     min-height: 0;
     grid-template-rows: minmax(var(--window-below-header), auto) auto;
   }

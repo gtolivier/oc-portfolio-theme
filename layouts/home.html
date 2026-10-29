@@ -1,6 +1,6 @@
 {{ define "main" }}
   {{- if or .Params.hero .Params.clients }}
-  <div class="first-screen">
+  <div class="first-screen{{ if .Params.hero }} has-hero{{ end }}">
     {{- with .Params.hero }}
     {{- if not site.Params.author }}{{ errorf "hero : le paramètre author du site n’est pas renseigné" }}{{ end }}
     <tick-field class="hero" role="region" aria-labelledby="hero-heading">
