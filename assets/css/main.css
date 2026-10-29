@@ -601,9 +601,9 @@ tick-field > canvas {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px var(--clients-gap);
-  /* No padding on the right: still names run to the window's edge; scrolling
-     ones run to the pause button, which keeps the gutter itself. */
-  padding: 20px 0 20px var(--page-gutter);
+  /* The page gutter on both sides, whether the names are still or scroll (the
+     pause button then sits against the right gutter). */
+  padding: 20px var(--page-gutter);
   border-top: 1px solid rgb(var(--color-paper-channels) / 0.14);
   /* Not only clipping: as an item of the first screen's grid, the band would
      otherwise be at least as wide as the whole track, and widen the page. */
@@ -733,7 +733,6 @@ tick-field > canvas {
   .clients.is-scrolling .clients-track {
     animation: clients-scroll linear infinite;
   }
-
   .clients.is-scrolling ul[aria-hidden="true"] {
     display: flex;
   }
@@ -756,7 +755,6 @@ tick-field > canvas {
     min-width: 24px;
     min-height: 24px;
     margin-block: -4px;
-    margin-right: var(--page-gutter);
     padding: 0;
     border: 0;
     background: none;
