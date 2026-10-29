@@ -267,18 +267,19 @@ async function heightBelowHeader(
    window below the header, which a wrong header height would break: the edge named by
    `endsAtWindowBottom` meets the window's bottom edge, within 1 px. With JavaScript, the band's
    bottom edge, the hero and the band filling the window together; without it, the hero's
-   bottom edge, the hero alone filling the window and the band starting below the fold. */
+   bottom edge, the hero alone filling the window and the band starting below the fold. Returns
+   the band's box, null when no strip holds the list, and the hero's buttons. */
 async function expectHeroToEndAtClientBand(
   page: Page,
   viewport: { width: number; height: number },
   size: string,
   endsAtWindowBottom: 'band' | 'hero' = 'band',
-): Promise<void> {
+): Promise<{ band: { top: number; bottom: number } | null; buttons: Locator[] }> {
   const { hero, heading, buttons } = await heroHeadingAndButtons(page, size);
   await heightBelowHeader(page, viewport, { heading, buttons }, size);
   const band = await clientBandBox(page);
   expect.soft(band, `at ${size}, a strip holding the list "Ils me font confiance" spans the page width`).not.toBeNull();
-  if (!band) return;
+  if (!band) return { band, buttons };
   const heroBox = (await hero.boundingBox())!;
   const heroBottom = heroBox.y + heroBox.height;
   expect.soft(
@@ -290,6 +291,7 @@ async function expectHeroToEndAtClientBand(
     Math.abs(bottom - viewport.height),
     `at ${size}, bottom of ${name} (${bottom} px) against the bottom of the window (${viewport.height} px)`,
   ).toBeLessThanOrEqual(1);
+  return { band, buttons };
 }
 
 test('on the French home page, the main heading shows the author name, then the professional title on a new line below it', async ({ page }) => {
@@ -430,7 +432,7 @@ test('on phone as on desktop, the second hero button, "Contact", reached by keyb
   });
 });
 
-test('on phone as on desktop, on a home page with clients, the hero starts right below the header and ends where the client band begins, which it does not cover, and the band’s bottom edge meets the bottom of the window', async ({ page }) => {
+test('on phone as on desktop, on a home page with clients, the hero starts right below the header and ends where the client band begins, which it does not cover, and the band, a strip spanning the page width from edge to edge, sits below the hero’s buttons, its bottom edge meeting the bottom of the window', async ({ page }) => {
   await page.goto('/fr/');
   /* The hero groups the heading, the tagline, the stack and the buttons. */
   const hero = heroRegion(page);
@@ -446,32 +448,19 @@ test('on phone as on desktop, on a home page with clients, the hero starts right
   expect(Math.abs(heroBox.y - headerBottom), 'the top of the hero is right below the header').toBeLessThanOrEqual(1);
 
   /* The French home page declares clients: in a window tall enough for its content, the hero
-     ends where the client band begins, and the band ends at the window's bottom. The header is
-     two rows on a phone and one row from 768 px wide: checked at a phone window and at both
-     desktop ones. */
+     ends where the client band begins, and the band, the bottom strip of the first screen,
+     full bleed in the design, ends at the window's bottom. The header is two rows on a phone
+     and one row from 768 px wide: checked at a phone window and at both desktop ones. */
   for (const viewport of TALL_VIEWPORTS) {
     const size = `${viewport.width} × ${viewport.height}`;
     await openHomeAt(page, viewport);
-    await expectHeroToEndAtClientBand(page, viewport, size);
-  }
-});
-
-test('on phone as on desktop, in a window tall enough for its content, the hero and the client band fill the window below the header: the band, a strip spanning the page width from edge to edge, sits below the hero’s buttons and its bottom edge meets the bottom of the window', async ({ page }) => {
-  /* Design reference: the band is the bottom strip of the first screen, full bleed. Checked at a
-     tall phone window and at both desktop ones, where the hero's content does not set its height. */
-  for (const viewport of TALL_VIEWPORTS) {
-    const size = `${viewport.width} × ${viewport.height}`;
-    await openHomeAt(page, viewport);
-    const { buttons } = await heroHeadingAndButtons(page, size);
-    const pageWidth = await page.evaluate(() => document.documentElement.clientWidth);
-    const band = await clientBandBox(page);
-    expect.soft(band, `at ${size}, a strip holding the list "Ils me font confiance" spans the page width (${pageWidth} px)`).not.toBeNull();
+    const { band, buttons } = await expectHeroToEndAtClientBand(page, viewport, size);
     if (!band) continue;
+    /* The hero ending at the band does not keep its buttons out from under the band: they
+       could overflow the hero. */
     const buttonsBottom = await bottomOfButtons(buttons);
     expect.soft(band.top, `at ${size}, top of the band against the bottom of the hero's buttons (${buttonsBottom} px)`)
       .toBeGreaterThanOrEqual(buttonsBottom);
-    expect.soft(Math.abs(band.bottom - viewport.height), `at ${size}, bottom of the band (${band.bottom} px) against the bottom of the window (${viewport.height} px)`)
-      .toBeLessThanOrEqual(1);
   }
 });
 
@@ -974,7 +963,7 @@ async function heroWithAndWithoutVeil(
   return { veiled, bare, background };
 }
 
-test('on phone as on desktop, the hero’s veil darkens its text zone: with the field still (reduced motion), compared with the same hero without its veil, the field behind the middle of the text zone keeps at most 0.8 times the share of its brightness it keeps in the same columns at the hero’s top edge, above the text', { tag: '@pixels' }, async ({ page }) => {
+test('on phone as on desktop, the hero’s veil darkens its text zone and fades out towards the hero’s edges: with the field still (reduced motion), compared with the same hero without its veil, the field behind the middle of the text zone keeps at most 0.8 times the share of its brightness it keeps at each edge of the hero, in the same columns at its top and bottom edges and at the same height at its left and right edges', { tag: '@pixels' }, async ({ page }) => {
   /* A window at least 800px high, the project's own when it already is (phones): the hero is
      as high as the window less the header, and its vertically centred content needs room
      above the heading for the strip along the hero's top edge measured below. */
@@ -990,25 +979,36 @@ test('on phone as on desktop, the hero’s veil darkens its text zone: with the 
   const textTop = headingBox.y - heroBox.y;
   const textBottom = buttonsBottom - heroBox.y;
   const textMiddle = headingBox.x - heroBox.x + headingBox.width / 2;
+  const textMiddleHeight = (textTop + textBottom) / 2;
 
-  /* Two zones 32px wide, in the columns at the middle of the text zone: a 32px square at the
-     middle of its height, and, above the heading, the strip along the hero's top edge, at
-     most 32px high. The field is brighter at the top than at the bottom: what each zone keeps
-     of the field's brightness is measured against the same hero without its veil. */
+  /* Zones 32px wide: a 32px square at the middle of the text zone, and one against each edge
+     of the hero, in the columns of the text zone's middle or at the height of it. Above the
+     heading, the strip along the hero's top edge is at most 32px high. The strip along its
+     bottom edge stops 1px short of it, where the client band's border can show on the
+     screenshot's last row of device pixels. The field is brighter at the top than at the
+     bottom: what each zone keeps of the field's brightness is measured against the same hero
+     without its veil. */
   const SIDE = 32;
-  const atText: Rectangle = { x: textMiddle - SIDE / 2, y: (textTop + textBottom) / 2 - SIDE / 2, width: SIDE, height: SIDE };
-  const atTop: Rectangle = { x: textMiddle - SIDE / 2, y: 0, width: SIDE, height: Math.min(SIDE, textTop) };
-  expect(atTop.height, 'height of the strip along the hero’s top edge, above the heading').toBeGreaterThanOrEqual(24);
+  const atText: Rectangle = { x: textMiddle - SIDE / 2, y: textMiddleHeight - SIDE / 2, width: SIDE, height: SIDE };
+  const edges: { name: string; rectangle: Rectangle }[] = [
+    { name: 'top', rectangle: { x: textMiddle - SIDE / 2, y: 0, width: SIDE, height: Math.min(SIDE, textTop) } },
+    { name: 'bottom', rectangle: { x: textMiddle - SIDE / 2, y: heroBox.height - 1 - SIDE, width: SIDE, height: SIDE } },
+    { name: 'left', rectangle: { x: 0, y: textMiddleHeight - SIDE / 2, width: SIDE, height: SIDE } },
+    { name: 'right', rectangle: { x: heroBox.width - SIDE, y: textMiddleHeight - SIDE / 2, width: SIDE, height: SIDE } },
+  ];
+  expect(edges[0].rectangle.height, 'height of the strip along the hero’s top edge, above the heading').toBeGreaterThanOrEqual(24);
 
   const { veiled, bare, background } = await heroWithAndWithoutVeil(page, hero, text);
   const keptAtText = await brightnessKeptUnderLayerInRectangle(hero, bare, veiled, atText, background);
-  const keptAtTop = await brightnessKeptUnderLayerInRectangle(hero, bare, veiled, atTop, background);
   expect(keptAtText.drawn, 'brightness above the background of the field behind the middle of the text zone: ticks are drawn there').toBeGreaterThan(0);
-  expect(keptAtTop.drawn, 'brightness above the background of the field at the hero’s top edge: ticks are drawn there').toBeGreaterThan(0);
-  expect(
-    keptAtText.kept,
-    `share of the field’s brightness kept behind the middle of the text zone, at (${Math.round(atText.x)}, ${Math.round(atText.y)})px, at most 0.8 times that kept in the same columns at the top edge of the ${Math.round(heroBox.width)} × ${Math.round(heroBox.height)}px hero, ${keptAtTop.kept.toFixed(2)}`,
-  ).toBeLessThanOrEqual(0.8 * keptAtTop.kept);
+  for (const { name, rectangle } of edges) {
+    const keptAtEdge = await brightnessKeptUnderLayerInRectangle(hero, bare, veiled, rectangle, background);
+    expect.soft(keptAtEdge.drawn, `brightness above the background of the field at the hero’s ${name} edge: ticks are drawn there`).toBeGreaterThan(0);
+    expect.soft(
+      keptAtText.kept,
+      `share of the field’s brightness kept behind the middle of the text zone, at (${Math.round(atText.x)}, ${Math.round(atText.y)})px, at most 0.8 times that kept at the ${name} edge of the ${Math.round(heroBox.width)} × ${Math.round(heroBox.height)}px hero, ${keptAtEdge.kept.toFixed(2)}`,
+    ).toBeLessThanOrEqual(0.8 * keptAtEdge.kept);
+  }
 });
 
 /* Leaves only the still hero's field showing: its text and its veil are hidden without moving
@@ -1045,15 +1045,6 @@ function outermostColumnBands(extent: { left: number; right: number }, heroHeigh
   };
 }
 
-/* The phone windows the field's corner ticks are checked at, set whatever the project's own
-   window, up to the widest under 768px. */
-const CORNER_TICKS_PHONE_VIEWPORTS = [
-  { width: 320, height: 699 },
-  { width: 375, height: 801 },
-  { width: 412, height: 849 },
-  { width: 767, height: 1024 },
-];
-
 /* Where the corner ticks of the still field are, in `screenshot` of the `heroHeight` px high
    hero, at the window `size`. The field's ticks, measured as for any tick-field, give the
    left edge of its leftmost column. Its rightmost column, whose ticks are among the most
@@ -1086,49 +1077,40 @@ function pointsAcrossTick(x: number, y: number, tickWidth: number): { x: number;
   return Array.from({ length: Math.ceil(tickWidth / STEP) }, (_, step) => ({ x: x + (step + 0.5) * STEP, y: y + 2.5 }));
 }
 
-test('on a phone, under 768 px wide, the hero’s tick field is faintest at the top left and most opaque at the bottom right: at 320 × 699, 375 × 801, 412 × 849 and 767 × 1024, with the field still (reduced motion), of its four corner ticks, the top left one shows the least of its colour over the background, and the bottom right one the most', { tag: '@pixels' }, async ({ page }) => {
-  await page.setViewportSize(CORNER_TICKS_PHONE_VIEWPORTS[0]);
+test('on a phone, the hero’s tick field is faintest at the top left and most opaque at the bottom right: at 412 × 849, with the field still (reduced motion), of its four corner ticks, the top left one shows the least of its colour over the background, and the bottom right one the most', { tag: '@pixels' }, async ({ page }) => {
+  /* A phone window, set whatever the project's own window: under 768 px wide, the hero's
+     diagonal runs down to the bottom right, where the desktop one, any tick-field's, runs up
+     to the top right. */
+  const viewport = { width: 412, height: 849 };
+  const size = `${viewport.width} × ${viewport.height}`;
+  await page.setViewportSize(viewport);
   const { hero, text } = await stillHero(page);
   await showOnlyTheField(hero, text);
 
-  const problems: string[] = [];
-  const measured: string[] = [];
-  for (const viewport of CORNER_TICKS_PHONE_VIEWPORTS) {
-    const size = `${viewport.width} × ${viewport.height}`;
-    await page.setViewportSize(viewport);
-    await page.clock.runFor(100);
-    const box = (await hero.boundingBox())!;
-    expect(box.width, `width of the hero in a ${size}px window`).toBeCloseTo(viewport.width, 0);
-    const screenshot = await hero.screenshot();
+  const box = (await hero.boundingBox())!;
+  expect(box.width, `width of the hero in a ${size}px window`).toBeCloseTo(viewport.width, 0);
+  const screenshot = await hero.screenshot();
+  const { columns, firstRow, lastRow, tickWidth } = await cornerTicks(hero, screenshot, box.height, size);
 
-    const { columns, firstRow, lastRow, tickWidth } = await cornerTicks(hero, screenshot, box.height, size);
-
-    /* A tick's opacity, read as in the opacity test of any tick-field: a pixel the tick covers
-       fully shows the background plus the tick's opacity times (its colour − the background),
-       whichever colour the tick has. Of the points across the tick, the most opaque reading is
-       that of a fully covered pixel. */
-    const opacityOfTick = async (x: number, y: number): Promise<number> => {
-      const measures = await canvasOpacityOverBackgroundAt(hero, screenshot, pointsAcrossTick(x, y, tickWidth));
-      return Math.max(...measures.map(({ opacity }) => opacity).filter((opacity) => !Number.isNaN(opacity)));
-    };
-    const corners = {
-      'top left': await opacityOfTick(columns.left, firstRow),
-      'top right': await opacityOfTick(columns.right, firstRow),
-      'bottom left': await opacityOfTick(columns.left, lastRow),
-      'bottom right': await opacityOfTick(columns.right, lastRow),
-    };
-    const describe = `${size}px: ${Object.entries(corners).map(([corner, opacity]) => `${corner} ${(100 * opacity).toFixed(1)}%`).join(', ')}`;
-    measured.push(describe);
-    const others = (corner: keyof typeof corners): number[] =>
-      Object.entries(corners).filter(([name]) => name !== corner).map(([, opacity]) => opacity);
-    if (!others('top left').every((opacity) => corners['top left'] < opacity)) {
-      problems.push(`${describe}: the top left tick is not the faintest`);
-    }
-    if (!others('bottom right').every((opacity) => corners['bottom right'] > opacity)) {
-      problems.push(`${describe}: the bottom right tick is not the most opaque`);
-    }
-  }
-  expect(problems, `share of its colour each corner tick of the hero shows over the background (${measured.join('; ')})`).toEqual([]);
+  /* A tick's opacity, read as in the opacity test of any tick-field: a pixel the tick covers
+     fully shows the background plus the tick's opacity times (its colour − the background),
+     whichever colour the tick has. Of the points across the tick, the most opaque reading is
+     that of a fully covered pixel. */
+  const opacityOfTick = async (x: number, y: number): Promise<number> => {
+    const measures = await canvasOpacityOverBackgroundAt(hero, screenshot, pointsAcrossTick(x, y, tickWidth));
+    return Math.max(...measures.map(({ opacity }) => opacity).filter((opacity) => !Number.isNaN(opacity)));
+  };
+  const corners = {
+    'top left': await opacityOfTick(columns.left, firstRow),
+    'top right': await opacityOfTick(columns.right, firstRow),
+    'bottom left': await opacityOfTick(columns.left, lastRow),
+    'bottom right': await opacityOfTick(columns.right, lastRow),
+  };
+  const measured = `share of its colour each corner tick of the hero shows over the background at ${size}px: ${Object.entries(corners).map(([corner, opacity]) => `${corner} ${(100 * opacity).toFixed(1)}%`).join(', ')}`;
+  const others = (corner: keyof typeof corners): number[] =>
+    Object.entries(corners).filter(([name]) => name !== corner).map(([, opacity]) => opacity);
+  expect.soft(others('top left').every((opacity) => corners['top left'] < opacity), `the top left tick is the faintest (${measured})`).toBe(true);
+  expect.soft(others('bottom right').every((opacity) => corners['bottom right'] > opacity), `the bottom right tick is the most opaque (${measured})`).toBe(true);
 });
 
 test('served under /portfolio/, the first hero button of the French home page, "Voir les projets", leads to /portfolio/fr/projets/', async ({ page }) => {

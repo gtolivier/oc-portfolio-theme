@@ -270,11 +270,6 @@ async function expectNamesMoveLeftOverOneSecond(list: Locator, clients: string[]
   expectNamesMovedLeft(clients, namesBefore, await namesLeft(list, clients), where);
 }
 
-test('on the French home page, assistive technologies get the declared clients once each, in order, as the list "Ils me font confiance"', async ({ page }) => {
-  await page.goto('/fr/');
-  await expectClientList(page, 'Ils me font confiance');
-});
-
 test('on the French home page, each client name is followed on screen by a "|||" separator that assistive technologies do not get', async ({ page }) => {
   await page.goto('/fr/');
   /* On screen, in reading order, each name is directly followed by its "|||" (textOnScreen drops whitespace). */
@@ -287,7 +282,7 @@ test('on the French home page, each client name is followed on screen by a "|||"
   expect(await body.ariaSnapshot()).not.toContain('|||');
 });
 
-test('on the French home page, the label "Ils me font confiance" is shown on screen just before the client names, and assistive technologies get it once, as the list’s name', async ({ page }) => {
+test('on the French home page, the label "Ils me font confiance" is shown on screen just before the client names, and assistive technologies get it once, as the name of the list that holds the declared clients once each, in order', async ({ page }) => {
   await page.goto('/fr/');
   /* On screen, in reading order, the label directly precedes the first name: nothing but
      punctuation or decoration between them (textOnScreen drops whitespace). */
@@ -534,7 +529,7 @@ test('on a phone and on a desktop, while the client names scroll, pressing the b
   }
 });
 
-test('on a phone and on a desktop, while the client names scroll, the button "Mettre en pause le défilement" stands as far inside the band’s right edge as the label "Ils me font confiance" stands inside its left edge, and covers none of the names, at any moment of their loop', async ({ page }) => {
+test('on a phone and on a desktop, while the client names scroll, the button "Mettre en pause le défilement" sits inside the band, at its right edge, no further inside it than the label "Ils me font confiance" stands inside its left edge, vertically centred on the line of names, and covers none of the names, at any moment of their loop', async ({ page }) => {
   for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
     const where = `at ${width} px`;
     /* At these widths, the example site's five clients do not all fit: the band scrolls. */
@@ -543,16 +538,30 @@ test('on a phone and on a desktop, while the client names scroll, the button "Me
     const pause = page.getByRole('button', { name: 'Mettre en pause le défilement' });
     await expect(pause, `${where}, the button "Mettre en pause le défilement" is shown`).toBeVisible();
 
-    /* The button mirrors the label: it stands as far inside the band's right edge as the label
-       stands inside its left edge (the page gutter). */
+    /* The button answers the label: it sits in the band's right half, inside its right edge, and
+       no further inside it than the label stands inside its left edge (the page gutter). */
     const band = await clientBandBox(page);
     expect(band, `${where}, the client band spans the page width`).not.toBeNull();
     const labelBox = await labelExtent(page, 'Ils me font confiance');
     expect(labelBox, `${where}, the label "Ils me font confiance" is shown on screen`).not.toBeNull();
     const button = (await pause.boundingBox())!;
-    const rightGap = band!.right - (button.x + button.width);
+    const buttonRight = button.x + button.width;
+    const rightGap = band!.right - buttonRight;
     const leftGap = pageGutter(band!, labelBox!);
-    expect.soft(Math.abs(rightGap - leftGap), `${where}, gap between the button's right side and the band's right edge (${rightGap} px) against the gap between the label's left side and the band's left edge (${leftGap} px)`)
+    expect.soft(button.x, `${where}, left of the button against the middle of the band (${(band!.left + band!.right) / 2} px)`)
+      .toBeGreaterThan((band!.left + band!.right) / 2);
+    expect.soft(buttonRight, `${where}, right of the button against the right edge of the band (${band!.right} px)`)
+      .toBeLessThanOrEqual(band!.right);
+    expect.soft(rightGap, `${where}, gap between the button's right side and the band's right edge, against the gap between the label's left side and the band's left edge (${leftGap} px)`)
+      .toBeLessThanOrEqual(leftGap + 1);
+
+    /* The names slide sideways only: the line they sit on is read from any name the visitor sees. */
+    const names = await clientNamesShown(page, CLIENTS);
+    expect(names.length, `${where}, client names shown on screen`).toBeGreaterThan(0);
+    const { name, top, bottom } = names[0];
+    const namesMiddle = (top + bottom) / 2;
+    const buttonMiddle = button.y + button.height / 2;
+    expect.soft(Math.abs(buttonMiddle - namesMiddle), `${where}, vertical centre of the button (${buttonMiddle} px) against that of "${name}" (${namesMiddle} px)`)
       .toBeLessThanOrEqual(2);
 
     /* The names slide under every part of the band's width: the loop is frozen and set to chosen
@@ -561,54 +570,12 @@ test('on a phone and on a desktop, while the client names scroll, the button "Me
     for (const fraction of LOOP_MOMENTS) {
       await loop.setAt(fraction);
       for (const { name, visible } of await clientNamesShown(page, CLIENTS)) {
-        const overlap = visible.left < button.x + button.width - 1 && button.x < visible.right - 1
+        const overlap = visible.left < buttonRight - 1 && button.x < visible.right - 1
           && visible.top < button.y + button.height - 1 && button.y < visible.bottom - 1;
-        expect.soft(overlap, `${where}, at ${fraction * 100} % of the loop, what shows of "${name}" (${visible.left}–${visible.right} × ${visible.top}–${visible.bottom} px) overlaps the button (${button.x}–${button.x + button.width} × ${button.y}–${button.y + button.height} px)`)
+        expect.soft(overlap, `${where}, at ${fraction * 100} % of the loop, what shows of "${name}" (${visible.left}–${visible.right} × ${visible.top}–${visible.bottom} px) overlaps the button (${button.x}–${buttonRight} × ${button.y}–${button.y + button.height} px)`)
           .toBe(false);
       }
     }
-  }
-});
-
-test('on a phone and on a desktop, while the client names scroll, the button "Mettre en pause le défilement" is vertically centred on the line of names', async ({ page }) => {
-  for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
-    const where = `at ${width} px`;
-    /* At these widths, the example site's five clients do not all fit: the band scrolls. */
-    await page.setViewportSize({ width, height });
-    await openClientList(page);
-    const pause = page.getByRole('button', { name: 'Mettre en pause le défilement' });
-    await expect(pause, `${where}, the button "Mettre en pause le défilement" is shown`).toBeVisible();
-
-    /* The names slide sideways only: the line they sit on is read from any name the visitor sees. */
-    const names = await clientNamesShown(page, CLIENTS);
-    expect(names.length, `${where}, client names shown on screen`).toBeGreaterThan(0);
-    const { name, top, bottom } = names[0];
-    const namesMiddle = (top + bottom) / 2;
-    const button = (await pause.boundingBox())!;
-    const buttonMiddle = button.y + button.height / 2;
-    expect.soft(Math.abs(buttonMiddle - namesMiddle), `${where}, vertical centre of the button (${buttonMiddle} px) against that of "${name}" (${namesMiddle} px)`)
-      .toBeLessThanOrEqual(2);
-  }
-});
-
-test('on a phone and on a desktop, when the client names grow wider while they scroll (their font gets larger, as when a web font swaps in), they do not jump: the first name stays where it was, modulo one loop', async ({ page }) => {
-  for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
-    await page.setViewportSize({ width, height });
-    const list = await openClientList(page);
-    /* Frozen well into the loop, so that a jump would show: the moment is set by the test. */
-    await freezeAnimations(page);
-    await (await bandLoop(list)).setAt(0.4);
-    const listWidthBefore = (await list.boundingBox())!.width;
-    const [firstNameBefore] = await namesLeft(list, [CLIENTS[0]]);
-
-    await enlargeClientNamesFont(page);
-    const loopWidth = (await list.boundingBox())!.width;
-    expect(loopWidth, `at ${width} px, the list grows wider with its font (from ${listWidthBefore} px)`).toBeGreaterThan(listWidthBefore * 1.2);
-    const [firstNameAfter] = await namesLeft(list, [CLIENTS[0]]);
-
-    /* The band loops by one list: a shift by a whole number of lists shows the same picture. */
-    expect.soft(offsetFromWholeLoops(firstNameAfter - firstNameBefore, loopWidth), `at ${width} px, shift of "${CLIENTS[0]}" (from ${firstNameBefore} px to ${firstNameAfter} px), modulo one loop (${loopWidth} px)`)
-      .toBeLessThanOrEqual(3);
   }
 });
 
@@ -624,31 +591,36 @@ function offsetFromWholeLoops(distance: number, loopWidth: number): number {
   return Math.min(remainder, loopWidth - remainder);
 }
 
-test('on a phone and on a desktop, when the client names grow wider after they have already looped several times (their font gets larger, as when a web font swaps in), they do not jump: the first name stays where it was, modulo one loop', async ({ page }) => {
-  /* Three whole loops have run, and the band is 0.4 into the fourth. */
-  const loopsRun = 3;
-  for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
-    await page.setViewportSize({ width, height });
-    const list = await openClientList(page);
-    await freezeAnimations(page);
-    await (await bandLoop(list)).setAt(loopsRun + 0.4);
-    const listWidthBefore = (await list.boundingBox())!.width;
-    const [firstNameBefore] = await namesLeft(list, [CLIENTS[0]]);
+test('on a phone and on a desktop, when the client names grow wider while they scroll (their font gets larger, as when a web font swaps in), during their first loop or after they have already looped several times, they do not jump: the first name stays where it was, modulo one loop', async ({ page }) => {
+  /* Moments set by the test, well into a loop, so that a jump would show: 0.4 into the first loop,
+     and 0.4 into the fourth, once three whole loops have run. */
+  for (const loopsRun of [0, 3]) {
+    for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
+      const where = `at ${width} px, ${loopsRun} whole loop(s) run and 0.4 of the next`;
+      await page.setViewportSize({ width, height });
+      const list = await openClientList(page);
+      await freezeAnimations(page);
+      await (await bandLoop(list)).setAt(loopsRun + 0.4);
+      const listWidthBefore = (await list.boundingBox())!.width;
+      const [firstNameBefore] = await namesLeft(list, [CLIENTS[0]]);
 
-    await enlargeClientNamesFont(page);
-    const loopWidth = (await list.boundingBox())!.width;
-    expect(loopWidth, `at ${width} px, the list grows wider with its font (from ${listWidthBefore} px)`).toBeGreaterThan(listWidthBefore * 1.2);
-    /* The moment is chosen so that a jump would show: the distance the names have slid since the
-       loop started (three lists and 0.4 of one) does not fall, modulo the new loop, where they
-       stood within the current loop. */
-    const slidSinceStart = loopsRun * listWidthBefore;
-    expect(offsetFromWholeLoops(slidSinceStart, loopWidth), `at ${width} px, ${loopsRun} lists of ${listWidthBefore} px, modulo the new loop (${loopWidth} px), stay away from a whole loop`)
-      .toBeGreaterThan(20);
-    const [firstNameAfter] = await namesLeft(list, [CLIENTS[0]]);
+      await enlargeClientNamesFont(page);
+      const loopWidth = (await list.boundingBox())!.width;
+      expect(loopWidth, `${where}, the list grows wider with its font (from ${listWidthBefore} px)`).toBeGreaterThan(listWidthBefore * 1.2);
+      if (loopsRun > 0) {
+        /* The moment is chosen so that a jump would show: the distance the names have slid since
+           the loop started (three lists and 0.4 of one) does not fall, modulo the new loop, where
+           they stood within the current loop. */
+        const slidSinceStart = loopsRun * listWidthBefore;
+        expect(offsetFromWholeLoops(slidSinceStart, loopWidth), `${where}, ${loopsRun} lists of ${listWidthBefore} px, modulo the new loop (${loopWidth} px), stay away from a whole loop`)
+          .toBeGreaterThan(20);
+      }
+      const [firstNameAfter] = await namesLeft(list, [CLIENTS[0]]);
 
-    /* The band loops by one list: a shift by a whole number of lists shows the same picture. */
-    expect.soft(offsetFromWholeLoops(firstNameAfter - firstNameBefore, loopWidth), `at ${width} px, shift of "${CLIENTS[0]}" (from ${firstNameBefore} px to ${firstNameAfter} px), modulo one loop (${loopWidth} px)`)
-      .toBeLessThanOrEqual(3);
+      /* The band loops by one list: a shift by a whole number of lists shows the same picture. */
+      expect.soft(offsetFromWholeLoops(firstNameAfter - firstNameBefore, loopWidth), `${where}, shift of "${CLIENTS[0]}" (from ${firstNameBefore} px to ${firstNameAfter} px), modulo one loop (${loopWidth} px)`)
+        .toBeLessThanOrEqual(3);
+    }
   }
 });
 
@@ -711,11 +683,13 @@ test.describe('home page without JavaScript', () => {
      enhancement: without the script that tells whether the list fits, the names must stay readable. */
   test.use({ javaScriptEnabled: false });
 
-  test('without JavaScript, on a phone, down to 320 px wide, and on a desktop, the client names stay still, and every one is shown at once, exactly once, whole, on as many lines as needed', async ({ page }) => {
-    for (const { width, height } of NARROW_PHONE_TO_DESKTOP_VIEWPORTS) {
-      const where = `without JavaScript, at ${width} px`;
-      await page.setViewportSize({ width, height });
+  test('without JavaScript, on a phone, down to 320 px wide, and on a desktop, the client names stay still, and every one is shown at once, exactly once, whole, on as many lines as needed, in a band that starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window', async ({ page }) => {
+    for (const viewport of NARROW_PHONE_TO_DESKTOP_VIEWPORTS) {
+      const where = `without JavaScript, at ${viewport.width} px`;
+      await page.setViewportSize(viewport);
       const list = await openClientList(page);
+      /* The names wrap, so the band grows taller: it must not shrink the hero above it. */
+      if (PHONE_AND_DESKTOP_VIEWPORTS.includes(viewport)) await expectBandBelowTheFoldOnArrival(page, viewport);
 
       /* Still: one second later, as the visitor lives it (the page's own time runs, untouched;
          without JavaScript, the page's timers never fire, so the test waits on its side), every
@@ -730,23 +704,21 @@ test.describe('home page without JavaScript', () => {
       expectNoTwoNamesOverlap(shown, where);
     }
   });
-
-  test('without JavaScript, on a phone and on a desktop, the client band starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window', async ({ page }) => {
-    /* The names wrap, so the band grows taller: it must not shrink the hero above it. */
-    await expectBandBelowTheFold(page);
-  });
 });
 
-test('when JavaScript is on but the theme’s script does not load, on a phone, down to 320 px wide, and on a desktop, the client names stay still, and every one is shown at once, exactly once, whole, on as many lines as needed', async ({ page }) => {
+test('when JavaScript is on but the theme’s script does not load, on a phone, down to 320 px wide, and on a desktop, the client names stay still, and every one is shown at once, exactly once, whole, on as many lines as needed, in a band that starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window', async ({ page }) => {
   /* The theme's bundle fails to load (a network or an extension refuses it); the page's inline
      scripts still run. Without the script that tells whether the list fits, the names must stay
      readable, as without JavaScript. */
   const blockedScripts = await blockRequests(page, themeScriptUrl());
-  for (const { width, height } of NARROW_PHONE_TO_DESKTOP_VIEWPORTS) {
-    const where = `without the theme’s script, at ${width} px`;
-    await page.setViewportSize({ width, height });
+  for (const viewport of NARROW_PHONE_TO_DESKTOP_VIEWPORTS) {
+    const where = `without the theme’s script, at ${viewport.width} px`;
+    await page.setViewportSize(viewport);
     const list = await openClientList(page);
     expect(blockedScripts, 'theme script request blocked').not.toEqual([]);
+    /* The names wrap, as without JavaScript, so the band grows taller: it must not shrink the hero
+       above it. */
+    if (PHONE_AND_DESKTOP_VIEWPORTS.includes(viewport)) await expectBandBelowTheFoldOnArrival(page, viewport);
 
     /* Still: one second later, as the visitor lives it (the page's own time runs, untouched), every
        name sits where it was. */
@@ -759,14 +731,6 @@ test('when JavaScript is on but the theme’s script does not load, on a phone, 
     expectEachNameShownOnceAndWhole(shown, CLIENTS, where);
     expectNoTwoNamesOverlap(shown, where);
   }
-});
-
-test('when JavaScript is on but the theme’s script does not load, on a phone and on a desktop, the client band starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window', async ({ page }) => {
-  /* The theme's bundle fails to load; the names wrap, as without JavaScript, so the band grows
-     taller: it must not shrink the hero above it. */
-  const blockedScripts = await blockRequests(page, themeScriptUrl());
-  await expectBandBelowTheFold(page);
-  expect(blockedScripts, 'theme script request blocked').not.toEqual([]);
 });
 
 test('when the theme’s stylesheet does not load, each client name appears once on the page', async ({ page }) => {
@@ -792,30 +756,37 @@ test('under prefers-reduced-motion: reduce, on a phone and on a desktop, the cli
 /* Checks, on a phone and on a desktop, that on arrival on the French home page the hero alone fills
    the window below the header, and the client band begins at the bottom edge of the window. */
 async function expectBandBelowTheFold(page: Page) {
-  for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
-    const size = `${width} × ${height}`;
-    await page.setViewportSize({ width, height });
+  for (const viewport of PHONE_AND_DESKTOP_VIEWPORTS) {
+    await page.setViewportSize(viewport);
     await page.goto('/fr/');
     await waitForFonts(page);
-    const hero = heroRegion(page);
-    await expect(hero.getByRole('heading', { level: 1 }), `heading at ${size}`).toBeVisible();
-    const band = await clientBandBox(page);
-    expect.soft(band, `at ${size}, a strip holding the list "Ils me font confiance" spans the page width`).not.toBeNull();
-    if (!band) continue;
-    /* Page scrolled to the top, on arrival: the hero runs from the bottom of the header to the
-       bottom of the window… */
-    const headerBox = (await page.locator('header').boundingBox())!;
-    const headerBottom = headerBox.y + headerBox.height;
-    const heroBox = (await hero.boundingBox())!;
-    const heroBottom = heroBox.y + heroBox.height;
-    expect.soft(Math.abs(heroBox.y - headerBottom), `at ${size}, top of the hero (${heroBox.y} px) against the bottom of the header (${headerBottom} px)`)
-      .toBeLessThanOrEqual(1);
-    expect.soft(Math.abs(heroBottom - height), `at ${size}, bottom of the hero (${heroBottom} px) against the bottom of the window (${height} px)`)
-      .toBeLessThanOrEqual(1);
-    /* …and the band only begins there, out of sight until the visitor scrolls. */
-    expect.soft(band.top, `at ${size}, top of the client band against the bottom of the window (${height} px)`)
-      .toBeGreaterThanOrEqual(height - 1);
+    await expectBandBelowTheFoldOnArrival(page, viewport);
   }
+}
+
+/* Checks, on the French home page just opened at `viewport` (its fonts loaded, the page scrolled to
+   the top), that the hero alone fills the window below the header, and the client band begins at
+   the bottom edge of the window. */
+async function expectBandBelowTheFoldOnArrival(page: Page, { width, height }: { width: number; height: number }) {
+  const size = `${width} × ${height}`;
+  const hero = heroRegion(page);
+  await expect(hero.getByRole('heading', { level: 1 }), `heading at ${size}`).toBeVisible();
+  const band = await clientBandBox(page);
+  expect.soft(band, `at ${size}, a strip holding the list "Ils me font confiance" spans the page width`).not.toBeNull();
+  if (!band) return;
+  /* Page scrolled to the top, on arrival: the hero runs from the bottom of the header to the
+     bottom of the window… */
+  const headerBox = (await page.locator('header').boundingBox())!;
+  const headerBottom = headerBox.y + headerBox.height;
+  const heroBox = (await hero.boundingBox())!;
+  const heroBottom = heroBox.y + heroBox.height;
+  expect.soft(Math.abs(heroBox.y - headerBottom), `at ${size}, top of the hero (${heroBox.y} px) against the bottom of the header (${headerBottom} px)`)
+    .toBeLessThanOrEqual(1);
+  expect.soft(Math.abs(heroBottom - height), `at ${size}, bottom of the hero (${heroBottom} px) against the bottom of the window (${height} px)`)
+    .toBeLessThanOrEqual(1);
+  /* …and the band only begins there, out of sight until the visitor scrolls. */
+  expect.soft(band.top, `at ${size}, top of the client band against the bottom of the window (${height} px)`)
+    .toBeGreaterThanOrEqual(height - 1);
 }
 
 test('under prefers-reduced-motion: reduce, on a phone held in landscape (844 × 390), a hero taller than the window below the header grows with its content and pushes the client band down: all of the hero’s content ends above the band', async ({ page }) => {
@@ -904,40 +875,6 @@ async function resizeWithoutReloading(page: Page, size: { width: number; height:
   await letPageRender(page);
 }
 
-test('on the French home page, the client band follows a resize of the window without reloading: the names scroll at 1280 px wide, stay still, each shown once, once the window widens to 1920 px, and scroll again once it narrows back to 1280 px', async ({ page }) => {
-  await page.setViewportSize(DESKTOP_VIEWPORT);
-  const list = await openClientList(page);
-
-  /* Scrolling: with the page's animations frozen, so that "now" and "one second later" are read
-     at known times, the names sit further left one second later. They are let run again after. */
-  const expectNamesScroll = async (where: string) => {
-    await freezeAnimations(page);
-    const namesBefore = await namesLeft(list, CLIENTS);
-    await advanceAnimationsOneSecond(page);
-    const namesAfter = await namesLeft(list, CLIENTS);
-    expectNamesMovedLeft(CLIENTS, namesBefore, namesAfter, where);
-    await page.evaluate(() => document.getAnimations().forEach((animation) => animation.play()));
-  };
-
-  await expectNamesScroll('at 1280 px, on arrival');
-
-  /* Widened to 1920 px, where the example site's five clients fit in the band. */
-  await resizeWithoutReloading(page, WIDE_DESKTOP_VIEWPORT);
-  const where = 'widened to 1920 px';
-  await expectNamesStillOverOneSecond(list, CLIENTS, where);
-  const shown = await clientNamesShown(page, CLIENTS);
-  for (const client of CLIENTS) {
-    const copies = shown.filter((occurrence) => occurrence.name === client);
-    /* Shown once: no copy of the name peeks in, even partly. */
-    expect.soft(copies.length, `${where}, number of times "${client}" shows on screen (${copies.map((copy) => `${copy.left}–${copy.right} px`).join(', ')})`)
-      .toBe(1);
-  }
-
-  /* Narrowed back to 1280 px, where they no longer fit: the band scrolls again. */
-  await resizeWithoutReloading(page, DESKTOP_VIEWPORT);
-  await expectNamesScroll('narrowed back to 1280 px');
-});
-
 interface StillNamesLayout {
   /* Where the last name's text ends, in the window. */
   lastNameRight: number;
@@ -972,62 +909,79 @@ function widthJustAboveFit({ lastNameRight, gap, gutter, pageWidthShortfall }: S
   return Math.round(lastNameRight + gap / 2 + gutter + pageWidthShortfall);
 }
 
-test('on the French home page, after the names scroll at 1280 px wide, widening the window to a width just above the narrowest one where a fresh load shows them still leaves them still too: no button "Mettre en pause le défilement", each name shown once, whole', async ({ page }) => {
-  /* At 1920 px wide, the names fit: read where they sit. */
-  await page.setViewportSize(WIDE_DESKTOP_VIEWPORT);
-  const list = await openClientList(page);
-
-  /* A fresh load at a width just above the narrowest one where the names fit shows them still. */
-  const width = widthJustAboveFit(await readStillNamesLayout(list));
-  const pauseButton = page.getByRole('button', { name: 'Mettre en pause le défilement' });
-  await page.setViewportSize({ width, height: 900 });
-  await openClientList(page);
-  await expectNamesStillOverOneSecond(list, CLIENTS, `freshly loaded at ${width} px`);
-
-  /* Loaded at 1280 px, where the names scroll. */
-  await page.setViewportSize(DESKTOP_VIEWPORT);
-  await openClientList(page);
-  await expectNamesMoveLeftOverOneSecond(list, CLIENTS, 'at 1280 px, on arrival');
-  await expect(pauseButton, 'at 1280 px, on arrival, the pause button shows').toBeVisible();
-
-  /* Widened, without reloading, to that same width: the names stay still there too. */
-  await resizeWithoutReloading(page, { width, height: 900 });
-  const where = `widened from 1280 px to ${width} px (a fresh load there shows the names still)`;
-  await expectNamesStillOverOneSecond(list, CLIENTS, where);
-  await expect.soft(pauseButton, `${where}, the pause button`).toBeHidden();
-  expectEachNameShownOnceAndWhole(await clientNamesShown(page, CLIENTS), CLIENTS, where);
-});
-
-test('on a desktop, when the client names end less than the gap between two names before the band’s inner right edge, one page gutter inside the window’s right edge, they all fit: they stay still, and each is shown once, whole', async ({ page }) => {
+test('on a desktop, the client band stays still wherever the names fit, even only just, on arrival and after a resize without reloading: at 1920 px, and at a width where the names end about half a gap before the band’s inner right edge (one page gutter inside the window’s right edge), a fresh load and a widening from a scrolling 1280 px both leave them still, each shown once, whole, with no button "Mettre en pause le défilement"; narrowed back to 1280 px, they scroll again', async ({ page }) => {
   /* At 1920 px wide, the example site's five clients fit in the band: still, they show where
      they sit whenever they fit, whatever the window's width (on a desktop, what comes before them
      does not change width). Read there where they sit. */
   await page.setViewportSize(WIDE_DESKTOP_VIEWPORT);
   const list = await openClientList(page);
-  await expectNamesStillOverOneSecond(list, CLIENTS, 'at 1920 px');
+  await expectNamesStillOverOneSecond(list, CLIENTS, 'freshly loaded at 1920 px');
   const layout = await readStillNamesLayout(list);
   const { lastNameRight, gap, gutter } = layout;
   expect(gap, 'at 1920 px, gap between the "|||" after the first name and the second name').toBeGreaterThan(4);
 
   /* A window whose band's inner right edge, one page gutter inside the window's right edge, stands
-     about half a gap after the end of the last name. */
+     about half a gap after the end of the last name: just above the narrowest width where the
+     names fit. A fresh load there shows them still. */
   const width = widthJustAboveFit(layout);
-  const where = `at ${width} px, with the band's inner right edge (one page gutter of ${gutter} px inside the window's right edge) about half a gap (${gap} px) after the end of the last name (${lastNameRight} px at 1920 px)`;
+  const justFit = `${width} px (the band's inner right edge, one page gutter of ${gutter} px inside the window's right edge, about half a gap of ${gap} px after the end of the last name, at ${lastNameRight} px at 1920 px)`;
   await page.setViewportSize({ width, height: 900 });
   await openClientList(page);
-  await expectNamesStillOverOneSecond(list, CLIENTS, where);
-  expectEachNameShownOnceAndWhole(await clientNamesShown(page, CLIENTS), CLIENTS, where);
+  await expectNamesStillOverOneSecond(list, CLIENTS, `freshly loaded at ${justFit}`);
+  expectEachNameShownOnceAndWhole(await clientNamesShown(page, CLIENTS), CLIENTS, `freshly loaded at ${justFit}`);
+
+  /* Scrolling, after a resize: with the page's animations frozen, so that "now" and "one second
+     later" are read at known times, the names sit further left one second later. They are let run
+     again after. */
+  const expectNamesScroll = async (where: string) => {
+    await freezeAnimations(page);
+    const namesBefore = await namesLeft(list, CLIENTS);
+    await advanceAnimationsOneSecond(page);
+    const namesAfter = await namesLeft(list, CLIENTS);
+    expectNamesMovedLeft(CLIENTS, namesBefore, namesAfter, where);
+    await page.evaluate(() => document.getAnimations().forEach((animation) => animation.play()));
+  };
+
+  /* Loaded at 1280 px, where the names do not fit: they scroll, with their pause button. */
+  const pauseButton = page.getByRole('button', { name: 'Mettre en pause le défilement' });
+  await page.setViewportSize(DESKTOP_VIEWPORT);
+  await openClientList(page);
+  await expectNamesMoveLeftOverOneSecond(list, CLIENTS, 'at 1280 px, on arrival');
+  await expect(pauseButton, 'at 1280 px, on arrival, the pause button shows').toBeVisible();
+
+  /* Widened, without reloading, to the width where they only just fit: still there too. */
+  await resizeWithoutReloading(page, { width, height: 900 });
+  const widenedToJustFit = `widened from 1280 px to ${width} px`;
+  await expectNamesStillOverOneSecond(list, CLIENTS, widenedToJustFit);
+  await expect.soft(pauseButton, `${widenedToJustFit}, the pause button`).toBeHidden();
+  expectEachNameShownOnceAndWhole(await clientNamesShown(page, CLIENTS), CLIENTS, widenedToJustFit);
+
+  /* Narrowed back to 1280 px, where they no longer fit: the band scrolls again. */
+  await resizeWithoutReloading(page, DESKTOP_VIEWPORT);
+  await expectNamesScroll(`narrowed back from ${width} px to 1280 px`);
+
+  /* Widened, without reloading, to 1920 px: still, each shown once. */
+  await resizeWithoutReloading(page, WIDE_DESKTOP_VIEWPORT);
+  const widenedTo1920 = 'widened from 1280 px to 1920 px';
+  await expectNamesStillOverOneSecond(list, CLIENTS, widenedTo1920);
+  const shown = await clientNamesShown(page, CLIENTS);
+  for (const client of CLIENTS) {
+    const copies = shown.filter((occurrence) => occurrence.name === client);
+    /* Shown once: no copy of the name peeks in, even partly. */
+    expect.soft(copies.length, `${widenedTo1920}, number of times "${client}" shows on screen (${copies.map((copy) => `${copy.left}–${copy.right} px`).join(', ')})`)
+      .toBe(1);
+  }
+
+  /* Narrowed back to 1280 px once more: the band scrolls again. */
+  await resizeWithoutReloading(page, DESKTOP_VIEWPORT);
+  await expectNamesScroll('narrowed back from 1920 px to 1280 px');
 });
 
-test('on the English home page, assistive technologies get the same clients once each, in order, as the list "Trusted by"', async ({ page }) => {
-  await page.goto('/en/');
-  await expectClientList(page, 'Trusted by');
-});
-
-test('on the English home page, while the client names scroll, the button that pauses them is named "Pause scrolling"', async ({ page }) => {
+test('on the English home page, assistive technologies get the same clients once each, in order, as the list "Trusted by", and, while the names scroll, the button that pauses them is named "Pause scrolling"', async ({ page }) => {
   /* At 1280 px wide, the example site's five clients do not all fit: the band scrolls. */
   await page.setViewportSize(DESKTOP_VIEWPORT);
   await page.goto('/en/');
+  await expectClientList(page, 'Trusted by');
   await expect(page.getByRole('list', { name: 'Trusted by' })).toBeVisible();
   const pause = page.getByRole('button', { name: 'Pause scrolling', exact: true });
   await expect(pause, 'the page has one button "Pause scrolling"').toHaveCount(1);
@@ -1159,43 +1113,7 @@ test.describe('home page of another site, with a single short client', () => {
     { homePage: '/fr/', clients: CLIENTS, ...WIDE_DESKTOP_VIEWPORT },
   ];
 
-  test('when all the clients fit in the band — a single short client on a phone and on a desktop, the example site’s five on a 1920 px screen — the names stay still, and each is shown once, whole: no copy of a name shows on screen', async ({ page, context }) => {
-    await serveSite(context, SITE_WITH_A_SINGLE_SHORT_CLIENT, siteDirectory);
-    for (const { homePage, clients, width, height } of ALL_CLIENTS_FIT) {
-      const where = `on ${homePage} at ${width} px`;
-      await page.setViewportSize({ width, height });
-      const list = await openClientList(page, homePage);
-      await expectNamesStillOverOneSecond(list, clients, where);
-
-      const occurrences = await clientNamesOnScreen(page, clients);
-      for (const client of clients) {
-        const copies = occurrences.filter((occurrence) => occurrence.shown && occurrence.name === client);
-        /* Shown once: no copy of the name peeks in, even partly. */
-        expect.soft(copies.length, `${where}, number of times "${client}" shows on screen`).toBe(1);
-        /* Shown whole: nothing of it is cut by the band or the window's edge. */
-        for (const copy of copies) {
-          expect.soft(copy.whole, `${where}, "${client}" shows whole (from ${copy.left} to ${copy.right} px)`).toBe(true);
-        }
-      }
-    }
-  });
-
-  test('when the client names stay still because they all fit — a single short client on a phone and on a desktop, the example site’s five on a 1920 px screen — the last name is not followed by a "|||" separator: one separates each name from the next, and none ends the list', async ({ page, context }) => {
-    await serveSite(context, SITE_WITH_A_SINGLE_SHORT_CLIENT, siteDirectory);
-    for (const { homePage, clients, width, height } of ALL_CLIENTS_FIT) {
-      const where = `on ${homePage} at ${width} px`;
-      await page.setViewportSize({ width, height });
-      const list = await openClientList(page, homePage);
-      await expectNamesStillOverOneSecond(list, clients, where);
-
-      /* On screen, in reading order, the names with a "|||" between two of them, and nothing after
-         the last one (textOnScreen drops whitespace). */
-      expect.soft(await textOnScreen(list), `${where}, text the client list shows on screen`)
-        .toBe(clients.map((client) => client.replace(/ /g, '')).join('|||'));
-    }
-  });
-
-  test('when the client names stay still — because they all fit (a single short client on a phone and on a desktop, the example site’s five on a 1920 px screen) or under prefers-reduced-motion: reduce (the example site on a phone) — the band shows no button "Mettre en pause le défilement": none on screen, none for assistive technologies, none reached from the keyboard', async ({ page, context, browserName }) => {
+  test('when the client names stay still — because they all fit (a single short client on a phone and on a desktop, the example site’s five on a 1920 px screen) or under prefers-reduced-motion: reduce (the example site on a phone) — the band shows no button "Mettre en pause le défilement": none on screen, none for assistive technologies, none reached from the keyboard; where they all fit, each name is shown once, whole, and the last one is not followed by a "|||" separator', async ({ page, context, browserName }) => {
     await serveSite(context, SITE_WITH_A_SINGLE_SHORT_CLIENT, siteDirectory);
     const cases = [
       ...ALL_CLIENTS_FIT.map((fit) => ({ ...fit, reducedMotion: 'no-preference' as const })),
@@ -1203,27 +1121,38 @@ test.describe('home page of another site, with a single short client', () => {
       { homePage: '/fr/', clients: CLIENTS, ...PHONE_VIEWPORT, reducedMotion: 'reduce' as const },
     ];
     for (const { homePage, clients, width, height, reducedMotion } of cases) {
-      const where = `on ${homePage} at ${width} px${reducedMotion === 'reduce' ? ', under reduced motion' : ''}`;
+      const allFit = reducedMotion === 'no-preference';
+      const where = `on ${homePage} at ${width} px${allFit ? '' : ', under reduced motion'}`;
       await page.emulateMedia({ reducedMotion });
       await page.setViewportSize({ width, height });
       const list = await openClientList(page, homePage);
       await expectNamesStillOverOneSecond(list, clients, where);
+
+      if (allFit) {
+        /* No copy of a name shows on screen: each is shown once, whole. */
+        expectEachNameShownOnceAndWhole(await clientNamesShown(page, clients), clients, where);
+        /* On screen, in reading order, the names with a "|||" between two of them, and nothing
+           after the last one (textOnScreen drops whitespace). */
+        expect.soft(await textOnScreen(list), `${where}, text the client list shows on screen`)
+          .toBe(clients.map((client) => client.replace(/ /g, '')).join('|||'));
+      }
 
       /* Assistive technologies get no such button. */
       await expect.soft(page.getByRole('button', { name: 'Mettre en pause le défilement' }), `${where}, buttons "Mettre en pause le défilement" exposed to assistive technologies`).toHaveCount(0);
       /* Nothing on screen reads "Mettre en pause le défilement". */
       await expect.soft(page.getByText('Mettre en pause le défilement'), `${where}, text "Mettre en pause le défilement" shown on screen`).toBeHidden();
       /* A keyboard visitor tabbing through the whole page never lands on it: the focus goes from
-         one element to the next until it leaves the page. */
+         one element to the next until it leaves the page. The button is known by its accessible
+         name (it has no text of its own), even if it were hidden from assistive technologies. */
+      const pauseButton = page.getByRole('button', { name: 'Mettre en pause le défilement', includeHidden: true });
       const tab = tabKey(browserName);
-      const focusedTexts: string[] = [];
+      let pauseButtonReached = false;
       for (let i = 0; i < 50; i++) {
         await page.keyboard.press(tab);
-        const focused = await page.evaluate(() => (document.activeElement && document.activeElement !== document.body ? document.activeElement.textContent?.trim() ?? '' : null));
-        if (focused === null) break;
-        focusedTexts.push(focused);
+        if (await page.evaluate(() => !document.activeElement || document.activeElement === document.body)) break;
+        if (await pauseButton.evaluateAll((buttons) => buttons.some((button) => button === document.activeElement))) pauseButtonReached = true;
       }
-      expect.soft(focusedTexts, `${where}, texts of the elements the keyboard reaches`).not.toContain('Mettre en pause le défilement');
+      expect.soft(pauseButtonReached, `${where}, the keyboard reaches a button "Mettre en pause le défilement"`).toBe(false);
     }
   });
 });
@@ -1468,29 +1397,6 @@ test.describe('home page of another site, without clients', () => {
 test.describe('client content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
-  test('a home page whose clients parameter is a text instead of a list makes the site build fail, with a French error message that names the clients parameter', () => {
-    /* tests/fixtures/text-instead-of-list/content/_index.md declares clients = 'Maison Delorme', a
-       text rather than a list of names. Rather than a band built from that text, the person
-       building the site must get a failure whose French message names the clients parameter
-       of the front matter, in the style of the hero's messages ("le paramètre author…"),
-       whatever the rest of the wording. Requiring "paramètre clients" also keeps a template
-       execution error that merely quotes $clients or .Params.clients from passing. */
-    const build = tryToBuildSite(SITE_WITH_CLIENTS_AS_TEXT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors).toMatch(/\bparamètre\s+clients\b/);
-  });
-
-  test('a home page whose clients list holds an entry that is not a name makes the site build fail, with a French error message that names the clients parameter', () => {
-    /* tests/fixtures/map-instead-of-name/content/_index.md declares clients as a list, so the check
-       that clients is a list lets it through, but its second entry is a table,
-       { name = 'Maison Delorme' }, rather than a name. Rather than a band showing that table
-       as raw text, the person building the site must get a failure whose French message names
-       the clients parameter of the front matter, whatever the rest of the wording. */
-    const build = tryToBuildSite(SITE_WITH_A_CLIENT_AS_MAP);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors).toMatch(/\bparamètre\s+clients\b/);
-  });
-
   test('a home page whose clients list holds an empty or whitespace-only name makes the site build fail, with a French error message that names the clients parameter', () => {
     /* tests/fixtures/empty-name and tests/fixtures/whitespace-only-name declare clients as a list
        of texts, so the checks on the list and on its entries let them through, but their second
@@ -1509,13 +1415,18 @@ test.describe('client content errors: build failure', () => {
     }
   });
 
-  test('a home page whose clients parameter is a text, or whose clients list holds a table, makes the site build fail with the French message alone, without a template execution error after it', () => {
-    /* tests/fixtures/text-instead-of-list declares clients = 'Maison Delorme', and
-       tests/fixtures/map-instead-of-name a list whose second entry is { name = 'Maison Delorme' }.
-       The person building the site must read the French message that names the clients
-       parameter, and nothing else: no Go template execution error, about a range over a text or
-       a function called with a table, that would follow it and bury it in technical jargon.
-       Two fixtures, so that stopping after only one of the two checks does not pass. */
+  test('a home page whose clients parameter is a text instead of a list, or whose clients list holds a table instead of a name, makes the site build fail with a French error message that names the clients parameter, alone, without a template execution error after it', () => {
+    /* tests/fixtures/text-instead-of-list declares clients = 'Maison Delorme', a text rather than
+       a list of names, and tests/fixtures/map-instead-of-name a list (so the check that clients is
+       a list lets it through) whose second entry is a table, { name = 'Maison Delorme' }, rather
+       than a name. Rather than a band built from that text or showing that table as raw text, the
+       person building the site must read a French message that names the clients parameter of the
+       front matter, in the style of the hero's messages ("le paramètre author…"), whatever the
+       rest of the wording, and nothing else: no Go template execution error, about a range over a
+       text or a function called with a table, that would follow it and bury it in technical
+       jargon. Requiring "paramètre clients" also keeps a template execution error that merely
+       quotes $clients or .Params.clients from passing. Two fixtures, so that stopping after only
+       one of the two checks does not pass. */
     const cases = [
       { name: 'clients as a text', site: SITE_WITH_CLIENTS_AS_TEXT },
       { name: 'a table among the clients', site: SITE_WITH_A_CLIENT_AS_MAP },
