@@ -750,25 +750,39 @@ tick-field > canvas {
 
   /* The pause button only makes sense while the names move. */
   .clients.is-scrolling .clients-pause {
-    display: block;
     /* On the line of names, after the window, which gives it room; the band
        centres it vertically on that line. */
+    display: flex;
     flex: none;
-    margin-right: var(--page-gutter);
-    /* On two lines, so that most of the band stays free for the names. */
-    max-width: 7rem;
-    white-space: normal;
-    text-align: right;
-    /* Two tight lines that do not make the band taller than the names do. */
-    line-height: 1;
+    align-items: center;
+    justify-content: center;
+    /* A target large enough to tap, whose overflow does not make the band
+       taller than the names do. */
+    min-width: 24px;
+    min-height: 24px;
     margin-block: -4px;
+    margin-right: var(--page-gutter);
     padding: 0;
     border: 0;
     background: none;
     font: inherit;
-    font-size: 11px;
+    font-size: 12.5px;
+    letter-spacing: 0;
+    line-height: 1;
     color: var(--color-paper);
     cursor: pointer;
+  }
+
+  /* A small icon, as discreet as the label: pause while the names move,
+     play once they stop. The button's label names it. */
+  .clients-pause::before {
+    content: "\275A\275A";
+    content: "\275A\275A" / "";
+  }
+
+  .clients-pause[aria-pressed="true"]::before {
+    content: "\25B6\FE0E";
+    content: "\25B6\FE0E" / "";
   }
 
   .clients.is-scrolling .clients-track.is-paused {

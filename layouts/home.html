@@ -47,7 +47,8 @@
           {{- end }}
         </div>
       </div>
-      <button type="button" class="clients-pause" aria-pressed="false" hidden>{{ i18n "pauseClients" }}</button>
+      {{- /* The button shows an icon (see main.css): its name is the label. */}}
+      <button type="button" class="clients-pause" aria-label="{{ i18n "pauseClients" }}" aria-pressed="false" hidden></button>
     </div>
     {{- end }}
   </div>
