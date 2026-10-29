@@ -684,7 +684,9 @@ tick-field > canvas {
   display: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
+/* Without JavaScript, clients-fit.ts cannot tell whether the names fit, so
+   they stay still too. */
+@media (prefers-reduced-motion: reduce), (scripting: none) {
   .clients-track {
     width: auto;
     animation: none;
