@@ -584,11 +584,17 @@ tick-field > canvas {
 /* With a hero, the first screen fills the window below the header. Without
    one, nothing stretches it: the content follows. */
 .first-screen:has(> .hero) {
-  /* For browsers without svh, which drop the declaration below. */
-  min-height: calc(100vh - var(--header-height));
-  /* svh: the height left when a phone browser shows its toolbars, so the
-     hero's buttons are not hidden under them on arrival. */
-  min-height: calc(100svh - var(--header-height));
+  /* The height of the window below the header; for browsers without svh. */
+  --window-below-header: calc(100vh - var(--header-height));
+  min-height: var(--window-below-header);
+}
+
+/* svh: the height left when a phone browser shows its toolbars, so the
+   hero's buttons are not hidden under them on arrival. */
+@supports (height: 100svh) {
+  .first-screen:has(> .hero) {
+    --window-below-header: calc(100svh - var(--header-height));
+  }
 }
 
 .first-screen > .hero {
@@ -693,8 +699,7 @@ tick-field > canvas {
 @media (prefers-reduced-motion: reduce) {
   .first-screen:has(> .hero) {
     min-height: 0;
-    grid-template-rows: calc(100vh - var(--header-height)) auto;
-    grid-template-rows: calc(100svh - var(--header-height)) auto;
+    grid-template-rows: var(--window-below-header) auto;
   }
 }
 
