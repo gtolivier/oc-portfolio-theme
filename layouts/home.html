@@ -37,7 +37,7 @@
         <div class="clients-track">
           {{- /* The names are listed twice, so that the band loops without a gap: it only scrolls when one list is wider than it (see clients-fit.ts). Only the first list is exposed to assistive technologies. */}}
           {{- range $position := seq 2 }}
-          <ul {{ if gt $position 1 }}aria-hidden="true"{{ else }}aria-label="{{ $label }}"{{ end }}>
+          <ul {{ if gt $position 1 }}aria-hidden="true"{{ else }}role="list" aria-label="{{ $label }}"{{ end }}>
             {{- range $clients }}
             <li>{{ . }}</li>
             {{- end }}
