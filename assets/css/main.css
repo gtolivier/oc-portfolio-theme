@@ -97,8 +97,8 @@
     + var(--header-nav-row-height)
     + var(--header-border-width)
   );
-  /* Height of the sticky header; the hero subtracts it from the viewport
-     so it fills the space right below the header. Once it runs, the theme
+  /* Height of the sticky header; the first screen subtracts it from the
+     viewport so it fills the space right below the header. Once it runs, the theme
      script replaces it with the measured height, which differs from the
      estimate when the menu wraps. The header's own min-height reads the
      estimate instead, so a measured height never keeps the header tall
@@ -175,18 +175,13 @@ h1 {
 
 /* The design centres the text block vertically. A flex container also keeps
    the heading and paragraph margins inside the section: they do not leak
-   out and the section fills the viewport. */
+   out and the section fills the room the first screen gives it. */
 .hero {
   /* Least space kept above the text (on a phone) and below it. */
   --hero-edge-space: 40px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  /* For browsers without svh, which drop the declaration below. */
-  min-height: calc(100vh - var(--header-height));
-  /* svh: the height left when a phone browser shows its toolbars, so the
-     buttons are not hidden under them on arrival. */
-  min-height: calc(100svh - var(--header-height));
   padding-inline: var(--page-gutter);
   padding-bottom: var(--hero-edge-space);
   /* A phone's narrow screen spares little width: the hero's field gives
@@ -588,6 +583,8 @@ tick-field > canvas {
   grid-template-rows: 1fr auto;
   /* For browsers without svh, which drop the declaration below. */
   min-height: calc(100vh - var(--header-height));
+  /* svh: the height left when a phone browser shows its toolbars, so the
+     hero's buttons are not hidden under them on arrival. */
   min-height: calc(100svh - var(--header-height));
 }
 
