@@ -8,14 +8,23 @@ const clientsList = clientsTrack?.querySelector<HTMLElement>(':scope > ul');
 /* The names scroll at this pace, whatever the clients: the loop lasts as long as it takes to
    slide by one list, half of the track. */
 const CLIENTS_PACE_PX_PER_SECOND = 39;
+const MILLISECONDS_PER_SECOND = 1000;
 if (clientsBand && clientsWindow && clientsList && clientsTrack) {
+  /* A running loop keeps its elapsed time when its duration changes (when a font swaps in), so
+     the names would jump: it resumes from the same point of the loop instead. */
+  const setLoopDuration = (seconds: number) => {
+    const [loop] = clientsTrack.getAnimations();
+    const progress = loop?.effect?.getComputedTiming().progress;
+    clientsTrack.style.animationDuration = `${seconds}s`;
+    if (loop && progress != null) loop.currentTime = progress * seconds * MILLISECONDS_PER_SECOND;
+  };
   const update = () => {
     /* Unrounded widths: a list wider by a fraction of a pixel is cut too. The
        window has no border, padding or scrollbar: its box is what shows. */
     const listWidth = clientsList.getBoundingClientRect().width;
     const isScrolling = listWidth > clientsWindow.getBoundingClientRect().width;
     /* The pace is set before the loop starts, so that it never starts at another one. */
-    if (isScrolling) clientsTrack.style.animationDuration = `${listWidth / CLIENTS_PACE_PX_PER_SECOND}s`;
+    if (isScrolling) setLoopDuration(listWidth / CLIENTS_PACE_PX_PER_SECOND);
     clientsBand.classList.toggle('is-scrolling', isScrolling);
   };
   /* The observer also calls update once each element is first laid out. */

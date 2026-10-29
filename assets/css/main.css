@@ -607,6 +607,8 @@ tick-field > canvas {
   /* No padding on the right: the names run to the window's edge. */
   padding: 20px 0 20px var(--page-gutter);
   border-top: 1px solid rgb(var(--color-paper-channels) / 0.14);
+  /* Not only clipping: as an item of the first screen's grid, the band would
+     otherwise be at least as wide as the whole track, and widen the page. */
   overflow: hidden;
   font-family: var(--font-mono);
   font-size: 17px;
