@@ -608,6 +608,12 @@ tick-field > canvas {
   list-style: none;
 }
 
+/* The label shown before the names repeats the list's accessible name, so it
+   gets an empty alternative text: assistive technologies read it once. */
+.clients::before {
+  content: attr(data-label) / "";
+}
+
 /* Each client name is followed by a decorative separator, which assistive
    technologies do not get (empty alternative text). */
 .clients li::after {
