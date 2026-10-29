@@ -577,7 +577,6 @@ tick-field > canvas {
 
 /* The hero takes the room the client band, the strip below it, leaves. */
 .first-screen {
-  --clients-band-height: 2.5rem;
   display: grid;
   grid-template-rows: 1fr auto;
 }
@@ -597,15 +596,21 @@ tick-field > canvas {
 }
 
 .clients {
-  /* The space between two names, and after the label. */
+  /* The space after the label, and on each side of a separator. */
   --clients-gap: 0.75rem;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0 var(--clients-gap);
-  min-height: var(--clients-band-height);
-  padding: 0 var(--page-gutter);
+  gap: 8px var(--clients-gap);
+  /* No padding on the right: the names run to the window's edge. */
+  padding: 20px 0 20px var(--page-gutter);
+  border-top: 1px solid rgb(var(--color-paper-channels) / 0.14);
   overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 17px;
+  letter-spacing: 0.06em;
+  color: var(--color-accent);
+  white-space: nowrap;
 }
 
 /* The label shown before the names repeats the list's accessible name, so it
@@ -614,6 +619,10 @@ tick-field > canvas {
 .clients::before {
   content: attr(data-label) / "";
   flex-basis: 100%;
+  font-size: 12.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-paper);
 }
 
 /* The names slide through the window; the label stays put. */
@@ -626,7 +635,7 @@ tick-field > canvas {
 .clients-track {
   display: flex;
   width: max-content;
-  animation: clients-scroll 30s linear infinite;
+  animation: clients-scroll 34s linear infinite;
 }
 
 /* The track holds the list twice: sliding it by half its width loops
@@ -657,17 +666,16 @@ tick-field > canvas {
    technologies do not get (empty alternative text). */
 .clients li::after {
   content: "|||" / "";
+  margin-left: var(--clients-gap);
 }
 
 @media (min-width: 768px) {
   .clients {
     flex-wrap: nowrap;
-    height: var(--clients-band-height);
   }
 
   .clients::before {
     flex-basis: auto;
-    margin-right: var(--clients-gap);
   }
 
   .clients-window {
