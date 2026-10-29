@@ -13,6 +13,7 @@ import {
   SITE_WITH_A_LONG_MENU,
   SITE_WITH_A_PAGE_REF_NOT_FOUND,
   SITE_WITH_A_SINGLE_LANGUAGE,
+  SITE_WITH_OTHER_CLIENTS,
   buildSite,
   removeDirectory,
   serveSite,
@@ -1359,6 +1360,56 @@ test.describe('home page without a hero', () => {
       );
     }
     expect(errors).toEqual([]);
+  });
+});
+
+test.describe('home page without a hero, with or without clients', () => {
+  let directoryWithoutClients: string;
+  let directoryWithClients: string;
+  test.beforeAll(() => {
+    directoryWithoutClients = buildSite(SITE_WITHOUT_HERO);
+    directoryWithClients = buildSite(SITE_WITH_OTHER_CLIENTS);
+  });
+  test.afterAll(() => {
+    removeDirectory(directoryWithoutClients);
+    removeDirectory(directoryWithClients);
+  });
+
+  test('on a home page without a hero, the page content comes right below the header, or right below a client band itself right below the header: no empty first screen, on a phone as on desktop', async ({ page, context }) => {
+    await serveSite(context, SITE_WITHOUT_HERO, directoryWithoutClients);
+    await serveSite(context, SITE_WITH_OTHER_CLIENTS, directoryWithClients);
+    /* "Right below" is a relation, not an exact spacing: each gap stays under a quarter of the
+       window's height, far from the window-high gap an empty first screen leaves. */
+    for (const viewport of [{ width: 390, height: 844 }, ...DESKTOP_VIEWPORTS]) {
+      const size = `${viewport.width} × ${viewport.height}`;
+      const closeGap = viewport.height / 4;
+
+      /* Without clients (tests/fixtures/without-hero/content/_index.md): the home page text
+         starts right below the header. */
+      await openHomeAt(page, viewport, SITE_WITHOUT_HERO.origin);
+      const headerBox = (await page.locator('header').boundingBox())!;
+      const headerBottom = headerBox.y + headerBox.height;
+      const textWithoutClients = page.getByRole('main').getByText('Accueil fictif sans hero');
+      await expect(textWithoutClients, `text without clients at ${size}`).toBeVisible();
+      const textTopWithoutClients = (await textWithoutClients.boundingBox())!.y;
+      expect(textTopWithoutClients, `text below the header, without clients, at ${size}`).toBeGreaterThanOrEqual(headerBottom - 1);
+      expect(textTopWithoutClients - headerBottom, `gap between the header and the text, without clients, at ${size}`).toBeLessThan(closeGap);
+
+      /* With clients (tests/fixtures/other-clients/content/_index.md): the client band starts
+         right below the header, and the home page text right below the band. */
+      await openHomeAt(page, viewport, SITE_WITH_OTHER_CLIENTS.origin);
+      const headerBoxWithClients = (await page.locator('header').boundingBox())!;
+      const headerBottomWithClients = headerBoxWithClients.y + headerBoxWithClients.height;
+      const band = await clientBandBox(page);
+      expect(band, `client band at ${size}`).not.toBeNull();
+      expect(band!.top, `client band below the header at ${size}`).toBeGreaterThanOrEqual(headerBottomWithClients - 1);
+      expect(band!.top - headerBottomWithClients, `gap between the header and the client band at ${size}`).toBeLessThan(closeGap);
+      const textWithClients = page.getByRole('main').getByText('Accueil fictif d’un site qui déclare d’autres clients');
+      await expect(textWithClients, `text with clients at ${size}`).toBeVisible();
+      const textTopWithClients = (await textWithClients.boundingBox())!.y;
+      expect(textTopWithClients, `text below the client band at ${size}`).toBeGreaterThanOrEqual(band!.bottom - 1);
+      expect(textTopWithClients - band!.bottom, `gap between the client band and the text at ${size}`).toBeLessThan(closeGap);
+    }
   });
 });
 
