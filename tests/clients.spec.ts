@@ -56,12 +56,18 @@ async function expectClientList(page: Page, name: string, clients: string[] = CL
   }
 }
 
+/* Waits for the page's fonts to finish loading. It polls `document.fonts.status` rather than
+   awaiting `document.fonts.ready`: without JavaScript, Firefox never resolves a page promise
+   awaited from the test. */
+async function waitForFonts(page: Page): Promise<void> {
+  await expect.poll(() => page.evaluate(() => document.fonts.status)).toBe('loaded');
+}
+
 /* Opens the home page at `homePage`, waits for its fonts to finish loading, and returns its client
-   list, once visible. It polls `document.fonts.status` rather than awaiting `document.fonts.ready`:
-   without JavaScript, Firefox never resolves a page promise awaited from the test. */
+   list, once visible. */
 async function openClientList(page: Page, homePage = '/fr/'): Promise<Locator> {
   await page.goto(homePage);
-  await expect.poll(() => page.evaluate(() => document.fonts.status)).toBe('loaded');
+  await waitForFonts(page);
   const list = clientList(page);
   await expect(list).toBeVisible();
   return list;
@@ -790,7 +796,7 @@ async function expectBandBelowTheFold(page: Page) {
     const size = `${width} × ${height}`;
     await page.setViewportSize({ width, height });
     await page.goto('/fr/');
-    await page.evaluate(() => document.fonts.ready);
+    await waitForFonts(page);
     const hero = heroRegion(page);
     await expect(hero.getByRole('heading', { level: 1 }), `heading at ${size}`).toBeVisible();
     const band = await clientBandBox(page);
