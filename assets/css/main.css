@@ -691,10 +691,29 @@ tick-field > canvas {
   display: none;
 }
 
-/* The names do not all fit in the band (see clients-fit.ts, which also sets
-   the loop's duration): they loop, unless the visitor asks for reduced
-   motion. */
+/* Unless the visitor asks for reduced motion, the names stay on one line, and
+   loop when they do not all fit. */
 @media (prefers-reduced-motion: no-preference) {
+  /* Once the script runs, the names stay on one line. So that the band does
+     not change height when the script runs, they stay on one line from the
+     first paint too, while head/js.html sets the clients-pending class: until
+     the page is parsed, when the deferred script has run or failed. */
+  :is(.clients-pending .clients, .clients.is-measured) .clients-track {
+    width: max-content;
+  }
+
+  :is(.clients-pending .clients, .clients.is-measured) ul {
+    flex: none;
+    flex-wrap: nowrap;
+  }
+
+  :is(.clients-pending .clients, .clients.is-measured) li {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  /* The names do not all fit in the band (see clients-fit.ts, which also
+     sets the loop's duration): they loop. */
   .clients.is-scrolling .clients-track {
     animation: clients-scroll linear infinite;
   }
@@ -709,27 +728,6 @@ tick-field > canvas {
     .clients.is-scrolling:hover .clients-track {
       animation-play-state: paused;
     }
-  }
-}
-
-/* Once the script runs, and unless the visitor asks for reduced motion, the
-   names stay on one line, and loop when they do not all fit. So that the band
-   does not change height when the script runs, they stay on one line from the
-   first paint too, while head/js.html sets the clients-pending class: until
-   the page is parsed, when the deferred script has run or failed. */
-@media (prefers-reduced-motion: no-preference) {
-  :is(.clients-pending .clients, .clients.is-measured) .clients-track {
-    width: max-content;
-  }
-
-  :is(.clients-pending .clients, .clients.is-measured) ul {
-    flex: none;
-    flex-wrap: nowrap;
-  }
-
-  :is(.clients-pending .clients, .clients.is-measured) li {
-    flex: none;
-    white-space: nowrap;
   }
 }
 
