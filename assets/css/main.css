@@ -768,9 +768,10 @@ tick-field > canvas {
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* Under the pointer, the icon takes the names' accent (not after a tap,
-     which would leave it stuck); keyboard focus keeps the browser's own
-     outline. */
+  /* Under the pointer, the icon takes the names' accent (not on a phone,
+     where a tap would leave it stuck; on a laptop with a touch screen, a tap
+     may, which only tints the icon, unlike the band's pause below); keyboard
+     focus keeps the browser's own outline. */
   @media (hover: hover) {
     .clients.is-scrolling .clients-pause:hover {
       color: var(--color-accent);
