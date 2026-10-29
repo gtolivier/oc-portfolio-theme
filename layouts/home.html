@@ -29,7 +29,8 @@
     </tick-field>
     {{- end }}
     {{- with .Params.clients }}
-    <ul class="clients" aria-label="{{ i18n "clients" }}" data-label="{{ i18n "clients" }}">
+    {{- $label := i18n "clients" }}
+    <ul class="clients" aria-label="{{ $label }}" data-label="{{ $label }}">
       {{- range . }}
       <li>{{ . }}</li>
       {{- end }}
