@@ -743,13 +743,25 @@ tick-field > canvas {
     display: flex;
   }
 
+  /* The window shares the line with the pause button. */
+  .clients.is-scrolling .clients-window {
+    flex-basis: 0;
+  }
+
   /* The pause button only makes sense while the names move. */
   .clients.is-scrolling .clients-pause {
     display: block;
-    /* Out of the flow: showing it must not change the band's height. */
-    position: absolute;
-    top: 2px;
-    right: var(--page-gutter);
+    /* On the line of names, after the window, which gives it room; the band
+       centres it vertically on that line. */
+    flex: none;
+    margin-right: var(--page-gutter);
+    /* On two lines, so that most of the band stays free for the names. */
+    max-width: 7rem;
+    white-space: normal;
+    text-align: right;
+    /* Two tight lines that do not make the band taller than the names do. */
+    line-height: 1;
+    margin-block: -4px;
     padding: 0;
     border: 0;
     background: none;
