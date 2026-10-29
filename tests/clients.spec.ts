@@ -495,6 +495,27 @@ test('on a phone and on a desktop, while the client names scroll, the button "Me
   }
 });
 
+test('on a phone and on a desktop, while the client names scroll, the button "Mettre en pause le défilement" is vertically centred on the line of names', async ({ page }) => {
+  for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
+    const where = `at ${width} px`;
+    /* At these widths, the example site's five clients do not all fit: the band scrolls. */
+    await page.setViewportSize({ width, height });
+    await openClientList(page);
+    const pause = page.getByRole('button', { name: 'Mettre en pause le défilement' });
+    await expect(pause, `${where}, the button "Mettre en pause le défilement" is shown`).toBeVisible();
+
+    /* The names slide sideways only: the line they sit on is read from any name the visitor sees. */
+    const names = await clientNamesShown(page, CLIENTS);
+    expect(names.length, `${where}, client names shown on screen`).toBeGreaterThan(0);
+    const { name, top, bottom } = names[0];
+    const namesMiddle = (top + bottom) / 2;
+    const button = (await pause.boundingBox())!;
+    const buttonMiddle = button.y + button.height / 2;
+    expect.soft(Math.abs(buttonMiddle - namesMiddle), `${where}, vertical centre of the button (${buttonMiddle} px) against that of "${name}" (${namesMiddle} px)`)
+      .toBeLessThanOrEqual(2);
+  }
+});
+
 test('on a phone and on a desktop, when the client names grow wider while they scroll (their font gets larger, as when a web font swaps in), they do not jump: the first name stays where it was, modulo one loop', async ({ page }) => {
   for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
     await page.setViewportSize({ width, height });
