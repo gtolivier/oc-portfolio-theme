@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { BrowserContext } from '@playwright/test';
+import { test, type BrowserContext } from '@playwright/test';
 
 /* A site built for a test: the example site, modified by a fixture, built
    in a temporary directory and served to the browsers by intercepting the
@@ -193,18 +193,19 @@ export const SITE_WITH_A_ONE_WORD_CLIENT_NAME = testSite('one-word-client-name')
 
 /* The example site's French home page declares its clients as a list: this
    site replaces that home page with the one of
-   tests/fixtures/name-as-text/content, without a hero, whose params.clients
-   is a text, 'Maison Delorme', instead of a list of names. Its folder name
-   avoids the word clients, which the error-message assertion looks for. */
-export const SITE_WITH_CLIENTS_AS_TEXT = testSite('name-as-text');
+   tests/fixtures/text-instead-of-list/content, without a hero, whose
+   params.clients is a text, 'Maison Delorme', instead of a list of names. Its
+   folder name avoids the word clients, which the error-message assertion
+   looks for. */
+export const SITE_WITH_CLIENTS_AS_TEXT = testSite('text-instead-of-list');
 
 /* The example site's French home page declares its clients as a list of
    names: this site replaces that home page with the one of
-   tests/fixtures/name-as-map/content, without a hero, whose params.clients
-   is a list, as expected, but whose second entry is a table,
+   tests/fixtures/map-instead-of-name/content, without a hero, whose
+   params.clients is a list, as expected, but whose second entry is a table,
    { name = 'Maison Delorme' }, instead of a name. Its folder name avoids
    the word clients, which the error-message assertion looks for. */
-export const SITE_WITH_A_CLIENT_AS_MAP = testSite('name-as-map');
+export const SITE_WITH_A_CLIENT_AS_MAP = testSite('map-instead-of-name');
 
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
@@ -312,6 +313,19 @@ export function tryToBuildSite(site: BuiltSite): BuildAttempt {
   } finally {
     removeDirectory(destination);
   }
+}
+
+/* Tests that only run hugo build, without a browser: running them in every
+   Playwright project would repeat the same build five times. */
+const BUILD_TESTS_PROJECT = 'chromium';
+
+/* Called inside a test.describe of such tests, runs them in BUILD_TESTS_PROJECT
+   only and skips them in the other projects. */
+export function runBuildTestsInOneProjectOnly(): void {
+  test.skip(
+    () => test.info().project.name !== BUILD_TESTS_PROJECT,
+    `build without a browser, identical in every project: run in ${BUILD_TESTS_PROJECT} only`,
+  );
 }
 
 export function removeDirectory(directory: string): void {

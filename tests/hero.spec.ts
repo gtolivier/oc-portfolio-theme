@@ -17,6 +17,7 @@ import {
   SITE_WITH_OTHER_CLIENTS,
   buildSite,
   removeDirectory,
+  runBuildTestsInOneProjectOnly,
   serveSite,
   tryToBuildSite,
 } from './helpers/built-site';
@@ -1725,15 +1726,8 @@ test.describe('home page of a site served under /portfolio/, with a button decla
   });
 });
 
-/* These tests only run hugo build, without a browser: running them in every Playwright
-   project would repeat the same build five times. */
-const BUILD_TESTS_PROJECT = 'chromium';
-
 test.describe('hero content errors: build failure', () => {
-  test.skip(
-    () => test.info().project.name !== BUILD_TESTS_PROJECT,
-    `build without a browser, identical in every project: run in ${BUILD_TESTS_PROJECT} only`,
-  );
+  runBuildTestsInOneProjectOnly();
 
   test('a home page where a hero button declares a pageRef to a page that does not exist makes the site build fail with only the message that cites this pageRef, without the "ni champ url ni champ pageRef" message', () => {
     /* The first button of tests/fixtures/page-ref-not-found/content/_index.md declares

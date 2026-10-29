@@ -9,6 +9,7 @@ import {
   SITE_WITH_A_CLIENT_AS_MAP,
   buildSite,
   removeDirectory,
+  runBuildTestsInOneProjectOnly,
   serveSite,
   tryToBuildSite,
 } from './helpers/built-site';
@@ -27,11 +28,14 @@ const CLIENTS = [
   'Maison Delorme',
 ];
 
-/* A common phone window and a desktop one. */
-const PHONE_AND_DESKTOP_VIEWPORTS = [{ width: 390, height: 844 }, { width: 1280, height: 900 }];
+/* A narrow phone window, 320 px wide, a common phone window and a desktop one. */
+const NARROW_PHONE_VIEWPORT = { width: 320, height: 568 };
+const PHONE_VIEWPORT = { width: 390, height: 844 };
+const DESKTOP_VIEWPORT = { width: 1280, height: 900 };
 
-/* A narrow phone window, 320 px wide, then a common phone window and a desktop one. */
-const NARROW_PHONE_TO_DESKTOP_VIEWPORTS = [{ width: 320, height: 568 }, ...PHONE_AND_DESKTOP_VIEWPORTS];
+const PHONE_AND_DESKTOP_VIEWPORTS = [PHONE_VIEWPORT, DESKTOP_VIEWPORT];
+
+const NARROW_PHONE_TO_DESKTOP_VIEWPORTS = [NARROW_PHONE_VIEWPORT, ...PHONE_AND_DESKTOP_VIEWPORTS];
 
 /* Checks that the page exposes the declared clients once each, in order, as the list named `name`. */
 async function expectClientList(page: Page, name: string, clients: string[] = CLIENTS) {
@@ -173,16 +177,18 @@ function expectNoTwoNamesOverlap(shown: ClientNameOnScreen[], where: string): vo
   }
 }
 
+interface BandLoop {
+  window: JSHandle<Element | null>;
+  animationCount: () => Promise<number>;
+  setAt: (fraction: number) => Promise<void>;
+}
+
 /* The loop of the client band whose list is `list`, on the open page, its animations frozen: the
    box that clips the names (the list's nearest ancestor that clips its overflow), the number of
    animations the loop is made of (those of that box or of what it holds), and a way to set them at
    a moment of the loop, as a number of loop lengths elapsed since it started: a fraction of the
    first loop, or more than 1 once whole loops have run (3.4: three loops, then 0.4 of the fourth). */
-async function bandLoop(list: Locator): Promise<{
-  window: JSHandle<Element | null>;
-  animationCount: () => Promise<number>;
-  setAt: (fraction: number) => Promise<void>;
-}> {
+async function bandLoop(list: Locator): Promise<BandLoop> {
   const window = await list.evaluateHandle((ul) => {
     let window: Element | null = ul.parentElement;
     while (window && getComputedStyle(window).overflow === 'visible') window = window.parentElement;
@@ -206,6 +212,19 @@ async function bandLoop(list: Locator): Promise<{
   };
 }
 
+/* Freezes the page's animations, then returns the loop of the client band whose list is `list`
+   (see bandLoop), once checked that the band loops. `where` opens the message. */
+async function frozenBandLoop(list: Locator, where: string): Promise<BandLoop> {
+  await freezeAnimations(list.page());
+  const loop = await bandLoop(list);
+  expect(await loop.animationCount(), `${where}, the band loops`).toBeGreaterThan(0);
+  return loop;
+}
+
+/* Moments the band's loop is set at, as a fraction of its length, from its start to just before
+   its end. */
+const LOOP_MOMENTS = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.999];
+
 /* Moves the page's frozen animations one second further. */
 async function advanceAnimationsOneSecond(page: Page): Promise<void> {
   await page.evaluate(() =>
@@ -218,6 +237,27 @@ async function advanceAnimationsOneSecond(page: Page): Promise<void> {
 /* Lets one second pass on the page, as the visitor lives it: the page's own time runs, untouched. */
 async function letOneSecondPass(page: Page): Promise<void> {
   await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
+}
+
+/* Lets the page lay itself out and render what changed: a couple of frames. */
+async function letPageRender(page: Page): Promise<void> {
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
+
+/* Checks that each of `clients`, in the client list `list`, sits where it was once one second has
+   passed, as the visitor lives it (letOneSecondPass). `where` opens each message. */
+async function expectNamesStillOverOneSecond(list: Locator, clients: string[], where: string): Promise<void> {
+  const namesBefore = await namesLeft(list, clients);
+  await letOneSecondPass(list.page());
+  expectNamesStill(clients, namesBefore, await namesLeft(list, clients), where);
+}
+
+/* Checks that each of `clients`, in the client list `list`, sits further left once one second has
+   passed, as the visitor lives it (letOneSecondPass). `where` opens each message. */
+async function expectNamesMoveLeftOverOneSecond(list: Locator, clients: string[], where: string): Promise<void> {
+  const namesBefore = await namesLeft(list, clients);
+  await letOneSecondPass(list.page());
+  expectNamesMovedLeft(clients, namesBefore, await namesLeft(list, clients), where);
 }
 
 test('on the French home page, assistive technologies get the declared clients once each, in order, as the list "Ils me font confiance"', async ({ page }) => {
@@ -288,7 +328,7 @@ async function labelExtent(
 }
 
 test('on a phone, the label "Ils me font confiance" sits above the client names, not on their line', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize(PHONE_VIEWPORT);
   const list = await openClientList(page);
   const labelBox = await labelExtent(page, 'Ils me font confiance');
   expect(labelBox, 'the label "Ils me font confiance" is shown on screen').not.toBeNull();
@@ -301,7 +341,7 @@ test('on a phone, the label "Ils me font confiance" sits above the client names,
 });
 
 test('on a 320 px wide phone, with the band’s label in a much larger font (a visitor who enlarged the text), the label "Ils me font confiance" is shown whole, on several lines if needed, instead of being cut', async ({ page }) => {
-  const { width, height } = { width: 320, height: 568 };
+  const { width, height } = NARROW_PHONE_VIEWPORT;
   await page.setViewportSize({ width, height });
   await openClientList(page);
   /* The visitor enlarged the text: the label shows at twice its usual size, too wide for one line
@@ -385,52 +425,45 @@ test('under prefers-reduced-motion: reduce, on a phone and on a desktop, the cli
   for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
     await page.setViewportSize({ width, height });
     const list = await openClientList(page);
-    const namesBefore = await namesLeft(list, CLIENTS);
-    await letOneSecondPass(page);
-    const namesAfter = await namesLeft(list, CLIENTS);
-    expectNamesStill(CLIENTS, namesBefore, namesAfter, `at ${width} px`);
+    await expectNamesStillOverOneSecond(list, CLIENTS, `at ${width} px`);
   }
 });
+
+/* The band starts at the bottom of the first screen: brings the client band whose list is `list`
+   into view, to be pointed at or tapped, and returns its box. Scrolled from the page: Playwright's
+   own scrolling waits for the list to stop moving. */
+async function bringBandIntoView(list: Locator): Promise<{ left: number; right: number; top: number; bottom: number }> {
+  await list.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+  const band = await clientBandBox(list.page());
+  expect(band, 'the client band spans the page width').not.toBeNull();
+  return band!;
+}
 
 test('on a desktop, while the pointer rests on the scrolling client band, the names stop moving: one second later, they sit where they were; once the pointer leaves the band, they move left again', async ({ page, hasTouch }) => {
   test.skip(hasTouch, 'resting the pointer on the band needs a fine pointer; touch screens have none');
   /* At 1280 px wide, the example site's five clients do not all fit: the band scrolls. */
-  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.setViewportSize(DESKTOP_VIEWPORT);
   const list = await openClientList(page);
-  /* The band starts at the bottom of the first screen: it is brought into view to be pointed at.
-     Scrolled from the page: Playwright's own scrolling waits for the list to stop moving. */
-  await list.evaluate((element) => element.scrollIntoView({ block: 'center' }));
-  const band = await clientBandBox(page);
-  expect(band, 'the client band spans the page width').not.toBeNull();
+  const band = await bringBandIntoView(list);
 
   /* The pointer rests in the middle of the band. */
-  await page.mouse.move((band!.left + band!.right) / 2, (band!.top + band!.bottom) / 2);
-  const namesWhileHovered = await namesLeft(list, CLIENTS);
-  await letOneSecondPass(page);
-  expectNamesStill(CLIENTS, namesWhileHovered, await namesLeft(list, CLIENTS), 'with the pointer resting on the band');
+  await page.mouse.move((band.left + band.right) / 2, (band.top + band.bottom) / 2);
+  await expectNamesStillOverOneSecond(list, CLIENTS, 'with the pointer resting on the band');
 
   /* The pointer leaves the band, for a point above it. */
-  await page.mouse.move((band!.left + band!.right) / 2, band!.top / 2);
-  const namesOnceLeft = await namesLeft(list, CLIENTS);
-  await letOneSecondPass(page);
-  expectNamesMovedLeft(CLIENTS, namesOnceLeft, await namesLeft(list, CLIENTS), 'once the pointer has left the band');
+  await page.mouse.move((band.left + band.right) / 2, band.top / 2);
+  await expectNamesMoveLeftOverOneSecond(list, CLIENTS, 'once the pointer has left the band');
 });
 
 test('on a touch screen, after a tap on the scrolling client band, the names keep moving: one second later, they sit further left', async ({ page, hasTouch }) => {
   test.skip(!hasTouch, 'a tap needs a touch screen');
   /* At the phone's own width, the example site's five clients do not all fit: the band scrolls. */
   const list = await openClientList(page);
-  /* The band starts at the bottom of the first screen: it is brought into view to be tapped.
-     Scrolled from the page: Playwright's own scrolling waits for the list to stop moving. */
-  await list.evaluate((element) => element.scrollIntoView({ block: 'center' }));
-  const band = await clientBandBox(page);
-  expect(band, 'the client band spans the page width').not.toBeNull();
+  const band = await bringBandIntoView(list);
 
   /* The visitor taps the middle of the band. */
-  await page.touchscreen.tap((band!.left + band!.right) / 2, (band!.top + band!.bottom) / 2);
-  const namesAfterTap = await namesLeft(list, CLIENTS);
-  await letOneSecondPass(page);
-  expectNamesMovedLeft(CLIENTS, namesAfterTap, await namesLeft(list, CLIENTS), 'after a tap on the band');
+  await page.touchscreen.tap((band.left + band.right) / 2, (band.top + band.bottom) / 2);
+  await expectNamesMoveLeftOverOneSecond(list, CLIENTS, 'after a tap on the band');
 });
 
 test('on a phone and on a desktop, while the client names scroll, pressing the button "Mettre en pause le défilement" stops them: one second later, they sit where they were; pressing it again makes them move left again', async ({ page }) => {
@@ -445,19 +478,15 @@ test('on a phone and on a desktop, while the client names scroll, pressing the b
        second press lands on the same button, whatever it is named once pressed. */
     await pause.focus();
     await page.keyboard.press('Enter');
-    const namesWhilePaused = await namesLeft(list, CLIENTS);
-    await letOneSecondPass(page);
-    expectNamesStill(CLIENTS, namesWhilePaused, await namesLeft(list, CLIENTS), `at ${width} px, once the button is pressed`);
+    await expectNamesStillOverOneSecond(list, CLIENTS, `at ${width} px, once the button is pressed`);
 
     /* The visitor presses it again. */
     await page.keyboard.press('Enter');
-    const namesOnceResumed = await namesLeft(list, CLIENTS);
-    await letOneSecondPass(page);
-    expectNamesMovedLeft(CLIENTS, namesOnceResumed, await namesLeft(list, CLIENTS), `at ${width} px, once the button is pressed again`);
+    await expectNamesMoveLeftOverOneSecond(list, CLIENTS, `at ${width} px, once the button is pressed again`);
   }
 });
 
-test('on a phone and on a desktop, while the client names scroll, the button "Mettre en pause le défilement" sits at the band’s right edge and covers none of the names, at any moment of their loop', async ({ page }) => {
+test('on a phone and on a desktop, while the client names scroll, the button "Mettre en pause le défilement" stands as far inside the band’s right edge as the label "Ils me font confiance" stands inside its left edge, and covers none of the names, at any moment of their loop', async ({ page }) => {
   for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
     const where = `at ${width} px`;
     /* At these widths, the example site's five clients do not all fit: the band scrolls. */
@@ -480,10 +509,8 @@ test('on a phone and on a desktop, while the client names scroll, the button "Me
 
     /* The names slide under every part of the band's width: the loop is frozen and set to chosen
        moments, as a fraction of its length, and no name the visitor sees may overlap the button. */
-    await freezeAnimations(page);
-    const loop = await bandLoop(list);
-    expect(await loop.animationCount(), `${where}, the band loops`).toBeGreaterThan(0);
-    for (const fraction of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.999]) {
+    const loop = await frozenBandLoop(list, where);
+    for (const fraction of LOOP_MOMENTS) {
       await loop.setAt(fraction);
       for (const { name, visible } of await clientNamesShown(page, CLIENTS)) {
         const overlap = visible.left < button.x + button.width - 1 && button.x < visible.right - 1
@@ -526,19 +553,28 @@ test('on a phone and on a desktop, when the client names grow wider while they s
     const listWidthBefore = (await list.boundingBox())!.width;
     const [firstNameBefore] = await namesLeft(list, [CLIENTS[0]]);
 
-    /* The names' font gets larger, as when a wider web font swaps in; the page then renders it. */
-    await page.addStyleTag({ content: '.clients li { font-size: 26px !important; }' });
-    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await enlargeClientNamesFont(page);
     const loopWidth = (await list.boundingBox())!.width;
     expect(loopWidth, `at ${width} px, the list grows wider with its font (from ${listWidthBefore} px)`).toBeGreaterThan(listWidthBefore * 1.2);
     const [firstNameAfter] = await namesLeft(list, [CLIENTS[0]]);
 
     /* The band loops by one list: a shift by a whole number of lists shows the same picture. */
-    const shift = (((firstNameAfter - firstNameBefore) % loopWidth) + loopWidth) % loopWidth;
-    expect.soft(Math.min(shift, loopWidth - shift), `at ${width} px, shift of "${CLIENTS[0]}" (from ${firstNameBefore} px to ${firstNameAfter} px), modulo one loop (${loopWidth} px)`)
+    expect.soft(offsetFromWholeLoops(firstNameAfter - firstNameBefore, loopWidth), `at ${width} px, shift of "${CLIENTS[0]}" (from ${firstNameBefore} px to ${firstNameAfter} px), modulo one loop (${loopWidth} px)`)
       .toBeLessThanOrEqual(3);
   }
 });
+
+/* Makes the client names' font larger, as when a wider web font swaps in, and lets the page render it. */
+async function enlargeClientNamesFont(page: Page): Promise<void> {
+  await page.addStyleTag({ content: '.clients li { font-size: 26px !important; }' });
+  await letPageRender(page);
+}
+
+/* How far `distance` lies from the nearest whole number of loops `loopWidth` long, either way. */
+function offsetFromWholeLoops(distance: number, loopWidth: number): number {
+  const remainder = ((distance % loopWidth) + loopWidth) % loopWidth;
+  return Math.min(remainder, loopWidth - remainder);
+}
 
 test('on a phone and on a desktop, when the client names grow wider after they have already looped several times (their font gets larger, as when a web font swaps in), they do not jump: the first name stays where it was, modulo one loop', async ({ page }) => {
   /* Three whole loops have run, and the band is 0.4 into the fourth. */
@@ -551,23 +587,19 @@ test('on a phone and on a desktop, when the client names grow wider after they h
     const listWidthBefore = (await list.boundingBox())!.width;
     const [firstNameBefore] = await namesLeft(list, [CLIENTS[0]]);
 
-    /* The names' font gets larger, as when a wider web font swaps in; the page then renders it. */
-    await page.addStyleTag({ content: '.clients li { font-size: 26px !important; }' });
-    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await enlargeClientNamesFont(page);
     const loopWidth = (await list.boundingBox())!.width;
     expect(loopWidth, `at ${width} px, the list grows wider with its font (from ${listWidthBefore} px)`).toBeGreaterThan(listWidthBefore * 1.2);
     /* The moment is chosen so that a jump would show: the distance the names have slid since the
        loop started (three lists and 0.4 of one) does not fall, modulo the new loop, where they
        stood within the current loop. */
     const slidSinceStart = loopsRun * listWidthBefore;
-    const slidModuloLoop = ((slidSinceStart % loopWidth) + loopWidth) % loopWidth;
-    expect(Math.min(slidModuloLoop, loopWidth - slidModuloLoop), `at ${width} px, ${loopsRun} lists of ${listWidthBefore} px, modulo the new loop (${loopWidth} px), stay away from a whole loop`)
+    expect(offsetFromWholeLoops(slidSinceStart, loopWidth), `at ${width} px, ${loopsRun} lists of ${listWidthBefore} px, modulo the new loop (${loopWidth} px), stay away from a whole loop`)
       .toBeGreaterThan(20);
     const [firstNameAfter] = await namesLeft(list, [CLIENTS[0]]);
 
     /* The band loops by one list: a shift by a whole number of lists shows the same picture. */
-    const shift = (((firstNameAfter - firstNameBefore) % loopWidth) + loopWidth) % loopWidth;
-    expect.soft(Math.min(shift, loopWidth - shift), `at ${width} px, shift of "${CLIENTS[0]}" (from ${firstNameBefore} px to ${firstNameAfter} px), modulo one loop (${loopWidth} px)`)
+    expect.soft(offsetFromWholeLoops(firstNameAfter - firstNameBefore, loopWidth), `at ${width} px, shift of "${CLIENTS[0]}" (from ${firstNameBefore} px to ${firstNameAfter} px), modulo one loop (${loopWidth} px)`)
       .toBeLessThanOrEqual(3);
   }
 });
@@ -595,16 +627,14 @@ test('on a phone and on a desktop, when the theme’s script arrives after the p
         };
       }), { message: `${where}, web fonts settled before the script runs` }).toEqual({ monoAskedFor: true, stillLoading: [] });
       /* The page renders what the visitor sees before the script runs. */
-      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await letPageRender(page);
       const bandBefore = await clientBandBox(page);
       expect(bandBefore, `${where}, before the script runs, the client band spans the page width`).not.toBeNull();
 
       /* The script arrives and runs: the names, wider than the band, start to scroll. */
       script.release();
       await page.waitForLoadState('domcontentloaded');
-      const namesBefore = await namesLeft(list, CLIENTS);
-      await letOneSecondPass(page);
-      expectNamesMovedLeft(CLIENTS, namesBefore, await namesLeft(list, CLIENTS), `${where}, once the script has run`);
+      await expectNamesMoveLeftOverOneSecond(list, CLIENTS, `${where}, once the script has run`);
 
       const bandAfter = await clientBandBox(page);
       expect(bandAfter, `${where}, once the script has run, the client band spans the page width`).not.toBeNull();
@@ -803,11 +833,9 @@ test('on a phone and on a desktop, where the clients do not fit in the band, the
     const list = await openClientList(page);
     /* The page's animations are frozen; the band's loop (the animations of the box that clips
        the names, or of what it holds) is then set to chosen moments, as a fraction of its length. */
-    await freezeAnimations(page);
-    const loop = await bandLoop(list);
-    expect(await loop.animationCount(), `${where}, the band loops`).toBeGreaterThan(0);
+    const loop = await frozenBandLoop(list, where);
 
-    for (const fraction of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.999]) {
+    for (const fraction of LOOP_MOMENTS) {
       const at = `${where}, at ${fraction * 100} % of the loop`;
       await loop.setAt(fraction);
       const shown = await clientNamesShown(page, CLIENTS);
@@ -822,15 +850,13 @@ test('on a phone and on a desktop, where the clients do not fit in the band, the
 });
 
 test('on the French home page, the client band follows a resize of the window without reloading: the names scroll at 1280 px wide, stay still, each shown once, once the window widens to 1920 px, and scroll again once it narrows back to 1280 px', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.setViewportSize(DESKTOP_VIEWPORT);
   const list = await openClientList(page);
   /* The window is resized without reloading the page; the page gets a couple of frames to lay
      itself out again. */
   const resizeTo = async (width: number, height: number) => {
     await page.setViewportSize({ width, height });
-    await page.evaluate(
-      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
-    );
+    await letPageRender(page);
   };
 
   /* Scrolling: with the page's animations frozen, so that "now" and "one second later" are read
@@ -849,12 +875,7 @@ test('on the French home page, the client band follows a resize of the window wi
   /* Widened to 1920 px, where the example site's five clients fit in the band. */
   await resizeTo(1920, 1080);
   const where = 'widened to 1920 px';
-  /* Still: one second later, as the visitor lives it (the page's own time runs, untouched),
-     every name sits where it was. */
-  const namesBefore = await namesLeft(list, CLIENTS);
-  await letOneSecondPass(page);
-  const namesAfter = await namesLeft(list, CLIENTS);
-  expectNamesStill(CLIENTS, namesBefore, namesAfter, where);
+  await expectNamesStillOverOneSecond(list, CLIENTS, where);
   const shown = await clientNamesShown(page, CLIENTS);
   for (const client of CLIENTS) {
     const copies = shown.filter((occurrence) => occurrence.name === client);
@@ -875,7 +896,7 @@ test('on the English home page, assistive technologies get the same clients once
 
 test('on the English home page, while the client names scroll, the button that pauses them is named "Pause scrolling"', async ({ page }) => {
   /* At 1280 px wide, the example site's five clients do not all fit: the band scrolls. */
-  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.setViewportSize(DESKTOP_VIEWPORT);
   await page.goto('/en/');
   await expect(page.getByRole('list', { name: 'Trusted by' })).toBeVisible();
   const pause = page.getByRole('button', { name: 'Pause scrolling', exact: true });
@@ -921,7 +942,7 @@ test.describe('home page of another site, with other clients', () => {
     await serveSite(context, SITE_WITH_OTHER_CLIENTS, siteDirectory);
     /* This site's three clients, wider than the band on a phone and on a 768 px tablet (from
        1024 px wide, they fit in it)… */
-    await expectBandWithoutGap(page, `${SITE_WITH_OTHER_CLIENTS.origin}/fr/`, [{ width: 390, height: 844 }, { width: 768, height: 1024 }]);
+    await expectBandWithoutGap(page, `${SITE_WITH_OTHER_CLIENTS.origin}/fr/`, [PHONE_VIEWPORT, { width: 768, height: 1024 }]);
     /* …and the example site's five, wider than the band on a phone and on a 1280 px desktop. */
     await expectBandWithoutGap(page, '/fr/', PHONE_AND_DESKTOP_VIEWPORTS);
   });
@@ -936,26 +957,22 @@ test.describe('home page of another site, with a single short client', () => {
     removeDirectory(siteDirectory);
   });
 
+  /* Home pages and windows where all the clients fit in the band. */
+  const ALL_CLIENTS_FIT = [
+    /* tests/fixtures/single-short-client/content/_index.md declares a single client, "Oko". */
+    { homePage: `${SITE_WITH_A_SINGLE_SHORT_CLIENT.origin}/fr/`, clients: ['Oko'], ...PHONE_VIEWPORT },
+    { homePage: `${SITE_WITH_A_SINGLE_SHORT_CLIENT.origin}/fr/`, clients: ['Oko'], ...DESKTOP_VIEWPORT },
+    /* The example site's five clients fit in the band of a 1920 px wide screen. */
+    { homePage: '/fr/', clients: CLIENTS, width: 1920, height: 1080 },
+  ];
+
   test('when all the clients fit in the band — a single short client on a phone and on a desktop, the example site’s five on a 1920 px screen — the names stay still, and each is shown once, whole: no copy of a name shows on screen', async ({ page, context }) => {
     await serveSite(context, SITE_WITH_A_SINGLE_SHORT_CLIENT, siteDirectory);
-    const cases = [
-      /* tests/fixtures/single-short-client/content/_index.md declares a single client, "Oko". */
-      { homePage: `${SITE_WITH_A_SINGLE_SHORT_CLIENT.origin}/fr/`, clients: ['Oko'], width: 390, height: 844 },
-      { homePage: `${SITE_WITH_A_SINGLE_SHORT_CLIENT.origin}/fr/`, clients: ['Oko'], width: 1280, height: 900 },
-      /* The example site's five clients fit in the band of a 1920 px wide screen. */
-      { homePage: '/fr/', clients: CLIENTS, width: 1920, height: 1080 },
-    ];
-    for (const { homePage, clients, width, height } of cases) {
+    for (const { homePage, clients, width, height } of ALL_CLIENTS_FIT) {
       const where = `on ${homePage} at ${width} px`;
       await page.setViewportSize({ width, height });
       const list = await openClientList(page, homePage);
-
-      /* Still: one second later, as the visitor lives it (the page's own time runs, untouched),
-         every name sits where it was. */
-      const namesBefore = await namesLeft(list, clients);
-      await letOneSecondPass(page);
-      const namesAfter = await namesLeft(list, clients);
-      expectNamesStill(clients, namesBefore, namesAfter, where);
+      await expectNamesStillOverOneSecond(list, clients, where);
 
       const occurrences = await clientNamesOnScreen(page, clients);
       for (const client of clients) {
@@ -972,22 +989,11 @@ test.describe('home page of another site, with a single short client', () => {
 
   test('when the client names stay still because they all fit — a single short client on a phone and on a desktop, the example site’s five on a 1920 px screen — the last name is not followed by a "|||" separator: one separates each name from the next, and none ends the list', async ({ page, context }) => {
     await serveSite(context, SITE_WITH_A_SINGLE_SHORT_CLIENT, siteDirectory);
-    const cases = [
-      /* tests/fixtures/single-short-client/content/_index.md declares a single client, "Oko". */
-      { homePage: `${SITE_WITH_A_SINGLE_SHORT_CLIENT.origin}/fr/`, clients: ['Oko'], width: 390, height: 844 },
-      { homePage: `${SITE_WITH_A_SINGLE_SHORT_CLIENT.origin}/fr/`, clients: ['Oko'], width: 1280, height: 900 },
-      /* The example site's five clients fit in the band of a 1920 px wide screen. */
-      { homePage: '/fr/', clients: CLIENTS, width: 1920, height: 1080 },
-    ];
-    for (const { homePage, clients, width, height } of cases) {
+    for (const { homePage, clients, width, height } of ALL_CLIENTS_FIT) {
       const where = `on ${homePage} at ${width} px`;
       await page.setViewportSize({ width, height });
       const list = await openClientList(page, homePage);
-
-      /* The names stay still: one second later, as the visitor lives it, every name sits where it was. */
-      const namesBefore = await namesLeft(list, clients);
-      await letOneSecondPass(page);
-      expectNamesStill(clients, namesBefore, await namesLeft(list, clients), where);
+      await expectNamesStillOverOneSecond(list, clients, where);
 
       /* On screen, in reading order, the names with a "|||" between two of them, and nothing after
          the last one (textOnScreen drops whitespace). */
@@ -999,24 +1005,16 @@ test.describe('home page of another site, with a single short client', () => {
   test('when the client names stay still — because they all fit (a single short client on a phone and on a desktop, the example site’s five on a 1920 px screen) or under prefers-reduced-motion: reduce (the example site on a phone) — the band shows no button "Mettre en pause le défilement": none on screen, none for assistive technologies, none reached from the keyboard', async ({ page, context, browserName }) => {
     await serveSite(context, SITE_WITH_A_SINGLE_SHORT_CLIENT, siteDirectory);
     const cases = [
-      /* tests/fixtures/single-short-client/content/_index.md declares a single client, "Oko". */
-      { homePage: `${SITE_WITH_A_SINGLE_SHORT_CLIENT.origin}/fr/`, clients: ['Oko'], width: 390, height: 844, reducedMotion: 'no-preference' as const },
-      { homePage: `${SITE_WITH_A_SINGLE_SHORT_CLIENT.origin}/fr/`, clients: ['Oko'], width: 1280, height: 900, reducedMotion: 'no-preference' as const },
-      /* The example site's five clients fit in the band of a 1920 px wide screen. */
-      { homePage: '/fr/', clients: CLIENTS, width: 1920, height: 1080, reducedMotion: 'no-preference' as const },
-      /* They do not fit on a phone, but the visitor asks for reduced motion. */
-      { homePage: '/fr/', clients: CLIENTS, width: 390, height: 844, reducedMotion: 'reduce' as const },
+      ...ALL_CLIENTS_FIT.map((fit) => ({ ...fit, reducedMotion: 'no-preference' as const })),
+      /* The example site's five clients do not fit on a phone, but the visitor asks for reduced motion. */
+      { homePage: '/fr/', clients: CLIENTS, ...PHONE_VIEWPORT, reducedMotion: 'reduce' as const },
     ];
     for (const { homePage, clients, width, height, reducedMotion } of cases) {
       const where = `on ${homePage} at ${width} px${reducedMotion === 'reduce' ? ', under reduced motion' : ''}`;
       await page.emulateMedia({ reducedMotion });
       await page.setViewportSize({ width, height });
       const list = await openClientList(page, homePage);
-
-      /* The names stay still: one second later, as the visitor lives it, every name sits where it was. */
-      const namesBefore = await namesLeft(list, clients);
-      await letOneSecondPass(page);
-      expectNamesStill(clients, namesBefore, await namesLeft(list, clients), where);
+      await expectNamesStillOverOneSecond(list, clients, where);
 
       /* Assistive technologies get no such button. */
       await expect.soft(page.getByRole('button', { name: 'Mettre en pause le défilement' }), `${where}, buttons "Mettre en pause le défilement" exposed to assistive technologies`).toHaveCount(0);
@@ -1089,7 +1087,7 @@ test.describe('home page of another site, with few clients with long names', () 
     await serveSite(context, SITE_WITH_LONG_CLIENT_NAMES, siteDirectory);
     /* The visitor asks for reduced motion, on a narrow phone. */
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    const { width, height } = { width: 320, height: 568 };
+    const { width, height } = NARROW_PHONE_VIEWPORT;
     await page.setViewportSize({ width, height });
     /* tests/fixtures/long-client-names/content/_index.md declares three clients whose names are
        each wider than the band of a 320 px phone. */
@@ -1108,7 +1106,7 @@ test.describe('home page of another site, with few clients with long names', () 
     await serveSite(context, SITE_WITH_LONG_CLIENT_NAMES, siteDirectory);
     /* The visitor asks for reduced motion. */
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.setViewportSize({ width: 320, height: 568 });
+    await page.setViewportSize(NARROW_PHONE_VIEWPORT);
     const list = await openClientList(page, `${SITE_WITH_LONG_CLIENT_NAMES.origin}/fr/`);
     /* A narrow phone, a common phone, a tablet and a desktop: widths where a name's last
        characters fill its line, so that a separator allowed to break off would drop onto a line
@@ -1157,7 +1155,7 @@ test.describe('home page of another site, with a client name made of a single lo
     await serveSite(context, SITE_WITH_A_ONE_WORD_CLIENT_NAME, siteDirectory);
     /* The visitor asks for reduced motion, on a narrow phone. */
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    const { width, height } = { width: 320, height: 568 };
+    const { width, height } = NARROW_PHONE_VIEWPORT;
     await page.setViewportSize({ width, height });
     /* tests/fixtures/one-word-client-name/content/_index.md declares a client whose name is a
        single word of 36 letters, without space or hyphen, wider than the band of a 320 px phone,
@@ -1180,9 +1178,7 @@ async function expectBandWithoutGap(page: Page, homePage: string, viewports: { w
     const list = await openClientList(page, homePage);
     /* The page's animations are frozen; the band's loop (the animations of the box that clips
        the names, or of what it holds) is then set to chosen moments, as a fraction of its length. */
-    await freezeAnimations(page);
-    const loop = await bandLoop(list);
-    expect(await loop.animationCount(), `${where}, the band loops`).toBeGreaterThan(0);
+    const loop = await frozenBandLoop(list, where);
 
     /* At a moment of the loop (a fraction of its length, or that length minus a fraction), the
        part of the window that clips the names, as the visitor sees it, and the box of every name
@@ -1213,7 +1209,7 @@ async function expectBandWithoutGap(page: Page, homePage: string, viewports: { w
     const start = await bandAt({ fraction: 0 });
     const usualSpace = start.names[1].left - start.names[0].right;
 
-    for (const fraction of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.999]) {
+    for (const fraction of LOOP_MOMENTS) {
       const band = await bandAt({ fraction });
       const shown = band.names.filter((name) => name.shown);
       const at = `${where}, at ${fraction * 100} % of the loop`;
@@ -1276,18 +1272,11 @@ test.describe('home page of another site, without clients', () => {
   });
 });
 
-/* These tests only run hugo build, without a browser: running them in every Playwright
-   project would repeat the same build five times. */
-const BUILD_TESTS_PROJECT = 'chromium';
-
 test.describe('client content errors: build failure', () => {
-  test.skip(
-    () => test.info().project.name !== BUILD_TESTS_PROJECT,
-    `build without a browser, identical in every project: run in ${BUILD_TESTS_PROJECT} only`,
-  );
+  runBuildTestsInOneProjectOnly();
 
   test('a home page whose clients parameter is a text instead of a list makes the site build fail, with a French error message that names the clients parameter', () => {
-    /* tests/fixtures/name-as-text/content/_index.md declares clients = 'Maison Delorme', a
+    /* tests/fixtures/text-instead-of-list/content/_index.md declares clients = 'Maison Delorme', a
        text rather than a list of names. Rather than a band built from that text, the person
        building the site must get a failure whose French message names the clients parameter
        of the front matter, in the style of the hero's messages ("le paramètre author…"),
@@ -1299,7 +1288,7 @@ test.describe('client content errors: build failure', () => {
   });
 
   test('a home page whose clients list holds an entry that is not a name makes the site build fail, with a French error message that names the clients parameter', () => {
-    /* tests/fixtures/name-as-map/content/_index.md declares clients as a list, so the check
+    /* tests/fixtures/map-instead-of-name/content/_index.md declares clients as a list, so the check
        that clients is a list lets it through, but its second entry is a table,
        { name = 'Maison Delorme' }, rather than a name. Rather than a band showing that table
        as raw text, the person building the site must get a failure whose French message names
