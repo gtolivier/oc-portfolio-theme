@@ -600,7 +600,6 @@ tick-field > canvas {
 }
 
 .clients {
-  position: relative;
   /* The space after the label, and on each side of a separator. */
   --clients-gap: 0.75rem;
   display: flex;

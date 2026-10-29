@@ -56,14 +56,20 @@ if (clientsBand && clientsWindow && clientsList && clientsTrack) {
   const update = () => {
     /* Unrounded widths: a list wider by a fraction of a pixel is cut too. The
        window has no border, padding or scrollbar: its box is what shows. */
+    const isScrolling = namesWidth(clientsList.getBoundingClientRect().width)
+      > clientsWindow.getBoundingClientRect().width + pauseButtonRoom();
+    clientsBand.classList.toggle('is-scrolling', isScrolling);
+    if (!isScrolling) {
+      loopListWidth = undefined;
+      return;
+    }
+    /* Measured once the class is on: while the names loop, the last name's separator shows too.
+       The pace is still set before the loop's first frame, so that it never starts at another one. */
     const listWidth = clientsList.getBoundingClientRect().width;
-    const isScrolling = namesWidth(listWidth) > clientsWindow.getBoundingClientRect().width + pauseButtonRoom();
-    /* The pace is set before the loop starts, so that it never starts at another one. */
-    if (isScrolling && listWidth !== loopListWidth) {
+    if (listWidth !== loopListWidth) {
       setLoopFor(listWidth);
     }
-    loopListWidth = isScrolling ? listWidth : undefined;
-    clientsBand.classList.toggle('is-scrolling', isScrolling);
+    loopListWidth = listWidth;
   };
   pauseButton?.addEventListener('click', () => {
     const isPaused = pauseButton.getAttribute('aria-pressed') !== 'true';
