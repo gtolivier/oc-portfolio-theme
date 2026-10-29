@@ -446,8 +446,9 @@ test('on phone as on desktop, on a home page with clients, the hero starts right
   expect(Math.abs(heroBox.y - headerBottom), 'the top of the hero is right below the header').toBeLessThanOrEqual(1);
 
   /* The French home page declares clients: in a window tall enough for its content, the hero
-     ends where the client band begins, and the band ends at the window's bottom. The header is two rows on a phone and one row from
-     768 px wide: checked at a phone window and at both desktop ones. */
+     ends where the client band begins, and the band ends at the window's bottom. The header is
+     two rows on a phone and one row from 768 px wide: checked at a phone window and at both
+     desktop ones. */
   for (const viewport of TALL_VIEWPORTS) {
     const size = `${viewport.width} × ${viewport.height}`;
     await openHomeAt(page, viewport);
@@ -1497,7 +1498,7 @@ test.describe('home page of a single-language site', () => {
        height, which must also hold when the web fonts never arrive. */
     test.use({ javaScriptEnabled: false });
 
-    test('on a single-language site, without JavaScript and with the web font files blocked, in a window tall enough for its content, the hero ends exactly where the client band begins and its bottom edge meets the bottom of the window, the band starting below the fold, within 1 px, on a phone as on desktop',async ({ page, context }) => {
+    test('on a single-language site, without JavaScript and with the web font files blocked, in a window tall enough for its content, the hero ends exactly where the client band begins and its bottom edge meets the bottom of the window, the band starting below the fold, within 1 px, on a phone as on desktop', async ({ page, context }) => {
       await serveSite(context, SITE_WITH_A_SINGLE_LANGUAGE, siteDirectory);
       /* The browser then renders the fallback fonts of the stacks. */
       const blockedFonts = await blockRequests(page, fontFilesUrl(SITE_WITH_A_SINGLE_LANGUAGE.origin));
