@@ -8,6 +8,7 @@ import {
   removeDirectory,
   serveSite,
 } from './helpers/built-site';
+import { blockRequests, themeScriptUrl } from './helpers/held-requests';
 import { clientBandBox, clientList, heroRegion } from './helpers/hero';
 import { textOnScreen } from './helpers/text-on-screen';
 
@@ -402,6 +403,30 @@ test.describe('home page without JavaScript', () => {
       expectNoTwoNamesOverlap(shown, where);
     }
   });
+});
+
+test('when JavaScript is on but the theme’s script does not load, on a phone, down to 320 px wide, and on a desktop, the client names stay still, and every one is shown at once, exactly once, whole, on as many lines as needed', async ({ page }) => {
+  /* The theme's bundle fails to load (a network or an extension refuses it); the page's inline
+     scripts still run. Without the script that tells whether the list fits, the names must stay
+     readable, as without JavaScript. */
+  const blockedScripts = await blockRequests(page, themeScriptUrl());
+  for (const { width, height } of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+    const where = `without the theme’s script, at ${width} px`;
+    await page.setViewportSize({ width, height });
+    const list = await openClientList(page);
+    expect(blockedScripts, 'theme script request blocked').not.toEqual([]);
+
+    /* Still: one second later, as the visitor lives it (the page's own time runs, untouched), every
+       name sits where it was. */
+    const namesBefore = await namesLeft(list, CLIENTS);
+    await page.waitForTimeout(1000);
+    const namesAfter = await namesLeft(list, CLIENTS);
+    expectNamesStill(CLIENTS, namesBefore, namesAfter, where);
+
+    const shown = (await clientNamesOnScreen(page, CLIENTS)).filter((occurrence) => occurrence.shown);
+    expectEachNameShownOnceAndWhole(shown, CLIENTS, where);
+    expectNoTwoNamesOverlap(shown, where);
+  }
 });
 
 test('under prefers-reduced-motion: reduce, on a phone and on a desktop, the client band starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window', async ({ page }) => {
