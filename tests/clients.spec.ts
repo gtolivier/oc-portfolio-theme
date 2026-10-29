@@ -95,12 +95,14 @@ interface ClientNameOnScreen {
   bottom: number;
   shown: boolean;
   whole: boolean;
+  /* The part of the box the visitor sees, once cut (empty when `shown` is false). */
+  visible: { left: number; right: number; top: number; bottom: number };
 }
 
 /* Every piece of text on the open page that reads exactly as one of `clients`, whatever the markup
    and whether assistive technologies get it or not: its box, in the window, and whether the visitor
    sees it, wholly or partly (`shown`), and whole (`whole`), once cut by every box that clips its
-   overflow and by the window's width. */
+   overflow and by the window's width, and what of it shows (`visible`). */
 function clientNamesOnScreen(page: Page, clients: string[]): Promise<ClientNameOnScreen[]> {
   return page.locator('body').evaluate((body, clients) => {
     const normalize = (text: string) => text.replace(/\s+/g, ' ').trim();
@@ -133,6 +135,7 @@ function clientNamesOnScreen(page: Page, clients: string[]): Promise<ClientNameO
         bottom: box.bottom,
         shown: right > left && bottom > top,
         whole: left <= box.left + 1 && right >= box.right - 1 && top <= box.top + 1 && bottom >= box.bottom - 1,
+        visible: { left, right, top, bottom },
       });
     }
     return found;
@@ -449,6 +452,44 @@ test('on a phone and on a desktop, while the client names scroll, pressing the b
     const namesOnceResumed = await namesLeft(list, CLIENTS);
     await letOneSecondPass(page);
     expectNamesMovedLeft(CLIENTS, namesOnceResumed, await namesLeft(list, CLIENTS), `at ${width} px, once the button is pressed again`);
+  }
+});
+
+test('on a phone and on a desktop, while the client names scroll, the button "Mettre en pause le défilement" sits at the band’s right edge and covers none of the names, at any moment of their loop', async ({ page }) => {
+  for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
+    const where = `at ${width} px`;
+    /* At these widths, the example site's five clients do not all fit: the band scrolls. */
+    await page.setViewportSize({ width, height });
+    const list = await openClientList(page);
+    const pause = page.getByRole('button', { name: 'Mettre en pause le défilement' });
+    await expect(pause, `${where}, the button "Mettre en pause le défilement" is shown`).toBeVisible();
+
+    /* The button mirrors the label: it stands as far inside the band's right edge as the label
+       stands inside its left edge (the page gutter). */
+    const band = await clientBandBox(page);
+    expect(band, `${where}, the client band spans the page width`).not.toBeNull();
+    const labelBox = await labelExtent(page, 'Ils me font confiance');
+    expect(labelBox, `${where}, the label "Ils me font confiance" is shown on screen`).not.toBeNull();
+    const button = (await pause.boundingBox())!;
+    const rightGap = band!.right - (button.x + button.width);
+    const leftGap = labelBox!.left - band!.left;
+    expect.soft(Math.abs(rightGap - leftGap), `${where}, gap between the button's right side and the band's right edge (${rightGap} px) against the gap between the label's left side and the band's left edge (${leftGap} px)`)
+      .toBeLessThanOrEqual(2);
+
+    /* The names slide under every part of the band's width: the loop is frozen and set to chosen
+       moments, as a fraction of its length, and no name the visitor sees may overlap the button. */
+    await freezeAnimations(page);
+    const loop = await bandLoop(list);
+    expect(await loop.animationCount(), `${where}, the band loops`).toBeGreaterThan(0);
+    for (const fraction of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.999]) {
+      await loop.setAt(fraction);
+      for (const { name, visible } of await clientNamesShown(page, CLIENTS)) {
+        const overlap = visible.left < button.x + button.width - 1 && button.x < visible.right - 1
+          && visible.top < button.y + button.height - 1 && button.y < visible.bottom - 1;
+        expect.soft(overlap, `${where}, at ${fraction * 100} % of the loop, what shows of "${name}" (${visible.left}–${visible.right} × ${visible.top}–${visible.bottom} px) overlaps the button (${button.x}–${button.x + button.width} × ${button.y}–${button.y + button.height} px)`)
+          .toBe(false);
+      }
+    }
   }
 });
 
