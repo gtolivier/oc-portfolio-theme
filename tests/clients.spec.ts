@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import {
   SITE_WITHOUT_HERO,
   SITE_WITH_A_SINGLE_SHORT_CLIENT,
+  SITE_WITH_LONG_CLIENT_NAMES,
   SITE_WITH_OTHER_CLIENTS,
   buildSite,
   removeDirectory,
@@ -695,6 +696,67 @@ test.describe('home page of another site, with a single short client', () => {
           expect.soft(copy.whole, `${where}, "${client}" shows whole (from ${copy.left} to ${copy.right} px)`).toBe(true);
         }
       }
+    }
+  });
+});
+
+test.describe('home page of another site, with few clients with long names', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_LONG_CLIENT_NAMES);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a phone and on a desktop, the client names scroll at the same pace whatever the clients: a few long names move about as many pixels per second as the example site’s five shorter ones', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_LONG_CLIENT_NAMES, siteDirectory);
+    /* tests/fixtures/long-client-names/content/_index.md declares three clients with long names,
+       wider together than the band on a phone and on a 1280 px desktop, like the example site's five. */
+    const sites = [
+      { homePage: '/fr/', clients: CLIENTS },
+      {
+        homePage: `${SITE_WITH_LONG_CLIENT_NAMES.origin}/fr/`,
+        clients: [
+          'Manufacture de porcelaine Vercors-Aubrac',
+          'Fonderie Castellane et fils associés',
+          'Ateliers réunis de lutherie Sainte-Odile',
+        ],
+      },
+    ];
+    for (const { width, height } of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+      await page.setViewportSize({ width, height });
+      /* The pace of each site's names, in pixels per second: how far left they move in one second. */
+      const paces: number[] = [];
+      for (const { homePage, clients } of sites) {
+        await page.goto(homePage);
+        await page.evaluate(() => document.fonts.ready);
+        const list = page.getByRole('list', { name: 'Ils me font confiance' });
+        await expect(list).toBeVisible();
+        /* The page's animations are frozen, so that "now" and "one second later" are read at known
+           times, whatever the test's own pace. */
+        await page.evaluate(() => document.getAnimations().forEach((animation) => animation.pause()));
+        const namesLeft = () =>
+          Promise.all(clients.map(async (client) => (await list.getByRole('listitem').filter({ hasText: client }).boundingBox())!.x));
+        const namesBefore = await namesLeft();
+        /* One second later. */
+        await page.evaluate(() =>
+          document.getAnimations().forEach((animation) => {
+            animation.currentTime = Number(animation.currentTime ?? 0) + 1000;
+          }),
+        );
+        const namesAfter = await namesLeft();
+        /* All the names of a site move together: their mean shift is the site's pace. */
+        const shifts = namesBefore.map((before, index) => before - namesAfter[index]);
+        paces.push(shifts.reduce((sum, shift) => sum + shift, 0) / shifts.length);
+      }
+      const [examplePace, longNamesPace] = paces;
+      expect.soft(examplePace, `at ${width} px, the example site's names move left`).toBeGreaterThan(1);
+      /* About as fast: room for rounding, not for another pace. */
+      expect.soft(longNamesPace, `at ${width} px, pace of the long names (${longNamesPace} px/s) against the example site's (${examplePace} px/s)`)
+        .toBeGreaterThanOrEqual(examplePace * 0.85);
+      expect.soft(longNamesPace, `at ${width} px, pace of the long names (${longNamesPace} px/s) against the example site's (${examplePace} px/s)`)
+        .toBeLessThanOrEqual(examplePace * 1.15);
     }
   });
 });

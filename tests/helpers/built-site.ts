@@ -168,6 +168,15 @@ export const SITE_WITH_OTHER_CLIENTS = testSite('other-clients');
    a single fictional client with a three-letter name, "Oko". */
 export const SITE_WITH_A_SINGLE_SHORT_CLIENT = testSite('single-short-client');
 
+/* The example site's French home page declares five clients with names of
+   14 to 19 characters: this site replaces that home page with the one of
+   tests/fixtures/long-client-names/content, without a hero, which declares
+   three fictional clients with names of 36 to 40 characters,
+   "Manufacture de porcelaine Vercors-Aubrac", "Fonderie Castellane et fils
+   associés" and "Ateliers réunis de lutherie Sainte-Odile", wider together
+   than the band on a phone and on a 1280 px desktop. */
+export const SITE_WITH_LONG_CLIENT_NAMES = testSite('long-client-names');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
