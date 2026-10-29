@@ -34,10 +34,10 @@ if (clientsBand && clientsWindow && clientsList && clientsTrack) {
     loopListWidth = isScrolling ? listWidth : undefined;
     clientsBand.classList.toggle('is-scrolling', isScrolling);
   };
+  const resizeObserver = new ResizeObserver(update);
   /* Without this class, once head/js.html drops theme-script-pending, the names wrap (see main.css):
      if this script never runs, they stay readable. */
   clientsBand.classList.add('is-measured');
-  const resizeObserver = new ResizeObserver(update);
   resizeObserver.observe(clientsWindow);
   /* The width of the names depends on the font: the list can change width
      on its own, when a font swaps in, while the window keeps its size. */
