@@ -705,7 +705,15 @@ tick-field > canvas {
   .clients ul {
     flex: 0 1 auto;
     flex-wrap: wrap;
+    min-width: 0;
     row-gap: 4px;
+  }
+
+  /* A name wider than the band wraps onto several lines instead of being cut. */
+  .clients li {
+    flex: 0 1 auto;
+    min-width: 0;
+    white-space: normal;
   }
 }
 
