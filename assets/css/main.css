@@ -490,9 +490,9 @@ scramble-text {
 
 /* Until the theme script has defined it, the text stays hidden rather than
    flash in clear before being scrambled. Only while head/js.html sets the
-   scramble-text-pending class: never without JavaScript, and removed once the
-   page is parsed if the element is still undefined. */
-.scramble-text-pending scramble-text:not(:defined) {
+   theme-script-pending class: never without JavaScript, and removed once the
+   page is parsed, when the script has defined the element or failed to. */
+.theme-script-pending scramble-text:not(:defined) {
   visibility: hidden;
   /* A script that never arrives nor fails would keep the text hidden for good:
      reveal it after a long wait. */
@@ -696,18 +696,18 @@ tick-field > canvas {
 @media (prefers-reduced-motion: no-preference) {
   /* Once the script runs, the names stay on one line. So that the band does
      not change height when the script runs, they stay on one line from the
-     first paint too, while head/js.html sets the clients-pending class: until
-     the page is parsed, when the deferred script has run or failed. */
-  :is(.clients-pending .clients, .clients.is-measured) .clients-track {
+     first paint too, while head/js.html sets the theme-script-pending class:
+     until the page is parsed, when the deferred script has run or failed. */
+  :is(.theme-script-pending .clients, .clients.is-measured) .clients-track {
     width: max-content;
   }
 
-  :is(.clients-pending .clients, .clients.is-measured) ul {
+  :is(.theme-script-pending .clients, .clients.is-measured) ul {
     flex: none;
     flex-wrap: nowrap;
   }
 
-  :is(.clients-pending .clients, .clients.is-measured) li {
+  :is(.theme-script-pending .clients, .clients.is-measured) li {
     flex: none;
     white-space: nowrap;
   }

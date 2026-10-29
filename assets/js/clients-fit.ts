@@ -34,7 +34,7 @@ if (clientsBand && clientsWindow && clientsList && clientsTrack) {
     loopListWidth = isScrolling ? listWidth : undefined;
     clientsBand.classList.toggle('is-scrolling', isScrolling);
   };
-  /* Without this class, once head/js.html drops clients-pending, the names wrap (see main.css):
+  /* Without this class, once head/js.html drops theme-script-pending, the names wrap (see main.css):
      if this script never runs, they stay readable. */
   clientsBand.classList.add('is-measured');
   const resizeObserver = new ResizeObserver(update);

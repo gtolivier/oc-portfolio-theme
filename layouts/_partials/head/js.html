@@ -4,14 +4,11 @@
     "sourceMap" (cond hugo.IsDevelopment "linked" "none")
   }}
   {{- with . | js.Build $opts }}
-    {{- /* Set before the body is parsed, scramble-text-pending lets main.css hide the text
-         the script will scramble. Once the document is parsed, the deferred script has run
-         or failed (to load, while running, or in the element's constructor, which leaves it
-         undefined too): if a scramble-text is still undefined, removing the class reveals it.
-         clients-pending keeps the client names on one line, as clients-fit.ts lays them out,
-         until then: by that time the script has marked the band is-measured, or the names
-         wrap again. */}}
-    <script>document.documentElement.classList.add('scramble-text-pending', 'clients-pending'); addEventListener('DOMContentLoaded', function () { if (document.querySelector('scramble-text:not(:defined)')) { document.documentElement.classList.remove('scramble-text-pending') } document.documentElement.classList.remove('clients-pending') })</script>
+    {{- /* Set before the body is parsed, theme-script-pending lets main.css lay out the page
+         as the script will (see main.css). Once the document is parsed, the deferred script
+         has run or failed (to load, while running, or in an element's constructor, which
+         leaves the element undefined): removing the class shows what it left undone. */}}
+    <script>document.documentElement.classList.add('theme-script-pending'); addEventListener('DOMContentLoaded', function () { document.documentElement.classList.remove('theme-script-pending') })</script>
     {{- if hugo.IsDevelopment }}
       <script defer src="{{ .RelPermalink }}"></script>
     {{- else }}
