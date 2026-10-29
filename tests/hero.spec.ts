@@ -408,7 +408,7 @@ test('on phone as on desktop, the second hero button, "Contact", reached by keyb
   });
 });
 
-test('on phone as on desktop, the hero starts right below the header and ends at the bottom of the window', async ({ page }) => {
+test('on phone as on desktop, on a home page with clients, the hero starts right below the header and ends where the client band begins, which it does not cover', async ({ page }) => {
   await page.goto('/fr/');
   /* The hero groups the heading, the tagline, the stack and the buttons. */
   const hero = heroRegion(page);
@@ -417,23 +417,26 @@ test('on phone as on desktop, the hero starts right below the header and ends at
   await expect(hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true })).toBeVisible();
   await expect(hero.getByRole('link', { name: 'Voir les projets' })).toBeVisible();
   await expect(hero.getByRole('link', { name: 'Contact' })).toBeVisible();
-  /* Design reference: minimum height "100vh minus the header height". Page scrolled to the
-     top: the top of the hero touches the bottom of the header, its bottom reaches at least
-     the bottom of the window. */
-  const viewportHeight = page.viewportSize()!.height;
+  /* Page scrolled to the top: the top of the hero touches the bottom of the header. */
   const headerBox = (await page.locator('header').boundingBox())!;
   const heroBox = (await hero.boundingBox())!;
   const headerBottom = headerBox.y + headerBox.height;
   expect(Math.abs(heroBox.y - headerBottom), 'the top of the hero is right below the header').toBeLessThanOrEqual(1);
-  expect(heroBox.y + heroBox.height, 'the bottom of the hero is at the bottom of the window, or lower')
-    .toBeGreaterThanOrEqual(viewportHeight - 1);
 
-  /* In a window tall enough for its content, it ends exactly there. The header is two rows on
-     a phone and one row from 768 px wide: checked at a phone window and at both desktop ones. */
+  /* The French home page declares clients: in a window tall enough for its content, the hero
+     ends where the client band begins, without passing under it. The header is two rows on a
+     phone and one row from 768 px wide: checked at a phone window and at both desktop ones. */
   for (const viewport of TALL_VIEWPORTS) {
     const size = `${viewport.width} × ${viewport.height}`;
     await openHomeAt(page, viewport);
-    await expectHeroToEndAtWindowBottom(page, viewport, size);
+    const { hero: heroAtSize } = await heroHeadingAndButtons(page, size);
+    const band = await clientBandBox(page);
+    expect.soft(band, `at ${size}, a strip holding the list "Ils me font confiance" spans the page width`).not.toBeNull();
+    if (!band) continue;
+    const box = (await heroAtSize.boundingBox())!;
+    const heroBottom = box.y + box.height;
+    expect.soft(Math.abs(heroBottom - band.top), `at ${size}, bottom of the hero (${heroBottom} px) against the top of the client band (${band.top} px)`)
+      .toBeLessThanOrEqual(1);
   }
 });
 
