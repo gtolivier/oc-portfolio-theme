@@ -98,11 +98,11 @@
     + var(--header-border-width)
   );
   /* Height of the sticky header; the first screen subtracts it from the
-     viewport so it fills the space right below the header. Once it runs, the theme
-     script replaces it with the measured height, which differs from the
-     estimate when the menu wraps. The header's own min-height reads the
-     estimate instead, so a measured height never keeps the header tall
-     after the window widens. */
+     viewport so it fills the space right below the header. Once it runs,
+     the theme script replaces it with the measured height, which differs
+     from the estimate when the menu wraps. The header's own min-height
+     reads the estimate instead, so a measured height never keeps the
+     header tall after the window widens. */
   --header-height: var(--header-estimated-height);
   /* Space left above an anchor target so the sticky header does not
      hide it: the header's height, plus some breathing room. */
@@ -607,7 +607,8 @@ tick-field > canvas {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px var(--clients-gap);
-  /* No padding on the right: the names run to the window's edge. */
+  /* No padding on the right: still names run to the window's edge; scrolling
+     ones run to the pause button, which keeps the gutter itself. */
   padding: 20px 0 20px var(--page-gutter);
   border-top: 1px solid rgb(var(--color-paper-channels) / 0.14);
   /* Not only clipping: as an item of the first screen's grid, the band would
@@ -711,24 +712,23 @@ tick-field > canvas {
      not change height when the script runs, they stay on one line from the
      first paint too, while head/js.html sets the theme-script-pending class:
      until the page is parsed, when the deferred script has run or failed. */
-  :is(.theme-script-pending .clients, .clients.is-measured) .clients-track {
+  :is(.theme-script-pending, .clients-measured) .clients-track {
     width: max-content;
   }
 
   /* One line of names: the band keeps its height, so the whole first screen,
      band included, fills the window below the header. */
-  .first-screen.has-hero:has(.clients.is-measured),
-  .theme-script-pending .first-screen.has-hero {
+  :is(.theme-script-pending, .clients-measured) .first-screen.has-hero {
     min-height: var(--window-below-header);
     grid-template-rows: 1fr auto;
   }
 
-  :is(.theme-script-pending .clients, .clients.is-measured) ul {
+  :is(.theme-script-pending, .clients-measured) .clients ul {
     flex: none;
     flex-wrap: nowrap;
   }
 
-  :is(.theme-script-pending .clients, .clients.is-measured) li {
+  :is(.theme-script-pending, .clients-measured) .clients li {
     flex: none;
     white-space: nowrap;
   }

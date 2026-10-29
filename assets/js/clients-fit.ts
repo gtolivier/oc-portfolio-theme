@@ -47,8 +47,9 @@ if (clientsBand && clientsWindow && clientsList && clientsTrack) {
   });
   const resizeObserver = new ResizeObserver(update);
   /* Without this class, once head/js.html drops theme-script-pending, the names wrap (see main.css):
-     if this script never runs, they stay readable. */
-  clientsBand.classList.add('is-measured');
+     if this script never runs, they stay readable. Like theme-script-pending, it marks the root
+     element, so that main.css also lays out the first screen around the band. */
+  document.documentElement.classList.add('clients-measured');
   resizeObserver.observe(clientsWindow);
   /* The width of the names depends on the font: the list can change width
      on its own, when a font swaps in, while the window keeps its size. */
