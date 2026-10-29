@@ -399,6 +399,97 @@ test('on a phone and on a desktop, where the clients do not fit in the band, the
   }
 });
 
+test('on the French home page, the client band follows a resize of the window without reloading: the names scroll at 1280 px wide, stay still, each shown once, once the window widens to 1920 px, and scroll again once it narrows back to 1280 px', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/fr/');
+  await page.evaluate(() => document.fonts.ready);
+  const list = page.getByRole('list', { name: 'Ils me font confiance' });
+  await expect(list).toBeVisible();
+  const namesLeft = () =>
+    Promise.all(CLIENTS.map(async (client) => (await list.getByRole('listitem').filter({ hasText: client }).boundingBox())!.x));
+  /* The window is resized without reloading the page; the page gets a couple of frames to lay
+     itself out again. */
+  const resizeTo = async (width: number, height: number) => {
+    await page.setViewportSize({ width, height });
+    await page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    );
+  };
+
+  /* Scrolling: with the page's animations frozen, so that "now" and "one second later" are read
+     at known times, the names sit further left one second later. They are let run again after. */
+  const expectNamesScroll = async (where: string) => {
+    await page.evaluate(() => document.getAnimations().forEach((animation) => animation.pause()));
+    const namesBefore = await namesLeft();
+    await page.evaluate(() =>
+      document.getAnimations().forEach((animation) => {
+        animation.currentTime = Number(animation.currentTime ?? 0) + 1000;
+      }),
+    );
+    const namesAfter = await namesLeft();
+    CLIENTS.forEach((client, index) => {
+      expect.soft(namesAfter[index], `${where}, left of "${client}" one second later, against before (${namesBefore[index]} px)`)
+        .toBeLessThan(namesBefore[index] - 1);
+    });
+    await page.evaluate(() => document.getAnimations().forEach((animation) => animation.play()));
+  };
+
+  await expectNamesScroll('at 1280 px, on arrival');
+
+  /* Widened to 1920 px, where the example site's five clients fit in the band. */
+  await resizeTo(1920, 1080);
+  const where = 'widened to 1920 px';
+  /* Still: one second later, as the visitor lives it (the page's own time runs, untouched),
+     every name sits where it was. */
+  const namesBefore = await namesLeft();
+  await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1000)));
+  const namesAfter = await namesLeft();
+  CLIENTS.forEach((client, index) => {
+    expect.soft(Math.abs(namesAfter[index] - namesBefore[index]), `${where}, horizontal shift of "${client}" over one second (from ${namesBefore[index]} px)`)
+      .toBeLessThanOrEqual(1);
+  });
+  /* Every piece of text on the page that reads exactly as a client name, whatever the markup and
+     whether assistive technologies get it or not, that the visitor sees, wholly or partly, once
+     cut by every box that clips its overflow and by the window. */
+  const shown = await page.locator('body').evaluate((body, clients) => {
+    const normalize = (text: string) => text.replace(/\s+/g, ' ').trim();
+    const found: { name: string; left: number; right: number }[] = [];
+    const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const name = normalize(node.textContent ?? '');
+      const parent = node.parentElement;
+      if (!clients.includes(name) || !parent) continue;
+      if (!parent.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const box = range.getBoundingClientRect();
+      let { left, right, top, bottom } = box;
+      for (let ancestor: Element | null = parent; ancestor && ancestor !== document.body; ancestor = ancestor.parentElement) {
+        if (getComputedStyle(ancestor).overflow === 'visible') continue;
+        const clip = ancestor.getBoundingClientRect();
+        left = Math.max(left, clip.left);
+        right = Math.min(right, clip.right);
+        top = Math.max(top, clip.top);
+        bottom = Math.min(bottom, clip.bottom);
+      }
+      left = Math.max(left, 0);
+      right = Math.min(right, document.documentElement.clientWidth);
+      if (right > left && bottom > top) found.push({ name, left: box.left, right: box.right });
+    }
+    return found;
+  }, CLIENTS);
+  for (const client of CLIENTS) {
+    const copies = shown.filter((occurrence) => occurrence.name === client);
+    /* Shown once: no copy of the name peeks in, even partly. */
+    expect.soft(copies.length, `${where}, number of times "${client}" shows on screen (${copies.map((copy) => `${copy.left}–${copy.right} px`).join(', ')})`)
+      .toBe(1);
+  }
+
+  /* Narrowed back to 1280 px, where they no longer fit: the band scrolls again. */
+  await resizeTo(1280, 900);
+  await expectNamesScroll('narrowed back to 1280 px');
+});
+
 test('on the English home page, assistive technologies get the same clients once each, in order, as the list "Trusted by"', async ({ page }) => {
   await page.goto('/en/');
   await expectClientList(page, 'Trusted by');
