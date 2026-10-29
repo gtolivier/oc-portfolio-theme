@@ -6,12 +6,17 @@ export function heroRegion(page: Page): Locator {
   return page.getByRole('main').getByRole('region', { name: /^\s*Jean Exemple/ });
 }
 
+/* The list of clients of the French home page, named by the client band's label. */
+export function clientList(page: Page): Locator {
+  return page.getByRole('list', { name: 'Ils me font confiance' });
+}
+
 /* The box, in the window, of the client band of the open home page: the visible strip that holds
    the list "Ils me font confiance", that is the list itself or its nearest ancestor that spans the
    page width (the document's client width, within 1 px) without holding the hero's heading.
    Null when no such strip exists. */
 export async function clientBandBox(page: Page): Promise<{ left: number; right: number; top: number; bottom: number } | null> {
-  const list = page.getByRole('list', { name: 'Ils me font confiance' });
+  const list = clientList(page);
   await expect(list).toBeVisible();
   return list.evaluate((element) => {
     const pageWidth = document.documentElement.clientWidth;
