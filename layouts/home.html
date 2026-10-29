@@ -1,4 +1,5 @@
 {{ define "main" }}
+  {{- if or .Params.hero .Params.clients }}
   <div class="first-screen">
     {{- with .Params.hero }}
     {{- if not site.Params.author }}{{ errorf "hero : le paramètre author du site n’est pas renseigné" }}{{ end }}
@@ -47,5 +48,6 @@
     </div>
     {{- end }}
   </div>
+  {{- end }}
   {{ .Content }}
 {{ end }}

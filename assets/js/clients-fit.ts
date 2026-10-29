@@ -18,8 +18,11 @@ if (clientsBand && clientsWindow && clientsList && clientsTrack) {
     clientsBand.classList.toggle('is-still', isStill);
     if (!isStill) keepPace();
   };
-  new ResizeObserver(update).observe(clientsWindow);
-  /* The width of the names depends on the font. */
+  const resizeObserver = new ResizeObserver(update);
+  resizeObserver.observe(clientsWindow);
+  /* The width of the names depends on the font: the list can change width
+     on its own, when a font swaps in, while the window keeps its size. */
+  resizeObserver.observe(clientsList);
   void document.fonts.ready.then(update);
   update();
 }

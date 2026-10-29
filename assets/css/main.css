@@ -620,9 +620,11 @@ tick-field > canvas {
 }
 
 /* The label shown before the names repeats the list's accessible name, so it
-   gets an empty alternative text: assistive technologies read it once. On a
+   gets an empty alternative text: assistive technologies read it once (the
+   first declaration is a fallback for browsers without that syntax). On a
    phone it takes its own line above the names. */
 .clients::before {
+  content: attr(data-label);
   content: attr(data-label) / "";
   flex-basis: 100%;
   font-size: 12.5px;
@@ -669,8 +671,10 @@ tick-field > canvas {
 }
 
 /* Each client name is followed by a decorative separator, which assistive
-   technologies do not get (empty alternative text). */
+   technologies do not get (empty alternative text; the first declaration is
+   a fallback for browsers without that syntax). */
 .clients li::after {
+  content: "|||";
   content: "|||" / "";
   margin-left: var(--clients-gap);
 }
