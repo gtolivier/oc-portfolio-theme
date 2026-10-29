@@ -5,6 +5,11 @@ export function themeScriptUrl(origin = '**'): string {
   return `${origin}/js/main*.js`;
 }
 
+/* The URL of the theme's stylesheet, fingerprinted or not, on any origin or on the given one. */
+export function themeStylesheetUrl(origin = '**'): string {
+  return `${origin}/css/main*.css`;
+}
+
 /* The URL of any font file, on any origin or on the given one. */
 export function fontFilesUrl(origin = '**'): string {
   return `${origin}/**/*.{woff,woff2,ttf,otf}`;

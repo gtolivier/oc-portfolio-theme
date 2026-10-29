@@ -10,7 +10,7 @@ import {
   serveSite,
 } from './helpers/built-site';
 import { clientBandBox, clientList } from './helpers/clients';
-import { blockRequests, themeScriptUrl } from './helpers/held-requests';
+import { blockRequests, themeScriptUrl, themeStylesheetUrl } from './helpers/held-requests';
 import { heroRegion } from './helpers/hero';
 import { textOnScreen } from './helpers/text-on-screen';
 
@@ -472,6 +472,20 @@ test('when JavaScript is on but the theme’s script does not load, on a phone a
   const blockedScripts = await blockRequests(page, themeScriptUrl());
   await expectBandBelowTheFold(page);
   expect(blockedScripts, 'theme script request blocked').not.toEqual([]);
+});
+
+test('when the theme’s stylesheet does not load, each client name appears once on the page', async ({ page }) => {
+  /* The stylesheet fails to load (a network or an extension refuses it), or the visitor reads the
+     page unstyled (reader mode, text browser): the copy of the list that makes the band loop must
+     not show, so that each name reads once. */
+  const blockedStylesheets = await blockRequests(page, themeStylesheetUrl());
+  await openClientList(page);
+  expect(blockedStylesheets, 'theme stylesheet request blocked').not.toEqual([]);
+
+  const shown = await clientNamesShown(page, CLIENTS);
+  for (const client of CLIENTS) {
+    expect.soft(shown.filter((occurrence) => occurrence.name === client).length, `number of times "${client}" shows on the unstyled page`).toBe(1);
+  }
 });
 
 test('under prefers-reduced-motion: reduce, on a phone and on a desktop, the client band starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window', async ({ page }) => {
