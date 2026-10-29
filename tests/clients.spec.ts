@@ -405,6 +405,42 @@ test('under prefers-reduced-motion: reduce, on a phone and on a desktop, the cli
   }
 });
 
+test('under prefers-reduced-motion: reduce, on a phone held in landscape (844 × 390), a hero taller than the window below the header grows with its content and pushes the client band down: all of the hero’s content ends above the band', async ({ page }) => {
+  /* The visitor asks for reduced motion, on a phone turned sideways: a window too short for the
+     hero's content. */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const { width, height } = { width: 844, height: 390 };
+  const size = `${width} × ${height}`;
+  await page.setViewportSize({ width, height });
+  await page.goto('/fr/');
+  await page.evaluate(() => document.fonts.ready);
+  const hero = heroRegion(page);
+  /* The hero's content, from its heading down to its buttons, the last thing it shows. */
+  const content = [
+    hero.getByRole('heading', { level: 1 }),
+    hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
+    hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
+    hero.getByRole('link', { name: 'Voir les projets' }),
+    hero.getByRole('link', { name: 'Contact' }),
+  ];
+  for (const part of content) await expect(part, `hero content at ${size}`).toBeVisible();
+  const band = await clientBandBox(page);
+  expect(band, `at ${size}, a strip holding the list "Ils me font confiance" spans the page width`).not.toBeNull();
+
+  /* Page scrolled to the top: the hero's content is taller than the window below the header. */
+  const headerBox = (await page.locator('header').boundingBox())!;
+  const headerBottom = headerBox.y + headerBox.height;
+  const boxes = await Promise.all(content.map(async (part) => (await part.boundingBox())!));
+  const contentTop = Math.min(...boxes.map((box) => box.y));
+  const contentBottom = Math.max(...boxes.map((box) => box.y + box.height));
+  expect(contentBottom - contentTop, `at ${size}, height of the hero's content, against ${Math.round(height - headerBottom)} px of window below the header`)
+    .toBeGreaterThan(height - headerBottom);
+
+  /* The band follows the hero's content instead of being drawn over it. */
+  expect(contentBottom, `at ${size}, bottom of the hero's content against the top of the client band (${band!.top} px)`)
+    .toBeLessThanOrEqual(band!.top);
+});
+
 test('on a phone, down to 320 px wide, and on a desktop, the client band never makes the page scroll horizontally, at any moment of its loop', async ({ page }) => {
   for (const { width, height } of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1280, height: 900 }]) {
     await page.setViewportSize({ width, height });
