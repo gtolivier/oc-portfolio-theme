@@ -3,6 +3,7 @@ import {
   SITE_WITHOUT_HERO,
   SITE_WITH_A_SINGLE_SHORT_CLIENT,
   SITE_WITH_LONG_CLIENT_NAMES,
+  SITE_WITH_A_ONE_WORD_CLIENT_NAME,
   SITE_WITH_OTHER_CLIENTS,
   buildSite,
   removeDirectory,
@@ -797,6 +798,32 @@ test.describe('home page of another site, with few clients with long names', () 
           .toBeLessThanOrEqual(name.lastLineBottom + name.lastLineHeight / 2);
       }
     }
+  });
+});
+
+test.describe('home page of another site, with a client name made of a single long word', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_ONE_WORD_CLIENT_NAME);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('under prefers-reduced-motion: reduce, on a 320 × 568 phone, a client name made of a single word wider than the band breaks onto several lines instead of being cut: every name is shown whole, inside the window', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_ONE_WORD_CLIENT_NAME, siteDirectory);
+    /* The visitor asks for reduced motion, on a narrow phone. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const { width, height } = { width: 320, height: 568 };
+    await page.setViewportSize({ width, height });
+    /* tests/fixtures/one-word-client-name/content/_index.md declares a client whose name is a
+       single word of 36 letters, without space or hyphen, wider than the band of a 320 px phone,
+       and a short one. */
+    const clients = ['Kunstschmiedewerkstattgenossenschaft', 'Atelier Bonnefoy'];
+    await openClientList(page, `${SITE_WITH_A_ONE_WORD_CLIENT_NAME.origin}/fr/`);
+    /* Shown whole: nothing of a name is cut by the band or runs past the window's right edge. */
+    const shown = await clientNamesShown(page, clients);
+    expectEachNameShownOnceAndWhole(shown, clients, `at ${width} × ${height}`);
   });
 });
 

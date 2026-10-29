@@ -183,6 +183,14 @@ export const SITE_WITH_LONG_CLIENT_NAMES = testSite('long-client-names');
    without params.clients, so that its first screen holds the hero alone. */
 export const SITE_WITH_A_HERO_WITHOUT_CLIENTS = testSite('hero-without-clients');
 
+/* The example site's French home page declares five clients whose names
+   are made of short words: this site replaces that home page with the one
+   of tests/fixtures/one-word-client-name/content, without a hero, which
+   declares two fictional clients, "Kunstschmiedewerkstattgenossenschaft",
+   a single word of 36 letters, without space or hyphen, wider than the
+   band of a 320 px phone, and "Atelier Bonnefoy". */
+export const SITE_WITH_A_ONE_WORD_CLIENT_NAME = testSite('one-word-client-name');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
