@@ -1,4 +1,4 @@
-import { test, expect, type JSHandle, type Locator, type Page } from '@playwright/test';
+import { test, expect, chromium, type JSHandle, type Locator, type Page } from '@playwright/test';
 import {
   SITE_WITHOUT_HERO,
   SITE_WITH_A_SINGLE_SHORT_CLIENT,
@@ -466,6 +466,31 @@ test('on a touch screen, after a tap on the scrolling client band, the names kee
   /* The visitor taps the middle of the band. */
   await page.touchscreen.tap((band.left + band.right) / 2, (band.top + band.bottom) / 2);
   await expectNamesMoveLeftOverOneSecond(list, CLIENTS, 'after a tap on the band');
+});
+
+test('on a laptop whose main pointer is a mouse but that also has a touch screen, after a tap on the scrolling client band, the names keep moving: one second later, they sit further left', async ({ browserName, isMobile, baseURL }) => {
+  test.skip(browserName !== 'chromium' || isMobile, 'emulating such a laptop needs desktop Chromium');
+  /* A Chromium of its own, that reports a fine main pointer that can hover, plus a coarse one (the
+     touch screen). Its context has no hasTouch, which would override these settings. */
+  const laptop = await chromium.launch({
+    args: ['--blink-settings=availablePointerTypes=6,primaryPointerType=4,availableHoverTypes=3,primaryHoverType=2'],
+  });
+  try {
+    /* At 1280 px wide, the example site's five clients do not all fit: the band scrolls. */
+    const context = await laptop.newContext({ baseURL, viewport: DESKTOP_VIEWPORT });
+    const page = await context.newPage();
+    const list = await openClientList(page);
+    const band = await bringBandIntoView(list);
+
+    /* The visitor taps the middle of the band, on the touch screen. */
+    const touchPoint = { x: (band.left + band.right) / 2, y: (band.top + band.bottom) / 2 };
+    const session = await context.newCDPSession(page);
+    await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [touchPoint] });
+    await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expectNamesMoveLeftOverOneSecond(list, CLIENTS, 'after a tap on the band');
+  } finally {
+    await laptop.close();
+  }
 });
 
 test('on a phone and on a desktop, while the client names scroll, pressing the button "Mettre en pause le défilement" stops them: one second later, they sit where they were; pressing it again makes them move left again', async ({ page }) => {
