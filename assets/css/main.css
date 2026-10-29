@@ -618,7 +618,12 @@ tick-field > canvas {
 
 @media (min-width: 768px) {
   .clients {
+    flex-wrap: nowrap;
     height: var(--clients-band-height);
+  }
+
+  .clients li {
+    flex: none;
   }
 
   .clients::before {
