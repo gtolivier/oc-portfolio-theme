@@ -1010,6 +1010,69 @@ test.describe('home page of another site, with other clients', () => {
     /* …and the example site's five, wider than the band on a phone and on a 1280 px desktop. */
     await expectBandWithoutGap(page, '/fr/', PHONE_AND_DESKTOP_VIEWPORTS);
   });
+
+  test('on a phone and on a desktop, when the client names stay still because they all fit, including at a width where they only just fit, the last name ends at least as far inside the band’s right edge as the label "Ils me font confiance" stands inside its left edge', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_OTHER_CLIENTS, siteDirectory);
+    const sites = [
+      /* This site's three clients fit in the band of a phone layout (below 768 px, the label above
+         the names) 767 px wide… */
+      {
+        homePage: `${SITE_WITH_OTHER_CLIENTS.origin}/fr/`,
+        clients: ['Reliure Marchetti', 'Atelier Bonnefoy', 'Librairie Castagne'],
+        reference: { width: 767, height: 1024 },
+      },
+      /* …and the example site's five, in that of a 1920 px wide desktop. */
+      { homePage: '/fr/', clients: CLIENTS, reference: { width: 1920, height: 1080 } },
+    ];
+    for (const { homePage, clients, reference } of sites) {
+      const lastClient = clients.at(-1)!;
+      /* Whether the names stay still at `width` and, if they do, the band's edges, where the label
+         starts and where the last name's text ends (not its separator nor its margin). */
+      const readBand = async (width: number, height: number) => {
+        await page.setViewportSize({ width, height });
+        const list = await openClientList(page, homePage);
+        const namesBefore = await namesLeft(list, clients);
+        await letOneSecondPass(page);
+        const namesAfter = await namesLeft(list, clients);
+        const still = namesBefore.every((before, index) => Math.abs(namesAfter[index] - before) <= 1);
+        const band = await clientBandBox(page);
+        expect(band, `on ${homePage} at ${width} px, the client band spans the page width`).not.toBeNull();
+        const label = await labelExtent(page, 'Ils me font confiance');
+        expect(label, `on ${homePage} at ${width} px, the label "Ils me font confiance" is shown on screen`).not.toBeNull();
+        const lastName = (await clientNamesShown(page, [lastClient]))[0];
+        const pageWidthShortfall = width - (await page.evaluate(() => document.documentElement.clientWidth));
+        return { still, band: band!, label: label!, lastNameRight: lastName?.right, pageWidthShortfall };
+      };
+
+      /* At the reference width, the names fit with room to spare: they stay still. Within a layout
+         (phone or desktop), what comes before the names does not change width, so the last name
+         ends at the same place whatever the window's width, as long as they stay still. */
+      const atReference = await readBand(reference.width, reference.height);
+      expect(atReference.still, `on ${homePage} at ${reference.width} px, the names stay still`).toBe(true);
+      const gutter = atReference.label.left - atReference.band.left;
+      const lastNameRight = atReference.lastNameRight!;
+      /* Widths where the names only just fit: the window's right edge stands half a gutter after
+         the end of the last name, or just over one gutter after it. */
+      const justFitWidths = [
+        Math.round(lastNameRight + gutter / 2 + atReference.pageWidthShortfall),
+        Math.ceil(lastNameRight + gutter + atReference.pageWidthShortfall) + 1,
+      ];
+
+      let stillJustFitWidths = 0;
+      for (const width of [reference.width, ...justFitWidths]) {
+        const { still, band, label, lastNameRight: right } = width === reference.width ? atReference : await readBand(width, reference.height);
+        if (!still) continue;
+        if (width !== reference.width) stillJustFitWidths++;
+        const leftGap = label.left - band.left;
+        const rightGap = band.right - right!;
+        expect.soft(rightGap, `on ${homePage} at ${width} px, with the names still, gap between the end of "${lastClient}" (${right} px) and the band's right edge (${band.right} px), against the gap between the label's left side and the band's left edge (${leftGap} px)`)
+          .toBeGreaterThanOrEqual(leftGap - 1);
+      }
+      /* The relation is checked where it matters most: at a width where the names only just fit. */
+      expect.soft(stillJustFitWidths, `on ${homePage}, widths among ${justFitWidths.join(' and ')} px where the names only just fit and stay still`)
+        .toBeGreaterThan(0);
+    }
+  });
 });
 
 test.describe('home page of another site, with a single short client', () => {
