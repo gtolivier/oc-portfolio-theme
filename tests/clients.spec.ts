@@ -187,6 +187,28 @@ test('on a phone and on a desktop, the client names move continuously to the lef
   }
 });
 
+test('on a phone, down to 320 px wide, and on a desktop, the client band never makes the page scroll horizontally, at any moment of its loop', async ({ page }) => {
+  for (const { width, height } of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/fr/');
+    await page.evaluate(() => document.fonts.ready);
+    const list = page.getByRole('list', { name: 'Ils me font confiance' });
+    await expect(list).toBeVisible();
+    /* The page's animations are frozen, then set to chosen moments of their loop, as a fraction of its length. */
+    await page.evaluate(() => document.getAnimations().forEach((animation) => animation.pause()));
+    for (const fraction of [0, 0.25, 0.5, 0.75, 0.999]) {
+      const pageWidth = await page.evaluate((fraction) => {
+        for (const animation of document.getAnimations()) {
+          animation.currentTime = Number(animation.effect!.getComputedTiming().duration) * fraction;
+        }
+        return document.documentElement.scrollWidth;
+      }, fraction);
+      expect.soft(pageWidth, `at ${width} px, at ${fraction * 100} % of the loop, width of the page content`)
+        .toBeLessThanOrEqual(width);
+    }
+  }
+});
+
 test('on the English home page, assistive technologies get the same clients once each, in order, as the list "Trusted by"', async ({ page }) => {
   await page.goto('/en/');
   await expectClientList(page, 'Trusted by');
