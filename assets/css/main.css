@@ -710,7 +710,7 @@ tick-field > canvas {
 @media (prefers-reduced-motion: reduce) {
   .first-screen:has(> .hero) {
     min-height: 0;
-    grid-template-rows: var(--window-below-header) auto;
+    grid-template-rows: minmax(var(--window-below-header), auto) auto;
   }
 }
 
