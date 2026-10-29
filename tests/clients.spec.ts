@@ -486,28 +486,6 @@ test('on a phone and on a desktop, while the client names scroll, pressing the b
   }
 });
 
-test('on a desktop with a mouse, while the client names scroll, clicking the button "Mettre en pause le défilement" stops them: one second later, they sit where they were; clicking it again makes them move left again, while the pointer still rests on the button', async ({ page, hasTouch }) => {
-  test.skip(hasTouch, 'a pointer resting on the button needs a fine pointer; touch screens have none');
-  /* At 1280 px wide, the example site's five clients do not all fit: the band scrolls. */
-  await page.setViewportSize(DESKTOP_VIEWPORT);
-  const list = await openClientList(page);
-  const pause = page.getByRole('button', { name: 'Mettre en pause le défilement' });
-  await expect(pause, 'the page has one button "Mettre en pause le défilement"').toHaveCount(1);
-
-  /* The visitor clicks the middle of the button with the mouse: the pointer stays where it
-     clicked, on the button, inside the band. */
-  await bringBandIntoView(list);
-  const button = (await pause.boundingBox())!;
-  const middle = { x: button.x + button.width / 2, y: button.y + button.height / 2 };
-  await page.mouse.click(middle.x, middle.y);
-  await expectNamesStillOverOneSecond(list, CLIENTS, 'once the button is clicked');
-
-  /* The visitor clicks it again without moving the pointer: the second click lands on the same
-     button, whatever it is named once clicked, and the pointer still rests on it afterwards. */
-  await page.mouse.click(middle.x, middle.y);
-  await expectNamesMoveLeftOverOneSecond(list, CLIENTS, 'once the button is clicked again, the pointer still on it');
-});
-
 test('on a phone and on a desktop, while the client names scroll, the button "Mettre en pause le défilement" stands as far inside the band’s right edge as the label "Ils me font confiance" stands inside its left edge, and covers none of the names, at any moment of their loop', async ({ page }) => {
   for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
     const where = `at ${width} px`;

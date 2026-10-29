@@ -800,13 +800,6 @@ tick-field > canvas {
     .clients.is-scrolling:hover .clients-track {
       animation-play-state: paused;
     }
-
-    /* While the pointer rests on the pause button, the button alone decides.
-       A rule of its own, more specific than the one above: a browser without
-       :has() drops only this exception, and keeps the pause on hover. */
-    .clients.is-scrolling:has(.clients-pause:hover) .clients-track:not(.is-paused) {
-      animation-play-state: running;
-    }
   }
 }
 
