@@ -673,6 +673,7 @@ tick-field > canvas {
   min-width: 0;
   margin-right: var(--clients-gap);
   white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* Each client name is followed by a decorative separator, which assistive
