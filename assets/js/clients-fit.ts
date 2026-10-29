@@ -18,13 +18,20 @@ if (clientsBand && clientsWindow && clientsList && clientsTrack) {
     clientsTrack.style.animationDuration = `${seconds}s`;
     if (loop && progress != null) loop.currentTime = progress * seconds * MILLISECONDS_PER_SECOND;
   };
+  /* The list width the running loop's duration was set for; undefined while the names are still.
+     Resizing the window fires the observer every frame: the loop is left alone (no style write,
+     no seek) unless it starts or the list changes width. */
+  let loopListWidth: number | undefined;
   const update = () => {
     /* Unrounded widths: a list wider by a fraction of a pixel is cut too. The
        window has no border, padding or scrollbar: its box is what shows. */
     const listWidth = clientsList.getBoundingClientRect().width;
     const isScrolling = listWidth > clientsWindow.getBoundingClientRect().width;
     /* The pace is set before the loop starts, so that it never starts at another one. */
-    if (isScrolling) setLoopDuration(listWidth / CLIENTS_PACE_PX_PER_SECOND);
+    if (isScrolling && listWidth !== loopListWidth) {
+      setLoopDuration(listWidth / CLIENTS_PACE_PX_PER_SECOND);
+    }
+    loopListWidth = isScrolling ? listWidth : undefined;
     clientsBand.classList.toggle('is-scrolling', isScrolling);
   };
   /* Without this class, once head/js.html drops clients-pending, the names wrap (see main.css):
