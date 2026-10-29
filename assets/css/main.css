@@ -627,6 +627,10 @@ tick-field > canvas {
   content: attr(data-label);
   content: attr(data-label) / "";
   flex-basis: 100%;
+  /* Wraps on a narrow phone when the visitor enlarged the text, instead of
+     being cut by the band. */
+  white-space: normal;
+  overflow-wrap: anywhere;
   font-size: 12.5px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
