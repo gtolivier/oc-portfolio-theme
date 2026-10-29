@@ -13,7 +13,7 @@ import {
   tryToBuildSite,
 } from './helpers/built-site';
 import { clientBandBox, clientList } from './helpers/clients';
-import { blockRequests, themeScriptUrl, themeStylesheetUrl } from './helpers/held-requests';
+import { blockRequests, holdRequests, themeScriptUrl, themeStylesheetUrl } from './helpers/held-requests';
 import { heroRegion } from './helpers/hero';
 import { textOnScreen } from './helpers/text-on-screen';
 
@@ -449,6 +449,50 @@ test('on a phone and on a desktop, when the client names grow wider while they s
     const shift = (((firstNameAfter - firstNameBefore) % loopWidth) + loopWidth) % loopWidth;
     expect.soft(Math.min(shift, loopWidth - shift), `at ${width} px, shift of "${CLIENTS[0]}" (from ${firstNameBefore} px to ${firstNameAfter} px), modulo one loop (${loopWidth} px)`)
       .toBeLessThanOrEqual(3);
+  }
+});
+
+test('on a phone and on a desktop, when the theme’s script arrives after the page is first shown, the client band keeps the height it had before the script ran, while the names start to scroll', async ({ page }) => {
+  for (const { width, height } of PHONE_AND_DESKTOP_VIEWPORTS) {
+    const where = `at ${width} px`;
+    await page.setViewportSize({ width, height });
+    /* The theme's bundle is held back, as on a very slow connection: the page is parsed and shown
+       before it arrives. */
+    const script = await holdRequests(page, themeScriptUrl());
+    try {
+      await page.goto('/fr/', { waitUntil: 'commit' });
+      await script.requested;
+      const list = clientList(page);
+      await expect(list).toBeVisible();
+      /* The band's font is the final one. Not through `document.fonts.status`: Firefox keeps it
+         loading while the page waits for its deferred script. Waits instead until the page has
+         asked for IBM Plex Mono, the band's font, and none of its web fonts is still loading. */
+      await expect.poll(() => page.evaluate(() => {
+        const faces = [...document.fonts];
+        return {
+          monoAskedFor: faces.some((face) => /mono/i.test(face.family) && face.status !== 'unloaded'),
+          stillLoading: faces.filter((face) => face.status === 'loading').map((face) => face.family),
+        };
+      }), { message: `${where}, web fonts settled before the script runs` }).toEqual({ monoAskedFor: true, stillLoading: [] });
+      /* The page renders what the visitor sees before the script runs. */
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const bandBefore = await clientBandBox(page);
+      expect(bandBefore, `${where}, before the script runs, the client band spans the page width`).not.toBeNull();
+
+      /* The script arrives and runs: the names, wider than the band, start to scroll. */
+      script.release();
+      await page.waitForLoadState('domcontentloaded');
+      const namesBefore = await namesLeft(list, CLIENTS);
+      await letOneSecondPass(page);
+      expectNamesMovedLeft(CLIENTS, namesBefore, await namesLeft(list, CLIENTS), `${where}, once the script has run`);
+
+      const bandAfter = await clientBandBox(page);
+      expect(bandAfter, `${where}, once the script has run, the client band spans the page width`).not.toBeNull();
+      expect.soft(Math.abs((bandAfter!.bottom - bandAfter!.top) - (bandBefore!.bottom - bandBefore!.top)), `${where}, change in the band's height once the script has run (from ${bandBefore!.bottom - bandBefore!.top} px to ${bandAfter!.bottom - bandAfter!.top} px)`)
+        .toBeLessThanOrEqual(1);
+    } finally {
+      await script.end();
+    }
   }
 });
 

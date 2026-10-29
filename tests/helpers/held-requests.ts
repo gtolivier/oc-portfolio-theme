@@ -18,8 +18,12 @@ export function fontFilesUrl(origin = '**'): string {
 export interface HeldRequests {
   /* Settles once the page has asked for a matching resource: its request is then held. */
   requested: Promise<void>;
+  /* Lets the held requests through, and any later one, as when the slow resource finally arrives:
+     the page's next route (such as the one serving a built site) or the server answers them. To
+     follow with `end`, in a `finally`, which then only removes the route. */
+  release(): void;
   /* Ends the hold, once the test has checked what it needs: the held requests fail, as if the
-     connection dropped, and the route holding them is removed, the page's other routes left in
+     connection dropped (unless `release` let them through first), and the route holding them is removed, the page's other routes left in
      place, without failing on a request still in flight as the test ends. Not letting them
      through: a page route removed while its request is held hands that request back to the
      browser, so a context route, such as the one serving a built site, would then answer a
@@ -28,10 +32,11 @@ export interface HeldRequests {
 }
 
 /* Holds back every request of the page to `url`, as on a very slow connection, until the test
-   ends the hold. */
+   releases or ends the hold. */
 export async function holdRequests(page: Page, url: string): Promise<HeldRequests> {
-  let endHold!: () => void;
-  const holdEnded = new Promise<void>((resolve) => {
+  /* How the hold ends: the first of `release` and `end` called decides. */
+  let endHold!: (outcome: 'released' | 'failed') => void;
+  const holdEnded = new Promise<'released' | 'failed'>((resolve) => {
     endHold = resolve;
   });
   let markRequested!: () => void;
@@ -40,15 +45,20 @@ export async function holdRequests(page: Page, url: string): Promise<HeldRequest
   });
   const hold = async (route: Route): Promise<void> => {
     markRequested();
-    await holdEnded;
-    /* A request still in flight as the test ends, its page closing, cannot be aborted any more. */
-    await route.abort().catch(() => {});
+    const outcome = await holdEnded;
+    /* A request still in flight as the test ends, its page closing, cannot be handled any more. */
+    if (outcome === 'released') {
+      await route.fallback().catch(() => {});
+    } else {
+      await route.abort().catch(() => {});
+    }
   };
   await page.route(url, hold);
   return {
     requested,
+    release: () => endHold('released'),
     end: async () => {
-      endHold();
+      endHold('failed');
       await page.unroute(url, hold);
     },
   };
