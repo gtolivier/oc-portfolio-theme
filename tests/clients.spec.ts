@@ -661,6 +661,25 @@ test.describe('home page of another site, with few clients with long names', () 
         .toBeLessThanOrEqual(examplePace * 1.15);
     }
   });
+
+  test('under prefers-reduced-motion: reduce, on a 320 × 568 phone, a client name wider than the band wraps onto several lines instead of being cut: every long name is shown whole, inside the window', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_LONG_CLIENT_NAMES, siteDirectory);
+    /* The visitor asks for reduced motion, on a narrow phone. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const { width, height } = { width: 320, height: 568 };
+    await page.setViewportSize({ width, height });
+    /* tests/fixtures/long-client-names/content/_index.md declares three clients whose names are
+       each wider than the band of a 320 px phone. */
+    const clients = [
+      'Manufacture de porcelaine Vercors-Aubrac',
+      'Fonderie Castellane et fils associés',
+      'Ateliers réunis de lutherie Sainte-Odile',
+    ];
+    await openClientList(page, `${SITE_WITH_LONG_CLIENT_NAMES.origin}/fr/`);
+    /* Shown whole: nothing of a name is cut by the band or runs past the window's right edge. */
+    const shown = (await clientNamesOnScreen(page, clients)).filter((occurrence) => occurrence.shown);
+    expectEachNameShownOnceAndWhole(shown, clients, `at ${width} × ${height}`);
+  });
 });
 
 /* Checks, at each of the `viewports` sizes (where the list is wider than the band), that the
