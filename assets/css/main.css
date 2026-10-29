@@ -799,11 +799,17 @@ tick-field > canvas {
   }
 
   /* The names stop while the pointer rests on the band. On a touch screen,
-     a tap leaves :hover stuck: the names keep moving. The pause button
-     alone decides while the pointer rests on it. */
+     a tap leaves :hover stuck: the names keep moving. */
   @media (hover: hover) {
-    .clients.is-scrolling:hover:not(:has(.clients-pause:hover)) .clients-track {
+    .clients.is-scrolling:hover .clients-track {
       animation-play-state: paused;
+    }
+
+    /* While the pointer rests on the pause button, the button alone decides.
+       A rule of its own, more specific than the one above: a browser without
+       :has() drops only this exception, and keeps the pause on hover. */
+    .clients.is-scrolling:has(.clients-pause:hover) .clients-track:not(.is-paused) {
+      animation-play-state: running;
     }
   }
 }
