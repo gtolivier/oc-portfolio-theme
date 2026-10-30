@@ -843,14 +843,26 @@ tick-field > canvas {
   position: relative;
 }
 
-/* Short ticks in rows: vertical strokes, shown only in bands of 6px out of
-   every 12px. */
+/* Short ticks in rows: vertical strokes across the whole vignette, masked so
+   that only horizontal bands of them show. */
 .project-vignette::before {
+  --vignette-tick-width: 2px;
+  --vignette-tick-pitch: 8px;
+  --vignette-tick-length: 6px;
+  --vignette-row-pitch: 12px;
   content: "";
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(90deg, var(--color-accent) 0 2px, transparent 2px 8px);
-  mask: repeating-linear-gradient(180deg, #000 0 6px, transparent 6px 12px);
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-accent) 0 var(--vignette-tick-width),
+    transparent var(--vignette-tick-width) var(--vignette-tick-pitch)
+  );
+  mask: repeating-linear-gradient(
+    180deg,
+    #000 0 var(--vignette-tick-length),
+    transparent var(--vignette-tick-length) var(--vignette-row-pitch)
+  );
 }
 
 .project-link {
