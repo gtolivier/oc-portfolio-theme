@@ -328,6 +328,44 @@ export function tryToBuildSite(site: BuiltSite): BuildAttempt {
   }
 }
 
+/* Builds the example site as it is, without a fixture, asking Hugo to warn
+   about every translation key a page uses that a language lacks
+   (--printI18nWarnings), and returns those warnings, one per missing key and
+   language, as Hugo words them ("i18n|MISSING_TRANSLATION|en|someKey").
+   Like tryToBuildSite, it throws if Hugo does not exit normally, and also if
+   the build fails, so that an empty list always means a complete build. */
+export function findMissingTranslations(): string[] {
+  const destination = mkdtempSync(path.join(tmpdir(), 'oc-portfolio-translations-'));
+  try {
+    const result = spawnSync(
+      'hugo',
+      [
+        'build',
+        '--source', 'exampleSite',
+        '--environment', 'production',
+        '--destination', destination,
+        '--noBuildLock',
+        '--printI18nWarnings',
+        '--logLevel', 'warn',
+      ],
+      { cwd: themeRoot, encoding: 'utf8', timeout: MAX_BUILD_DURATION_IN_MS },
+    );
+    if (result.error || result.signal || result.status !== 0) {
+      throw new Error(
+        `Hugo did not build the example site (exit code: ${result.status ?? 'none'}, signal: ${result.signal ?? 'none'})` +
+          (result.error ? `: ${result.error.message}` : `:\n${result.stderr}`),
+        { cause: result.error },
+      );
+    }
+    return `${result.stdout}\n${result.stderr}`
+      .split('\n')
+      .filter((line) => line.includes('i18n|MISSING_TRANSLATION'))
+      .map((line) => line.slice(line.indexOf('i18n|')).trim());
+  } finally {
+    removeDirectory(destination);
+  }
+}
+
 /* Tests that only run hugo build, without a browser: running them in every
    Playwright project would repeat the same build five times. */
 const BUILD_TESTS_PROJECT = 'chromium';
