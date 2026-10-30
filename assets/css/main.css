@@ -850,6 +850,7 @@ tick-field > canvas {
 .project-vignette::after {
   --vignette-tick-offset: 0px;
   --vignette-set-tick-length: var(--vignette-long-tick-length);
+  --vignette-set-tick-color: var(--color-accent);
   content: "";
   position: absolute;
   /* Leaves a margin of background along each edge: no frame. */
@@ -857,7 +858,7 @@ tick-field > canvas {
   background: repeating-linear-gradient(
     90deg,
     transparent 0 var(--vignette-tick-offset),
-    var(--color-accent) var(--vignette-tick-offset) calc(var(--vignette-tick-offset) + var(--vignette-tick-width)),
+    var(--vignette-set-tick-color) var(--vignette-tick-offset) calc(var(--vignette-tick-offset) + var(--vignette-tick-width)),
     transparent calc(var(--vignette-tick-offset) + var(--vignette-tick-width)) calc(2 * var(--vignette-tick-pitch))
   );
   mask: repeating-linear-gradient(
@@ -870,6 +871,7 @@ tick-field > canvas {
 .project-vignette::after {
   --vignette-tick-offset: var(--vignette-tick-pitch);
   --vignette-set-tick-length: var(--vignette-short-tick-length);
+  --vignette-set-tick-color: var(--color-paper);
 }
 
 /* Every other card gets its own pattern, so that neighbouring vignettes differ. */
