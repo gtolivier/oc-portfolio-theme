@@ -324,6 +324,64 @@ test('on a wide window, the cards of the section "Projets sélectionnés" sit tw
   });
 });
 
+test('on the French home page, with JavaScript and without, each card of the section "Projets sélectionnés" shows a decorative vignette above its title, across the card’s width (its full width or its content box), hidden from assistive technologies', async ({ page, browser, baseURL }) => {
+  /* The vignette is a static drawing: the page must show it whether or not scripts run. */
+  const withoutJavaScript = await browser.newContext({ baseURL, viewport: page.viewportSize(), javaScriptEnabled: false });
+  try {
+    for (const [mode, tab] of [['with JavaScript', page], ['without JavaScript', await withoutJavaScript.newPage()]] as const) {
+      await tab.goto('/fr/');
+      const section = tab.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+      const cards = section.getByRole('article');
+      await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
+      for (const [index, project] of FEATURED_PROJECTS.entries()) {
+        const where = `${mode}, card ${index + 1} ("${project.title}")`;
+        const card = cards.nth(index);
+        await expect(card.getByRole('heading', { level: 3 })).toHaveText(project.title);
+        /* The vignette: an element of the card that comes before the title in the page (not one
+           that holds it), displayed, at least a few pixels tall, ending at or above the title's
+           top, and spanning the card's width: its full width, or its content box (the width
+           without the horizontal padding), within a pixel. Whatever its tag or class. */
+        const vignettePath = await card.evaluate((article) => {
+          const title = article.querySelector('h3')!;
+          const titleTop = title.getBoundingClientRect().top;
+          const box = article.getBoundingClientRect();
+          const style = getComputedStyle(article);
+          const spans = (left: number, right: number) =>
+            (Math.abs(left - box.left) <= 1 && Math.abs(right - box.right) <= 1) ||
+            (Math.abs(left - (box.left + parseFloat(style.paddingLeft) + parseFloat(style.borderLeftWidth))) <= 1 &&
+              Math.abs(right - (box.right - parseFloat(style.paddingRight) - parseFloat(style.borderRightWidth))) <= 1);
+          const found = Array.from(article.querySelectorAll('*')).find((element) => {
+            if (element.contains(title) || !(element.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING)) return false;
+            const elementStyle = getComputedStyle(element);
+            if (elementStyle.display === 'none' || elementStyle.visibility === 'hidden' || parseFloat(elementStyle.opacity) === 0) return false;
+            const { left, right, top, bottom } = element.getBoundingClientRect();
+            return bottom - top >= 8 && bottom <= titleTop + 1 && spans(left, right);
+          });
+          if (!found) return null;
+          /* Its path from the card, as an XPath, so that a locator can reach it. */
+          const steps: string[] = [];
+          for (let element: Element = found; element !== article; element = element.parentElement!) {
+            const sameName = Array.from(element.parentElement!.children).filter((sibling) => sibling.localName === element.localName);
+            steps.unshift(`*[local-name()="${element.localName}"][${sameName.indexOf(element) + 1}]`);
+          }
+          return `xpath=./${steps.join('/')}`;
+        });
+        expect.soft(vignettePath, `${where}: an element above the title, at least a few pixels tall, across the card's width`).not.toBeNull();
+        if (vignettePath === null) continue;
+        const vignette = card.locator(vignettePath);
+        await expect.soft(vignette, `${where}: the vignette is visible`).toBeVisible();
+        /* Hidden from assistive technologies: the vignette contributes nothing to the
+           accessibility tree, and the card's accessible content opens with its title. */
+        expect.soft(await vignette.ariaSnapshot(), `${where}: what assistive technologies get from the vignette`).toBe('');
+        const cardTree = (await card.ariaSnapshot()).split('\n').slice(1).map((line) => line.trim());
+        expect.soft(cardTree[0], `${where}: first entry of the card's accessibility tree`).toMatch(/^- heading\b.*\[level=3\]/);
+      }
+    }
+  } finally {
+    await withoutJavaScript.close();
+  }
+});
+
 test.describe('home page of another site, featuring other projects', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
