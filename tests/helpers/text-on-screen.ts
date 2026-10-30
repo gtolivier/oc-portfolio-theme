@@ -51,3 +51,31 @@ async function textOnScreenWithSpaces(element: Locator): Promise<string> {
   });
   return text.replace(/\s+/g, ' ').trim();
 }
+
+/* Text an element displays on screen, in rendering order: its text nodes and the generated
+   content of its ::before and ::after pseudo-elements (without the alternative text of a
+   `content: "…" / "…"`), hidden elements excluded. Independent of the chosen markup. Unlike
+   textOnScreen, its spaces are kept (every run of whitespace becomes a single space, leading and
+   trailing whitespace dropped) and only elements that are not displayed or invisible are left
+   out. */
+export async function displayedText(element: Locator): Promise<string> {
+  const text = await element.evaluate((root) => {
+    const generated = (el: Element, pseudo: '::before' | '::after') => {
+      const content = getComputedStyle(el, pseudo).content;
+      const strings = content.split(/\s+\/\s+/)[0].match(/"(?:[^"\\]|\\.)*"/g) ?? [];
+      return strings.map((string) => JSON.parse(string) as string).join('');
+    };
+    const walk = (el: Element): string => {
+      const style = getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden') return '';
+      let result = generated(el, '::before');
+      for (const child of Array.from(el.childNodes)) {
+        if (child.nodeType === Node.TEXT_NODE) result += child.textContent ?? '';
+        else if (child.nodeType === Node.ELEMENT_NODE) result += walk(child as Element);
+      }
+      return result + generated(el, '::after');
+    };
+    return walk(root);
+  });
+  return text.replace(/\s+/g, ' ').trim();
+}

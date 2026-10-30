@@ -1,4 +1,4 @@
-import { test, expect, type Locator } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import {
   SITE_WITHOUT_HERO,
   SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND,
@@ -20,6 +20,7 @@ import {
   pixelsNotOfBackgroundPerRow,
   verticalBands,
 } from './helpers/pixels';
+import { displayedText } from './helpers/text-on-screen';
 
 /* The projects the example site's French home page features, in the order its front matter lists
    them (params.projects, page references to content/projets/<slug>). The order is neither
@@ -63,29 +64,28 @@ const FEATURED_PROJECTS = [
   },
 ];
 
-/* Text an element displays on screen, in rendering order: its text nodes and the generated
-   content of its ::before and ::after pseudo-elements (without the alternative text of a
-   `content: "…" / "…"`), hidden elements excluded. Independent of the chosen markup. */
-async function displayedText(element: Locator): Promise<string> {
-  const text = await element.evaluate((root) => {
-    const generated = (el: Element, pseudo: '::before' | '::after') => {
-      const content = getComputedStyle(el, pseudo).content;
-      const strings = content.split(/\s+\/\s+/)[0].match(/"(?:[^"\\]|\\.)*"/g) ?? [];
-      return strings.map((string) => JSON.parse(string) as string).join('');
-    };
-    const walk = (el: Element): string => {
-      const style = getComputedStyle(el);
-      if (style.display === 'none' || style.visibility === 'hidden') return '';
-      let result = generated(el, '::before');
-      for (const child of Array.from(el.childNodes)) {
-        if (child.nodeType === Node.TEXT_NODE) result += child.textContent ?? '';
-        else if (child.nodeType === Node.ELEMENT_NODE) result += walk(child as Element);
-      }
-      return result + generated(el, '::after');
-    };
-    return walk(root);
-  });
-  return text.replace(/\s+/g, ' ').trim();
+/* The section "Projets sélectionnés" of the page's main content. */
+function projectsSection(page: Page): Locator {
+  return page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+}
+
+/* The card of a section that is headed by the given project title. */
+function cardTitled(section: Locator, title: string): Locator {
+  return section.getByRole('article').filter({ has: section.page().getByRole('heading', { level: 3, name: title, exact: true }) });
+}
+
+/* How the assertion messages name the card of the example site's featured project at `index`. */
+function cardName(index: number): string {
+  return `card ${index + 1} ("${FEATURED_PROJECTS[index].title}")`;
+}
+
+/* The cards of the section "Projets sélectionnés" of the page just loaded, once its fonts are
+   ready: one per project the example site features. */
+async function cardsOnceLoaded(page: Page): Promise<Locator> {
+  await page.evaluate(() => document.fonts.ready);
+  const cards = projectsSection(page).getByRole('article');
+  await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
+  return cards;
 }
 
 type Rgb = { red: number; green: number; blue: number };
@@ -247,9 +247,35 @@ async function drawnPixelsByColourInRectangle(
   );
 }
 
+/* Measured inside a card's tick pattern, this far from each edge of its box, so that a border, a
+   frame or the card's edges cannot count as ticks. */
+const INSET = 4;
+
+/* The tick pattern of a card: the card's first element hidden from assistive technologies. */
+function tickPatternOf(card: Locator): Locator {
+  return card.locator('[aria-hidden="true"]').first();
+}
+
+/* The box of a card's tick pattern, once it is visible and the card scrolled into view, relative
+   to the card's box: the card's screenshot is measured against the card's background. */
+async function tickPatternBoxInCard(card: Locator, where: string): Promise<Rectangle> {
+  const pattern = tickPatternOf(card);
+  await expect(pattern, `${where}: the tick pattern is visible`).toBeVisible();
+  await card.scrollIntoViewIfNeeded();
+  const cardBox = await card.boundingBox();
+  const patternBox = await pattern.boundingBox();
+  expect(cardBox && patternBox, `${where}: the card and its tick pattern have a box on screen`).toBeTruthy();
+  return { x: patternBox!.x - cardBox!.x, y: patternBox!.y - cardBox!.y, width: patternBox!.width, height: patternBox!.height };
+}
+
+/* The part of a tick pattern's box that is measured: INSET CSS pixels in from each of its edges. */
+function insideTickPattern(box: Rectangle): Rectangle {
+  return { x: box.x + INSET, y: box.y + INSET, width: box.width - 2 * INSET, height: box.height - 2 * INSET };
+}
+
 test('on the French home page, the heading of the section "Projets sélectionnés" shows the section number "01 //" before its title, while assistive technologies get the title alone', async ({ page }) => {
   await page.goto('/fr/');
-  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+  const section = projectsSection(page);
   const heading = section.getByRole('heading', { level: 2 });
   await expect(heading).toBeVisible();
   /* On screen: the decorative number, then the title, and nothing else, whether the number is
@@ -262,7 +288,7 @@ test('on the French home page, the heading of the section "Projets sélectionné
 
 test('on the French home page, the section "Projets sélectionnés" shows one card per featured project, in the order the home page lists them, each headed by the project’s title', async ({ page }) => {
   await page.goto('/fr/');
-  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+  const section = projectsSection(page);
   await expect(section.getByRole('heading', { level: 2, name: 'Projets sélectionnés' })).toBeVisible();
   /* An array makes the match exact: a missing, extra, repeated or misplaced project fails it. */
   await expect(section.getByRole('heading', { level: 3 })).toHaveText(FEATURED_PROJECTS.map((project) => project.title));
@@ -270,11 +296,11 @@ test('on the French home page, the section "Projets sélectionnés" shows one ca
 
 test('on the French home page, each featured project’s card gives the role, years, description and stack its page declares, the description as a paragraph and the stack on one line, items separated by " · "', async ({ page }) => {
   await page.goto('/fr/');
-  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+  const section = projectsSection(page);
   for (const project of FEATURED_PROJECTS) {
     /* The card is the article headed by the project's title: its texts must be in it, not just
        somewhere in the section. */
-    const card = section.getByRole('article').filter({ has: page.getByRole('heading', { level: 3, name: project.title, exact: true }) });
+    const card = cardTitled(section, project.title);
     await expect(card).toHaveCount(1);
     const stack = project.stack.join(' · ');
     for (const text of [project.years, project.role, stack]) {
@@ -294,8 +320,8 @@ test('on the French home page, each featured project’s card ends with a "Voir 
   for (const siteRoot of ['http://localhost:1314/', 'http://localhost:1315/portfolio/']) {
     for (const project of FEATURED_PROJECTS) {
       await page.goto(`${siteRoot}fr/`);
-      const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
-      const card = section.getByRole('article').filter({ has: page.getByRole('heading', { level: 3, name: project.title, exact: true }) });
+      const section = projectsSection(page);
+      const card = cardTitled(section, project.title);
       await expect(card).toHaveCount(1);
       /* The title is not itself the link. */
       await expect(card.getByRole('heading', { level: 3 }).getByRole('link')).toHaveCount(0);
@@ -316,7 +342,7 @@ test('on the French home page, each featured project’s card ends with a "Voir 
 
 test('on the French home page, the cards of the section "Projets sélectionnés" are readable: dark cards on the section’s light background, and every text of the section, its heading’s number included, contrasts at least 4.5:1 with what is behind it', async ({ page }) => {
   await page.goto('/fr/');
-  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+  const section = projectsSection(page);
   await expect(section).toBeVisible();
   const cards = section.getByRole('article');
   await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
@@ -343,7 +369,7 @@ test('on a phone, the cards of the section "Projets sélectionnés" are stacked 
   const phone = { width: 390, height: 844 };
   await page.setViewportSize(phone);
   await page.goto('/fr/');
-  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+  const section = projectsSection(page);
   await expect(section).toBeVisible();
   const cards = section.getByRole('article');
   await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
@@ -358,7 +384,7 @@ test('on a phone, the cards of the section "Projets sélectionnés" are stacked 
     return { left, right, top, bottom };
   }));
   boxes.forEach((box, index) => {
-    const card = `card ${index + 1} ("${FEATURED_PROJECTS[index].title}")`;
+    const card = cardName(index);
     expect.soft(Math.abs(box.left - content.left), `${card}: left edge ${box.left} px against the section's content left edge ${content.left} px`).toBeLessThanOrEqual(1);
     expect.soft(Math.abs(box.right - content.right), `${card}: right edge ${box.right} px against the section's content right edge ${content.right} px`).toBeLessThanOrEqual(1);
     if (index > 0) {
@@ -372,7 +398,7 @@ test('on a phone, the cards of the section "Projets sélectionnés" are stacked 
 test('on a wide window, the cards of the section "Projets sélectionnés" sit two per row, of equal width', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/fr/');
-  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+  const section = projectsSection(page);
   await expect(section).toBeVisible();
   const cards = section.getByRole('article');
   await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
@@ -380,43 +406,42 @@ test('on a wide window, the cards of the section "Projets sélectionnés" sit tw
     const { left, right, top, bottom, width } = element.getBoundingClientRect();
     return { left, right, top, bottom, width };
   }));
-  const name = (index: number) => `card ${index + 1} ("${FEATURED_PROJECTS[index].title}")`;
   /* Rows of two, in order: cards 1 and 2, then cards 3 and 4 below them. Within a row, both cards
      share a top edge and the second sits to the right of the first. */
   for (let first = 0; first < boxes.length; first += 2) {
     const second = first + 1;
     if (second >= boxes.length) break;
-    expect.soft(Math.abs(boxes[second].top - boxes[first].top), `${name(second)}: top ${boxes[second].top} px against the top of ${name(first)} (${boxes[first].top} px)`).toBeLessThanOrEqual(1);
-    expect.soft(boxes[second].left, `${name(second)}: left edge against the right edge of ${name(first)} (${boxes[first].right} px)`).toBeGreaterThanOrEqual(boxes[first].right - 1);
+    expect.soft(Math.abs(boxes[second].top - boxes[first].top), `${cardName(second)}: top ${boxes[second].top} px against the top of ${cardName(first)} (${boxes[first].top} px)`).toBeLessThanOrEqual(1);
+    expect.soft(boxes[second].left, `${cardName(second)}: left edge against the right edge of ${cardName(first)} (${boxes[first].right} px)`).toBeGreaterThanOrEqual(boxes[first].right - 1);
     if (first >= 2) {
       const rowAboveBottom = Math.max(boxes[first - 2].bottom, boxes[first - 1].bottom);
-      expect.soft(boxes[first].top, `${name(first)}: top against the bottom of the row above (${rowAboveBottom} px)`).toBeGreaterThanOrEqual(rowAboveBottom - 1);
+      expect.soft(boxes[first].top, `${cardName(first)}: top against the bottom of the row above (${rowAboveBottom} px)`).toBeGreaterThanOrEqual(rowAboveBottom - 1);
     }
   }
   /* Equal width: every card as wide as the first, whatever the length of its description. */
   boxes.forEach((box, index) => {
-    expect.soft(Math.abs(box.width - boxes[0].width), `${name(index)}: width ${box.width} px against the width of ${name(0)} (${boxes[0].width} px)`).toBeLessThanOrEqual(1);
+    expect.soft(Math.abs(box.width - boxes[0].width), `${cardName(index)}: width ${box.width} px against the width of ${cardName(0)} (${boxes[0].width} px)`).toBeLessThanOrEqual(1);
   });
 });
 
-test('on the French home page, with JavaScript and without, each card of the section "Projets sélectionnés" shows a decorative vignette above its title, across the card’s width (its full width or its content box), hidden from assistive technologies', async ({ page, browser, baseURL }) => {
-  /* The vignette is a static drawing: the page must show it whether or not scripts run. */
+test('on the French home page, with JavaScript and without, each card of the section "Projets sélectionnés" shows a decorative tick pattern above its title, across the card’s width (its full width or its content box), hidden from assistive technologies', async ({ page, browser, baseURL }) => {
+  /* The tick pattern's band is in the page whether or not scripts run. */
   const withoutJavaScript = await browser.newContext({ baseURL, viewport: page.viewportSize(), javaScriptEnabled: false });
   try {
     for (const [mode, tab] of [['with JavaScript', page], ['without JavaScript', await withoutJavaScript.newPage()]] as const) {
       await tab.goto('/fr/');
-      const section = tab.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+      const section = projectsSection(tab);
       const cards = section.getByRole('article');
       await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
       for (const [index, project] of FEATURED_PROJECTS.entries()) {
-        const where = `${mode}, card ${index + 1} ("${project.title}")`;
+        const where = `${mode}, ${cardName(index)}`;
         const card = cards.nth(index);
         await expect(card.getByRole('heading', { level: 3 })).toHaveText(project.title);
-        /* The vignette: an element of the card that comes before the title in the page (not one
-           that holds it), displayed, at least a few pixels tall, ending at or above the title's
-           top, and spanning the card's width: its full width, or its content box (the width
-           without the horizontal padding), within a pixel. Whatever its tag or class. */
-        const vignettePath = await card.evaluate((article) => {
+        /* The tick pattern: an element of the card that comes before the title in the page (not
+           one that holds it), displayed, at least a few pixels tall, ending at or above the
+           title's top, and spanning the card's width: its full width, or its content box (the
+           width without the horizontal padding), within a pixel. Whatever its tag or class. */
+        const patternPath = await card.evaluate((article) => {
           const title = article.querySelector('h3')!;
           const titleTop = title.getBoundingClientRect().top;
           const box = article.getBoundingClientRect();
@@ -441,13 +466,13 @@ test('on the French home page, with JavaScript and without, each card of the sec
           }
           return `xpath=./${steps.join('/')}`;
         });
-        expect.soft(vignettePath, `${where}: an element above the title, at least a few pixels tall, across the card's width`).not.toBeNull();
-        if (vignettePath === null) continue;
-        const vignette = card.locator(vignettePath);
-        await expect.soft(vignette, `${where}: the vignette is visible`).toBeVisible();
-        /* Hidden from assistive technologies: the vignette contributes nothing to the
+        expect.soft(patternPath, `${where}: an element above the title, at least a few pixels tall, across the card's width`).not.toBeNull();
+        if (patternPath === null) continue;
+        const pattern = card.locator(patternPath);
+        await expect.soft(pattern, `${where}: the tick pattern is visible`).toBeVisible();
+        /* Hidden from assistive technologies: the tick pattern contributes nothing to the
            accessibility tree, and the card's accessible content opens with its title. */
-        expect.soft(await vignette.ariaSnapshot(), `${where}: what assistive technologies get from the vignette`).toBe('');
+        expect.soft(await pattern.ariaSnapshot(), `${where}: what assistive technologies get from the tick pattern`).toBe('');
         const cardTree = (await card.ariaSnapshot()).split('\n').slice(1).map((line) => line.trim());
         expect.soft(cardTree[0], `${where}: first entry of the card's accessibility tree`).toMatch(/^- heading\b.*\[level=3\]/);
       }
@@ -457,40 +482,21 @@ test('on the French home page, with JavaScript and without, each card of the sec
   }
 });
 
-test('on the French home page, with JavaScript, each card’s vignette is made of short ticks in rows: inside it, away from its edges, between two rows of drawn pixels, a horizontal band across its width shows only the card’s background, and several rows are each made of many separate short strokes', { tag: '@pixels' }, async ({ page }) => {
+test('on the French home page, with JavaScript, each card’s tick pattern is made of short ticks in rows: inside it, away from its edges, between two rows of drawn pixels, a horizontal band across its width shows only the card’s background, and several rows are each made of many separate short strokes', { tag: '@pixels' }, async ({ page }) => {
   /* Reduced motion, so that whatever could animate shows a still picture. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* Measured inside the vignette, this far from each edge of its box, so that a border, a
-     frame or the card's edges cannot count as ticks. */
-  const INSET = 4;
   /* A blank band between two rows of ticks: at least this high, in CSS pixels. */
   const MIN_BAND_HEIGHT = 2;
   /* A row of ticks: a row of drawn pixels made of at least this many separate strokes. */
   const MIN_STROKES_PER_ROW = 5;
   const MIN_ROWS_OF_TICKS = 3;
   await page.goto('/fr/');
-  await page.evaluate(() => document.fonts.ready);
-  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
-  const cards = section.getByRole('article');
-  await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
-  for (const [index, project] of FEATURED_PROJECTS.entries()) {
-    const where = `card ${index + 1} ("${project.title}")`;
+  const cards = await cardsOnceLoaded(page);
+  for (const index of FEATURED_PROJECTS.keys()) {
+    const where = cardName(index);
     const card = cards.nth(index);
-    /* The vignette: the card's first element hidden from assistive technologies. */
-    const vignette = card.locator('[aria-hidden="true"]').first();
-    await expect(vignette, `${where}: the vignette is visible`).toBeVisible();
-    await card.scrollIntoViewIfNeeded();
-    const cardBox = await card.boundingBox();
-    const vignetteBox = await vignette.boundingBox();
-    expect(cardBox && vignetteBox, `${where}: the card and its vignette have a box on screen`).toBeTruthy();
-    /* Inside the vignette, relative to the card's box: the card's screenshot is measured
-       against the card's background. */
-    const inside = {
-      x: vignetteBox!.x - cardBox!.x + INSET,
-      y: vignetteBox!.y - cardBox!.y + INSET,
-      width: vignetteBox!.width - 2 * INSET,
-      height: vignetteBox!.height - 2 * INSET,
-    };
+    const box = await tickPatternBoxInCard(card, where);
+    const inside = insideTickPattern(box);
     const screenshot = await card.screenshot();
     const { rows, scale } = await pixelsNotOfBackgroundPerRow(card, screenshot, inside);
     const bands = horizontalBandsWithoutDrawnPixels(rows, scale, MIN_BAND_HEIGHT);
@@ -513,21 +519,18 @@ test('on the French home page, with JavaScript, each card’s vignette is made o
     const describeRows = drawnRows.map(({ from, to, strokes: count }) => `${(from / scale).toFixed(1)}–${(to / scale).toFixed(1)}px: ${count}`).join(', ') || 'none';
     expect.soft(
       bands.length,
-      `${where}: horizontal bands at least ${MIN_BAND_HEIGHT}px high showing only the card's background between two rows of drawn pixels, inside the ${Math.round(vignetteBox!.width)}×${Math.round(vignetteBox!.height)}px vignette (${INSET}px from its edges): ${bands.join(', ') || 'none'}`,
+      `${where}: horizontal bands at least ${MIN_BAND_HEIGHT}px high showing only the card's background between two rows of drawn pixels, inside the ${Math.round(box.width)}×${Math.round(box.height)}px tick pattern (${INSET}px from its edges): ${bands.join(', ') || 'none'}`,
     ).toBeGreaterThanOrEqual(MIN_ROWS_OF_TICKS - 1);
     expect.soft(
       rowsOfTicks.length,
-      `${where}: rows of drawn pixels inside the vignette (${INSET}px from its edges) made of at least ${MIN_STROKES_PER_ROW} separate strokes; separate strokes per row (relative to the card): ${describeRows}`,
+      `${where}: rows of drawn pixels inside the tick pattern (${INSET}px from its edges) made of at least ${MIN_STROKES_PER_ROW} separate strokes; separate strokes per row (relative to the card): ${describeRows}`,
     ).toBeGreaterThanOrEqual(MIN_ROWS_OF_TICKS);
   }
 });
 
-test('on the French home page, inside the first card’s vignette, the ticks are not all the same length: several of its separate strokes are clearly longer than several others', { tag: '@pixels' }, async ({ page }) => {
+test('on the French home page, inside the first card’s tick pattern, the ticks are not all the same length: several of its separate strokes are clearly longer than several others', { tag: '@pixels' }, async ({ page }) => {
   /* Reduced motion, so that whatever could animate shows a still picture. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* Measured inside the vignette, this far from each edge of its box, so that a border, a
-     frame or the card's edges cannot count as ticks. */
-  const INSET = 4;
   /* Several strokes on each side: the shortest of the STROKES_EACH_SIDE longest strokes is
      compared with the longest of the STROKES_EACH_SIDE shortest, so that one stray speck or one
      pair of merged ticks cannot decide the outcome. */
@@ -537,32 +540,15 @@ test('on the French home page, inside the first card’s vignette, the ticks are
      single length of 8 px or more never measure more than 1.25 times as long as one another. */
   const MIN_LENGTH_RATIO = 1.3;
   await page.goto('/fr/');
-  await page.evaluate(() => document.fonts.ready);
-  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
-  const cards = section.getByRole('article');
-  await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
-  const where = `card 1 ("${FEATURED_PROJECTS[0].title}")`;
+  const cards = await cardsOnceLoaded(page);
+  const where = cardName(0);
   const card = cards.first();
-  /* The vignette: the card's first element hidden from assistive technologies. */
-  const vignette = card.locator('[aria-hidden="true"]').first();
-  await expect(vignette, `${where}: the vignette is visible`).toBeVisible();
-  await card.scrollIntoViewIfNeeded();
-  const cardBox = await card.boundingBox();
-  const vignetteBox = await vignette.boundingBox();
-  expect(cardBox && vignetteBox, `${where}: the card and its vignette have a box on screen`).toBeTruthy();
-  /* Inside the vignette, relative to the card's box: the card's screenshot is measured against
-     the card's background. */
-  const inside = {
-    x: vignetteBox!.x - cardBox!.x + INSET,
-    y: vignetteBox!.y - cardBox!.y + INSET,
-    width: vignetteBox!.width - 2 * INSET,
-    height: vignetteBox!.height - 2 * INSET,
-  };
+  const inside = insideTickPattern(await tickPatternBoxInCard(card, where));
   const strokes = await drawnStrokesInRectangle(card, await card.screenshot(), inside);
   const lengths = strokes.map((stroke) => stroke.height).sort((a, b) => a - b);
   expect(
     lengths.length,
-    `${where}: separate strokes inside the vignette (${INSET}px from its edges)`,
+    `${where}: separate strokes inside the tick pattern (${INSET}px from its edges)`,
   ).toBeGreaterThanOrEqual(2 * STROKES_EACH_SIDE);
   const short = lengths[STROKES_EACH_SIDE - 1];
   const long = lengths[lengths.length - STROKES_EACH_SIDE];
@@ -571,16 +557,13 @@ test('on the French home page, inside the first card’s vignette, the ticks are
   const describeLengths = [...counts].map(([length, count]) => `${length}px × ${count}`).join(', ');
   expect(
     long / short,
-    `${where}: length of the shortest of the ${STROKES_EACH_SIDE} longest separate strokes inside the vignette (${long.toFixed(1)}px) over that of the longest of the ${STROKES_EACH_SIDE} shortest (${short.toFixed(1)}px); stroke lengths: ${describeLengths}`,
+    `${where}: length of the shortest of the ${STROKES_EACH_SIDE} longest separate strokes inside the tick pattern (${long.toFixed(1)}px) over that of the longest of the ${STROKES_EACH_SIDE} shortest (${short.toFixed(1)}px); stroke lengths: ${describeLengths}`,
   ).toBeGreaterThanOrEqual(MIN_LENGTH_RATIO);
 });
 
-test('on the French home page, inside the first card’s vignette, the ticks come in two colours: many of the pixels drawn there are teal, the accent colour, and many others light, the paper colour, either possibly see-through over the card’s background', { tag: '@pixels' }, async ({ page }) => {
+test('on the French home page, inside the first card’s tick pattern, the ticks come in two colours: many of the pixels drawn there are teal, the accent colour, and many others light, the paper colour, either possibly see-through over the card’s background', { tag: '@pixels' }, async ({ page }) => {
   /* Reduced motion, so that whatever could animate shows a still picture. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* Measured inside the vignette, this far from each edge of its box, so that a border, a
-     frame or the card's edges cannot count as ticks. */
-  const INSET = 4;
   /* A drawn pixel shows a colour when it lies on the way from the card's background towards it,
      however far (see-through ticks, anti-aliased edges): its direction from the background
      within MAX_ANGLE degrees of that colour's, nearer to it than to the other's. From the card's
@@ -589,105 +572,73 @@ test('on the French home page, inside the first card’s vignette, the ticks com
      the way there, shows no colour clearly and does not count. */
   const MAX_ANGLE = 12;
   const MIN_SHARE_OF_THE_WAY = 0.2;
-  /* Many: at least this share of the pixels drawn inside the vignette, for each colour. */
+  /* Many: at least this share of the pixels drawn inside the tick pattern, for each colour. */
   const MIN_SHARE_OF_DRAWN = 0.1;
   await page.goto('/fr/');
-  await page.evaluate(() => document.fonts.ready);
-  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
-  const cards = section.getByRole('article');
-  await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
-  const where = `card 1 ("${FEATURED_PROJECTS[0].title}")`;
+  const cards = await cardsOnceLoaded(page);
+  const where = cardName(0);
   const card = cards.first();
-  /* The vignette: the card's first element hidden from assistive technologies. */
-  const vignette = card.locator('[aria-hidden="true"]').first();
-  await expect(vignette, `${where}: the vignette is visible`).toBeVisible();
-  await card.scrollIntoViewIfNeeded();
-  const cardBox = await card.boundingBox();
-  const vignetteBox = await vignette.boundingBox();
-  expect(cardBox && vignetteBox, `${where}: the card and its vignette have a box on screen`).toBeTruthy();
-  /* Inside the vignette, relative to the card's box: the card's screenshot is measured against
-     the card's background. */
-  const inside = {
-    x: vignetteBox!.x - cardBox!.x + INSET,
-    y: vignetteBox!.y - cardBox!.y + INSET,
-    width: vignetteBox!.width - 2 * INSET,
-    height: vignetteBox!.height - 2 * INSET,
-  };
+  const inside = insideTickPattern(await tickPatternBoxInCard(card, where));
   /* The site's accent (teal) and paper colours, as its stylesheet declares them. */
   const [teal, paper] = await page.evaluate(() =>
     ['--color-accent', '--color-paper'].map((name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim()),
   );
   const { drawn, inColour } = await drawnPixelsByColourInRectangle(card, await card.screenshot(), inside, [teal, paper], MAX_ANGLE, MIN_SHARE_OF_THE_WAY);
   const [inTeal, inPaper] = inColour;
-  const counts = `${drawn} screenshot pixels drawn inside the vignette (${INSET}px from its edges): ${inTeal} teal, ${inPaper} light, paper-coloured, ${drawn - inTeal - inPaper} neither clearly`;
-  expect.soft(inTeal / drawn, `${where}: share of the pixels drawn inside the vignette that are teal (${teal}); ${counts}`).toBeGreaterThanOrEqual(MIN_SHARE_OF_DRAWN);
-  expect.soft(inPaper / drawn, `${where}: share of the pixels drawn inside the vignette that are light, paper-coloured (${paper}); ${counts}`).toBeGreaterThanOrEqual(MIN_SHARE_OF_DRAWN);
+  const counts = `${drawn} screenshot pixels drawn inside the tick pattern (${INSET}px from its edges): ${inTeal} teal, ${inPaper} light, paper-coloured, ${drawn - inTeal - inPaper} neither clearly`;
+  expect.soft(inTeal / drawn, `${where}: share of the pixels drawn inside the tick pattern that are teal (${teal}); ${counts}`).toBeGreaterThanOrEqual(MIN_SHARE_OF_DRAWN);
+  expect.soft(inPaper / drawn, `${where}: share of the pixels drawn inside the tick pattern that are light, paper-coloured (${paper}); ${counts}`).toBeGreaterThanOrEqual(MIN_SHARE_OF_DRAWN);
 });
 
-/* Comparing the vignettes of two cards. Measured inside each vignette, this far from each edge
-   of its box, so that a border, a frame or the card's edges cannot count as ticks. */
-const COMPARISON_INSET = 4;
-/* Two cards sit at different, possibly fractional, positions: the browser may draw two copies of
-   one pattern up to a pixel or two apart, relative to their vignettes, and anti-aliasing and the
-   rounding of the screenshots move each edge a little more. So the ticks of the second vignette
-   are compared with those of the first moved by up to MAX_SHIFT CSS pixels, across and down, the
-   shift that matches most; two ticks stand at the same place when each edge of one lies within
-   SAME_PLACE CSS pixels of the same edge of the other. */
+/* Comparing the tick patterns of two cards, or of one card at two moments. Two cards sit at
+   different, possibly fractional, positions: the browser may draw two copies of one pattern up to
+   a pixel or two apart, relative to their boxes, and anti-aliasing and the rounding of the
+   screenshots move each edge a little more. So the ticks of the second pattern are compared with
+   those of the first moved by up to MAX_SHIFT CSS pixels, across and down, the shift that matches
+   most; two ticks stand at the same place when each edge of one lies within SAME_PLACE CSS pixels
+   of the same edge of the other. */
 const MAX_SHIFT = 2;
 const SHIFT_STEP = 0.25;
 const SAME_PLACE = 1;
-/* Only the ticks this far inside their vignette count, so that a tick whose copy the shift would
-   bring across the measured edge (and leave out) cannot count as unmatched. */
-const CORE = COMPARISON_INSET + MAX_SHIFT + SAME_PLACE + 1;
-/* The share of the ticks of both vignettes that have no tick at the same place in the other:
+/* Only the ticks this far inside their tick pattern count, so that a tick whose copy the shift
+   would bring across the measured edge (and leave out) cannot count as unmatched. */
+const CORE = INSET + MAX_SHIFT + SAME_PLACE + 1;
+/* The share of the ticks of both tick patterns that have no tick at the same place in the other:
    two copies of one pattern show next to none; two patterns a visitor tells apart, many. */
 const MIN_SHARE_UNMATCHED = 0.25;
 
-type TicksOfVignette = { ticks: Rectangle[]; core: Rectangle[] };
+type TicksOfTickPattern = { ticks: Rectangle[]; core: Rectangle[] };
 
-/* The ticks of a card's vignette (the card's first element hidden from assistive technologies):
-   the separate strokes drawn inside it, as boxes relative to its vignette's box, and among them
-   those at least CORE CSS pixels inside it. */
-async function ticksOfVignette(card: Locator, where: string): Promise<TicksOfVignette> {
-  const vignette = card.locator('[aria-hidden="true"]').first();
-  await expect(vignette, `${where}: the vignette is visible`).toBeVisible();
-  await card.scrollIntoViewIfNeeded();
-  const cardBox = await card.boundingBox();
-  const vignetteBox = await vignette.boundingBox();
-  expect(cardBox && vignetteBox, `${where}: the card and its vignette have a box on screen`).toBeTruthy();
-  const offset = { x: vignetteBox!.x - cardBox!.x, y: vignetteBox!.y - cardBox!.y };
-  const inside = {
-    x: offset.x + COMPARISON_INSET,
-    y: offset.y + COMPARISON_INSET,
-    width: vignetteBox!.width - 2 * COMPARISON_INSET,
-    height: vignetteBox!.height - 2 * COMPARISON_INSET,
-  };
-  const strokes = await drawnStrokesInRectangle(card, await card.screenshot(), inside);
-  const ticks = strokes.map((stroke) => ({ ...stroke, x: stroke.x - offset.x, y: stroke.y - offset.y }));
+/* The ticks of a card's tick pattern: the separate strokes drawn inside it, as boxes relative to
+   the tick pattern's box, and among them those at least CORE CSS pixels inside it. */
+async function ticksOfTickPattern(card: Locator, where: string): Promise<TicksOfTickPattern> {
+  const box = await tickPatternBoxInCard(card, where);
+  const strokes = await drawnStrokesInRectangle(card, await card.screenshot(), insideTickPattern(box));
+  const ticks = strokes.map((stroke) => ({ ...stroke, x: stroke.x - box.x, y: stroke.y - box.y }));
   const core = ticks.filter(
     (tick) =>
-      tick.x >= CORE && tick.y >= CORE && tick.x + tick.width <= vignetteBox!.width - CORE && tick.y + tick.height <= vignetteBox!.height - CORE,
+      tick.x >= CORE && tick.y >= CORE && tick.x + tick.width <= box.width - CORE && tick.y + tick.height <= box.height - CORE,
   );
   return { ticks, core };
 }
 
-/* How two vignettes' ticks match at best: with the first vignette's ticks moved by up to
-   MAX_SHIFT CSS pixels, the shift that leaves the fewest core ticks of either vignette with no
+/* How the ticks of two tick patterns match at best: with the first pattern's ticks moved by up to
+   MAX_SHIFT CSS pixels, the shift that leaves the fewest core ticks of either pattern with no
    tick at the same place in the other (the smallest such shift on a tie), those unmatched core
    ticks in each, and their share of the core ticks of both. */
-function bestMatchOfTicks(first: TicksOfVignette, second: TicksOfVignette): { dx: number; dy: number; inFirst: number; inSecond: number; shareUnmatched: number } {
+function bestMatchOfTicks(first: TicksOfTickPattern, second: TicksOfTickPattern): { dx: number; dy: number; inFirst: number; inSecond: number; shareUnmatched: number } {
   const samePlace = (a: Rectangle, b: Rectangle, dx: number, dy: number): boolean =>
     Math.abs(a.x + dx - b.x) <= SAME_PLACE &&
     Math.abs(a.y + dy - b.y) <= SAME_PLACE &&
     Math.abs(a.x + a.width + dx - (b.x + b.width)) <= SAME_PLACE &&
     Math.abs(a.y + a.height + dy - (b.y + b.height)) <= SAME_PLACE;
-  /* For each core tick, the ticks of the other vignette that some shift could bring to its
+  /* For each core tick, the ticks of the other pattern that some shift could bring to its
      place: only those need comparing once the shift is chosen. */
   const reachable = (tick: Rectangle, others: Rectangle[]) =>
     others.filter((other) => Math.abs(tick.x - other.x) <= MAX_SHIFT + SAME_PLACE && Math.abs(tick.y - other.y) <= MAX_SHIFT + SAME_PLACE);
   const candidatesInFirst = first.core.map((tick) => reachable(tick, second.ticks));
   const candidatesInSecond = second.core.map((tick) => reachable(tick, first.ticks));
-  /* For a shift of the first vignette's ticks, the core ticks of each vignette with no tick at
+  /* For a shift of the first pattern's ticks, the core ticks of each pattern with no tick at
      the same place in the other. */
   const unmatched = (dx: number, dy: number) => ({
     inFirst: first.core.filter((tick, index) => !candidatesInFirst[index].some((other) => samePlace(tick, other, dx, dy))).length,
@@ -704,46 +655,39 @@ function bestMatchOfTicks(first: TicksOfVignette, second: TicksOfVignette): { dx
   return { ...best, shareUnmatched: (best.inFirst + best.inSecond) / (first.core.length + second.core.length) };
 }
 
-test('on the French home page, with JavaScript, each card’s vignette is its own: the vignettes of the first two cards differ, many of the ticks drawn in one having no tick at the same place in the other', { tag: '@pixels' }, async ({ page }) => {
+test('on the French home page, with JavaScript, each card’s tick pattern is its own: the tick patterns of the first two cards differ, many of the ticks drawn in one having no tick at the same place in the other', { tag: '@pixels' }, async ({ page }) => {
   /* Reduced motion, so that whatever could animate shows a still picture. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/fr/');
-  await page.evaluate(() => document.fonts.ready);
-  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
-  const cards = section.getByRole('article');
-  await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
-  /* The ticks of the vignettes of the first two cards. */
-  const ticksOfVignettes: TicksOfVignette[] = [];
+  const cards = await cardsOnceLoaded(page);
+  /* The ticks of the tick patterns of the first two cards. */
+  const ticksOfTickPatterns: TicksOfTickPattern[] = [];
   for (const index of [0, 1]) {
-    ticksOfVignettes.push(await ticksOfVignette(cards.nth(index), `card ${index + 1} ("${FEATURED_PROJECTS[index].title}")`));
+    ticksOfTickPatterns.push(await ticksOfTickPattern(cards.nth(index), cardName(index)));
   }
-  const [first, second] = ticksOfVignettes;
+  const [first, second] = ticksOfTickPatterns;
   const { shareUnmatched, ...best } = bestMatchOfTicks(first, second);
   expect.soft(
     shareUnmatched,
-    `share of the ticks of the first two cards' vignettes (at least ${CORE}px inside them) with no tick at the same place (each edge within ${SAME_PLACE}px) in the other vignette, with the first moved by up to ${MAX_SHIFT}px the way that matches most (${best.dx}px across, ${best.dy}px down); ticks: ${first.core.length} in the first, ${best.inFirst} of them unmatched, ${second.core.length} in the second, ${best.inSecond} of them unmatched`,
+    `share of the ticks of the first two cards' tick patterns (at least ${CORE}px inside them) with no tick at the same place (each edge within ${SAME_PLACE}px) in the other tick pattern, with the first moved by up to ${MAX_SHIFT}px the way that matches most (${best.dx}px across, ${best.dy}px down); ticks: ${first.core.length} in the first, ${best.inFirst} of them unmatched, ${second.core.length} in the second, ${best.inSecond} of them unmatched`,
   ).toBeGreaterThanOrEqual(MIN_SHARE_UNMATCHED);
 });
 
-test('on the French home page, the vignettes of the four cards all differ from one another: for each pair of cards, many of the ticks drawn in one have no tick at the same place in the other', { tag: '@pixels' }, async ({ page }) => {
+test('on the French home page, the tick patterns of the four cards all differ from one another: for each pair of cards, many of the ticks drawn in one have no tick at the same place in the other', { tag: '@pixels' }, async ({ page }) => {
   /* Reduced motion, so that whatever could animate shows a still picture. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/fr/');
-  await page.evaluate(() => document.fonts.ready);
-  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
-  const cards = section.getByRole('article');
-  await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
-  const name = (index: number) => `card ${index + 1} ("${FEATURED_PROJECTS[index].title}")`;
-  const ticksOfVignettes: TicksOfVignette[] = [];
-  for (const index of FEATURED_PROJECTS.keys()) ticksOfVignettes.push(await ticksOfVignette(cards.nth(index), name(index)));
+  const cards = await cardsOnceLoaded(page);
+  const ticksOfTickPatterns: TicksOfTickPattern[] = [];
+  for (const index of FEATURED_PROJECTS.keys()) ticksOfTickPatterns.push(await ticksOfTickPattern(cards.nth(index), cardName(index)));
   /* Every pair of cards, not only neighbours: a pattern repeated two cards further fails too. */
-  for (let a = 0; a < ticksOfVignettes.length; a++) {
-    for (let b = a + 1; b < ticksOfVignettes.length; b++) {
-      const [first, second] = [ticksOfVignettes[a], ticksOfVignettes[b]];
+  for (let a = 0; a < ticksOfTickPatterns.length; a++) {
+    for (let b = a + 1; b < ticksOfTickPatterns.length; b++) {
+      const [first, second] = [ticksOfTickPatterns[a], ticksOfTickPatterns[b]];
       const { shareUnmatched, ...best } = bestMatchOfTicks(first, second);
       expect.soft(
         shareUnmatched,
-        `${name(a)} and ${name(b)}: share of the ticks of their vignettes (at least ${CORE}px inside them) with no tick at the same place (each edge within ${SAME_PLACE}px) in the other vignette, with the first moved by up to ${MAX_SHIFT}px the way that matches most (${best.dx}px across, ${best.dy}px down); ticks: ${first.core.length} in the first, ${best.inFirst} of them unmatched, ${second.core.length} in the second, ${best.inSecond} of them unmatched`,
+        `${cardName(a)} and ${cardName(b)}: share of the ticks of their tick patterns (at least ${CORE}px inside them) with no tick at the same place (each edge within ${SAME_PLACE}px) in the other tick pattern, with the first moved by up to ${MAX_SHIFT}px the way that matches most (${best.dx}px across, ${best.dy}px down); ticks: ${first.core.length} in the first, ${best.inFirst} of them unmatched, ${second.core.length} in the second, ${best.inSecond} of them unmatched`,
       ).toBeGreaterThanOrEqual(MIN_SHARE_UNMATCHED);
     }
   }
@@ -752,14 +696,12 @@ test('on the French home page, the vignettes of the four cards all differ from o
 test('on the French home page, the tick pattern is drawn anew at every load: after a reload, the first card’s tick pattern differs from the one it showed before, many of the ticks drawn in one having no tick at the same place in the other', { tag: '@pixels' }, async ({ page }) => {
   /* Reduced motion, so that whatever could animate shows a still picture. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  const name = `card 1 ("${FEATURED_PROJECTS[0].title}")`;
+  const name = cardName(0);
   /* The ticks of the first card's tick pattern, on a fresh load of the page. */
-  const ticksOfFirstCardOnLoad = async (load: () => Promise<unknown>, when: string): Promise<TicksOfVignette> => {
+  const ticksOfFirstCardOnLoad = async (load: () => Promise<unknown>, when: string): Promise<TicksOfTickPattern> => {
     await load();
-    await page.evaluate(() => document.fonts.ready);
-    const cards = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' }).getByRole('article');
-    await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
-    return ticksOfVignette(cards.first(), `${name}, ${when}`);
+    const cards = await cardsOnceLoaded(page);
+    return ticksOfTickPattern(cards.first(), `${name}, ${when}`);
   };
   const before = await ticksOfFirstCardOnLoad(() => page.goto('/fr/'), 'before the reload');
   const after = await ticksOfFirstCardOnLoad(() => page.reload(), 'after the reload');
@@ -786,27 +728,25 @@ test('on the French home page, with JavaScript, when the window widens, the firs
   /* Two neighbouring columns of ticks stand as far apart as the existing ones, each edge of a tick
      within SAME_PLACE of where it would be. */
   const SPACING_TOLERANCE = 2 * SAME_PLACE;
-  const name = `card 1 ("${FEATURED_PROJECTS[0].title}")`;
+  const name = cardName(0);
   await page.setViewportSize(NARROW);
   await page.goto('/fr/');
-  await page.evaluate(() => document.fonts.ready);
-  const cards = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' }).getByRole('article');
-  await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
+  const cards = await cardsOnceLoaded(page);
   const card = cards.first();
-  const pattern = card.locator('[aria-hidden="true"]').first();
+  const pattern = tickPatternOf(card);
   const patternWidth = async (): Promise<number> => (await pattern.boundingBox())?.width ?? 0;
   const narrowWidth = await patternWidth();
-  const before = await ticksOfVignette(card, `${name}, before the window widens`);
+  const before = await ticksOfTickPattern(card, `${name}, before the window widens`);
 
   await page.setViewportSize(WIDE);
   await expect.poll(patternWidth, `${name}: width of its tick pattern once the window widens from ${narrowWidth}px`).toBeGreaterThanOrEqual(narrowWidth + MIN_WIDENING);
   const wideWidth = await patternWidth();
   await page.waitForTimeout(REDRAW_DELAY);
-  const after = await ticksOfVignette(card, `${name}, after the window widens`);
+  const after = await ticksOfTickPattern(card, `${name}, after the window widens`);
 
   /* The original region: the ticks drawn there after the widening, against those it showed. The
      core ticks of that region lie as far inside it as the core ticks of the narrow pattern. */
-  const original: TicksOfVignette = {
+  const original: TicksOfTickPattern = {
     ticks: after.ticks.filter((tick) => tick.x < narrowWidth),
     core: after.core.filter((tick) => tick.x + tick.width <= narrowWidth - CORE),
   };
@@ -869,19 +809,16 @@ test('on the French home page, with JavaScript, the ticks of each card’s tick 
      tick covers fully. */
   const STEP = 0.25;
   await page.goto('/fr/');
-  await page.evaluate(() => document.fonts.ready);
-  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
-  const cards = section.getByRole('article');
-  await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
+  const cards = await cardsOnceLoaded(page);
   const described: string[] = [];
   let nearlyOpaque = 0;
-  for (const [index, project] of FEATURED_PROJECTS.entries()) {
-    const where = `card ${index + 1} ("${project.title}")`;
+  for (const index of FEATURED_PROJECTS.keys()) {
+    const where = cardName(index);
     const card = cards.nth(index);
-    const { ticks } = await ticksOfVignette(card, where);
+    const { ticks } = await ticksOfTickPattern(card, where);
     /* The ticks' boxes are relative to the tick pattern's: the card's screenshot is read
        relative to the card's box. */
-    const pattern = card.locator('[aria-hidden="true"]').first();
+    const pattern = tickPatternOf(card);
     const cardBox = await card.boundingBox();
     const patternBox = await pattern.boundingBox();
     expect(cardBox && patternBox, `${where}: the card and its tick pattern have a box on screen`).toBeTruthy();
@@ -911,34 +848,22 @@ test('on the French home page, with JavaScript, the ticks of each card’s tick 
   expect.soft(nearlyOpaque, `nearly opaque ticks (at least ${NEARLY_OPAQUE * 100}% of their colour) across the tick patterns of the four cards; ${described.join('; ')}`).toBeGreaterThanOrEqual(MIN_NEARLY_OPAQUE);
 });
 
-test('on the French home page, each card’s vignette has no frame: along each of its four edges, inside it, a thin band shows only the card’s background', { tag: '@pixels' }, async ({ page }) => {
+test('on the French home page, each card’s tick pattern has no frame: along each of its four edges, inside it, a thin band shows only the card’s background', { tag: '@pixels' }, async ({ page }) => {
   /* Reduced motion, so that whatever could animate shows a still picture. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* The band along each edge, inside the vignette's box: this high (or wide), in CSS pixels.
+  /* The band along each edge, inside the tick pattern's box: this high (or wide), in CSS pixels.
      A border, an outline or a frame line drawn there would show in it. */
   const BAND = 2;
   /* Each band also reaches this far outside the box, over the card's padding and the space
-     below the vignette, which show the card's background: a frame line the browser snaps to
+     below the tick pattern, which show the card's background: a frame line the browser snaps to
      the pixel grid just outside a fractional box edge still shows in it. */
   const OUTSIDE = 1;
   await page.goto('/fr/');
-  await page.evaluate(() => document.fonts.ready);
-  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
-  const cards = section.getByRole('article');
-  await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
-  for (const [index, project] of FEATURED_PROJECTS.entries()) {
-    const where = `card ${index + 1} ("${project.title}")`;
+  const cards = await cardsOnceLoaded(page);
+  for (const index of FEATURED_PROJECTS.keys()) {
+    const where = cardName(index);
     const card = cards.nth(index);
-    /* The vignette: the card's first element hidden from assistive technologies. */
-    const vignette = card.locator('[aria-hidden="true"]').first();
-    await expect(vignette, `${where}: the vignette is visible`).toBeVisible();
-    await card.scrollIntoViewIfNeeded();
-    const cardBox = await card.boundingBox();
-    const vignetteBox = await vignette.boundingBox();
-    expect(cardBox && vignetteBox, `${where}: the card and its vignette have a box on screen`).toBeTruthy();
-    /* The vignette's box, relative to the card's: the card's screenshot is measured against the
-       card's background. */
-    const box = { x: vignetteBox!.x - cardBox!.x, y: vignetteBox!.y - cardBox!.y, width: vignetteBox!.width, height: vignetteBox!.height };
+    const box = await tickPatternBoxInCard(card, where);
     const edges: [string, Rectangle][] = [
       ['top', { x: box.x - OUTSIDE, y: box.y - OUTSIDE, width: box.width + 2 * OUTSIDE, height: BAND + OUTSIDE }],
       ['bottom', { x: box.x - OUTSIDE, y: box.y + box.height - BAND, width: box.width + 2 * OUTSIDE, height: BAND + OUTSIDE }],
@@ -954,7 +879,7 @@ test('on the French home page, each card’s vignette has no frame: along each o
     }
     expect.soft(
       drawnAlongEdges,
-      `${where}: screenshot pixels other than the card's background in the band along each edge (${BAND}px inside, ${OUTSIDE}px outside) of the ${Math.round(box.width)}×${Math.round(box.height)}px vignette`,
+      `${where}: screenshot pixels other than the card's background in the band along each edge (${BAND}px inside, ${OUTSIDE}px outside) of the ${Math.round(box.width)}×${Math.round(box.height)}px tick pattern`,
     ).toEqual([]);
   }
 });
@@ -965,15 +890,11 @@ test('on the French home page, without JavaScript, each card’s tick pattern is
   try {
     const page = await withoutJavaScript.newPage();
     await page.goto('/fr/');
-    await page.evaluate(() => document.fonts.ready);
-    const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
-    const cards = section.getByRole('article');
-    await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
-    for (const [index, project] of FEATURED_PROJECTS.entries()) {
-      const where = `without JavaScript, card ${index + 1} ("${project.title}")`;
+    const cards = await cardsOnceLoaded(page);
+    for (const index of FEATURED_PROJECTS.keys()) {
+      const where = `without JavaScript,${cardName(index)}`;
       const card = cards.nth(index);
-      /* The tick pattern: the card's first element hidden from assistive technologies. */
-      const pattern = card.locator('[aria-hidden="true"]').first();
+      const pattern = tickPatternOf(card);
       await expect(pattern, `${where}: the tick pattern's band is visible`).toBeVisible();
       await card.scrollIntoViewIfNeeded();
       const cardBox = await card.boundingBox();
@@ -994,40 +915,21 @@ test('on the French home page, without JavaScript, each card’s tick pattern is
   }
 });
 
-test('under prefers-reduced-motion: reduce, on the French home page, each card’s vignette stays still: 2 s after load, every vertical band inside it, from its left edge to its right edge, shows the brightness it showed right after load', { tag: '@pixels' }, async ({ page }) => {
+test('under prefers-reduced-motion: reduce, on the French home page, each card’s tick pattern stays still: 2 s after load, every vertical band inside it, from its left edge to its right edge, shows the brightness it showed right after load', { tag: '@pixels' }, async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* Measured inside the vignette, this far from each edge of its box, so that its border does
-     not count. */
-  const INSET = 4;
-  /* The vignette's width split into adjacent vertical bands, at least this wide each. */
+  /* The tick pattern's width split into adjacent vertical bands, at least this wide each. */
   const MIN_BAND_WIDTH = 40;
   /* What a band showed right after load, within this share, for rendering noise. */
   const TOLERANCE = 0.02;
   await page.goto('/fr/');
-  await page.evaluate(() => document.fonts.ready);
-  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
-  const cards = section.getByRole('article');
-  await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
+  const cards = await cardsOnceLoaded(page);
 
-  /* For each card, the bands inside its vignette, relative to the card's box: the card's
-     screenshot is measured against the card's background. */
+  /* For each card, the bands inside its tick pattern, relative to the card's box. */
   const bandsOfCards: Rectangle[][] = [];
-  for (const [index, project] of FEATURED_PROJECTS.entries()) {
-    const where = `card ${index + 1} ("${project.title}")`;
+  for (const index of FEATURED_PROJECTS.keys()) {
+    const where = cardName(index);
     const card = cards.nth(index);
-    /* The vignette: the card's first element hidden from assistive technologies. */
-    const vignette = card.locator('[aria-hidden="true"]').first();
-    await expect(vignette, `${where}: the vignette is visible`).toBeVisible();
-    await card.scrollIntoViewIfNeeded();
-    const cardBox = await card.boundingBox();
-    const vignetteBox = await vignette.boundingBox();
-    expect(cardBox && vignetteBox, `${where}: the card and its vignette have a box on screen`).toBeTruthy();
-    const inside = {
-      x: vignetteBox!.x - cardBox!.x + INSET,
-      y: vignetteBox!.y - cardBox!.y + INSET,
-      width: vignetteBox!.width - 2 * INSET,
-      height: vignetteBox!.height - 2 * INSET,
-    };
+    const inside = insideTickPattern(await tickPatternBoxInCard(card, where));
     bandsOfCards.push(verticalBands(inside.width, inside.height, MIN_BAND_WIDTH).map((band) => ({ ...band, x: band.x + inside.x, y: inside.y })));
   }
   const brightness = async (): Promise<number[][]> => {
@@ -1046,14 +948,14 @@ test('under prefers-reduced-motion: reduce, on the French home page, each card�
   await page.waitForTimeout(2000);
   const twoSecondsLater = await brightness();
 
-  for (const [index, project] of FEATURED_PROJECTS.entries()) {
+  for (const index of FEATURED_PROJECTS.keys()) {
     const changedBands = bandsOfCards[index]
       .map((band, bandIndex) => ({ band, before: rightAfterLoad[index][bandIndex], after: twoSecondsLater[index][bandIndex] }))
       .filter(({ before, after }) => Math.abs(after - before) > TOLERANCE * before)
       .map(({ band, before, after }) => `${Math.round(band.x)}–${Math.round(band.x + band.width)}px: ${Math.round(before)} → ${Math.round(after)}`);
     expect.soft(
       changedBands,
-      `card ${index + 1} ("${project.title}"): bands inside its vignette (${INSET}px from its edges, relative to the card) whose brightness above the card's background, under reduced motion, 2 s after load, differs by more than ${TOLERANCE * 100}% from what they showed right after load`,
+      `${cardName(index)}: bands inside its tick pattern (${INSET}px from its edges, relative to the card) whose brightness above the card's background, under reduced motion, 2 s after load, differs by more than ${TOLERANCE * 100}% from what they showed right after load`,
     ).toEqual([]);
   }
 });
@@ -1070,7 +972,7 @@ test.describe('home page of another site, featuring other projects', () => {
   test('the section "Projets sélectionnés" shows one card per project this site features, in its order, and none of the example site’s', async ({ page, context }) => {
     await serveSite(context, SITE_WITH_OTHER_PROJECTS, siteDirectory);
     await page.goto(`${SITE_WITH_OTHER_PROJECTS.origin}/fr/`);
-    const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+    const section = projectsSection(page);
     /* Featured in tests/fixtures/other-projects/content/_index.md, in an order that is neither
        alphabetical nor reverse alphabetical. An array makes the match exact. */
     await expect(section.getByRole('heading', { level: 3 })).toHaveText([
@@ -1083,11 +985,11 @@ test.describe('home page of another site, featuring other projects', () => {
   test('a featured project whose page declares only a title and a description gets a card with just those: no empty slot for the role, years or stack, no stray separator', async ({ page, context }) => {
     await serveSite(context, SITE_WITH_OTHER_PROJECTS, siteDirectory);
     await page.goto(`${SITE_WITH_OTHER_PROJECTS.origin}/fr/`);
-    const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+    const section = projectsSection(page);
     /* tests/fixtures/other-projects/content/projets/barometre-mercure.md declares no [params]. */
     const title = 'Baromètre à mercure';
     const description = 'Baromètre à colonne de mercure remonté dans son cadre d’origine, avec une échelle regravée.';
-    const card = section.getByRole('article').filter({ has: page.getByRole('heading', { level: 3, name: title, exact: true }) });
+    const card = cardTitled(section, title);
     await expect(card).toHaveCount(1);
     await expect(card.getByText(description, { exact: true })).toHaveRole('paragraph');
     /* Outside links (a link to the project's page may come later, with its own text), the title
@@ -1109,18 +1011,16 @@ test.describe('home page of another site, featuring other projects', () => {
   test('the card of a featured project without a detail page has no link, while the other cards keep theirs, and the site publishes no page at that project’s address', async ({ page, context }) => {
     await serveSite(context, SITE_WITH_OTHER_PROJECTS, siteDirectory);
     await page.goto(`${SITE_WITH_OTHER_PROJECTS.origin}/fr/`);
-    const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
-    const cardOf = (title: string) =>
-      section.getByRole('article').filter({ has: page.getByRole('heading', { level: 3, name: title, exact: true }) });
+    const section = projectsSection(page);
     /* tests/fixtures/other-projects/content/projets/chronometre-marine.md declares
        [build] render = 'never': its card is still shown, with no link at all, not even an empty one. */
-    const card = cardOf('Chronomètre de marine');
+    const card = cardTitled(section, 'Chronomètre de marine');
     await expect(card).toHaveCount(1);
     await expect(card).toBeVisible();
     await expect(card.locator('a')).toHaveCount(0);
     /* The projects that have a page keep their link to it. */
     for (const title of ['Coucou de la Forêt-Noire', 'Baromètre à mercure']) {
-      await expect(cardOf(title).getByRole('link', { name: 'Voir le détail' })).toHaveCount(1);
+      await expect(cardTitled(section, title).getByRole('link', { name: 'Voir le détail' })).toHaveCount(1);
     }
     /* Nothing is published where the project's page would be. */
     const response = await page.goto(`${SITE_WITH_OTHER_PROJECTS.origin}/fr/projets/chronometre-marine/`);
@@ -1140,18 +1040,16 @@ test.describe('home page of another site, featuring a project whose section give
   test('the card of a featured project that inherits render = "never" from its section’s cascade has no link, while the other card keeps its own, and the site publishes no page at that project’s address', async ({ page, context }) => {
     await serveSite(context, SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES, siteDirectory);
     await page.goto(`${SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES.origin}/fr/`);
-    const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
-    const cardOf = (title: string) =>
-      section.getByRole('article').filter({ has: page.getByRole('heading', { level: 3, name: title, exact: true }) });
+    const section = projectsSection(page);
     /* tests/fixtures/section-without-detail-pages/content/esquisses/regulateur-de-parquet.md sets
        no [build] options: its section's _index.md declares [cascade.build] render = 'never'. Its
        card is still shown, with no link at all, not even an empty one. */
-    const card = cardOf('Régulateur de parquet');
+    const card = cardTitled(section, 'Régulateur de parquet');
     await expect(card).toHaveCount(1);
     await expect(card).toBeVisible();
     await expect(card.locator('a')).toHaveCount(0);
     /* The project that has a page keeps its link to it. */
-    await expect(cardOf('Restauration d’une pendule de cheminée').getByRole('link', { name: 'Voir le détail' })).toHaveCount(1);
+    await expect(cardTitled(section, 'Restauration d’une pendule de cheminée').getByRole('link', { name: 'Voir le détail' })).toHaveCount(1);
     /* Nothing is published where the project's page would be. */
     const response = await page.goto(`${SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES.origin}/fr/esquisses/regulateur-de-parquet/`);
     expect(response?.status()).toBe(404);
@@ -1184,7 +1082,7 @@ test.describe('home pages whose featured projects live in sections of different 
     ];
     for (const site of sites) {
       await page.goto(site.home);
-      const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+      const section = projectsSection(page);
       /* The arrow is decorative: the accessible name is the text alone. */
       const link = section.getByRole('link', { name: 'Tous les projets', exact: true });
       await expect(link).toHaveCount(1);
