@@ -78,6 +78,100 @@ async function displayedText(element: Locator): Promise<string> {
   return text.replace(/\s+/g, ' ').trim();
 }
 
+type Rgb = { red: number; green: number; blue: number };
+
+/* Components of a computed color, however the browser serializes it (`rgb(…)`, `rgba(…)` or
+   `color(srgb …)`): red, green and blue from 0 to 255, alpha from 0 to 1. */
+function colorComponents(color: string): Rgb & { alpha: number } {
+  const number = '([\\d.]+%?)';
+  const toUnit = (value: string) => (value.endsWith('%') ? parseFloat(value) / 100 : parseFloat(value));
+  const rgb = color.match(new RegExp(`^rgba?\\(\\s*${number}[\\s,]+${number}[\\s,]+${number}(?:\\s*[,/]\\s*${number})?\\s*\\)$`));
+  const srgb = color.match(new RegExp(`^color\\(srgb\\s+${number}\\s+${number}\\s+${number}(?:\\s*/\\s*${number})?\\s*\\)$`));
+  const match = rgb ?? srgb;
+  if (!match) throw new Error(`unrecognized color: ${color}`);
+  const scale = rgb ? 1 : 255;
+  const [red, green, blue] = match.slice(1, 4).map((value) => (value.endsWith('%') ? toUnit(value) * 255 : parseFloat(value) * scale));
+  const alpha = match[4] === undefined ? 1 : toUnit(match[4]);
+  return { red, green, blue, alpha };
+}
+
+/* A color painted over an opaque one, with its alpha. */
+function paintOver(color: string, below: Rgb): Rgb {
+  const { red, green, blue, alpha } = colorComponents(color);
+  const mix = (top: number, bottom: number) => alpha * top + (1 - alpha) * bottom;
+  return { red: mix(red, below.red), green: mix(green, below.green), blue: mix(blue, below.blue) };
+}
+
+/* Opaque color behind an element, from the background colors of the element and its ancestors,
+   nearest first: each painted over the next, over the browser's white canvas. */
+function effectiveBackground(backgrounds: string[]): Rgb {
+  return [...backgrounds].reverse().reduce<Rgb>((below, color) => paintOver(color, below), { red: 255, green: 255, blue: 255 });
+}
+
+/* Relative luminance of an opaque color, as WCAG defines it: from 0 (black) to 1 (white). */
+function relativeLuminance({ red, green, blue }: Rgb): number {
+  const [r, g, b] = [red, green, blue].map((value) => {
+    const channel = value / 255;
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/* Contrast ratio between two opaque colors, as WCAG defines it: from 1 (same luminance) to 21
+   (black on white). */
+function contrastRatio(a: Rgb, b: Rgb): number {
+  const [lighter, darker] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/* Light: it contrasts more with black than with white. */
+function isLight(color: Rgb): boolean {
+  const black = { red: 0, green: 0, blue: 0 };
+  const white = { red: 255, green: 255, blue: 255 };
+  return contrastRatio(color, black) > contrastRatio(color, white);
+}
+
+/* Background colors of an element and its ancestors, nearest first. */
+async function backgroundChain(element: Locator): Promise<string[]> {
+  return element.evaluate((el) => {
+    const chain: string[] = [];
+    for (let current: Element | null = el; current; current = current.parentElement) chain.push(getComputedStyle(current).backgroundColor);
+    return chain;
+  });
+}
+
+/* Every text an element displays — its text nodes and the generated content of the ::before and
+   ::after pseudo-elements of it and its descendants — hidden elements excluded, each with its
+   text color and the background colors behind it, nearest first. */
+async function displayedTexts(root: Locator): Promise<{ text: string; color: string; backgrounds: string[] }[]> {
+  return root.evaluate((rootElement) => {
+    const chainOf = (el: Element) => {
+      const chain: string[] = [];
+      for (let current: Element | null = el; current; current = current.parentElement) chain.push(getComputedStyle(current).backgroundColor);
+      return chain;
+    };
+    const texts: { text: string; color: string; backgrounds: string[] }[] = [];
+    const walk = (el: Element) => {
+      const style = getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden') return;
+      for (const pseudo of ['::before', '::after'] as const) {
+        const pseudoStyle = getComputedStyle(el, pseudo);
+        const strings = pseudoStyle.content.split(/\s+\/\s+/)[0].match(/"(?:[^"\\]|\\.)*"/g) ?? [];
+        const text = strings.map((string) => JSON.parse(string) as string).join('').trim();
+        if (text) texts.push({ text: `${pseudo} ${text}`, color: pseudoStyle.color, backgrounds: [pseudoStyle.backgroundColor, ...chainOf(el)] });
+      }
+      for (const child of Array.from(el.childNodes)) {
+        if (child.nodeType === Node.TEXT_NODE) {
+          const text = (child.textContent ?? '').replace(/\s+/g, ' ').trim();
+          if (text) texts.push({ text, color: style.color, backgrounds: chainOf(el) });
+        } else if (child.nodeType === Node.ELEMENT_NODE) walk(child as Element);
+      }
+    };
+    walk(rootElement);
+    return texts;
+  });
+}
+
 test('on the French home page, the heading of the section "Projets sélectionnés" shows the section number "01 //" before its title, while assistive technologies get the title alone', async ({ page }) => {
   await page.goto('/fr/');
   const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
@@ -142,6 +236,31 @@ test('on the French home page, each featured project’s card ends with a "Voir 
       await expect(page).toHaveURL(`${siteRoot}fr/projets/${project.slug}/`);
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(project.title);
     }
+  }
+});
+
+test('on the French home page, the cards of the section "Projets sélectionnés" are readable: dark cards on the section’s light background, and every text of the section, its heading’s number included, contrasts at least 4.5:1 with what is behind it', async ({ page }) => {
+  await page.goto('/fr/');
+  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+  await expect(section).toBeVisible();
+  const cards = section.getByRole('article');
+  await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
+  /* Light behind the section, dark behind each card, whatever the exact colors. */
+  const sectionBackground = effectiveBackground(await backgroundChain(section));
+  expect.soft(isLight(sectionBackground), `the section's background ${JSON.stringify(sectionBackground)} is light`).toBe(true);
+  for (const card of await cards.all()) {
+    const cardBackground = effectiveBackground(await backgroundChain(card));
+    expect.soft(isLight(cardBackground), `the background ${JSON.stringify(cardBackground)} of the card "${await card.getByRole('heading', { level: 3 }).textContent()}" is dark`).toBe(false);
+  }
+  /* Every text displayed in the section, against the background behind it: the card's in a
+     card, the section's elsewhere. WCAG AA for normal text: 4.5:1. */
+  const texts = await displayedTexts(section);
+  /* At least the heading, its number and each card's title. */
+  expect(texts.length, 'texts displayed in the section').toBeGreaterThanOrEqual(FEATURED_PROJECTS.length + 2);
+  for (const { text, color, backgrounds } of texts) {
+    const background = effectiveBackground(backgrounds);
+    const ratio = contrastRatio(paintOver(color, background), background);
+    expect.soft(ratio, `contrast of "${text}" (${color}) with what is behind it`).toBeGreaterThanOrEqual(4.5);
   }
 });
 
