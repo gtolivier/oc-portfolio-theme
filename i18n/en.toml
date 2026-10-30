@@ -10,6 +10,9 @@ other = 'Pause scrolling'
 [selectedProjects]
 other = 'Selected projects'
 
+[allProjects]
+other = 'All projects'
+
 [seeDetail]
 other = 'See details'
 

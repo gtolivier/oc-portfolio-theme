@@ -10,6 +10,9 @@ other = 'Mettre en pause le défilement'
 [selectedProjects]
 other = 'Projets sélectionnés'
 
+[allProjects]
+other = 'Tous les projets'
+
 [seeDetail]
 other = 'Voir le détail'
 

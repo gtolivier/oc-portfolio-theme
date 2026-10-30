@@ -83,6 +83,11 @@
     </article>
     {{- end }}
     {{- end }}
+    {{- with $.GetPage (index . 0) }}
+    {{- with .Parent }}
+    <a class="all-projects-link" href="{{ .RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
+    {{- end }}
+    {{- end }}
   </section>
   {{- end }}
   {{ .Content }}
