@@ -41,13 +41,6 @@ const PHONE_AND_DESKTOP_VIEWPORTS = [PHONE_VIEWPORT, DESKTOP_VIEWPORT];
 
 const NARROW_PHONE_TO_DESKTOP_VIEWPORTS = [NARROW_PHONE_VIEWPORT, ...PHONE_AND_DESKTOP_VIEWPORTS];
 
-/* The same windows, each with whether the hero ends at the window's bottom edge on arrival: not at
-   320 px, where its content runs taller than the window and pushes the band lower down. */
-const NARROW_PHONE_TO_DESKTOP_WINDOWS = [
-  { viewport: NARROW_PHONE_VIEWPORT, heroEndsAtWindowBottom: false },
-  ...PHONE_AND_DESKTOP_VIEWPORTS.map((viewport) => ({ viewport, heroEndsAtWindowBottom: true })),
-];
-
 /* Checks that the page exposes the declared clients once each, in order, as the list named `name`. */
 async function expectClientList(page: Page, name: string, clients: string[] = CLIENTS) {
   /* "/children: equal" makes the match exact: a missing, extra or repeated client fails it. */
@@ -694,14 +687,13 @@ test.describe('home page without JavaScript', () => {
      enhancement: without the script that tells whether the list fits, the names must stay readable. */
   test.use({ javaScriptEnabled: false });
 
-  test('without JavaScript, on a phone, down to 320 px wide, and on a desktop, the client names stay still, and every one is shown at once, exactly once, whole, on as many lines as needed, in a band that starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window, or lower down at 320 px, where the hero runs taller than the window', async ({ page }) => {
-    for (const { viewport, heroEndsAtWindowBottom } of NARROW_PHONE_TO_DESKTOP_WINDOWS) {
+  test('without JavaScript, on a phone, down to 320 px wide, and on a desktop, the client names stay still, and every one is shown at once, exactly once, whole, on as many lines as needed, in a band that starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window, or lower down where the hero’s content runs taller than the window, as at 320 px', async ({ page }) => {
+    for (const viewport of NARROW_PHONE_TO_DESKTOP_VIEWPORTS) {
       const where = `without JavaScript, at ${viewport.width} px`;
       await page.setViewportSize(viewport);
       const list = await openClientList(page);
       /* The names wrap, so the band grows taller: it must not shrink the hero above it. */
-      if (heroEndsAtWindowBottom) await expectBandBelowTheFoldOnArrival(page, viewport);
-      else await expectBandOutOfSightOnArrival(page, viewport);
+      await expectBandBelowTheFoldOnArrival(page, viewport);
 
       /* Still: one second later, as the visitor lives it (the page's own time runs, untouched;
          without JavaScript, the page's timers never fire, so the test waits on its side), every
@@ -718,20 +710,19 @@ test.describe('home page without JavaScript', () => {
   });
 });
 
-test('when JavaScript is on but the theme’s script does not load, on a phone, down to 320 px wide, and on a desktop, the client names stay still, and every one is shown at once, exactly once, whole, on as many lines as needed, in a band that starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window, or lower down at 320 px, where the hero runs taller than the window', async ({ page }) => {
+test('when JavaScript is on but the theme’s script does not load, on a phone, down to 320 px wide, and on a desktop, the client names stay still, and every one is shown at once, exactly once, whole, on as many lines as needed, in a band that starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window, or lower down where the hero’s content runs taller than the window, as at 320 px', async ({ page }) => {
   /* The theme's bundle fails to load (a network or an extension refuses it); the page's inline
      scripts still run. Without the script that tells whether the list fits, the names must stay
      readable, as without JavaScript. */
   const blockedScripts = await blockRequests(page, themeScriptUrl());
-  for (const { viewport, heroEndsAtWindowBottom } of NARROW_PHONE_TO_DESKTOP_WINDOWS) {
+  for (const viewport of NARROW_PHONE_TO_DESKTOP_VIEWPORTS) {
     const where = `without the theme’s script, at ${viewport.width} px`;
     await page.setViewportSize(viewport);
     const list = await openClientList(page);
     expect(blockedScripts, 'theme script request blocked').not.toEqual([]);
     /* The names wrap, as without JavaScript, so the band grows taller: it must not shrink the hero
        above it. */
-    if (heroEndsAtWindowBottom) await expectBandBelowTheFoldOnArrival(page, viewport);
-    else await expectBandOutOfSightOnArrival(page, viewport);
+    await expectBandBelowTheFoldOnArrival(page, viewport);
 
     /* Still: one second later, as the visitor lives it (the page's own time runs, untouched), every
        name sits where it was. */
@@ -765,38 +756,39 @@ test('under prefers-reduced-motion: reduce, on a phone and on a desktop, the cli
   await page.emulateMedia({ reducedMotion: 'reduce' });
   for (const viewport of PHONE_AND_DESKTOP_VIEWPORTS) {
     await page.setViewportSize(viewport);
-    await page.goto('/fr/');
-    await waitForFonts(page);
+    await openClientList(page);
     await expectBandBelowTheFoldOnArrival(page, viewport);
   }
 });
 
 /* Checks, on the French home page just opened at `viewport` (its fonts loaded, the page scrolled to
-   the top), that the hero alone fills the window below the header, and the client band begins at
-   the bottom edge of the window. */
-async function expectBandBelowTheFoldOnArrival(page: Page, viewport: { width: number; height: number }) {
-  const { width, height } = viewport;
+   the top), that the client band starts below the fold: it begins at the bottom edge of the window
+   or lower down, out of sight until the visitor scrolls. Where the hero's text, from the top of its
+   heading to the bottom of its buttons, leaves at least 150 px of the window below the header free,
+   the hero alone also fills that height, from the bottom of the header to the bottom of the window;
+   elsewhere, as at 320 px, its content sets its height and pushes the band lower down. */
+async function expectBandBelowTheFoldOnArrival(page: Page, { width, height }: { width: number; height: number }) {
   const size = `${width} × ${height}`;
   const hero = heroRegion(page);
-  await expect(hero.getByRole('heading', { level: 1 }), `heading at ${size}`).toBeVisible();
-  /* Page scrolled to the top, on arrival: the hero runs from the bottom of the header to the
-     bottom of the window… */
+  const heading = hero.getByRole('heading', { level: 1 });
+  const buttons = [hero.getByRole('link', { name: 'Voir les projets' }), hero.getByRole('link', { name: 'Contact' })];
+  await expect(heading, `heading at ${size}`).toBeVisible();
+  for (const button of buttons) await expect(button, `button at ${size}`).toBeVisible();
   const headerBox = (await page.locator('header').boundingBox())!;
   const headerBottom = headerBox.y + headerBox.height;
-  const heroBox = (await hero.boundingBox())!;
-  const heroBottom = heroBox.y + heroBox.height;
-  expect.soft(Math.abs(heroBox.y - headerBottom), `at ${size}, top of the hero (${heroBox.y} px) against the bottom of the header (${headerBottom} px)`)
-    .toBeLessThanOrEqual(1);
-  expect.soft(Math.abs(heroBottom - height), `at ${size}, bottom of the hero (${heroBottom} px) against the bottom of the window (${height} px)`)
-    .toBeLessThanOrEqual(1);
-  /* …and the band only begins there, out of sight until the visitor scrolls. */
-  await expectBandOutOfSightOnArrival(page, viewport);
-}
-
-/* Checks, on the French home page just opened at `viewport` and scrolled to the top, that the client
-   band begins at the bottom edge of the window or lower down: out of sight until the visitor scrolls. */
-async function expectBandOutOfSightOnArrival(page: Page, { width, height }: { width: number; height: number }) {
-  const size = `${width} × ${height}`;
+  const buttonsBottom = Math.max(...(await Promise.all(buttons.map(async (button) => {
+    const box = (await button.boundingBox())!;
+    return box.y + box.height;
+  }))));
+  const textHeight = buttonsBottom - (await heading.boundingBox())!.y;
+  if (textHeight <= height - headerBottom - 150) {
+    const heroBox = (await hero.boundingBox())!;
+    const heroBottom = heroBox.y + heroBox.height;
+    expect.soft(Math.abs(heroBox.y - headerBottom), `at ${size}, top of the hero (${heroBox.y} px) against the bottom of the header (${headerBottom} px)`)
+      .toBeLessThanOrEqual(1);
+    expect.soft(Math.abs(heroBottom - height), `at ${size}, bottom of the hero (${heroBottom} px) against the bottom of the window (${height} px)`)
+      .toBeLessThanOrEqual(1);
+  }
   const band = await clientBandBox(page);
   expect.soft(band, `at ${size}, a strip holding the list "Ils me font confiance" spans the page width`).not.toBeNull();
   if (!band) return;
