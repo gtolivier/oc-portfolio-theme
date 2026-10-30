@@ -558,6 +558,54 @@ test('on the French home page, with JavaScript and without, each card’s vignet
   }
 });
 
+test('on the French home page, each card’s vignette has no frame: along each of its four edges, inside it, a thin band shows only the card’s background', { tag: '@pixels' }, async ({ page }) => {
+  /* Reduced motion, so that whatever could animate shows a still picture. */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  /* The band along each edge, inside the vignette's box: this high (or wide), in CSS pixels.
+     A border, an outline or a frame line drawn there would show in it. */
+  const BAND = 2;
+  /* Each band also reaches this far outside the box, over the card's padding and the space
+     below the vignette, which show the card's background: a frame line the browser snaps to
+     the pixel grid just outside a fractional box edge still shows in it. */
+  const OUTSIDE = 1;
+  await page.goto('/fr/');
+  await page.evaluate(() => document.fonts.ready);
+  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+  const cards = section.getByRole('article');
+  await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
+  for (const [index, project] of FEATURED_PROJECTS.entries()) {
+    const where = `card ${index + 1} ("${project.title}")`;
+    const card = cards.nth(index);
+    /* The vignette: the card's first element hidden from assistive technologies. */
+    const vignette = card.locator('[aria-hidden="true"]').first();
+    await expect(vignette, `${where}: the vignette is visible`).toBeVisible();
+    await card.scrollIntoViewIfNeeded();
+    const cardBox = await card.boundingBox();
+    const vignetteBox = await vignette.boundingBox();
+    expect(cardBox && vignetteBox, `${where}: the card and its vignette have a box on screen`).toBeTruthy();
+    /* The vignette's box, relative to the card's: the card's screenshot is measured against the
+       card's background. */
+    const box = { x: vignetteBox!.x - cardBox!.x, y: vignetteBox!.y - cardBox!.y, width: vignetteBox!.width, height: vignetteBox!.height };
+    const edges: [string, Rectangle][] = [
+      ['top', { x: box.x - OUTSIDE, y: box.y - OUTSIDE, width: box.width + 2 * OUTSIDE, height: BAND + OUTSIDE }],
+      ['bottom', { x: box.x - OUTSIDE, y: box.y + box.height - BAND, width: box.width + 2 * OUTSIDE, height: BAND + OUTSIDE }],
+      ['left', { x: box.x - OUTSIDE, y: box.y - OUTSIDE, width: BAND + OUTSIDE, height: box.height + 2 * OUTSIDE }],
+      ['right', { x: box.x + box.width - BAND, y: box.y - OUTSIDE, width: BAND + OUTSIDE, height: box.height + 2 * OUTSIDE }],
+    ];
+    const screenshot = await card.screenshot();
+    const drawnAlongEdges: string[] = [];
+    for (const [edge, band] of edges) {
+      const { rows } = await pixelsNotOfBackgroundPerRow(card, screenshot, band);
+      const drawn = rows.reduce((sum, count) => sum + count, 0);
+      if (drawn > 0) drawnAlongEdges.push(`${edge}: ${drawn}`);
+    }
+    expect.soft(
+      drawnAlongEdges,
+      `${where}: screenshot pixels other than the card's background in the band along each edge (${BAND}px inside, ${OUTSIDE}px outside) of the ${Math.round(box.width)}×${Math.round(box.height)}px vignette`,
+    ).toEqual([]);
+  }
+});
+
 test('under prefers-reduced-motion: reduce, on the French home page, each card’s vignette stays still: 2 s after load, every vertical band inside it, from its left edge to its right edge, shows the brightness it showed right after load', { tag: '@pixels' }, async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   /* Measured inside the vignette, this far from each edge of its box, so that its border does
