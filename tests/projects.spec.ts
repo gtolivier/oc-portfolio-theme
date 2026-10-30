@@ -94,6 +94,32 @@ test.describe('home page of another site, featuring other projects', () => {
       'Chronomètre de marine',
     ]);
   });
+
+  test('a featured project whose page declares only a title and a description gets a card with just those: no empty slot for the role, years or stack, no stray separator', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_OTHER_PROJECTS, siteDirectory);
+    await page.goto(`${SITE_WITH_OTHER_PROJECTS.origin}/fr/`);
+    const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+    /* tests/fixtures/other-projects/content/projets/barometre-mercure.md declares no [params]. */
+    const title = 'Baromètre à mercure';
+    const description = 'Baromètre à colonne de mercure remonté dans son cadre d’origine, avec une échelle regravée.';
+    const card = section.getByRole('article').filter({ has: page.getByRole('heading', { level: 3, name: title, exact: true }) });
+    await expect(card).toHaveCount(1);
+    await expect(card.getByText(description, { exact: true })).toHaveRole('paragraph');
+    /* Outside links (a link to the project's page may come later, with its own text), the title
+       and the description are all the card shows: no role, years or stack text, no separator left
+       alone… */
+    const textOutsideLinks = () =>
+      card.evaluate((article) => {
+        const copy = article.cloneNode(true) as HTMLElement;
+        copy.querySelectorAll('a').forEach((link) => link.remove());
+        return (copy.textContent ?? '').replace(/\s+/g, ' ').trim();
+      });
+    await expect.poll(textOutsideLinks).toBe(`${title} ${description}`);
+    /* …and no text element left empty, or holding only whitespace, where they would go. Other
+       non-text elements (decoration, link) may come later: only text elements are checked. */
+    const textElements = card.locator('p, span, li, dt, dd, time, small, strong, em, h1, h2, h3, h4, h5, h6');
+    await expect(textElements.filter({ hasNotText: /\S/ })).toHaveCount(0);
+  });
 });
 
 test.describe('home page of another site, featuring no projects', () => {

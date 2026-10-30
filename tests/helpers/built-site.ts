@@ -225,7 +225,9 @@ export const SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME = testSite('whitespace-only
    tests/fixtures/other-projects/content, without a hero nor clients, which
    features three other fictional projects, added under projets/, in an
    order that is neither alphabetical nor reverse alphabetical: "Coucou de
-   la Forêt-Noire", "Baromètre à mercure", "Chronomètre de marine". */
+   la Forêt-Noire", "Baromètre à mercure", "Chronomètre de marine". The
+   barometer's page declares a title and a description only, without role,
+   years nor stack. */
 export const SITE_WITH_OTHER_PROJECTS = testSite('other-projects');
 
 /* Hugo only reads a configuration from a file: the one that mounts the
