@@ -59,13 +59,13 @@
   {{- with .Params.projects }}
   <section class="projects" aria-labelledby="projects-heading">
     <h2 id="projects-heading">{{ i18n "selectedProjects" }}</h2>
-    {{- /* The first project's section is the one "Tous les projets" links to; the link comes right after the heading. */}}
+    {{- /* The first project's section is the one "Tous les projets" links to. */}}
     {{- with $.GetPage (index . 0) }}
     {{- with .Parent }}
     <a class="all-projects-link" href="{{ .RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
     {{- end }}
     {{- end }}
-    {{- range $index, $_ := . }}
+    {{- range . }}
     {{- with $.GetPage . }}
     <article class="project-card">
       <tick-pattern class="project-pattern" aria-hidden="true"></tick-pattern>
