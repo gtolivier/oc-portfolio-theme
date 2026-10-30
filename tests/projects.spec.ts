@@ -64,6 +64,11 @@ const FEATURED_PROJECTS = [
   },
 ];
 
+/* The window sizes the layout is checked at: a phone's, and a wide window's, where the cards sit
+   two per row. */
+const PHONE = { width: 390, height: 844 };
+const WIDE_WINDOW = { width: 1280, height: 800 };
+
 /* The section "Projets sélectionnés" of the page's main content. */
 function projectsSection(page: Page): Locator {
   return page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
@@ -86,6 +91,38 @@ async function cardsOnceLoaded(page: Page): Promise<Locator> {
   const cards = projectsSection(page).getByRole('article');
   await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
   return cards;
+}
+
+/* A box on screen, in CSS pixels from the window's top left corner. */
+type Box = { left: number; right: number; top: number; bottom: number };
+
+/* The boxes of the text an element displays, one per line it is laid out on: an element's box
+   may stretch beyond its text, a grid cell's to the whole row, a heading's across the whole
+   section. */
+async function textLineBoxes(element: Locator): Promise<Box[]> {
+  return element.evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    return [...range.getClientRects()]
+      .filter((rect) => rect.width > 0 && rect.height > 0)
+      .map(({ left, right, top, bottom }) => ({ left, right, top, bottom }));
+  });
+}
+
+/* The box around some lines of text, or null without any. */
+function boxAround(lines: Box[]): Box | null {
+  if (lines.length === 0) return null;
+  return {
+    left: Math.min(...lines.map((line) => line.left)),
+    right: Math.max(...lines.map((line) => line.right)),
+    top: Math.min(...lines.map((line) => line.top)),
+    bottom: Math.max(...lines.map((line) => line.bottom)),
+  };
+}
+
+/* The box around the text an element displays, or null when it shows none. */
+async function textBox(element: Locator): Promise<Box | null> {
+  return boxAround(await textLineBoxes(element));
 }
 
 type Rgb = { red: number; green: number; blue: number };
@@ -256,16 +293,24 @@ function tickPatternOf(card: Locator): Locator {
   return card.locator('[aria-hidden="true"]').first();
 }
 
+/* The size of a card's box, and the box of its tick pattern relative to it: the card's screenshot
+   is read relative to the card's box. */
+async function cardAndTickPatternBoxes(card: Locator, where: string): Promise<{ cardSize: { width: number; height: number }; patternBox: Rectangle }> {
+  const cardBox = await card.boundingBox();
+  const patternBox = await tickPatternOf(card).boundingBox();
+  expect(cardBox && patternBox, `${where}: the card and its tick pattern have a box on screen`).toBeTruthy();
+  return {
+    cardSize: { width: cardBox!.width, height: cardBox!.height },
+    patternBox: { x: patternBox!.x - cardBox!.x, y: patternBox!.y - cardBox!.y, width: patternBox!.width, height: patternBox!.height },
+  };
+}
+
 /* The box of a card's tick pattern, once it is visible and the card scrolled into view, relative
    to the card's box: the card's screenshot is measured against the card's background. */
 async function tickPatternBoxInCard(card: Locator, where: string): Promise<Rectangle> {
-  const pattern = tickPatternOf(card);
-  await expect(pattern, `${where}: the tick pattern is visible`).toBeVisible();
+  await expect(tickPatternOf(card), `${where}: the tick pattern is visible`).toBeVisible();
   await card.scrollIntoViewIfNeeded();
-  const cardBox = await card.boundingBox();
-  const patternBox = await pattern.boundingBox();
-  expect(cardBox && patternBox, `${where}: the card and its tick pattern have a box on screen`).toBeTruthy();
-  return { x: patternBox!.x - cardBox!.x, y: patternBox!.y - cardBox!.y, width: patternBox!.width, height: patternBox!.height };
+  return (await cardAndTickPatternBoxes(card, where)).patternBox;
 }
 
 /* The part of a tick pattern's box that is measured: INSET CSS pixels in from each of its edges. */
@@ -382,7 +427,7 @@ test('on the French home page, the cards of the section "Projets sélectionnés"
 });
 
 test('on the French home page, on a phone and on a wide window, each card of the section "Projets sélectionnés" shows its years on its title’s row, on one line, to the right of the title, at the right end of the card’s text', async ({ page }) => {
-  for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
+  for (const viewport of [PHONE, WIDE_WINDOW]) {
     await page.setViewportSize(viewport);
     await page.goto('/fr/');
     await cardsOnceLoaded(page);
@@ -393,25 +438,11 @@ test('on the French home page, on a phone and on a wide window, each card of the
       await expect(card).toHaveCount(1);
       const years = card.getByText(project.years, { exact: true });
       await expect(years).toBeVisible();
-      /* The boxes of the text itself, one per line it is laid out on: an element's box may
-         stretch beyond its text. */
-      const lineBoxes = (locator: Locator) => locator.evaluate((element) => {
-        const range = document.createRange();
-        range.selectNodeContents(element);
-        return [...range.getClientRects()]
-          .filter((rect) => rect.width > 0 && rect.height > 0)
-          .map(({ left, right, top, bottom }) => ({ left, right, top, bottom }));
-      });
-      const titleLines = await lineBoxes(card.getByRole('heading', { level: 3 }));
-      const yearsLines = await lineBoxes(years);
+      const titleLines = await textLineBoxes(card.getByRole('heading', { level: 3 }));
+      const yearsLines = await textLineBoxes(years);
       expect.soft(yearsLines.length, `${where}: lines the years "${project.years}" are laid out on`).toBe(1);
       if (titleLines.length === 0 || yearsLines.length === 0) continue;
-      const yearsBox = {
-        left: Math.min(...yearsLines.map((line) => line.left)),
-        right: Math.max(...yearsLines.map((line) => line.right)),
-        top: Math.min(...yearsLines.map((line) => line.top)),
-        bottom: Math.max(...yearsLines.map((line) => line.bottom)),
-      };
+      const yearsBox = boxAround(yearsLines)!;
       /* On the title's row: the years overlap the title's first line vertically. */
       const firstLine = titleLines.reduce((first, line) => (line.top < first.top ? line : first));
       expect.soft(
@@ -430,16 +461,7 @@ test('on the French home page, on a phone and on a wide window, each card of the
 });
 
 test('on the French home page, on a phone and on a wide window, each card of the section "Projets sélectionnés" shows its role below its title’s row, below both the title and the years, and above its description', async ({ page }) => {
-  /* The box around the text an element displays, from the boxes of its lines: an element's box
-     may stretch beyond its text, a grid cell's to the whole row. */
-  const textBox = (locator: Locator) => locator.evaluate((element) => {
-    const range = document.createRange();
-    range.selectNodeContents(element);
-    const lines = [...range.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0);
-    if (lines.length === 0) return null;
-    return { top: Math.min(...lines.map((line) => line.top)), bottom: Math.max(...lines.map((line) => line.bottom)) };
-  });
-  for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
+  for (const viewport of [PHONE, WIDE_WINDOW]) {
     await page.setViewportSize(viewport);
     await page.goto('/fr/');
     await cardsOnceLoaded(page);
@@ -467,8 +489,7 @@ test('on the French home page, on a phone and on a wide window, each card of the
 });
 
 test('on a phone, the cards of the section "Projets sélectionnés" are stacked in a single column, each as wide as the section’s content, and the page does not scroll horizontally', async ({ page }) => {
-  const phone = { width: 390, height: 844 };
-  await page.setViewportSize(phone);
+  await page.setViewportSize(PHONE);
   await page.goto('/fr/');
   const section = projectsSection(page);
   await expect(section).toBeVisible();
@@ -493,11 +514,11 @@ test('on a phone, the cards of the section "Projets sélectionnés" are stacked 
     }
   });
   const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-  expect.soft(pageWidth, 'width of the page content').toBeLessThanOrEqual(phone.width);
+  expect.soft(pageWidth, 'width of the page content').toBeLessThanOrEqual(PHONE.width);
 });
 
 test('on a wide window, the cards of the section "Projets sélectionnés" sit two per row, of equal width', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.setViewportSize(WIDE_WINDOW);
   await page.goto('/fr/');
   const section = projectsSection(page);
   await expect(section).toBeVisible();
@@ -526,27 +547,12 @@ test('on a wide window, the cards of the section "Projets sélectionnés" sit tw
 });
 
 test('on the French home page, the "Tous les projets" link of the section "Projets sélectionnés" comes before the cards: on a wide window on the heading’s row, at the right end of the cards’ area; on a phone below the heading and above the first card', async ({ page }) => {
-  type Box = { left: number; right: number; top: number; bottom: number };
-  /* The box around the text an element displays, from the boxes of its lines: a heading's box
-     may stretch across the whole section. */
-  const textBox = (locator: Locator) => locator.evaluate((element): Box | null => {
-    const range = document.createRange();
-    range.selectNodeContents(element);
-    const lines = [...range.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0);
-    if (lines.length === 0) return null;
-    return {
-      left: Math.min(...lines.map((line) => line.left)),
-      right: Math.max(...lines.map((line) => line.right)),
-      top: Math.min(...lines.map((line) => line.top)),
-      bottom: Math.max(...lines.map((line) => line.bottom)),
-    };
-  });
   const elementBox = (locator: Locator) => locator.evaluate((element): Box => {
     const { left, right, top, bottom } = element.getBoundingClientRect();
     return { left, right, top, bottom };
   });
   const span = (box: Box) => `${box.left.toFixed(1)}–${box.right.toFixed(1)} px × ${box.top.toFixed(1)}–${box.bottom.toFixed(1)} px`;
-  for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+  for (const viewport of [WIDE_WINDOW, PHONE]) {
     await page.setViewportSize(viewport);
     await page.goto('/fr/');
     const cards = await cardsOnceLoaded(page);
@@ -639,7 +645,7 @@ test('on the French home page, with JavaScript and without, each card of the sec
 test('on the French home page, on a phone and on a wide window, each card of the section "Projets sélectionnés" shows its tick pattern edge to edge, across the card’s full width and touching its top edge, while its title is inset from the card’s left edge', async ({ page }) => {
   /* Inset: the title starts more than this many CSS pixels right of the card's left edge. */
   const MIN_TITLE_INSET = 8;
-  for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
+  for (const viewport of [PHONE, WIDE_WINDOW]) {
     await page.setViewportSize(viewport);
     await page.goto('/fr/');
     const cards = await cardsOnceLoaded(page);
@@ -996,13 +1002,8 @@ test('on the French home page, with JavaScript, the ticks of each card’s tick 
     const where = cardName(index);
     const card = cards.nth(index);
     const { ticks } = await ticksOfTickPattern(card, where);
-    /* The ticks' boxes are relative to the tick pattern's: the card's screenshot is read
-       relative to the card's box. */
-    const pattern = tickPatternOf(card);
-    const cardBox = await card.boundingBox();
-    const patternBox = await pattern.boundingBox();
-    expect(cardBox && patternBox, `${where}: the card and its tick pattern have a box on screen`).toBeTruthy();
-    const offset = { x: patternBox!.x - cardBox!.x, y: patternBox!.y - cardBox!.y };
+    /* The ticks' boxes are relative to the tick pattern's, the card's screenshot to the card's. */
+    const { patternBox: offset } = await cardAndTickPatternBoxes(card, where);
     const screenshot = await card.screenshot();
     /* Of the points across a tick, halfway down it, the most opaque reading is that of a fully
        covered pixel, whichever colour the tick has. */
@@ -1081,20 +1082,13 @@ test('on the French home page, without JavaScript, each card’s tick pattern is
     for (const index of FEATURED_PROJECTS.keys()) {
       const where = `without JavaScript,${cardName(index)}`;
       const card = cards.nth(index);
-      const pattern = tickPatternOf(card);
-      await expect(pattern, `${where}: the tick pattern's band is visible`).toBeVisible();
+      await expect(tickPatternOf(card), `${where}: the tick pattern's band is visible`).toBeVisible();
       await card.scrollIntoViewIfNeeded();
-      const cardBox = await card.boundingBox();
-      const patternBox = await pattern.boundingBox();
-      expect(cardBox && patternBox, `${where}: the card and its tick pattern have a box on screen`).toBeTruthy();
-      /* The pattern's whole box, relative to the card's: the card's screenshot is measured
-         against the card's background. Where the pattern touches the card's edges, it is measured
-         up to CARD_EDGE inside them: the screenshot's outermost pixel there blends with the
-         section's background. */
-      const box = withinCardEdges(
-        { x: patternBox!.x - cardBox!.x, y: patternBox!.y - cardBox!.y, width: patternBox!.width, height: patternBox!.height },
-        cardBox!,
-      );
+      const { cardSize, patternBox } = await cardAndTickPatternBoxes(card, where);
+      /* The pattern's whole box, measured against the card's background. Where the pattern
+         touches the card's edges, it is measured up to CARD_EDGE inside them: the screenshot's
+         outermost pixel there blends with the section's background. */
+      const box = withinCardEdges(patternBox, cardSize);
       const { rows } = await pixelsNotOfBackgroundPerRow(card, await card.screenshot(), box);
       const drawn = rows.reduce((sum, count) => sum + count, 0);
       expect.soft(
@@ -1160,10 +1154,13 @@ test.describe('home page of another site, featuring other projects', () => {
   test.afterAll(() => {
     removeDirectory(siteDirectory);
   });
-
-  test('the section "Projets sélectionnés" shows one card per project this site features, in its order, and none of the example site’s', async ({ page, context }) => {
+  /* Every test starts on this site's French home page. */
+  test.beforeEach(async ({ page, context }) => {
     await serveSite(context, SITE_WITH_OTHER_PROJECTS, siteDirectory);
     await page.goto(`${SITE_WITH_OTHER_PROJECTS.origin}/fr/`);
+  });
+
+  test('the section "Projets sélectionnés" shows one card per project this site features, in its order, and none of the example site’s', async ({ page }) => {
     const section = projectsSection(page);
     /* Featured in tests/fixtures/other-projects/content/_index.md, in an order that is neither
        alphabetical nor reverse alphabetical. An array makes the match exact. */
@@ -1174,9 +1171,7 @@ test.describe('home page of another site, featuring other projects', () => {
     ]);
   });
 
-  test('a featured project whose page declares only a title and a description gets a card with just those: no empty slot for the role, years or stack, no stray separator', async ({ page, context }) => {
-    await serveSite(context, SITE_WITH_OTHER_PROJECTS, siteDirectory);
-    await page.goto(`${SITE_WITH_OTHER_PROJECTS.origin}/fr/`);
+  test('a featured project whose page declares only a title and a description gets a card with just those: no empty slot for the role, years or stack, no stray separator', async ({ page }) => {
     const section = projectsSection(page);
     /* tests/fixtures/other-projects/content/projets/barometre-mercure.md declares no [params]. */
     const title = 'Baromètre à mercure';
@@ -1184,8 +1179,8 @@ test.describe('home page of another site, featuring other projects', () => {
     const card = cardTitled(section, title);
     await expect(card).toHaveCount(1);
     await expect(card.getByText(description, { exact: true })).toHaveRole('paragraph');
-    /* Outside links (a link to the project's page may come later, with its own text), the title
-       and the description are all the card shows: no role, years or stack text, no separator left
+    /* Outside links (the link to the project's page has its own text), the title and the
+       description are all the card shows: no role, years or stack text, no separator left
        alone… */
     const textOutsideLinks = () =>
       card.evaluate((article) => {
@@ -1194,15 +1189,13 @@ test.describe('home page of another site, featuring other projects', () => {
         return (copy.textContent ?? '').replace(/\s+/g, ' ').trim();
       });
     await expect.poll(textOutsideLinks).toBe(`${title} ${description}`);
-    /* …and no text element left empty, or holding only whitespace, where they would go. Other
-       non-text elements (decoration, link) may come later: only text elements are checked. */
+    /* …and no text element left empty, or holding only whitespace, where they would go. Only
+       text elements are checked: the tick pattern and the link are not. */
     const textElements = card.locator('p, span, li, dt, dd, time, small, strong, em, h1, h2, h3, h4, h5, h6');
     await expect(textElements.filter({ hasNotText: /\S/ })).toHaveCount(0);
   });
 
-  test('the card of a featured project without a detail page has no link, while the other cards keep theirs, and the site publishes no page at that project’s address', async ({ page, context }) => {
-    await serveSite(context, SITE_WITH_OTHER_PROJECTS, siteDirectory);
-    await page.goto(`${SITE_WITH_OTHER_PROJECTS.origin}/fr/`);
+  test('the card of a featured project without a detail page has no link, while the other cards keep theirs, and the site publishes no page at that project’s address', async ({ page }) => {
     const section = projectsSection(page);
     /* tests/fixtures/other-projects/content/projets/chronometre-marine.md declares
        [build] render = 'never': its card is still shown, with no link at all, not even an empty one. */
