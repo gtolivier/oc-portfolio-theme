@@ -90,12 +90,17 @@ class TickPattern extends HTMLElement {
     const colors = this.themeColors();
     let column = 0;
     for (let x = PATTERN_LEFT_PX; x < width - PATTERN_RIGHT_MARGIN_PX; x += PATTERN_COLUMN_SPACING_PX, column++) {
-      const ticks = (this.columns[column] ??= []);
       let row = 0;
       for (let y = PATTERN_TOP_PX; y < height - PATTERN_BOTTOM_MARGIN_PX; y += PATTERN_ROW_SPACING_PX, row++) {
-        this.drawTick(context, colors, x, y, (ticks[row] ??= rollTick()));
+        this.drawTick(context, colors, x, y, this.tickAt(column, row));
       }
     }
+  }
+
+  /* The tick kept for that place in the grid, rolled the first time the place is drawn. */
+  private tickAt(column: number, row: number): Tick {
+    const columnTicks = (this.columns[column] ??= []);
+    return (columnTicks[row] ??= rollTick());
   }
 
   /* One tick, its top-left corner at x, y in CSS pixels. */
