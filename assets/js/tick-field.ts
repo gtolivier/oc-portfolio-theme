@@ -1,3 +1,4 @@
+import { customProperty, prepareCanvas } from './canvas-drawing';
 import { reducedMotionQuery } from './reduced-motion';
 
 const FIELD_REVEAL_DELAY_MS = 50;
@@ -123,10 +124,6 @@ function fadeInAlpha(widthShare: number, progress: number): number {
 function easeInOut(share: number): number {
   const clamped = Math.min(1, Math.max(0, share));
   return clamped * clamped * (3 - 2 * clamped);
-}
-
-function customProperty(style: CSSStyleDeclaration, name: string): string {
-  return style.getPropertyValue(name).trim();
 }
 
 /* A custom property the stylesheet sets in px. A missing or unreadable one counts as 0: NaN would keep
@@ -325,16 +322,10 @@ class TickField extends HTMLElement {
   }
 
   private draw(): void {
-    /* One canvas pixel per device pixel, so the strokes stay crisp. */
-    const scale = window.devicePixelRatio || 1;
     const width = this.clientWidth;
     const height = this.clientHeight;
-    this.resizeCanvas(Math.round(width * scale), Math.round(height * scale));
-    const context = this.canvas.getContext('2d');
+    const context = prepareCanvas(this.canvas, width, height);
     if (!context) return;
-    context.resetTransform();
-    context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    context.setTransform(scale, 0, 0, scale, 0, 0);
     /* Read once per drawing: the computed style is costly. */
     const style = getComputedStyle(this);
     const colors = this.themeColors(style);
@@ -359,12 +350,6 @@ class TickField extends HTMLElement {
       if (x >= front) break;
       this.drawTickColumn(drawing, x, gridShare(column, drawing.layout.columns), fadeInAlpha(x / width, this.progress));
     }
-  }
-
-  /* Setting a canvas's size reallocates its pixels, even to the same size: only when it changes. */
-  private resizeCanvas(width: number, height: number): void {
-    if (this.canvas.width !== width) this.canvas.width = width;
-    if (this.canvas.height !== height) this.canvas.height = height;
   }
 
   /* The grid of ticks, centred in the box: as many columns and rows as leave the minimum margins. */

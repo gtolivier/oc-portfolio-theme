@@ -1,6 +1,8 @@
 /* A still pattern of short ticks in rows, drawn anew at every load: no seed, so each visit shows a
    pattern of its own. */
 
+import { customProperty, prepareCanvas } from './canvas-drawing';
+
 /* The box drawn in when the element has no layout of its own, in CSS pixels. */
 const PATTERN_FALLBACK_WIDTH_PX = 480;
 
@@ -73,7 +75,7 @@ class TickPattern extends HTMLElement {
 
   connectedCallback(): void {
     this.prepend(this.canvas);
-    this.draw();
+    /* The observer's first callback, as observing starts, draws the pattern for the first time. */
     this.observer = new ResizeObserver(() => this.draw());
     this.observer.observe(this);
   }
@@ -83,15 +85,10 @@ class TickPattern extends HTMLElement {
   }
 
   private draw(): void {
-    /* One canvas pixel per device pixel, so the strokes stay crisp. */
-    const scale = window.devicePixelRatio || 1;
     const width = this.offsetWidth || PATTERN_FALLBACK_WIDTH_PX;
     const height = this.offsetHeight || PATTERN_FALLBACK_HEIGHT_PX;
-    this.canvas.width = Math.round(width * scale);
-    this.canvas.height = Math.round(height * scale);
-    const context = this.canvas.getContext('2d');
+    const context = prepareCanvas(this.canvas, width, height);
     if (!context) return;
-    context.setTransform(scale, 0, 0, scale, 0, 0);
     const colors = this.themeColors();
     const columns = tickCount(PATTERN_LEFT_PX, width - PATTERN_RIGHT_MARGIN_PX, PATTERN_COLUMN_SPACING_PX);
     const rows = tickCount(PATTERN_TOP_PX, height - PATTERN_BOTTOM_MARGIN_PX, PATTERN_ROW_SPACING_PX);
@@ -119,7 +116,7 @@ class TickPattern extends HTMLElement {
 
   private themeColors(): PatternColors {
     const style = getComputedStyle(this);
-    const color = (name: string): string => style.getPropertyValue(name).trim();
+    const color = (name: string): string => customProperty(style, name);
     return { accent: color('--color-accent'), paper: color('--color-paper') };
   }
 }
