@@ -150,6 +150,27 @@ test.describe('home page of another site, featuring other projects', () => {
     const textElements = card.locator('p, span, li, dt, dd, time, small, strong, em, h1, h2, h3, h4, h5, h6');
     await expect(textElements.filter({ hasNotText: /\S/ })).toHaveCount(0);
   });
+
+  test('the card of a featured project without a detail page has no link, while the other cards keep theirs, and the site publishes no page at that project’s address', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_OTHER_PROJECTS, siteDirectory);
+    await page.goto(`${SITE_WITH_OTHER_PROJECTS.origin}/fr/`);
+    const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+    const cardOf = (title: string) =>
+      section.getByRole('article').filter({ has: page.getByRole('heading', { level: 3, name: title, exact: true }) });
+    /* tests/fixtures/other-projects/content/projets/chronometre-marine.md declares
+       [build] render = 'never': its card is still shown, with no link at all, not even an empty one. */
+    const card = cardOf('Chronomètre de marine');
+    await expect(card).toHaveCount(1);
+    await expect(card).toBeVisible();
+    await expect(card.locator('a')).toHaveCount(0);
+    /* The projects that have a page keep their link to it. */
+    for (const title of ['Coucou de la Forêt-Noire', 'Baromètre à mercure']) {
+      await expect(cardOf(title).getByRole('link', { name: 'Voir le détail' })).toHaveCount(1);
+    }
+    /* Nothing is published where the project's page would be. */
+    const response = await page.goto(`${SITE_WITH_OTHER_PROJECTS.origin}/fr/projets/chronometre-marine/`);
+    expect(response?.status()).toBe(404);
+  });
 });
 
 test.describe('home page of another site, featuring no projects', () => {

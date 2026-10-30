@@ -227,7 +227,9 @@ export const SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME = testSite('whitespace-only
    order that is neither alphabetical nor reverse alphabetical: "Coucou de
    la Forêt-Noire", "Baromètre à mercure", "Chronomètre de marine". The
    barometer's page declares a title and a description only, without role,
-   years nor stack. */
+   years nor stack. The marine chronometer has no detail page: its page
+   declares [build] render = 'never', so that Hugo publishes nothing at
+   /fr/projets/chronometre-marine/. */
 export const SITE_WITH_OTHER_PROJECTS = testSite('other-projects');
 
 /* Hugo only reads a configuration from a file: the one that mounts the
