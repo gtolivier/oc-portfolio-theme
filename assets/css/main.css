@@ -836,6 +836,14 @@ tick-field > canvas {
   margin-block: 16px;
 }
 
+.project-link {
+  color: var(--color-paper);
+}
+
+.all-projects-link {
+  color: var(--color-accent-dark);
+}
+
 @media (min-width: 768px) {
   .projects {
     display: grid;
@@ -847,12 +855,4 @@ tick-field > canvas {
   .all-projects-link {
     grid-column: 1 / -1;
   }
-}
-
-.project-link {
-  color: var(--color-paper);
-}
-
-.all-projects-link {
-  color: var(--color-accent-dark);
 }
