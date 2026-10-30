@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { SITE_WITH_OTHER_PROJECTS, buildSite, removeDirectory, serveSite } from './helpers/built-site';
+import {
+  SITE_WITHOUT_HERO,
+  SITE_WITH_OTHER_PROJECTS,
+  buildSite,
+  removeDirectory,
+  serveSite,
+} from './helpers/built-site';
 
 /* The titles of the projects the example site's French home page features, in the order its
    front matter lists them (params.projects, page references to content/projets/<slug>). The order
@@ -39,5 +45,33 @@ test.describe('home page of another site, featuring other projects', () => {
       'Baromètre à mercure',
       'Chronomètre de marine',
     ]);
+  });
+});
+
+test.describe('home page of another site, featuring no projects', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITHOUT_HERO);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('a home page whose front matter features no projects shows no section "Projets sélectionnés": no such heading, no empty region, no project card', async ({ page, context }) => {
+    await serveSite(context, SITE_WITHOUT_HERO, siteDirectory);
+    await page.goto(`${SITE_WITHOUT_HERO.origin}/fr/`);
+    /* tests/fixtures/without-hero/content/_index.md declares no params.projects, while the example
+       site's project pages are still built: its text is displayed… */
+    const main = page.getByRole('main');
+    const homePageText = 'Accueil fictif sans hero : seul ce texte occupe le corps de la page.';
+    await expect(main.getByText(homePageText)).toBeVisible();
+    /* …with no projects section, named or not, even empty, and none of the example site's projects. */
+    await expect(page.getByRole('region', { name: 'Projets sélectionnés' })).toHaveCount(0);
+    await expect(page.getByText('Projets sélectionnés')).toHaveCount(0);
+    await expect(main.getByRole('region')).toHaveCount(0);
+    await expect(main.getByRole('heading')).toHaveCount(0);
+    for (const project of FEATURED_PROJECTS) {
+      await expect(page.getByText(project)).toHaveCount(0);
+    }
   });
 });
