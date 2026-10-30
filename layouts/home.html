@@ -54,5 +54,17 @@
     {{- end }}
   </div>
   {{- end }}
+  {{- with .Params.projects }}
+  <section class="projects" aria-labelledby="projects-heading">
+    <h2 id="projects-heading">{{ i18n "selectedProjects" }}</h2>
+    {{- range . }}
+    {{- with $.GetPage . }}
+    <article class="project-card">
+      <h3>{{ .Title }}</h3>
+    </article>
+    {{- end }}
+    {{- end }}
+  </section>
+  {{- end }}
   {{ .Content }}
 {{ end }}

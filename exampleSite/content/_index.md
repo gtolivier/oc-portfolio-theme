@@ -9,6 +9,12 @@ clients = [
   'Galerie Aubertin',
   'Maison Delorme',
 ]
+projects = [
+  'projets/restauration-pendule',
+  'projets/montre-grande-complication',
+  'projets/horloge-astronomique',
+  'projets/regulateur-noyer',
+]
 
 [params.hero]
 title = 'Horloger indépendant'

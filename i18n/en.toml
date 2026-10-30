@@ -7,5 +7,8 @@ other = 'Trusted by'
 [pauseClients]
 other = 'Pause scrolling'
 
+[selectedProjects]
+other = 'Selected projects'
+
 [language]
 other = 'Language'
