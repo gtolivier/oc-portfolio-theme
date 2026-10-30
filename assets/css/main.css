@@ -797,10 +797,6 @@ tick-field > canvas {
   }
 }
 
-.projects h2::before {
-  content: "01 // " / "";
-}
-
 @media (min-width: 768px) {
   .clients {
     flex-wrap: nowrap;
@@ -813,4 +809,10 @@ tick-field > canvas {
   .clients-window {
     flex-basis: 0;
   }
+}
+
+/* The section number is decorative: its empty alternative text keeps it out
+   of the heading's accessible name, and so out of the region's. */
+.projects h2::before {
+  content: "01 // " / "";
 }
