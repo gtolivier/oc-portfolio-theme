@@ -840,29 +840,43 @@ tick-field > canvas {
 
 /* Short ticks in rows: vertical strokes across the whole vignette, masked so
    that only horizontal bands of them show. */
-.project-vignette::before {
+.project-vignette {
   --vignette-tick-width: 2px;
   --vignette-tick-pitch: 8px;
   --vignette-tick-length: 6px;
   --vignette-row-pitch: 12px;
+}
+
+/* Two interleaved sets of columns: ::before draws the long ticks, ::after,
+   one pitch further, the short ones. */
+.project-vignette::before,
+.project-vignette::after {
+  --vignette-tick-offset: 0px;
+  --vignette-length: var(--vignette-tick-length);
   content: "";
   position: absolute;
   /* Leaves a margin of background along each edge: no frame. */
   inset: 4px;
   background: repeating-linear-gradient(
     90deg,
-    var(--color-accent) 0 var(--vignette-tick-width),
-    transparent var(--vignette-tick-width) var(--vignette-tick-pitch)
+    transparent 0 var(--vignette-tick-offset),
+    var(--color-accent) var(--vignette-tick-offset) calc(var(--vignette-tick-offset) + var(--vignette-tick-width)),
+    transparent calc(var(--vignette-tick-offset) + var(--vignette-tick-width)) calc(2 * var(--vignette-tick-pitch))
   );
   mask: repeating-linear-gradient(
     180deg,
-    #000 0 var(--vignette-tick-length),
-    transparent var(--vignette-tick-length) var(--vignette-row-pitch)
+    #000 0 var(--vignette-length),
+    transparent var(--vignette-length) var(--vignette-row-pitch)
   );
 }
 
+.project-vignette::after {
+  --vignette-tick-offset: var(--vignette-tick-pitch);
+  --vignette-length: calc(var(--vignette-tick-length) / 3);
+}
+
 /* Every other card gets its own pattern, so that neighbouring vignettes differ. */
-.project-card:nth-of-type(even) .project-vignette::before {
+.project-card:nth-of-type(even) .project-vignette {
   --vignette-tick-width: 3px;
   --vignette-tick-pitch: 11px;
   --vignette-tick-length: 8px;
