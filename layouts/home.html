@@ -75,7 +75,8 @@
       {{- with .Params.stack }}
       <p class="project-stack">{{ delimit . $stackSeparator }}</p>
       {{- end }}
-      <a class="project-link" href="{{ .RelPermalink }}" aria-label="{{ i18n "seeDetail" }} – {{ .Title }}">{{ i18n "seeDetail" }} <span aria-hidden="true">→</span></a>
+      {{- $seeDetail := i18n "seeDetail" }}
+      <a class="project-link" href="{{ .RelPermalink }}" aria-label="{{ $seeDetail }} – {{ .Title }}">{{ $seeDetail }} <span aria-hidden="true">→</span></a>
     </article>
     {{- end }}
     {{- end }}
