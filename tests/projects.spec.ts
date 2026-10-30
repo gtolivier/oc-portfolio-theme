@@ -273,6 +273,22 @@ function insideTickPattern(box: Rectangle): Rectangle {
   return { x: box.x + INSET, y: box.y + INSET, width: box.width - 2 * INSET, height: box.height - 2 * INSET };
 }
 
+/* How far inside the card's edges a rectangle measured in its screenshot stays, in CSS pixels. A
+   card's box may lie at fractional coordinates: the outermost rows and columns of its screenshot
+   then blend its background with the section's around it, though nothing is drawn there. */
+const CARD_EDGE = 1;
+
+/* A rectangle relative to a card's box, cut to stay CARD_EDGE CSS pixels inside the card's edges:
+   unchanged when it already does, trimmed where it reaches them (a tick pattern touching the
+   card's edges). */
+function withinCardEdges(rectangle: Rectangle, card: { width: number; height: number }): Rectangle {
+  const left = Math.max(rectangle.x, CARD_EDGE);
+  const top = Math.max(rectangle.y, CARD_EDGE);
+  const right = Math.min(rectangle.x + rectangle.width, card.width - CARD_EDGE);
+  const bottom = Math.min(rectangle.y + rectangle.height, card.height - CARD_EDGE);
+  return { x: left, y: top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
+}
+
 test('on the French home page, the heading of the section "Projets sélectionnés" shows the section number "01 //" before its title, while assistive technologies get the title alone', async ({ page }) => {
   await page.goto('/fr/');
   const section = projectsSection(page);
@@ -967,7 +983,10 @@ test('on the French home page, each card’s tick pattern has no frame: along ea
   const BAND = 2;
   /* Each band also reaches this far outside the box, over the card's padding and the space
      below the tick pattern, which show the card's background: a frame line the browser snaps to
-     the pixel grid just outside a fractional box edge still shows in it. */
+     the pixel grid just outside a fractional box edge still shows in it. Where the tick pattern
+     touches the card's edges, the bands stop CARD_EDGE inside them instead: the screenshot's
+     outermost pixel there blends with the section's background, while the band's inner pixel
+     still shows a frame line two pixels wide. */
   const OUTSIDE = 1;
   await page.goto('/fr/');
   const cards = await cardsOnceLoaded(page);
@@ -975,12 +994,16 @@ test('on the French home page, each card’s tick pattern has no frame: along ea
     const where = cardName(index);
     const card = cards.nth(index);
     const box = await tickPatternBoxInCard(card, where);
-    const edges: [string, Rectangle][] = [
-      ['top', { x: box.x - OUTSIDE, y: box.y - OUTSIDE, width: box.width + 2 * OUTSIDE, height: BAND + OUTSIDE }],
-      ['bottom', { x: box.x - OUTSIDE, y: box.y + box.height - BAND, width: box.width + 2 * OUTSIDE, height: BAND + OUTSIDE }],
-      ['left', { x: box.x - OUTSIDE, y: box.y - OUTSIDE, width: BAND + OUTSIDE, height: box.height + 2 * OUTSIDE }],
-      ['right', { x: box.x + box.width - BAND, y: box.y - OUTSIDE, width: BAND + OUTSIDE, height: box.height + 2 * OUTSIDE }],
-    ];
+    const cardBox = await card.boundingBox();
+    expect(cardBox, `${where}: the card has a box on screen`).toBeTruthy();
+    const edges: [string, Rectangle][] = (
+      [
+        ['top', { x: box.x - OUTSIDE, y: box.y - OUTSIDE, width: box.width + 2 * OUTSIDE, height: BAND + OUTSIDE }],
+        ['bottom', { x: box.x - OUTSIDE, y: box.y + box.height - BAND, width: box.width + 2 * OUTSIDE, height: BAND + OUTSIDE }],
+        ['left', { x: box.x - OUTSIDE, y: box.y - OUTSIDE, width: BAND + OUTSIDE, height: box.height + 2 * OUTSIDE }],
+        ['right', { x: box.x + box.width - BAND, y: box.y - OUTSIDE, width: BAND + OUTSIDE, height: box.height + 2 * OUTSIDE }],
+      ] as [string, Rectangle][]
+    ).map(([edge, band]) => [edge, withinCardEdges(band, cardBox!)]);
     const screenshot = await card.screenshot();
     const drawnAlongEdges: string[] = [];
     for (const [edge, band] of edges) {
@@ -1012,8 +1035,13 @@ test('on the French home page, without JavaScript, each card’s tick pattern is
       const patternBox = await pattern.boundingBox();
       expect(cardBox && patternBox, `${where}: the card and its tick pattern have a box on screen`).toBeTruthy();
       /* The pattern's whole box, relative to the card's: the card's screenshot is measured
-         against the card's background. */
-      const box = { x: patternBox!.x - cardBox!.x, y: patternBox!.y - cardBox!.y, width: patternBox!.width, height: patternBox!.height };
+         against the card's background. Where the pattern touches the card's edges, it is measured
+         up to CARD_EDGE inside them: the screenshot's outermost pixel there blends with the
+         section's background. */
+      const box = withinCardEdges(
+        { x: patternBox!.x - cardBox!.x, y: patternBox!.y - cardBox!.y, width: patternBox!.width, height: patternBox!.height },
+        cardBox!,
+      );
       const { rows } = await pixelsNotOfBackgroundPerRow(card, await card.screenshot(), box);
       const drawn = rows.reduce((sum, count) => sum + count, 0);
       expect.soft(
