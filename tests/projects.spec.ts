@@ -10,7 +10,14 @@ import {
   serveSite,
   tryToBuildSite,
 } from './helpers/built-site';
-import { type Rectangle, drawnStrokesInRectangle, horizontalBandsWithoutDrawnPixels, pixelsNotOfBackgroundPerRow } from './helpers/pixels';
+import {
+  type Rectangle,
+  drawnStrokesInRectangle,
+  horizontalBandsWithoutDrawnPixels,
+  luminanceAboveBackgroundInRectangle,
+  pixelsNotOfBackgroundPerRow,
+  verticalBands,
+} from './helpers/pixels';
 
 /* The projects the example site's French home page features, in the order its front matter lists
    them (params.projects, page references to content/projets/<slug>). The order is neither
@@ -548,6 +555,70 @@ test('on the French home page, with JavaScript and without, each card’s vignet
     }
   } finally {
     await withoutJavaScript.close();
+  }
+});
+
+test('under prefers-reduced-motion: reduce, on the French home page, each card’s vignette stays still: 2 s after load, every vertical band inside it, from its left edge to its right edge, shows the brightness it showed right after load', { tag: '@pixels' }, async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  /* Measured inside the vignette, this far from each edge of its box, so that its border does
+     not count. */
+  const INSET = 4;
+  /* The vignette's width split into adjacent vertical bands, at least this wide each. */
+  const MIN_BAND_WIDTH = 40;
+  /* What a band showed right after load, within this share, for rendering noise. */
+  const TOLERANCE = 0.02;
+  await page.goto('/fr/');
+  await page.evaluate(() => document.fonts.ready);
+  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+  const cards = section.getByRole('article');
+  await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
+
+  /* For each card, the bands inside its vignette, relative to the card's box: the card's
+     screenshot is measured against the card's background. */
+  const bandsOfCards: Rectangle[][] = [];
+  for (const [index, project] of FEATURED_PROJECTS.entries()) {
+    const where = `card ${index + 1} ("${project.title}")`;
+    const card = cards.nth(index);
+    /* The vignette: the card's first element hidden from assistive technologies. */
+    const vignette = card.locator('[aria-hidden="true"]').first();
+    await expect(vignette, `${where}: the vignette is visible`).toBeVisible();
+    await card.scrollIntoViewIfNeeded();
+    const cardBox = await card.boundingBox();
+    const vignetteBox = await vignette.boundingBox();
+    expect(cardBox && vignetteBox, `${where}: the card and its vignette have a box on screen`).toBeTruthy();
+    const inside = {
+      x: vignetteBox!.x - cardBox!.x + INSET,
+      y: vignetteBox!.y - cardBox!.y + INSET,
+      width: vignetteBox!.width - 2 * INSET,
+      height: vignetteBox!.height - 2 * INSET,
+    };
+    bandsOfCards.push(verticalBands(inside.width, inside.height, MIN_BAND_WIDTH).map((band) => ({ ...band, x: band.x + inside.x, y: inside.y })));
+  }
+  const brightness = async (): Promise<number[][]> => {
+    const perCard: number[][] = [];
+    for (const [index, bands] of bandsOfCards.entries()) {
+      const card = cards.nth(index);
+      await card.scrollIntoViewIfNeeded();
+      const screenshot = await card.screenshot();
+      perCard.push(await Promise.all(bands.map((band) => luminanceAboveBackgroundInRectangle(card, screenshot, band))));
+    }
+    return perCard;
+  };
+
+  const rightAfterLoad = await brightness();
+  /* Time passes, on the page's real clock: long enough for an animation to show. */
+  await page.waitForTimeout(2000);
+  const twoSecondsLater = await brightness();
+
+  for (const [index, project] of FEATURED_PROJECTS.entries()) {
+    const changedBands = bandsOfCards[index]
+      .map((band, bandIndex) => ({ band, before: rightAfterLoad[index][bandIndex], after: twoSecondsLater[index][bandIndex] }))
+      .filter(({ before, after }) => Math.abs(after - before) > TOLERANCE * before)
+      .map(({ band, before, after }) => `${Math.round(band.x)}–${Math.round(band.x + band.width)}px: ${Math.round(before)} → ${Math.round(after)}`);
+    expect.soft(
+      changedBands,
+      `card ${index + 1} ("${project.title}"): bands inside its vignette (${INSET}px from its edges, relative to the card) whose brightness above the card's background, under reduced motion, 2 s after load, differs by more than ${TOLERANCE * 100}% from what they showed right after load`,
+    ).toEqual([]);
   }
 });
 
