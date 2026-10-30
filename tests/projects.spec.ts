@@ -10,7 +10,7 @@ import {
   serveSite,
   tryToBuildSite,
 } from './helpers/built-site';
-import { drawnStrokesInRectangle, horizontalBandsWithoutDrawnPixels, pixelsNotOfBackgroundPerRow } from './helpers/pixels';
+import { type Rectangle, drawnStrokesInRectangle, horizontalBandsWithoutDrawnPixels, pixelsNotOfBackgroundPerRow } from './helpers/pixels';
 
 /* The projects the example site's French home page features, in the order its front matter lists
    them (params.projects, page references to content/projets/<slug>). The order is neither
@@ -450,6 +450,101 @@ test('on the French home page, with JavaScript and without, each card’s vignet
           `${where}: rows of drawn pixels inside the vignette (${INSET}px from its edges) made of at least ${MIN_STROKES_PER_ROW} separate strokes; separate strokes per row (relative to the card): ${describeRows}`,
         ).toBeGreaterThanOrEqual(MIN_ROWS_OF_TICKS);
       }
+    }
+  } finally {
+    await withoutJavaScript.close();
+  }
+});
+
+test('on the French home page, with JavaScript and without, each card’s vignette is its own: the vignettes of the first two cards differ, many of the ticks drawn in one having no tick at the same place in the other', { tag: '@pixels' }, async ({ page, browser, baseURL }) => {
+  /* Reduced motion, so that whatever could animate shows a still picture. The vignette is meant
+     to be readable without scripts: the same must hold without JavaScript. */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const withoutJavaScript = await browser.newContext({ baseURL, viewport: page.viewportSize(), javaScriptEnabled: false, reducedMotion: 'reduce' });
+  /* Measured inside the vignette, this far from each edge of its box, so that a border, a
+     frame or the card's edges cannot count as ticks. */
+  const INSET = 4;
+  /* The two cards sit at different, possibly fractional, positions: the browser may draw two
+     copies of one pattern up to a pixel or two apart, relative to their vignettes, and
+     anti-aliasing and the rounding of the screenshots move each edge a little more. So the
+     ticks of the second vignette are compared with those of the first moved by up to MAX_SHIFT
+     CSS pixels, across and down, the shift that matches most; two ticks stand at the same place
+     when each edge of one lies within SAME_PLACE CSS pixels of the same edge of the other. */
+  const MAX_SHIFT = 2;
+  const SHIFT_STEP = 0.25;
+  const SAME_PLACE = 1;
+  /* Only the ticks this far inside their vignette count, so that a tick whose copy the shift
+     would bring across the measured edge (and leave out) cannot count as unmatched. */
+  const CORE = INSET + MAX_SHIFT + SAME_PLACE + 1;
+  /* The share of the ticks of both vignettes that have no tick at the same place in the other:
+     two copies of one pattern show next to none; two patterns a visitor tells apart, many. */
+  const MIN_SHARE_UNMATCHED = 0.25;
+  try {
+    for (const [mode, tab] of [['with JavaScript', page], ['without JavaScript', await withoutJavaScript.newPage()]] as const) {
+      await tab.goto('/fr/');
+      await tab.evaluate(() => document.fonts.ready);
+      const section = tab.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+      const cards = section.getByRole('article');
+      await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
+      /* The ticks of the vignettes of the first two cards: the separate strokes drawn inside
+         each, as boxes relative to its vignette's box. */
+      const ticksOfVignettes: { ticks: Rectangle[]; core: Rectangle[] }[] = [];
+      for (const index of [0, 1]) {
+        const where = `${mode}, card ${index + 1} ("${FEATURED_PROJECTS[index].title}")`;
+        const card = cards.nth(index);
+        /* The vignette: the card's first element hidden from assistive technologies. */
+        const vignette = card.locator('[aria-hidden="true"]').first();
+        await expect(vignette, `${where}: the vignette is visible`).toBeVisible();
+        await card.scrollIntoViewIfNeeded();
+        const cardBox = await card.boundingBox();
+        const vignetteBox = await vignette.boundingBox();
+        expect(cardBox && vignetteBox, `${where}: the card and its vignette have a box on screen`).toBeTruthy();
+        const offset = { x: vignetteBox!.x - cardBox!.x, y: vignetteBox!.y - cardBox!.y };
+        const inside = {
+          x: offset.x + INSET,
+          y: offset.y + INSET,
+          width: vignetteBox!.width - 2 * INSET,
+          height: vignetteBox!.height - 2 * INSET,
+        };
+        const strokes = await drawnStrokesInRectangle(card, await card.screenshot(), inside);
+        const ticks = strokes.map((stroke) => ({ ...stroke, x: stroke.x - offset.x, y: stroke.y - offset.y }));
+        const core = ticks.filter(
+          (tick) =>
+            tick.x >= CORE && tick.y >= CORE && tick.x + tick.width <= vignetteBox!.width - CORE && tick.y + tick.height <= vignetteBox!.height - CORE,
+        );
+        ticksOfVignettes.push({ ticks, core });
+      }
+      const [first, second] = ticksOfVignettes;
+      const samePlace = (a: Rectangle, b: Rectangle, dx: number, dy: number): boolean =>
+        Math.abs(a.x + dx - b.x) <= SAME_PLACE &&
+        Math.abs(a.y + dy - b.y) <= SAME_PLACE &&
+        Math.abs(a.x + a.width + dx - (b.x + b.width)) <= SAME_PLACE &&
+        Math.abs(a.y + a.height + dy - (b.y + b.height)) <= SAME_PLACE;
+      /* For each core tick, the ticks of the other vignette that some shift could bring to its
+         place: only those need comparing once the shift is chosen. */
+      const reachable = (tick: Rectangle, others: Rectangle[]) =>
+        others.filter((other) => Math.abs(tick.x - other.x) <= MAX_SHIFT + SAME_PLACE && Math.abs(tick.y - other.y) <= MAX_SHIFT + SAME_PLACE);
+      const candidatesInFirst = first.core.map((tick) => reachable(tick, second.ticks));
+      const candidatesInSecond = second.core.map((tick) => reachable(tick, first.ticks));
+      /* For a shift of the first vignette's ticks, the core ticks of each vignette with no tick
+         at the same place in the other. */
+      const unmatched = (dx: number, dy: number) => ({
+        inFirst: first.core.filter((tick, index) => !candidatesInFirst[index].some((other) => samePlace(tick, other, dx, dy))).length,
+        inSecond: second.core.filter((tick, index) => !candidatesInSecond[index].some((other) => samePlace(other, tick, dx, dy))).length,
+      });
+      const shifts: number[] = [];
+      for (let shift = -MAX_SHIFT; shift <= MAX_SHIFT; shift += SHIFT_STEP) shifts.push(shift);
+      const best = shifts
+        .flatMap((dx) => shifts.map((dy) => ({ dx, dy, ...unmatched(dx, dy) })))
+        .reduce((a, b) => {
+          const [missesOfA, missesOfB] = [a.inFirst + a.inSecond, b.inFirst + b.inSecond];
+          return missesOfB < missesOfA || (missesOfB === missesOfA && Math.hypot(b.dx, b.dy) < Math.hypot(a.dx, a.dy)) ? b : a;
+        });
+      const shareUnmatched = (best.inFirst + best.inSecond) / (first.core.length + second.core.length);
+      expect.soft(
+        shareUnmatched,
+        `${mode}: share of the ticks of the first two cards' vignettes (at least ${CORE}px inside them) with no tick at the same place (each edge within ${SAME_PLACE}px) in the other vignette, with the first moved by up to ${MAX_SHIFT}px the way that matches most (${best.dx}px across, ${best.dy}px down); ticks: ${first.core.length} in the first, ${best.inFirst} of them unmatched, ${second.core.length} in the second, ${best.inSecond} of them unmatched`,
+      ).toBeGreaterThanOrEqual(MIN_SHARE_UNMATCHED);
     }
   } finally {
     await withoutJavaScript.close();
