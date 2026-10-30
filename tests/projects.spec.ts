@@ -10,6 +10,7 @@ import {
   serveSite,
   tryToBuildSite,
 } from './helpers/built-site';
+import { drawnStrokesInRectangle, horizontalBandsWithoutDrawnPixels, pixelsNotOfBackgroundPerRow } from './helpers/pixels';
 
 /* The projects the example site's French home page features, in the order its front matter lists
    them (params.projects, page references to content/projets/<slug>). The order is neither
@@ -375,6 +376,79 @@ test('on the French home page, with JavaScript and without, each card of the sec
         expect.soft(await vignette.ariaSnapshot(), `${where}: what assistive technologies get from the vignette`).toBe('');
         const cardTree = (await card.ariaSnapshot()).split('\n').slice(1).map((line) => line.trim());
         expect.soft(cardTree[0], `${where}: first entry of the card's accessibility tree`).toMatch(/^- heading\b.*\[level=3\]/);
+      }
+    }
+  } finally {
+    await withoutJavaScript.close();
+  }
+});
+
+test('on the French home page, with JavaScript and without, each card’s vignette is made of short ticks in rows: inside it, away from its edges, between two rows of drawn pixels, a horizontal band across its width shows only the card’s background, and several rows are each made of many separate short strokes', { tag: '@pixels' }, async ({ page, browser, baseURL }) => {
+  /* Reduced motion, so that whatever could animate shows a still picture. The vignette is meant
+     to be readable without scripts: the same must hold without JavaScript. */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const withoutJavaScript = await browser.newContext({ baseURL, viewport: page.viewportSize(), javaScriptEnabled: false, reducedMotion: 'reduce' });
+  /* Measured inside the vignette, this far from each edge of its box, so that a border, a
+     frame or the card's edges cannot count as ticks. */
+  const INSET = 4;
+  /* A blank band between two rows of ticks: at least this high, in CSS pixels. */
+  const MIN_BAND_HEIGHT = 2;
+  /* A row of ticks: a row of drawn pixels made of at least this many separate strokes. */
+  const MIN_STROKES_PER_ROW = 5;
+  const MIN_ROWS_OF_TICKS = 3;
+  try {
+    for (const [mode, tab] of [['with JavaScript', page], ['without JavaScript', await withoutJavaScript.newPage()]] as const) {
+      await tab.goto('/fr/');
+      await tab.evaluate(() => document.fonts.ready);
+      const section = tab.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+      const cards = section.getByRole('article');
+      await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
+      for (const [index, project] of FEATURED_PROJECTS.entries()) {
+        const where = `${mode}, card ${index + 1} ("${project.title}")`;
+        const card = cards.nth(index);
+        /* The vignette: the card's first element hidden from assistive technologies. */
+        const vignette = card.locator('[aria-hidden="true"]').first();
+        await expect(vignette, `${where}: the vignette is visible`).toBeVisible();
+        await card.scrollIntoViewIfNeeded();
+        const cardBox = await card.boundingBox();
+        const vignetteBox = await vignette.boundingBox();
+        expect(cardBox && vignetteBox, `${where}: the card and its vignette have a box on screen`).toBeTruthy();
+        /* Inside the vignette, relative to the card's box: the card's screenshot is measured
+           against the card's background. */
+        const inside = {
+          x: vignetteBox!.x - cardBox!.x + INSET,
+          y: vignetteBox!.y - cardBox!.y + INSET,
+          width: vignetteBox!.width - 2 * INSET,
+          height: vignetteBox!.height - 2 * INSET,
+        };
+        const screenshot = await card.screenshot();
+        const { rows, scale } = await pixelsNotOfBackgroundPerRow(card, screenshot, inside);
+        const bands = horizontalBandsWithoutDrawnPixels(rows, scale, MIN_BAND_HEIGHT);
+        /* The separate strokes inside, each counted in the row of drawn pixels (a run of
+           adjacent screenshot rows that each show some) its middle lies in. */
+        const strokes = await drawnStrokesInRectangle(card, screenshot, inside);
+        const drawnRows: { from: number; to: number; strokes: number }[] = [];
+        rows.forEach((count, row) => {
+          if (count === 0) return;
+          const last = drawnRows[drawnRows.length - 1];
+          if (last && last.to === row) last.to = row + 1;
+          else drawnRows.push({ from: row, to: row + 1, strokes: 0 });
+        });
+        for (const stroke of strokes) {
+          const middle = (stroke.y + stroke.height / 2) * scale;
+          const drawnRow = drawnRows.find(({ from, to }) => middle >= from && middle < to);
+          if (drawnRow) drawnRow.strokes += 1;
+        }
+        const rowsOfTicks = drawnRows.filter((drawnRow) => drawnRow.strokes >= MIN_STROKES_PER_ROW);
+        const describeRows = drawnRows.map(({ from, to, strokes: count }) => `${(from / scale).toFixed(1)}–${(to / scale).toFixed(1)}px: ${count}`).join(', ') || 'none';
+        expect.soft(
+          bands.length,
+          `${where}: horizontal bands at least ${MIN_BAND_HEIGHT}px high showing only the card's background between two rows of drawn pixels, inside the ${Math.round(vignetteBox!.width)}×${Math.round(vignetteBox!.height)}px vignette (${INSET}px from its edges): ${bands.join(', ') || 'none'}`,
+        ).toBeGreaterThanOrEqual(MIN_ROWS_OF_TICKS - 1);
+        expect.soft(
+          rowsOfTicks.length,
+          `${where}: rows of drawn pixels inside the vignette (${INSET}px from its edges) made of at least ${MIN_STROKES_PER_ROW} separate strokes; separate strokes per row (relative to the card): ${describeRows}`,
+        ).toBeGreaterThanOrEqual(MIN_ROWS_OF_TICKS);
       }
     }
   } finally {
