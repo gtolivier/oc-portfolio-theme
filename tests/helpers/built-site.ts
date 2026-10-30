@@ -232,6 +232,15 @@ export const SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME = testSite('whitespace-only
    /fr/projets/chronometre-marine/. */
 export const SITE_WITH_OTHER_PROJECTS = testSite('other-projects');
 
+/* The example site's French home page features projects of the projets/
+   section: this site replaces that home page with the one of
+   tests/fixtures/projects-in-another-section/content, without a hero nor
+   clients, which features a single fictional project, "Pendule de voyage",
+   added in another section, realisations/, titled "Réalisations" and
+   published at /fr/realisations/. The example site's projets/ section is
+   still built. */
+export const SITE_WITH_PROJECTS_IN_ANOTHER_SECTION = testSite('projects-in-another-section');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

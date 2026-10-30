@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import {
   SITE_WITHOUT_HERO,
   SITE_WITH_OTHER_PROJECTS,
+  SITE_WITH_PROJECTS_IN_ANOTHER_SECTION,
   buildSite,
   removeDirectory,
   serveSite,
@@ -170,6 +171,55 @@ test.describe('home page of another site, featuring other projects', () => {
     /* Nothing is published where the project's page would be. */
     const response = await page.goto(`${SITE_WITH_OTHER_PROJECTS.origin}/fr/projets/chronometre-marine/`);
     expect(response?.status()).toBe(404);
+  });
+});
+
+test.describe('home pages whose featured projects live in sections of different names', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_PROJECTS_IN_ANOTHER_SECTION);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('the section "Projets sélectionnés" has, once and after the cards, a "Tous les projets" link that opens the section holding the featured projects, at the site root and under /portfolio/', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_PROJECTS_IN_ANOTHER_SECTION, siteDirectory);
+    const sites = [
+      /* The example site, whose featured projects are in content/projets/ (title "Projets"),
+         served at the root of its origin, then under a subpath (playwright.config.ts)… */
+      { home: 'http://localhost:1314/fr/', sectionAddress: 'http://localhost:1314/fr/projets/', sectionTitle: 'Projets' },
+      { home: 'http://localhost:1315/portfolio/fr/', sectionAddress: 'http://localhost:1315/portfolio/fr/projets/', sectionTitle: 'Projets' },
+      /* …and a site whose featured project is in content/realisations/, while projets/ still
+         exists: a hard-coded /projets/ address cannot pass. */
+      {
+        home: `${SITE_WITH_PROJECTS_IN_ANOTHER_SECTION.origin}/fr/`,
+        sectionAddress: `${SITE_WITH_PROJECTS_IN_ANOTHER_SECTION.origin}/fr/realisations/`,
+        sectionTitle: 'Réalisations',
+      },
+    ];
+    for (const site of sites) {
+      await page.goto(site.home);
+      const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+      /* The arrow is decorative: the accessible name is the text alone. */
+      const link = section.getByRole('link', { name: 'Tous les projets', exact: true });
+      await expect(link).toHaveCount(1);
+      await expect(link).toBeVisible();
+      await expect(link).toContainText('Tous les projets');
+      await expect(link).toHaveAccessibleName('Tous les projets');
+      /* It belongs to the section, not to a card, and comes after every card. */
+      await expect(section.getByRole('article').getByRole('link', { name: 'Tous les projets' })).toHaveCount(0);
+      const lastCard = section.getByRole('article').last();
+      await expect(lastCard).toBeVisible();
+      const followsLastCard = await link.evaluate(
+        (anchor, card) => (card!.compareDocumentPosition(anchor) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+        await lastCard.elementHandle(),
+      );
+      expect(followsLastCard).toBe(true);
+      await link.click();
+      await expect(page).toHaveURL(site.sectionAddress);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(site.sectionTitle);
+    }
   });
 });
 
