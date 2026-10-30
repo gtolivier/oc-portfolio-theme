@@ -413,6 +413,43 @@ test('on the French home page, on a phone and on a wide window, each card of the
   }
 });
 
+test('on the French home page, on a phone and on a wide window, each card of the section "Projets sélectionnés" shows its role below its title’s row, below both the title and the years, and above its description', async ({ page }) => {
+  /* The box around the text an element displays, from the boxes of its lines: an element's box
+     may stretch beyond its text, a grid cell's to the whole row. */
+  const textBox = (locator: Locator) => locator.evaluate((element) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const lines = [...range.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0);
+    if (lines.length === 0) return null;
+    return { top: Math.min(...lines.map((line) => line.top)), bottom: Math.max(...lines.map((line) => line.bottom)) };
+  });
+  for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/fr/');
+    await cardsOnceLoaded(page);
+    const section = projectsSection(page);
+    for (const [index, project] of FEATURED_PROJECTS.entries()) {
+      const where = `${viewport.width}px wide, ${cardName(index)}`;
+      const card = cardTitled(section, project.title);
+      await expect(card).toHaveCount(1);
+      const role = card.getByText(project.role, { exact: true });
+      await expect(role).toBeVisible();
+      const [title, years, roleBox, description] = await Promise.all([
+        textBox(card.getByRole('heading', { level: 3 })),
+        textBox(card.getByText(project.years, { exact: true })),
+        textBox(role),
+        textBox(card.getByText(project.description, { exact: true })),
+      ]);
+      expect(title && years && roleBox && description, `${where}: the title, years, role and description each show text on screen`).toBeTruthy();
+      /* Below the title's row: under the title's last line and under the years. */
+      const rowBottom = Math.max(title!.bottom, years!.bottom);
+      expect.soft(roleBox!.top, `${where}: top of the role "${project.role}" against the bottom of the title's row (title ${title!.bottom.toFixed(1)} px, years ${years!.bottom.toFixed(1)} px)`).toBeGreaterThanOrEqual(rowBottom - 1);
+      /* Above the description. */
+      expect.soft(roleBox!.bottom, `${where}: bottom of the role "${project.role}" against the top of the description (${description!.top.toFixed(1)} px)`).toBeLessThanOrEqual(description!.top + 1);
+    }
+  }
+});
+
 test('on a phone, the cards of the section "Projets sélectionnés" are stacked in a single column, each as wide as the section’s content, and the page does not scroll horizontally', async ({ page }) => {
   const phone = { width: 390, height: 844 };
   await page.setViewportSize(phone);
