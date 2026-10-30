@@ -10,5 +10,8 @@ other = 'Pause scrolling'
 [selectedProjects]
 other = 'Selected projects'
 
+[seeDetail]
+other = 'See details'
+
 [language]
 other = 'Language'
