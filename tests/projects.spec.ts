@@ -748,6 +748,27 @@ test('on the French home page, the vignettes of the four cards all differ from o
   }
 });
 
+test('on the French home page, the tick pattern is drawn anew at every load: after a reload, the first card’s tick pattern differs from the one it showed before, many of the ticks drawn in one having no tick at the same place in the other', { tag: '@pixels' }, async ({ page }) => {
+  /* Reduced motion, so that whatever could animate shows a still picture. */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const name = `card 1 ("${FEATURED_PROJECTS[0].title}")`;
+  /* The ticks of the first card's tick pattern, on a fresh load of the page. */
+  const ticksOfFirstCardOnLoad = async (load: () => Promise<unknown>, when: string): Promise<TicksOfVignette> => {
+    await load();
+    await page.evaluate(() => document.fonts.ready);
+    const cards = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' }).getByRole('article');
+    await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
+    return ticksOfVignette(cards.first(), `${name}, ${when}`);
+  };
+  const before = await ticksOfFirstCardOnLoad(() => page.goto('/fr/'), 'before the reload');
+  const after = await ticksOfFirstCardOnLoad(() => page.reload(), 'after the reload');
+  const { shareUnmatched, ...best } = bestMatchOfTicks(before, after);
+  expect.soft(
+    shareUnmatched,
+    `${name}: share of the ticks of its tick pattern before and after a reload (at least ${CORE}px inside it) with no tick at the same place (each edge within ${SAME_PLACE}px) in the other load's pattern, with the first moved by up to ${MAX_SHIFT}px the way that matches most (${best.dx}px across, ${best.dy}px down); ticks: ${before.core.length} before the reload, ${best.inFirst} of them unmatched, ${after.core.length} after it, ${best.inSecond} of them unmatched`,
+  ).toBeGreaterThanOrEqual(MIN_SHARE_UNMATCHED);
+});
+
 test('on the French home page, each card’s vignette has no frame: along each of its four edges, inside it, a thin band shows only the card’s background', { tag: '@pixels' }, async ({ page }) => {
   /* Reduced motion, so that whatever could animate shows a still picture. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
