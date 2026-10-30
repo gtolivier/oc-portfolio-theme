@@ -365,6 +365,54 @@ test('on the French home page, the cards of the section "Projets sélectionnés"
   }
 });
 
+test('on the French home page, on a phone and on a wide window, each card of the section "Projets sélectionnés" shows its years on its title’s row, on one line, to the right of the title, at the right end of the card’s text', async ({ page }) => {
+  for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/fr/');
+    await cardsOnceLoaded(page);
+    const section = projectsSection(page);
+    for (const [index, project] of FEATURED_PROJECTS.entries()) {
+      const where = `${viewport.width}px wide, ${cardName(index)}`;
+      const card = cardTitled(section, project.title);
+      await expect(card).toHaveCount(1);
+      const years = card.getByText(project.years, { exact: true });
+      await expect(years).toBeVisible();
+      /* The boxes of the text itself, one per line it is laid out on: an element's box may
+         stretch beyond its text. */
+      const lineBoxes = (locator: Locator) => locator.evaluate((element) => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        return [...range.getClientRects()]
+          .filter((rect) => rect.width > 0 && rect.height > 0)
+          .map(({ left, right, top, bottom }) => ({ left, right, top, bottom }));
+      });
+      const titleLines = await lineBoxes(card.getByRole('heading', { level: 3 }));
+      const yearsLines = await lineBoxes(years);
+      expect.soft(yearsLines.length, `${where}: lines the years "${project.years}" are laid out on`).toBe(1);
+      if (titleLines.length === 0 || yearsLines.length === 0) continue;
+      const yearsBox = {
+        left: Math.min(...yearsLines.map((line) => line.left)),
+        right: Math.max(...yearsLines.map((line) => line.right)),
+        top: Math.min(...yearsLines.map((line) => line.top)),
+        bottom: Math.max(...yearsLines.map((line) => line.bottom)),
+      };
+      /* On the title's row: the years overlap the title's first line vertically. */
+      const firstLine = titleLines.reduce((first, line) => (line.top < first.top ? line : first));
+      expect.soft(
+        yearsBox.top < firstLine.bottom && yearsBox.bottom > firstLine.top,
+        `${where}: the years (${yearsBox.top.toFixed(1)}–${yearsBox.bottom.toFixed(1)} px) overlap vertically the title's first line (${firstLine.top.toFixed(1)}–${firstLine.bottom.toFixed(1)} px)`,
+      ).toBe(true);
+      /* To the right of the title: no line of the title on the years' row reaches into them. */
+      for (const line of titleLines.filter((line) => line.top < yearsBox.bottom && line.bottom > yearsBox.top)) {
+        expect.soft(line.right, `${where}: right edge of a title line on the years' row, against the years' left edge (${yearsBox.left.toFixed(1)} px)`).toBeLessThanOrEqual(yearsBox.left + 1);
+      }
+      /* At the right end of the card's text: lined up with the description's right edge. */
+      const descriptionRight = await card.getByText(project.description, { exact: true }).evaluate((element) => element.getBoundingClientRect().right);
+      expect.soft(Math.abs(yearsBox.right - descriptionRight), `${where}: the years' right edge (${yearsBox.right.toFixed(1)} px) against the description's right edge (${descriptionRight.toFixed(1)} px)`).toBeLessThanOrEqual(2);
+    }
+  }
+});
+
 test('on a phone, the cards of the section "Projets sélectionnés" are stacked in a single column, each as wide as the section’s content, and the page does not scroll horizontally', async ({ page }) => {
   const phone = { width: 390, height: 844 };
   await page.setViewportSize(phone);
