@@ -81,6 +81,8 @@
       <a class="project-link" href="{{ .RelPermalink }}" aria-label="{{ $seeDetail }} – {{ .Title }}">{{ $seeDetail }} <span aria-hidden="true">→</span></a>
       {{- end }}
     </article>
+    {{- else }}
+    {{- errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable : %s" . }}
     {{- end }}
     {{- end }}
     {{- with $.GetPage (index . 0) }}
