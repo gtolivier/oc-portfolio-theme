@@ -858,7 +858,8 @@ tick-field > canvas {
 .project-pattern {
   display: block;
   height: 96px;
-  margin-bottom: 16px;
+  /* Edge to edge: cancels the card's padding on the top and the sides. */
+  margin: -24px -24px 16px;
 }
 
 /* A canvas is a replaced element: it is stretched to the box explicitly, and
