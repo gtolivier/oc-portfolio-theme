@@ -818,49 +818,93 @@ tick-field > canvas {
   color: var(--color-accent-dark);
 }
 
-/* Light section: dark cards on the paper background. */
+/* Light section: dark cards on the paper background. Its items wrap like
+   words: the heading and the link share a line when there is room, then
+   the cards fill one line each, two from 1024 px. */
 .projects {
+  /* Between two cards, and between two lines of the section. */
+  --projects-gap: 24px;
+  /* From the heading to the first card. */
+  --projects-header-space: 40px;
+  --projects-max-width: 1280px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--projects-gap);
   background: var(--color-paper);
   color: var(--color-ink);
-  padding: 48px var(--page-gutter);
+  /* The page gutter, wider on a screen wide enough to centre the content. */
+  padding: 56px max(var(--page-gutter), (100% - var(--projects-max-width)) / 2);
+}
+
+.projects h2 {
+  /* A line of its own on a phone: the link goes below it. */
+  flex: 1 1 100%;
+  align-self: baseline;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(28px, 3vw, 44px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.all-projects-link {
+  align-self: baseline;
+  margin-bottom: calc(var(--projects-header-space) - var(--projects-gap));
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--color-accent-dark);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--color-accent-dark);
+  text-decoration: none;
+}
+
+/* Hover only on devices that can hover: on a touch screen, it would stay
+   on after a tap. Keyboard focus gets the same colours. */
+@media (hover: hover) {
+  .all-projects-link:hover {
+    color: var(--color-ink);
+    border-color: var(--color-accent);
+  }
+}
+
+.all-projects-link:focus-visible {
+  color: var(--color-ink);
+  border-color: var(--color-accent);
 }
 
 .project-card {
-  --project-card-padding: 24px;
+  /* Space around the text; the top one is below the tick pattern. */
+  --project-card-padding-top: 24px;
+  --project-card-padding-inline: 20px;
+  --project-card-padding-bottom: 24px;
+  --project-card-gap: 14px;
+  flex: 0 0 100%;
+  min-width: 0;
   background: var(--color-ink);
   color: var(--color-paper);
-  padding: var(--project-card-padding);
-  margin-block: 16px;
+  padding: 0 var(--project-card-padding-inline) var(--project-card-padding-bottom);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  /* The title's row comes right after the pattern band. */
-  grid-template-rows: auto [title] auto;
+  /* One named row per item, so a missing item leaves an empty row. The
+     description's row takes the free height: in a row of cards, the links
+     line up at the bottom. */
+  grid-template-rows: [pattern] auto [title] auto [role] auto [description] 1fr [stack] auto [link] auto;
   column-gap: 16px;
 }
 
+/* Margins rather than a row gap, which an empty row would double. */
 .project-card > * {
   grid-column: 1 / -1;
-}
-
-/* The years share the title's row, at the right end of the card's text. */
-.project-card > h3 {
-  grid-column: 1;
-  grid-row: title;
-}
-
-.project-card > .project-years {
-  grid-column: 2;
-  grid-row: title;
-  white-space: nowrap;
-  align-self: baseline;
+  margin: var(--project-card-gap) 0 0;
 }
 
 /* Without a script, tick-pattern draws nothing: the band stays empty. */
 .project-pattern {
+  grid-row: pattern;
   display: block;
   height: 96px;
-  /* Edge to edge: cancels the card's padding on the top and the sides. */
-  margin: calc(-1 * var(--project-card-padding)) calc(-1 * var(--project-card-padding)) 16px;
+  /* Edge to edge: cancels the card's padding on the sides. */
+  margin: 0 calc(-1 * var(--project-card-padding-inline)) var(--project-card-padding-top);
 }
 
 /* A canvas is a replaced element: it is stretched to the box explicitly, and
@@ -871,31 +915,107 @@ tick-field > canvas {
   height: 100%;
 }
 
-.project-link {
-  color: var(--color-paper);
+/* The years share the title's row, at the right end of the card's text. */
+.project-card > h3 {
+  grid-column: 1;
+  grid-row: title;
+  align-self: baseline;
+  margin-top: 0;
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
-.all-projects-link {
-  color: var(--color-accent-dark);
+.project-card > .project-years {
+  grid-column: 2;
+  grid-row: title;
+  align-self: baseline;
+  margin-top: 0;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.project-card > .project-role {
+  grid-row: role;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgb(var(--color-paper-channels) / 0.75);
+}
+
+.project-card > .project-description {
+  grid-row: description;
+  font-size: 15px;
+  line-height: 1.6;
+  text-wrap: pretty;
+  color: rgb(var(--color-paper-channels) / 0.85);
+}
+
+.project-card > .project-stack {
+  grid-row: stack;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  color: rgb(var(--color-paper-channels) / 0.62);
+}
+
+/* As wide as its text, so is its underline. */
+.project-card > .project-link {
+  grid-row: link;
+  justify-self: start;
+  margin-top: calc(var(--project-card-gap) + 4px);
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--color-paper);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--color-paper);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .project-card > .project-link:hover {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+}
+
+.project-card > .project-link:focus-visible {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
 }
 
 @media (min-width: 768px) {
   .projects {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 32px;
+    --projects-gap: 28px;
+    --projects-header-space: 56px;
+    padding-block: 96px;
   }
 
-  /* The link shares the heading's row, at the right end of the cards' area. */
+  /* The heading takes at least half the line, so no card fits after the
+     link: the link stays on the heading's line, at its right end. */
   .projects h2 {
-    grid-column: 1;
-    grid-row: 1;
+    flex-basis: 50%;
+    margin-bottom: calc(var(--projects-header-space) - var(--projects-gap));
   }
 
   .all-projects-link {
-    grid-column: 2;
-    grid-row: 1;
-    justify-self: end;
-    align-self: center;
+    margin-bottom: 0;
+  }
+
+  .project-card {
+    --project-card-padding-top: 28px;
+    --project-card-padding-inline: 32px;
+    --project-card-padding-bottom: 32px;
+  }
+}
+
+/* Two cards per line, of equal width, once each gets the design's 420 px
+   minimum. */
+@media (min-width: 1024px) {
+  .project-card {
+    flex-basis: calc((100% - var(--projects-gap)) / 2);
   }
 }
