@@ -13,6 +13,7 @@ import {
 } from './helpers/built-site';
 import {
   type Rectangle,
+  canvasOpacityOverBackgroundAt,
   drawnStrokesInRectangle,
   horizontalBandsWithoutDrawnPixels,
   luminanceAboveBackgroundInRectangle,
@@ -767,6 +768,65 @@ test('on the French home page, the tick pattern is drawn anew at every load: aft
     shareUnmatched,
     `${name}: share of the ticks of its tick pattern before and after a reload (at least ${CORE}px inside it) with no tick at the same place (each edge within ${SAME_PLACE}px) in the other load's pattern, with the first moved by up to ${MAX_SHIFT}px the way that matches most (${best.dx}px across, ${best.dy}px down); ticks: ${before.core.length} before the reload, ${best.inFirst} of them unmatched, ${after.core.length} after it, ${best.inSecond} of them unmatched`,
   ).toBeGreaterThanOrEqual(MIN_SHARE_UNMATCHED);
+});
+
+test('on the French home page, with JavaScript, the ticks of each card’s tick pattern vary in intensity: most of them are faint, see-through over the card’s background, and a few, across the cards, nearly opaque', { tag: '@pixels' }, async ({ page }) => {
+  /* Reduced motion, so that whatever could animate shows a still picture. */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  /* A tick's opacity: the share of the way from the card's background to the tick's own colour
+     that a pixel it covers fully shows. Faint: well between the two, clearly drawn yet clearly
+     see-through. Nearly opaque: close to the tick's own colour. */
+  const FAINT = { min: 0.1, max: 0.7 };
+  const NEARLY_OPAQUE = 0.85;
+  /* Most: at least this share of the ticks of each card's tick pattern are faint. Nearly opaque
+     ticks are rare, so they are counted across the four cards, where at least one is near
+     certain. */
+  const MIN_SHARE_FAINT = 0.75;
+  const MIN_NEARLY_OPAQUE = 1;
+  /* Across a tick, every quarter of a CSS pixel, so that at least one point falls on a pixel the
+     tick covers fully. */
+  const STEP = 0.25;
+  await page.goto('/fr/');
+  await page.evaluate(() => document.fonts.ready);
+  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+  const cards = section.getByRole('article');
+  await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
+  const described: string[] = [];
+  let nearlyOpaque = 0;
+  for (const [index, project] of FEATURED_PROJECTS.entries()) {
+    const where = `card ${index + 1} ("${project.title}")`;
+    const card = cards.nth(index);
+    const { ticks } = await ticksOfVignette(card, where);
+    /* The ticks' boxes are relative to the tick pattern's: the card's screenshot is read
+       relative to the card's box. */
+    const pattern = card.locator('[aria-hidden="true"]').first();
+    const cardBox = await card.boundingBox();
+    const patternBox = await pattern.boundingBox();
+    expect(cardBox && patternBox, `${where}: the card and its tick pattern have a box on screen`).toBeTruthy();
+    const offset = { x: patternBox!.x - cardBox!.x, y: patternBox!.y - cardBox!.y };
+    const screenshot = await card.screenshot();
+    /* Of the points across a tick, halfway down it, the most opaque reading is that of a fully
+       covered pixel, whichever colour the tick has. */
+    const opacities: number[] = [];
+    for (const tick of ticks) {
+      const points = Array.from({ length: Math.max(1, Math.ceil(tick.width / STEP)) }, (_, step) => ({
+        x: offset.x + tick.x + (step + 0.5) * STEP,
+        y: offset.y + tick.y + tick.height / 2,
+      }));
+      const measures = await canvasOpacityOverBackgroundAt(card, screenshot, points);
+      opacities.push(Math.max(...measures.map(({ opacity }) => opacity).filter((opacity) => !Number.isNaN(opacity))));
+    }
+    const faint = opacities.filter((opacity) => opacity >= FAINT.min && opacity <= FAINT.max).length;
+    const opaque = opacities.filter((opacity) => opacity >= NEARLY_OPAQUE).length;
+    nearlyOpaque += opaque;
+    const sorted = [...opacities].sort((a, b) => a - b);
+    const percent = (opacity: number | undefined) => (opacity === undefined ? '–' : `${(100 * opacity).toFixed(0)}%`);
+    const summary = `${ticks.length} ticks, ${faint} faint (${FAINT.min * 100}–${FAINT.max * 100}% of their colour), ${opaque} nearly opaque (at least ${NEARLY_OPAQUE * 100}%); opacities from ${percent(sorted[0])} to ${percent(sorted[sorted.length - 1])}, median ${percent(sorted[Math.floor(sorted.length / 2)])}`;
+    described.push(`${where}: ${summary}`);
+    expect.soft(ticks.length, `${where}: separate ticks inside its tick pattern`).toBeGreaterThan(0);
+    expect.soft(faint / ticks.length, `${where}: share of the ticks of its tick pattern that are faint, see-through over the card's background; ${summary}`).toBeGreaterThanOrEqual(MIN_SHARE_FAINT);
+  }
+  expect.soft(nearlyOpaque, `nearly opaque ticks (at least ${NEARLY_OPAQUE * 100}% of their colour) across the tick patterns of the four cards; ${described.join('; ')}`).toBeGreaterThanOrEqual(MIN_NEARLY_OPAQUE);
 });
 
 test('on the French home page, each card’s vignette has no frame: along each of its four edges, inside it, a thin band shows only the card’s background', { tag: '@pixels' }, async ({ page }) => {
