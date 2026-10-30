@@ -541,22 +541,15 @@ tick-field > canvas {
   height: 100%;
 }
 
-/* A veil darkens its parent's centre and fades out towards the edges. A
-   variant moves or reshapes it through --veil-shape, keeping its density. */
+/* The veil darkens the hero behind its text and fades out towards the edges.
+   Its densest point follows the design rather than the hero's centre. */
 .veil {
-  --veil-shape: closest-side;
   position: absolute;
   inset: 0;
-  background: radial-gradient(var(--veil-shape), rgb(var(--color-ink-channels) / 0.9), transparent);
+  background: radial-gradient(ellipse 70% 60% at 38% 55%, rgb(var(--color-ink-channels) / 0.9), transparent);
   /* Behind the content, above the canvas that precedes it. */
   z-index: -1;
   pointer-events: none;
-}
-
-/* In the hero, the veil's densest point follows the design rather than the
-   hero's centre. */
-.hero .veil {
-  --veil-shape: ellipse 70% 60% at 38% 55%;
 }
 
 /* The site logo looks the same wherever it is used. A context may only
