@@ -770,6 +770,88 @@ test('on the French home page, the tick pattern is drawn anew at every load: aft
   ).toBeGreaterThanOrEqual(MIN_SHARE_UNMATCHED);
 });
 
+test('on the French home page, with JavaScript, when the window widens, the first card’s tick pattern is completed rather than stretched: the ticks it showed stay where they were, and new ticks, spaced like them, fill the added width up to its right edge', { tag: '@pixels' }, async ({ page }) => {
+  /* Reduced motion, so that whatever could animate shows a still picture. */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  /* Two window widths, both in the single-column layout, where the card, and its tick pattern,
+     follow the window's width: the pattern widens by a few hundred pixels between them. */
+  const NARROW = { width: 400, height: 800 };
+  const WIDE = { width: 720, height: 800 };
+  const MIN_WIDENING = 200;
+  /* Time left for a redraw once the pattern's box has widened. */
+  const REDRAW_DELAY = 500;
+  /* The ticks it showed stay where they were: next to none of them, or of those now drawn over the
+     same region, without a tick at the same place in the other. */
+  const MAX_SHARE_UNMATCHED = 0.05;
+  /* Two neighbouring columns of ticks stand as far apart as the existing ones, each edge of a tick
+     within SAME_PLACE of where it would be. */
+  const SPACING_TOLERANCE = 2 * SAME_PLACE;
+  const name = `card 1 ("${FEATURED_PROJECTS[0].title}")`;
+  await page.setViewportSize(NARROW);
+  await page.goto('/fr/');
+  await page.evaluate(() => document.fonts.ready);
+  const cards = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' }).getByRole('article');
+  await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
+  const card = cards.first();
+  const pattern = card.locator('[aria-hidden="true"]').first();
+  const patternWidth = async (): Promise<number> => (await pattern.boundingBox())?.width ?? 0;
+  const narrowWidth = await patternWidth();
+  const before = await ticksOfVignette(card, `${name}, before the window widens`);
+
+  await page.setViewportSize(WIDE);
+  await expect.poll(patternWidth, `${name}: width of its tick pattern once the window widens from ${narrowWidth}px`).toBeGreaterThanOrEqual(narrowWidth + MIN_WIDENING);
+  const wideWidth = await patternWidth();
+  await page.waitForTimeout(REDRAW_DELAY);
+  const after = await ticksOfVignette(card, `${name}, after the window widens`);
+
+  /* The original region: the ticks drawn there after the widening, against those it showed. The
+     core ticks of that region lie as far inside it as the core ticks of the narrow pattern. */
+  const original: TicksOfVignette = {
+    ticks: after.ticks.filter((tick) => tick.x < narrowWidth),
+    core: after.core.filter((tick) => tick.x + tick.width <= narrowWidth - CORE),
+  };
+  const { shareUnmatched, ...best } = bestMatchOfTicks(before, original);
+  expect.soft(
+    shareUnmatched,
+    `${name}: share of the ticks of its ${Math.round(narrowWidth)}px-wide tick pattern, before and after the window widens it to ${Math.round(wideWidth)}px, with no tick at the same place (each edge within ${SAME_PLACE}px) in the other, over the original width (at least ${CORE}px inside it), with the first moved by up to ${MAX_SHIFT}px the way that matches most (${best.dx}px across, ${best.dy}px down); ticks: ${before.core.length} before, ${best.inFirst} of them unmatched, ${original.core.length} after, ${best.inSecond} of them unmatched`,
+  ).toBeLessThanOrEqual(MAX_SHARE_UNMATCHED);
+
+  /* The columns of ticks: the left edges of ticks that stand within SAME_PLACE of one another,
+     from left to right, each column at its leftmost edge. */
+  const columnsOf = (ticks: Rectangle[]): number[] =>
+    [...ticks]
+      .map((tick) => tick.x)
+      .sort((a, b) => a - b)
+      .reduce<number[]>((columns, x) => (columns.length > 0 && x - columns[columns.length - 1] <= SAME_PLACE ? columns : [...columns, x]), []);
+  const gaps = (columns: number[]): number[] => columns.slice(1).map((x, index) => x - columns[index]);
+  const columnsBefore = columnsOf(before.ticks);
+  const gapsBefore = gaps(columnsBefore).sort((a, b) => a - b);
+  const spacing = gapsBefore[Math.floor(gapsBefore.length / 2)];
+  const columnsAfter = columnsOf(after.ticks);
+  /* The columns past the original ones, with the last original column, so that the seam counts
+     too. */
+  const lastOriginalColumn = columnsBefore[columnsBefore.length - 1];
+  const addedColumns = columnsAfter.filter((x) => x >= lastOriginalColumn - SAME_PLACE);
+  const unevenGaps = gaps(addedColumns)
+    .map((gap, index) => ({ at: addedColumns[index], gap }))
+    .filter(({ gap }) => Math.abs(gap - spacing) > SPACING_TOLERANCE)
+    .map(({ at, gap }) => `${gap.toFixed(1)}px after the column at ${at.toFixed(1)}px`);
+  expect.soft(addedColumns.length, `${name}: columns of ticks in its tick pattern from its last original column (${lastOriginalColumn.toFixed(1)}px) to its new right edge (${Math.round(wideWidth)}px)`).toBeGreaterThan(MIN_WIDENING / spacing);
+  expect.soft(
+    unevenGaps,
+    `${name}: gaps between neighbouring columns of ticks, from its last original column (${lastOriginalColumn.toFixed(1)}px) on, that differ by more than ${SPACING_TOLERANCE}px from the spacing of its original columns (${spacing.toFixed(1)}px); columns after the widening: ${columnsAfter.map((x) => x.toFixed(1)).join(', ')}`,
+  ).toEqual([]);
+
+  /* Up to the right edge: the empty strip right of the last tick is no wider, give or take a
+     column, than the one the narrow pattern left. */
+  const emptyStrip = (ticks: Rectangle[], width: number): number => width - Math.max(...ticks.map((tick) => tick.x + tick.width));
+  const stripBefore = emptyStrip(before.ticks, narrowWidth);
+  expect.soft(
+    emptyStrip(after.ticks, wideWidth),
+    `${name}: empty strip between its rightmost tick and the right edge of its ${Math.round(wideWidth)}px-wide tick pattern, against the ${stripBefore.toFixed(1)}px strip of its ${Math.round(narrowWidth)}px-wide pattern and a column spacing of ${spacing.toFixed(1)}px`,
+  ).toBeLessThanOrEqual(stripBefore + spacing + SPACING_TOLERANCE);
+});
+
 test('on the French home page, with JavaScript, the ticks of each card’s tick pattern vary in intensity: most of them are faint, see-through over the card’s background, and a few, across the cards, nearly opaque', { tag: '@pixels' }, async ({ page }) => {
   /* Reduced motion, so that whatever could animate shows a still picture. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
