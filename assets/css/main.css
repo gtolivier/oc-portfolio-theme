@@ -882,6 +882,21 @@ tick-field > canvas {
   --vignette-row-pitch: 15px;
 }
 
+/* The third and fourth cards each get a pattern of their own too. */
+.project-card:nth-of-type(3) .project-vignette {
+  --vignette-tick-width: 2px;
+  --vignette-tick-pitch: 10px;
+  --vignette-long-tick-length: 5px;
+  --vignette-row-pitch: 14px;
+}
+
+.project-card:nth-of-type(4) .project-vignette {
+  --vignette-tick-width: 3px;
+  --vignette-tick-pitch: 9px;
+  --vignette-long-tick-length: 7px;
+  --vignette-row-pitch: 10px;
+}
+
 .project-link {
   color: var(--color-paper);
 }
