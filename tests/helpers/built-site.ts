@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -334,32 +334,40 @@ export interface BuildAttempt {
    killed, and the attempt throws. */
 const MAX_BUILD_DURATION_IN_MS = 60_000;
 
+/* Runs Hugo with the given arguments and returns its result, whatever its
+   exit code. If Hugo does not exit normally (cannot be started,
+   MAX_BUILD_DURATION_IN_MS exceeded, killed by a signal), it throws, so that
+   a test does not read a truncated output as a real one. */
+function runHugo(hugoArguments: string[]): SpawnSyncReturns<string> {
+  const result = spawnSync('hugo', hugoArguments, {
+    cwd: themeRoot,
+    encoding: 'utf8',
+    timeout: MAX_BUILD_DURATION_IN_MS,
+  });
+  if (result.error || result.signal) {
+    throw new Error(
+      `Hugo did not exit normally (signal: ${result.signal ?? 'none'})` +
+        (result.error ? `: ${result.error.message}` : ''),
+      { cause: result.error },
+    );
+  }
+  return result;
+}
+
 /* Builds the site like buildSite, but without throwing if the build fails,
    to observe what Hugo tells the person building the site about it. Without
    --quiet, which would silence its error messages; --logLevel error keeps
    only the errors. Only a normal exit of Hugo counts: succeeded is true if
    it exits with code 0, false with any other code. If it does not exit
-   normally (cannot be started, MAX_BUILD_DURATION_IN_MS exceeded, killed by
-   a signal), the attempt throws, so that a test expecting the build to fail
-   does not pass for the wrong reason. The temporary directory is removed in
-   every case. */
+   normally, the attempt throws (see runHugo), so that a test expecting the
+   build to fail does not pass for the wrong reason. The temporary directory
+   is removed in every case. */
 export function tryToBuildSite(site: BuiltSite): BuildAttempt {
   const destination = createBuildDirectory(site);
   try {
     const result = withSiteConfiguration(site, (configuration) =>
-      spawnSync('hugo', [...buildArguments(site, configuration, destination), '--logLevel', 'error'], {
-        cwd: themeRoot,
-        encoding: 'utf8',
-        timeout: MAX_BUILD_DURATION_IN_MS,
-      }),
+      runHugo([...buildArguments(site, configuration, destination), '--logLevel', 'error']),
     );
-    if (result.error || result.signal) {
-      throw new Error(
-        `Hugo did not exit normally (signal: ${result.signal ?? 'none'})` +
-          (result.error ? `: ${result.error.message}` : ''),
-        { cause: result.error },
-      );
-    }
     return { succeeded: result.status === 0, errors: result.stderr };
   } finally {
     removeDirectory(destination);
@@ -375,25 +383,17 @@ export function tryToBuildSite(site: BuiltSite): BuildAttempt {
 export function findMissingTranslations(): string[] {
   const destination = mkdtempSync(path.join(tmpdir(), 'oc-portfolio-translations-'));
   try {
-    const result = spawnSync(
-      'hugo',
-      [
-        'build',
-        '--source', 'exampleSite',
-        '--environment', 'production',
-        '--destination', destination,
-        '--noBuildLock',
-        '--printI18nWarnings',
-        '--logLevel', 'warn',
-      ],
-      { cwd: themeRoot, encoding: 'utf8', timeout: MAX_BUILD_DURATION_IN_MS },
-    );
-    if (result.error || result.signal || result.status !== 0) {
-      throw new Error(
-        `Hugo did not build the example site (exit code: ${result.status ?? 'none'}, signal: ${result.signal ?? 'none'})` +
-          (result.error ? `: ${result.error.message}` : `:\n${result.stderr}`),
-        { cause: result.error },
-      );
+    const result = runHugo([
+      'build',
+      '--source', 'exampleSite',
+      '--environment', 'production',
+      '--destination', destination,
+      '--noBuildLock',
+      '--printI18nWarnings',
+      '--logLevel', 'warn',
+    ]);
+    if (result.status !== 0) {
+      throw new Error(`Hugo did not build the example site (exit code: ${result.status}):\n${result.stderr}`);
     }
     return `${result.stdout}\n${result.stderr}`
       .split('\n')
