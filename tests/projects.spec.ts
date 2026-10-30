@@ -7,14 +7,41 @@ import {
   serveSite,
 } from './helpers/built-site';
 
-/* The titles of the projects the example site's French home page features, in the order its
-   front matter lists them (params.projects, page references to content/projets/<slug>). The order
-   is neither alphabetical nor reverse alphabetical, so that a sorted listing cannot pass for it. */
+/* The projects the example site's French home page features, in the order its front matter lists
+   them (params.projects, page references to content/projets/<slug>). The order is neither
+   alphabetical nor reverse alphabetical, so that a sorted listing cannot pass for it. Each entry
+   holds what the project's page declares in its front matter: title and description, and under
+   [params] role, years and stack. Every value differs from one project to the next, so that a
+   card showing another project's text cannot pass. */
 const FEATURED_PROJECTS = [
-  'Restauration d’une pendule de cheminée',
-  'Montre de poche à grande complication',
-  'Horloge astronomique de l’atelier',
-  'Régulateur de parquet en noyer',
+  {
+    title: 'Restauration d’une pendule de cheminée',
+    description: 'Remise en marche d’une pendule Empire en bronze doré : mouvement nettoyé, suspension refaite, cadran retouché.',
+    role: 'Restaurateur',
+    years: '2019 – 2020',
+    stack: ['Bronze doré', 'Laiton', 'Soie'],
+  },
+  {
+    title: 'Montre de poche à grande complication',
+    description: 'Calibre à quantième perpétuel et répétition minutes, dessiné puis assemblé pièce par pièce.',
+    role: 'Concepteur du mouvement',
+    years: '2021 – 2023',
+    stack: ['Or rose', 'Acier trempé', 'Rubis', 'Émail grand feu'],
+  },
+  {
+    title: 'Horloge astronomique de l’atelier',
+    description: 'Horloge murale qui affiche les phases de la lune, l’équation du temps et le lever du soleil à la latitude de l’atelier.',
+    role: 'Horloger principal',
+    years: '2016 – 2018',
+    stack: ['Laiton', 'Acier', 'Verre'],
+  },
+  {
+    title: 'Régulateur de parquet en noyer',
+    description: 'Régulateur à balancier compensé, logé dans une caisse en noyer massif sculptée à la main.',
+    role: 'Ébéniste et horloger',
+    years: '2022 – 2024',
+    stack: ['Noyer', 'Invar', 'Laiton'],
+  },
 ];
 
 test('on the French home page, the section "Projets sélectionnés" shows one card per featured project, in the order the home page lists them, each headed by the project’s title', async ({ page }) => {
@@ -22,7 +49,28 @@ test('on the French home page, the section "Projets sélectionnés" shows one ca
   const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
   await expect(section.getByRole('heading', { level: 2, name: 'Projets sélectionnés' })).toBeVisible();
   /* An array makes the match exact: a missing, extra, repeated or misplaced project fails it. */
-  await expect(section.getByRole('heading', { level: 3 })).toHaveText(FEATURED_PROJECTS);
+  await expect(section.getByRole('heading', { level: 3 })).toHaveText(FEATURED_PROJECTS.map((project) => project.title));
+});
+
+test('on the French home page, each featured project’s card gives the role, years, description and stack its page declares, the description as a paragraph and the stack on one line, items separated by " · "', async ({ page }) => {
+  await page.goto('/fr/');
+  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+  for (const project of FEATURED_PROJECTS) {
+    /* The card is the article headed by the project's title: its texts must be in it, not just
+       somewhere in the section. */
+    const card = section.getByRole('article').filter({ has: page.getByRole('heading', { level: 3, name: project.title, exact: true }) });
+    await expect(card).toHaveCount(1);
+    const stack = project.stack.join(' · ');
+    for (const text of [project.years, project.role, stack]) {
+      await expect(card.getByText(text, { exact: true })).toBeVisible();
+      /* Shown once in the section: in this card only. */
+      await expect(section.getByText(text, { exact: true })).toHaveCount(1);
+    }
+    const description = card.getByText(project.description, { exact: true });
+    await expect(description).toBeVisible();
+    await expect(description).toHaveRole('paragraph');
+    await expect(section.getByText(project.description, { exact: true })).toHaveCount(1);
+  }
 });
 
 test.describe('home page of another site, featuring other projects', () => {
@@ -71,7 +119,7 @@ test.describe('home page of another site, featuring no projects', () => {
     await expect(main.getByRole('region')).toHaveCount(0);
     await expect(main.getByRole('heading')).toHaveCount(0);
     for (const project of FEATURED_PROJECTS) {
-      await expect(page.getByText(project)).toHaveCount(0);
+      await expect(page.getByText(project.title)).toHaveCount(0);
     }
   });
 });
