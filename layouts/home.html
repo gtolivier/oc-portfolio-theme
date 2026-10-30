@@ -1,4 +1,6 @@
 {{ define "main" }}
+  {{- /* The hero and the project cards list a stack the same way. */}}
+  {{- $stackSeparator := " · " }}
   {{- if or .Params.hero .Params.clients }}
   <div class="first-screen{{ if .Params.hero }} has-hero{{ end }}">
     {{- with .Params.hero }}
@@ -17,7 +19,7 @@
       </p>
       {{- end }}
       {{- with .stack }}
-      <p class="hero-stack">{{ delimit . " · " }}</p>
+      <p class="hero-stack">{{ delimit . $stackSeparator }}</p>
       {{- end }}
       {{- with .actions }}
       <p class="hero-actions">
@@ -71,7 +73,7 @@
       <p class="project-description">{{ . }}</p>
       {{- end }}
       {{- with .Params.stack }}
-      <p class="project-stack">{{ delimit . " · " }}</p>
+      <p class="project-stack">{{ delimit . $stackSeparator }}</p>
       {{- end }}
     </article>
     {{- end }}
