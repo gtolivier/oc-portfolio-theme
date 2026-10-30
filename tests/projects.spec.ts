@@ -12,9 +12,11 @@ import {
    alphabetical nor reverse alphabetical, so that a sorted listing cannot pass for it. Each entry
    holds what the project's page declares in its front matter: title and description, and under
    [params] role, years and stack. Every value differs from one project to the next, so that a
-   card showing another project's text cannot pass. */
+   card showing another project's text cannot pass. The slug is the page's file name, which sets
+   its address: /fr/projets/<slug>/. */
 const FEATURED_PROJECTS = [
   {
+    slug: 'restauration-pendule',
     title: 'Restauration d’une pendule de cheminée',
     description: 'Remise en marche d’une pendule Empire en bronze doré : mouvement nettoyé, suspension refaite, cadran retouché.',
     role: 'Restaurateur',
@@ -22,6 +24,7 @@ const FEATURED_PROJECTS = [
     stack: ['Bronze doré', 'Laiton', 'Soie'],
   },
   {
+    slug: 'montre-grande-complication',
     title: 'Montre de poche à grande complication',
     description: 'Calibre à quantième perpétuel et répétition minutes, dessiné puis assemblé pièce par pièce.',
     role: 'Concepteur du mouvement',
@@ -29,6 +32,7 @@ const FEATURED_PROJECTS = [
     stack: ['Or rose', 'Acier trempé', 'Rubis', 'Émail grand feu'],
   },
   {
+    slug: 'horloge-astronomique',
     title: 'Horloge astronomique de l’atelier',
     description: 'Horloge murale qui affiche les phases de la lune, l’équation du temps et le lever du soleil à la latitude de l’atelier.',
     role: 'Horloger principal',
@@ -36,6 +40,7 @@ const FEATURED_PROJECTS = [
     stack: ['Laiton', 'Acier', 'Verre'],
   },
   {
+    slug: 'regulateur-noyer',
     title: 'Régulateur de parquet en noyer',
     description: 'Régulateur à balancier compensé, logé dans une caisse en noyer massif sculptée à la main.',
     role: 'Ébéniste et horloger',
@@ -70,6 +75,31 @@ test('on the French home page, each featured project’s card gives the role, ye
     await expect(description).toBeVisible();
     await expect(description).toHaveRole('paragraph');
     await expect(section.getByText(project.description, { exact: true })).toHaveCount(1);
+  }
+});
+
+test('on the French home page, each featured project’s card ends with a "Voir le détail" link, separate from its title, whose accessible name names the project; following it opens the project’s page, at the site root and under /portfolio/', async ({ page }) => {
+  /* The example site served at the root of its origin, then under a subpath (playwright.config.ts). */
+  for (const siteRoot of ['http://localhost:1314/', 'http://localhost:1315/portfolio/']) {
+    for (const project of FEATURED_PROJECTS) {
+      await page.goto(`${siteRoot}fr/`);
+      const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+      const card = section.getByRole('article').filter({ has: page.getByRole('heading', { level: 3, name: project.title, exact: true }) });
+      await expect(card).toHaveCount(1);
+      /* The title is not itself the link. */
+      await expect(card.getByRole('heading', { level: 3 }).getByRole('link')).toHaveCount(0);
+      const link = card.getByRole('link', { name: 'Voir le détail' });
+      await expect(link).toHaveCount(1);
+      await expect(link).toBeVisible();
+      await expect(link).toContainText('Voir le détail');
+      /* Every card shows the same text: the accessible name also names the project, so that a
+         list of the page's links tells them apart. The arrow is decorative: not in the name. */
+      await expect(link).toHaveAccessibleName(new RegExp(project.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+      await expect(link).not.toHaveAccessibleName(/→/);
+      await link.click();
+      await expect(page).toHaveURL(`${siteRoot}fr/projets/${project.slug}/`);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(project.title);
+    }
   }
 });
 
