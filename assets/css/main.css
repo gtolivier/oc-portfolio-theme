@@ -832,6 +832,8 @@ tick-field > canvas {
   margin-block: 16px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  /* The title's row comes right after the pattern band. */
+  grid-template-rows: auto [title] auto;
   column-gap: 16px;
 }
 
@@ -842,12 +844,12 @@ tick-field > canvas {
 /* The years share the title's row, at the right end of the card's text. */
 .project-card > h3 {
   grid-column: 1;
-  grid-row: 2;
+  grid-row: title;
 }
 
 .project-card > .project-years {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: title;
   white-space: nowrap;
   align-self: baseline;
 }
