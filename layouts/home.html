@@ -59,7 +59,7 @@
   {{- with .Params.projects }}
   <section class="projects" aria-labelledby="projects-heading">
     <h2 id="projects-heading">{{ i18n "selectedProjects" }}</h2>
-    {{- /* The first project's section is the one "Tous les projets" links to. */}}
+    {{- /* The all-projects link goes to the first project's section. */}}
     {{- with $.GetPage (index . 0) }}
     {{- with .Parent }}
     <a class="all-projects-link" href="{{ .RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>

@@ -885,9 +885,9 @@ tick-field > canvas {
   padding: 0 var(--project-card-padding-inline) var(--project-card-padding-bottom);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  /* One named row per item, so a missing item leaves an empty row. The
-     description's row takes the free height: in a row of cards, the links
-     line up at the bottom. */
+  /* One named row per item, the years sharing the title's, so a missing
+     item leaves an empty row. The description's row takes the free height:
+     in a row of cards, the links line up at the bottom. */
   grid-template-rows: [pattern] auto [title] auto [role] auto [description] 1fr [stack] auto [link] auto;
   column-gap: 16px;
 }
@@ -916,11 +916,14 @@ tick-field > canvas {
 }
 
 /* The years share the title's row, at the right end of the card's text. */
-.project-card > h3 {
-  grid-column: 1;
+.project-card > :is(h3, .project-years) {
   grid-row: title;
   align-self: baseline;
   margin-top: 0;
+}
+
+.project-card > h3 {
+  grid-column: 1;
   font-family: var(--font-mono);
   font-size: 24px;
   font-weight: 600;
@@ -929,9 +932,6 @@ tick-field > canvas {
 
 .project-card > .project-years {
   grid-column: 2;
-  grid-row: title;
-  align-self: baseline;
-  margin-top: 0;
   white-space: nowrap;
   font-family: var(--font-mono);
   font-size: 13px;
