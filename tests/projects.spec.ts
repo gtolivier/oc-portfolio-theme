@@ -264,6 +264,36 @@ test('on the French home page, the cards of the section "Projets sélectionnés"
   }
 });
 
+test('on a phone, the cards of the section "Projets sélectionnés" are stacked in a single column, each as wide as the section’s content, and the page does not scroll horizontally', async ({ page }) => {
+  const phone = { width: 390, height: 844 };
+  await page.setViewportSize(phone);
+  await page.goto('/fr/');
+  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+  await expect(section).toBeVisible();
+  const cards = section.getByRole('article');
+  await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
+  /* The section's content box: its box without its horizontal padding. */
+  const content = await section.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    return { left: box.left + parseFloat(style.paddingLeft), right: box.right - parseFloat(style.paddingRight) };
+  });
+  const boxes = await cards.evaluateAll((elements) => elements.map((element) => {
+    const { left, right, top, bottom } = element.getBoundingClientRect();
+    return { left, right, top, bottom };
+  }));
+  boxes.forEach((box, index) => {
+    const card = `card ${index + 1} ("${FEATURED_PROJECTS[index].title}")`;
+    expect.soft(Math.abs(box.left - content.left), `${card}: left edge ${box.left} px against the section's content left edge ${content.left} px`).toBeLessThanOrEqual(1);
+    expect.soft(Math.abs(box.right - content.right), `${card}: right edge ${box.right} px against the section's content right edge ${content.right} px`).toBeLessThanOrEqual(1);
+    if (index > 0) {
+      expect.soft(box.top, `${card}: top against the bottom of the card above (${boxes[index - 1].bottom} px)`).toBeGreaterThanOrEqual(boxes[index - 1].bottom - 1);
+    }
+  });
+  const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect.soft(pageWidth, 'width of the page content').toBeLessThanOrEqual(phone.width);
+});
+
 test.describe('home page of another site, featuring other projects', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
