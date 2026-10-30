@@ -44,13 +44,37 @@ function randomBetween(min: number, max: number): number {
   return min + Math.random() * (max - min);
 }
 
-/* A decorative canvas filling the box, drawn once when connected. */
+/* One tick as rolled once, kept so that a redraw shows it again. */
+type Tick = { alpha: number; accent: boolean; height: number };
+
+function rollTick(): Tick {
+  /* One roll sets both its brightness and its colour: every bright tick is in the accent colour. */
+  const roll = Math.random();
+  return {
+    alpha: roll < PATTERN_BRIGHT_SHARE ? PATTERN_BRIGHT_ALPHA : randomBetween(PATTERN_MIN_ALPHA, PATTERN_MAX_ALPHA),
+    accent: roll < PATTERN_ACCENT_SHARE,
+    height: randomBetween(PATTERN_TICK_MIN_HEIGHT_PX, PATTERN_TICK_MAX_HEIGHT_PX),
+  };
+}
+
+/* A decorative canvas filling the box, completed with new ticks when the box widens. */
 class TickPattern extends HTMLElement {
   private canvas = document.createElement('canvas');
+
+  /* The ticks rolled so far, by column then by row. */
+  private columns: Tick[][] = [];
+
+  private observer?: ResizeObserver;
 
   connectedCallback(): void {
     this.prepend(this.canvas);
     this.draw();
+    this.observer = new ResizeObserver(() => this.draw());
+    this.observer.observe(this);
+  }
+
+  disconnectedCallback(): void {
+    this.observer?.disconnect();
   }
 
   private draw(): void {
@@ -64,20 +88,21 @@ class TickPattern extends HTMLElement {
     if (!context) return;
     context.setTransform(scale, 0, 0, scale, 0, 0);
     const colors = this.themeColors();
-    for (let x = PATTERN_LEFT_PX; x < width - PATTERN_RIGHT_MARGIN_PX; x += PATTERN_COLUMN_SPACING_PX) {
-      for (let y = PATTERN_TOP_PX; y < height - PATTERN_BOTTOM_MARGIN_PX; y += PATTERN_ROW_SPACING_PX) {
-        this.drawTick(context, colors, x, y);
+    let column = 0;
+    for (let x = PATTERN_LEFT_PX; x < width - PATTERN_RIGHT_MARGIN_PX; x += PATTERN_COLUMN_SPACING_PX, column++) {
+      const ticks = (this.columns[column] ??= []);
+      let row = 0;
+      for (let y = PATTERN_TOP_PX; y < height - PATTERN_BOTTOM_MARGIN_PX; y += PATTERN_ROW_SPACING_PX, row++) {
+        this.drawTick(context, colors, x, y, (ticks[row] ??= rollTick()));
       }
     }
   }
 
   /* One tick, its top-left corner at x, y in CSS pixels. */
-  private drawTick(context: CanvasRenderingContext2D, colors: PatternColors, x: number, y: number): void {
-    /* One roll sets both its brightness and its colour: every bright tick is in the accent colour. */
-    const roll = Math.random();
-    context.globalAlpha = roll < PATTERN_BRIGHT_SHARE ? PATTERN_BRIGHT_ALPHA : randomBetween(PATTERN_MIN_ALPHA, PATTERN_MAX_ALPHA);
-    context.fillStyle = roll < PATTERN_ACCENT_SHARE ? colors.accent : colors.paper;
-    context.fillRect(x, y, PATTERN_TICK_WIDTH_PX, randomBetween(PATTERN_TICK_MIN_HEIGHT_PX, PATTERN_TICK_MAX_HEIGHT_PX));
+  private drawTick(context: CanvasRenderingContext2D, colors: PatternColors, x: number, y: number, tick: Tick): void {
+    context.globalAlpha = tick.alpha;
+    context.fillStyle = tick.accent ? colors.accent : colors.paper;
+    context.fillRect(x, y, PATTERN_TICK_WIDTH_PX, tick.height);
   }
 
   private themeColors(): PatternColors {
