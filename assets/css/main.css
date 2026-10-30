@@ -836,6 +836,19 @@ tick-field > canvas {
   margin-block: 16px;
 }
 
+@media (min-width: 768px) {
+  .projects {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 32px;
+  }
+
+  .projects h2,
+  .all-projects-link {
+    grid-column: 1 / -1;
+  }
+}
+
 .project-link {
   color: var(--color-paper);
 }
