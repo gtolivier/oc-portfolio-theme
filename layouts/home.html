@@ -57,16 +57,20 @@
   </div>
   {{- end }}
   {{- with .Params.projects }}
+  {{- /* The featured pages are looked up once, for both the all-projects link and the cards. */}}
+  {{- $projects := slice }}
+  {{- range . }}
+  {{- with $.GetPage . }}{{ $projects = $projects | append . }}{{ else }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable : %s" . }}{{ end }}
+  {{- end }}
   <section class="projects" aria-labelledby="projects-heading">
     <h2 id="projects-heading">{{ i18n "selectedProjects" }}</h2>
     {{- /* The all-projects link goes to the first project's section. */}}
-    {{- with $.GetPage (index . 0) }}
+    {{- range first 1 $projects }}
     {{- with .Parent }}
     <a class="all-projects-link" href="{{ .RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
     {{- end }}
     {{- end }}
-    {{- range . }}
-    {{- with $.GetPage . }}
+    {{- range $projects }}
     <article class="project-card">
       <tick-pattern class="project-pattern" aria-hidden="true"></tick-pattern>
       <h3>{{ .Title }}</h3>
@@ -88,9 +92,6 @@
       <a class="project-link" href="{{ .RelPermalink }}" aria-label="{{ $seeDetail }} – {{ .Title }}">{{ $seeDetail }} <span aria-hidden="true">→</span></a>
       {{- end }}
     </article>
-    {{- else }}
-    {{- errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable : %s" . }}
-    {{- end }}
     {{- end }}
   </section>
   {{- end }}
