@@ -836,6 +836,12 @@ tick-field > canvas {
   margin-block: 16px;
 }
 
+.project-vignette {
+  height: 96px;
+  margin-bottom: 16px;
+  border: 1px solid var(--color-accent);
+}
+
 .project-link {
   color: var(--color-paper);
 }

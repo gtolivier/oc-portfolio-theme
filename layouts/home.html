@@ -62,6 +62,7 @@
     {{- range . }}
     {{- with $.GetPage . }}
     <article class="project-card">
+      <div class="project-vignette" aria-hidden="true"></div>
       <h3>{{ .Title }}</h3>
       {{- with .Params.role }}
       <p class="project-role">{{ . }}</p>
