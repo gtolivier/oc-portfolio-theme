@@ -797,6 +797,10 @@ tick-field > canvas {
   }
 }
 
+.projects h2::before {
+  content: "01 // " / "";
+}
+
 @media (min-width: 768px) {
   .clients {
     flex-wrap: nowrap;
