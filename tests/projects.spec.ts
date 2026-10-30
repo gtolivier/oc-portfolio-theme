@@ -294,6 +294,36 @@ test('on a phone, the cards of the section "Projets sélectionnés" are stacked 
   expect.soft(pageWidth, 'width of the page content').toBeLessThanOrEqual(phone.width);
 });
 
+test('on a wide window, the cards of the section "Projets sélectionnés" sit two per row, of equal width', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/fr/');
+  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+  await expect(section).toBeVisible();
+  const cards = section.getByRole('article');
+  await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
+  const boxes = await cards.evaluateAll((elements) => elements.map((element) => {
+    const { left, right, top, bottom, width } = element.getBoundingClientRect();
+    return { left, right, top, bottom, width };
+  }));
+  const name = (index: number) => `card ${index + 1} ("${FEATURED_PROJECTS[index].title}")`;
+  /* Rows of two, in order: cards 1 and 2, then cards 3 and 4 below them. Within a row, both cards
+     share a top edge and the second sits to the right of the first. */
+  for (let first = 0; first < boxes.length; first += 2) {
+    const second = first + 1;
+    if (second >= boxes.length) break;
+    expect.soft(Math.abs(boxes[second].top - boxes[first].top), `${name(second)}: top ${boxes[second].top} px against the top of ${name(first)} (${boxes[first].top} px)`).toBeLessThanOrEqual(1);
+    expect.soft(boxes[second].left, `${name(second)}: left edge against the right edge of ${name(first)} (${boxes[first].right} px)`).toBeGreaterThanOrEqual(boxes[first].right - 1);
+    if (first >= 2) {
+      const rowAboveBottom = Math.max(boxes[first - 2].bottom, boxes[first - 1].bottom);
+      expect.soft(boxes[first].top, `${name(first)}: top against the bottom of the row above (${rowAboveBottom} px)`).toBeGreaterThanOrEqual(rowAboveBottom - 1);
+    }
+  }
+  /* Equal width: every card as wide as the first, whatever the length of its description. */
+  boxes.forEach((box, index) => {
+    expect.soft(Math.abs(box.width - boxes[0].width), `${name(index)}: width ${box.width} px against the width of ${name(0)} (${boxes[0].width} px)`).toBeLessThanOrEqual(1);
+  });
+});
+
 test.describe('home page of another site, featuring other projects', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
