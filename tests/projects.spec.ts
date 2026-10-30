@@ -567,6 +567,32 @@ test('on the French home page, with JavaScript and without, each card of the sec
   }
 });
 
+test('on the French home page, on a phone and on a wide window, each card of the section "Projets sélectionnés" shows its tick pattern edge to edge, across the card’s full width and touching its top edge, while its title is inset from the card’s left edge', async ({ page }) => {
+  /* Inset: the title starts more than this many CSS pixels right of the card's left edge. */
+  const MIN_TITLE_INSET = 8;
+  for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/fr/');
+    const cards = await cardsOnceLoaded(page);
+    for (const index of FEATURED_PROJECTS.keys()) {
+      const where = `${viewport.width}px wide, ${cardName(index)}`;
+      const card = cards.nth(index);
+      const pattern = tickPatternOf(card);
+      await expect(pattern, `${where}: the tick pattern is visible`).toBeVisible();
+      const [cardBox, patternBox, titleBox] = await Promise.all([card.boundingBox(), pattern.boundingBox(), card.getByRole('heading', { level: 3 }).boundingBox()]);
+      expect(cardBox && patternBox && titleBox, `${where}: the card, its tick pattern and its title have a box on screen`).toBeTruthy();
+      const cardRight = cardBox!.x + cardBox!.width;
+      const patternRight = patternBox!.x + patternBox!.width;
+      /* Edge to edge: flush with the card's left, right and top edges, within a pixel. */
+      expect.soft(Math.abs(patternBox!.x - cardBox!.x), `${where}: the tick pattern's left edge (${patternBox!.x.toFixed(1)} px) against the card's left edge (${cardBox!.x.toFixed(1)} px)`).toBeLessThanOrEqual(1);
+      expect.soft(Math.abs(patternRight - cardRight), `${where}: the tick pattern's right edge (${patternRight.toFixed(1)} px) against the card's right edge (${cardRight.toFixed(1)} px)`).toBeLessThanOrEqual(1);
+      expect.soft(Math.abs(patternBox!.y - cardBox!.y), `${where}: the tick pattern's top edge (${patternBox!.y.toFixed(1)} px) against the card's top edge (${cardBox!.y.toFixed(1)} px)`).toBeLessThanOrEqual(1);
+      /* The text below it stays inside the card: the title starts well right of its left edge. */
+      expect.soft(titleBox!.x - cardBox!.x, `${where}: the title's inset from the card's left edge (title at ${titleBox!.x.toFixed(1)} px, card at ${cardBox!.x.toFixed(1)} px)`).toBeGreaterThan(MIN_TITLE_INSET);
+    }
+  }
+});
+
 test('on the French home page, with JavaScript, each card’s tick pattern is made of short ticks in rows: inside it, away from its edges, between two rows of drawn pixels, a horizontal band across its width shows only the card’s background, and several rows are each made of many separate short strokes', { tag: '@pixels' }, async ({ page }) => {
   /* Reduced motion, so that whatever could animate shows a still picture. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
