@@ -815,4 +815,31 @@ tick-field > canvas {
    of the heading's accessible name, and so out of the region's. */
 .projects h2::before {
   content: "01 // " / "";
+  color: var(--color-accent-dark);
+}
+
+/* Light section: dark cards on the paper background. */
+.projects {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  padding: 48px var(--page-gutter);
+  /* Its own compositing layer: otherwise, on a phone, a column of pixels at
+     the right edge of the first screen picks up the section's light paint
+     when the first screen is captured. */
+  will-change: transform;
+}
+
+.project-card {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  padding: 24px;
+  margin-block: 16px;
+}
+
+.project-link {
+  color: var(--color-paper);
+}
+
+.all-projects-link {
+  color: var(--color-accent-dark);
 }
