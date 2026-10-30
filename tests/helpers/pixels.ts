@@ -167,7 +167,7 @@ export async function luminanceAboveBackgroundInRectangle(
 }
 
 /* Red, green and blue channels (0–255). */
-export type Channels = { red: number; green: number; blue: number };
+type Channels = { red: number; green: number; blue: number };
 
 /* How much of its own colour an element's canvas shows over the element's background at each of
    several points of the element (CSS pixels, relative to its box), in the same order: its

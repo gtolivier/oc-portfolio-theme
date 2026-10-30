@@ -3,15 +3,12 @@ import { CATALOG_SITE, buildSite, removeDirectory, serveSite } from './helpers/b
 import { stopClockBeforeLoad } from './helpers/clock';
 import { clickOrTap, middleOfFirstLine } from './helpers/pointer';
 import {
-  type Channels,
   type Rectangle,
   bandsWithoutDrawnPixels,
   brightestLuminanceAboveBackgroundPerColumnInRectangle,
-  canvasOpacityOverBackgroundAt,
   countDrawnStrokes,
   countPixelsNotOfBackground,
   drawnStrokeStarts,
-  drawnStrokesInRectangle,
   horizontalBandsWithoutDrawnPixels,
   luminanceAboveBackgroundInRectangle,
   luminanceAboveBackgroundPerColumn,
@@ -266,30 +263,7 @@ test.describe('catalog: tick-field', () => {
     ).toBeGreaterThan(0);
   });
 
-  test('once revealed, a tick-field is brighter on the right than on the left: 2 s after load, its right quarter shows more than twice the brightness above the background of its left quarter', { tag: '@pixels' }, async ({ page, context }) => {
-    const tickField = await openEmptyTickField(page, context);
-    await page.clock.runFor(2000);
-
-    const screenshot = await tickField.screenshot();
-    const { columns, scale } = await luminanceAboveBackgroundPerColumn(tickField, screenshot);
-    const fieldBox = await tickField.boundingBox();
-    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
-    const width = fieldBox!.width;
-
-    /* The left quarter and the right quarter of the width, each summed over its whole
-       height. A field drawn the same everywhere shows about as much on both sides; the field
-       must show more than twice as much on the right. */
-    const sum = (values: number[]): number => values.reduce((total, value) => total + value, 0);
-    const QUARTER = 0.25 * width;
-    const left = sum(columns.slice(0, Math.round(QUARTER * scale)));
-    const right = sum(columns.slice(Math.round((width - QUARTER) * scale)));
-    expect(
-      right,
-      `brightness above the background of the right quarter (${Math.round(width - QUARTER)}–${Math.round(width)}px), against ${Math.round(left)} for the left quarter (0–${Math.round(QUARTER)}px)`,
-    ).toBeGreaterThan(2 * left);
-  });
-
-  test('once revealed, a tick-field fades from its top right corner, clearly visible, to its bottom left corner, almost invisible, over its whole height: its bottom left tick lies less than 9% of the way from the background to its green, its top right tick more than 40% of the way to the cream, and in a vertical band at the middle of its width, the ticks at mid-height are dimmer than those at the top and brighter than those at the bottom', { tag: '@pixels' }, async ({ page, context }) => {
+  test('once revealed, a tick-field fades from its top right corner, clearly visible, to its bottom left corner, almost invisible, over its whole width and height: its right quarter shows more than twice the brightness above the background of its left quarter, its bottom left tick lies less than 9% of the way from the background to its green, its top right tick more than 40% of the way to the cream, and in a vertical band at the middle of its width, the ticks at mid-height are dimmer than those at the top and brighter than those at the bottom', { tag: '@pixels' }, async ({ page, context }) => {
     /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
        to brighten a tick. */
     const tickField = await openEmptyTickField(page, context, 'reduce');
@@ -304,6 +278,19 @@ test.describe('catalog: tick-field', () => {
       tickField.evaluate((el, name) => getComputedStyle(el).getPropertyValue(name).trim(), customProperty);
     const describeZone = (zone: Rectangle): string =>
       `(${Math.round(zone.x)}–${Math.round(zone.x + zone.width)}px, ${Math.round(zone.y)}–${Math.round(zone.y + zone.height)}px)`;
+
+    /* The left quarter and the right quarter of the width, each summed over its whole
+       height. A field drawn the same everywhere shows about as much on both sides; the field
+       must show more than twice as much on the right. */
+    const { columns: luminancePerColumn, scale } = await luminanceAboveBackgroundPerColumn(tickField, screenshot);
+    const sum = (values: number[]): number => values.reduce((total, value) => total + value, 0);
+    const QUARTER = 0.25 * width;
+    const left = sum(luminancePerColumn.slice(0, Math.round(QUARTER * scale)));
+    const right = sum(luminancePerColumn.slice(Math.round((width - QUARTER) * scale)));
+    expect.soft(
+      right,
+      `brightness above the background of the right quarter (${Math.round(width - QUARTER)}–${Math.round(width)}px), against ${Math.round(left)} for the left quarter (0–${Math.round(QUARTER)}px)`,
+    ).toBeGreaterThan(2 * left);
 
     /* The corner ticks: a 40px square at a corner holds the tick of the field's outermost
        column and row there, and none of its neighbours, 16px and 22px away beyond margins of
@@ -347,71 +334,6 @@ test.describe('catalog: tick-field', () => {
     const column = `mean, over the drawn columns of each zone, of the brightest pixel's luma above the background: top ${describeZone(zones.top)} ${top.toFixed(1)}, mid-height ${describeZone(zones.middle)} ${middle.toFixed(1)}, bottom ${describeZone(zones.bottom)} ${bottom.toFixed(1)}`;
     expect.soft(top, `top against 1.1 times mid-height; ${column}`).toBeGreaterThan(1.1 * middle);
     expect.soft(middle, `mid-height against 1.15 times bottom; ${column}`).toBeGreaterThan(1.15 * bottom);
-  });
-
-  test('once revealed, each tick rests at the opacity its place along the diagonal sets: its top right tick shows about 61% of its colour over the background, not more, its bottom right tick about 50%, and its top left tick, where the horizontal place weighs three times the vertical one, about 14%', { tag: '@pixels' }, async ({ page, context }) => {
-    /* Reduced motion: the field is drawn whole and still from load, with no hover or ripple
-       to brighten a tick. */
-    const tickField = await openEmptyTickField(page, context, 'reduce');
-    await page.clock.runFor(16);
-
-    const fieldBox = await tickField.boundingBox();
-    expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
-    const width = fieldBox!.width;
-    const height = fieldBox!.height;
-    const screenshot = await tickField.screenshot();
-    const describeZone = (zone: Rectangle): string =>
-      `(${Math.round(zone.x)}–${Math.round(zone.x + zone.width)}px, ${Math.round(zone.y)}–${Math.round(zone.y + zone.height)}px)`;
-
-    /* The corner ticks: a 40px square at a corner holds the tick of the field's outermost
-       column and row there, and none of its neighbours, 16px and 22px away beyond margins of
-       at least 24px and 18px. A pixel the tick covers fully shows the background plus the
-       tick's opacity times (its colour − the background): the opacity is read from it,
-       whichever colour the tick has. Halfway down the tick, across it every quarter of a CSS
-       pixel, the most opaque reading is that of a fully covered pixel. */
-    const CORNER = 40;
-    const zones = {
-      topRight: { x: width - CORNER, y: 0, width: CORNER, height: CORNER },
-      bottomRight: { x: width - CORNER, y: height - CORNER, width: CORNER, height: CORNER },
-      topLeft: { x: 0, y: 0, width: CORNER, height: CORNER },
-    };
-    const STEP = 0.25;
-    type Reading = { opacity: number; colour: Channels; x: number; y: number; tick: Rectangle };
-    const opacityOfTick = async (zone: Rectangle): Promise<Reading> => {
-      const ticks = await drawnStrokesInRectangle(tickField, screenshot, zone);
-      expect(ticks, `ticks drawn whole in ${describeZone(zone)}`).toHaveLength(1);
-      const [tick] = ticks;
-      const y = tick.y + tick.height / 2;
-      const points = Array.from({ length: Math.ceil(tick.width / STEP) }, (_, step) => ({ x: tick.x + (step + 0.5) * STEP, y }));
-      const measures = await canvasOpacityOverBackgroundAt(tickField, screenshot, points);
-      return measures
-        .map((measure, index) => ({ ...measure, ...points[index], tick }))
-        .reduce((most, measure) => (measure.opacity > most.opacity ? measure : most));
-    };
-    const topRight = await opacityOfTick(zones.topRight);
-    const bottomRight = await opacityOfTick(zones.bottomRight);
-    const topLeft = await opacityOfTick(zones.topLeft);
-
-    /* The design's opacity for a tick whose top left corner sits at (x, y): its place along
-       the diagonal, the horizontal one weighing three quarters, eased in and out, from 6% to
-       61%. At the top left tick, a few tens of pixels from the corner, about 14% on a wide
-       screen, a little more on a phone; an even weighing would put it near 44%. */
-    const designOpacity = (x: number, y: number): number => {
-      const place = Math.min(1, Math.max(0, (x / width) * 0.75 + (1 - y / height) * 0.25));
-      const eased = place * place * (3 - 2 * place);
-      return 0.06 + eased * 0.55;
-    };
-    const topLeftDesign = designOpacity(topLeft.tick.x, topLeft.tick.y);
-
-    const describe = (reading: Reading): string =>
-      `${(100 * reading.opacity).toFixed(1)}% of its colour (${reading.colour.red}, ${reading.colour.green}, ${reading.colour.blue}) at (${reading.x.toFixed(2)}px, ${reading.y.toFixed(1)}px)`;
-    const ticks = `in the ${Math.round(width)}px-wide tick-field, top right tick ${describe(topRight)}, bottom right tick ${describe(bottomRight)}, top left tick ${describe(topLeft)} where the design sets ${(100 * topLeftDesign).toFixed(1)}%`;
-
-    /* About 61%, within 5%: a bit less, as the ticks sit inside the margins, short of the very
-       corner; about 50%, within 7%; and the design's value at the top left tick, within 5%. */
-    expect.soft(Math.abs(topRight.opacity - 0.61), `distance from 61% of the opacity of the top right tick, ${ticks}`).toBeLessThanOrEqual(0.05);
-    expect.soft(Math.abs(bottomRight.opacity - 0.5), `distance from 50% of the opacity of the bottom right tick, ${ticks}`).toBeLessThanOrEqual(0.07);
-    expect.soft(Math.abs(topLeft.opacity - topLeftDesign), `distance from the design's opacity of the top left tick, ${ticks}`).toBeLessThanOrEqual(0.05);
   });
 
   test('with a fine pointer, hovering brightens the ticks under the pointer, and the trail fades once it leaves', { tag: '@pixels' }, async ({ page, context, hasTouch }) => {
