@@ -180,6 +180,71 @@ async function displayedTexts(root: Locator): Promise<{ text: string; color: str
   });
 }
 
+/* The pixels drawn inside a rectangle of an element (CSS pixels, relative to its box), sorted by
+   the colour drawn there over the element's background. In the element's screenshot, a pixel is
+   drawn when it differs from the background colour by more than a rounding error on a channel.
+   It is drawn in one of `colours` (CSS colours) when it lies on the way from the background
+   towards that colour, whatever opacity or anti-aliasing keeps it short of it: the direction from
+   the background to the pixel within `maxAngle` degrees of the direction from the background to
+   that colour, and nearer to it than to the direction to any other of `colours`, at least
+   `minShareOfTheWay` of the way there. Returns the number of drawn pixels and, for each colour,
+   in the order given, the number drawn in it. Decoded in the page, so that the colours are read
+   through the same colour handling as the screenshot. */
+async function drawnPixelsByColourInRectangle(
+  element: Locator,
+  screenshot: Buffer,
+  rectangle: Rectangle,
+  colours: string[],
+  maxAngle: number,
+  minShareOfTheWay: number,
+): Promise<{ drawn: number; inColour: number[] }> {
+  return element.evaluate(
+    async (el, [base64, zone, cssColours, angle, minShare]) => {
+      const TOLERANCE = 2;
+      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const scale = image.width / el.getBoundingClientRect().width;
+      const fromColumn = Math.max(0, Math.round(zone.x * scale));
+      const toColumn = Math.min(image.width, Math.round((zone.x + zone.width) * scale));
+      const fromRow = Math.max(0, Math.round(zone.y * scale));
+      const toRow = Math.min(image.height, Math.round((zone.y + zone.height) * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true })!;
+      const read = (colour: string): number[] => {
+        context.clearRect(0, 0, 1, 1);
+        context.fillStyle = colour;
+        context.fillRect(0, 0, 1, 1);
+        return Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
+      };
+      const background = read(getComputedStyle(el).backgroundColor);
+      const ways = cssColours.map((colour) => read(colour).map((value, channel) => value - background[channel]));
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+      const minCosine = Math.cos((angle * Math.PI) / 180);
+      let drawn = 0;
+      const inColour = cssColours.map(() => 0);
+      for (let row = fromRow; row < toRow; row++) {
+        for (let column = fromColumn; column < toColumn; column++) {
+          const i = 4 * (row * image.width + column);
+          const offset = [0, 1, 2].map((channel) => pixels[i + channel] - background[channel]);
+          if (!offset.some((value) => Math.abs(value) > TOLERANCE)) continue;
+          drawn += 1;
+          const cosines = ways.map((way) => dot(offset, way) / Math.sqrt(dot(offset, offset) * dot(way, way)));
+          const nearest = cosines.indexOf(Math.max(...cosines));
+          const way = ways[nearest];
+          if (cosines[nearest] >= minCosine && dot(offset, way) / dot(way, way) >= minShare) inColour[nearest] += 1;
+        }
+      }
+      return { drawn, inColour };
+    },
+    [screenshot.toString('base64'), rectangle, colours, maxAngle, minShareOfTheWay] as const,
+  );
+}
+
 test('on the French home page, the heading of the section "Projets sélectionnés" shows the section number "01 //" before its title, while assistive technologies get the title alone', async ({ page }) => {
   await page.goto('/fr/');
   const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
@@ -513,6 +578,55 @@ test('on the French home page, inside the first card’s vignette, the ticks are
     long / short,
     `${where}: length of the shortest of the ${STROKES_EACH_SIDE} longest separate strokes inside the vignette (${long.toFixed(1)}px) over that of the longest of the ${STROKES_EACH_SIDE} shortest (${short.toFixed(1)}px); stroke lengths: ${describeLengths}`,
   ).toBeGreaterThanOrEqual(MIN_LENGTH_RATIO);
+});
+
+test('on the French home page, inside the first card’s vignette, the ticks come in two colours: many of the pixels drawn there are teal, the accent colour, and many others light, the paper colour, either possibly see-through over the card’s background', { tag: '@pixels' }, async ({ page }) => {
+  /* Reduced motion, so that whatever could animate shows a still picture. */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  /* Measured inside the vignette, this far from each edge of its box, so that a border, a
+     frame or the card's edges cannot count as ticks. */
+  const INSET = 4;
+  /* A drawn pixel shows a colour when it lies on the way from the card's background towards it,
+     however far (see-through ticks, anti-aliased edges): its direction from the background
+     within MAX_ANGLE degrees of that colour's, nearer to it than to the other's. From the card's
+     ink, teal raises green and blue far more than red, and the paper raises all three, red the
+     most: their directions lie about 25° apart. A faint edge, less than MIN_SHARE_OF_THE_WAY of
+     the way there, shows no colour clearly and does not count. */
+  const MAX_ANGLE = 12;
+  const MIN_SHARE_OF_THE_WAY = 0.2;
+  /* Many: at least this share of the pixels drawn inside the vignette, for each colour. */
+  const MIN_SHARE_OF_DRAWN = 0.1;
+  await page.goto('/fr/');
+  await page.evaluate(() => document.fonts.ready);
+  const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+  const cards = section.getByRole('article');
+  await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
+  const where = `card 1 ("${FEATURED_PROJECTS[0].title}")`;
+  const card = cards.first();
+  /* The vignette: the card's first element hidden from assistive technologies. */
+  const vignette = card.locator('[aria-hidden="true"]').first();
+  await expect(vignette, `${where}: the vignette is visible`).toBeVisible();
+  await card.scrollIntoViewIfNeeded();
+  const cardBox = await card.boundingBox();
+  const vignetteBox = await vignette.boundingBox();
+  expect(cardBox && vignetteBox, `${where}: the card and its vignette have a box on screen`).toBeTruthy();
+  /* Inside the vignette, relative to the card's box: the card's screenshot is measured against
+     the card's background. */
+  const inside = {
+    x: vignetteBox!.x - cardBox!.x + INSET,
+    y: vignetteBox!.y - cardBox!.y + INSET,
+    width: vignetteBox!.width - 2 * INSET,
+    height: vignetteBox!.height - 2 * INSET,
+  };
+  /* The site's accent (teal) and paper colours, as its stylesheet declares them. */
+  const [teal, paper] = await page.evaluate(() =>
+    ['--color-accent', '--color-paper'].map((name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim()),
+  );
+  const { drawn, inColour } = await drawnPixelsByColourInRectangle(card, await card.screenshot(), inside, [teal, paper], MAX_ANGLE, MIN_SHARE_OF_THE_WAY);
+  const [inTeal, inPaper] = inColour;
+  const counts = `${drawn} screenshot pixels drawn inside the vignette (${INSET}px from its edges): ${inTeal} teal, ${inPaper} light, paper-coloured, ${drawn - inTeal - inPaper} neither clearly`;
+  expect.soft(inTeal / drawn, `${where}: share of the pixels drawn inside the vignette that are teal (${teal}); ${counts}`).toBeGreaterThanOrEqual(MIN_SHARE_OF_DRAWN);
+  expect.soft(inPaper / drawn, `${where}: share of the pixels drawn inside the vignette that are light, paper-coloured (${paper}); ${counts}`).toBeGreaterThanOrEqual(MIN_SHARE_OF_DRAWN);
 });
 
 test('on the French home page, with JavaScript and without, each card’s vignette is its own: the vignettes of the first two cards differ, many of the ticks drawn in one having no tick at the same place in the other', { tag: '@pixels' }, async ({ page, browser, baseURL }) => {
