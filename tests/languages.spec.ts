@@ -1,5 +1,12 @@
 import { test, expect, type Page } from '@playwright/test';
-import { SITE_WITH_ALIASES, buildSite, serveSite, removeDirectory } from './helpers/built-site';
+import {
+  SITE_WITH_ALIASES,
+  buildSite,
+  findMissingTranslations,
+  serveSite,
+  removeDirectory,
+  runBuildTestsInOneProjectOnly,
+} from './helpers/built-site';
 
 /* Playwright's locale option sets a single language: the full list of
    preferred languages is defined before the page scripts run. */
@@ -162,5 +169,14 @@ test.describe('North Frisian, then English browser', () => {
     await page.goto('/');
     await expect(page).toHaveURL(new URL('/en/', baseURL).href);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+  });
+});
+
+test.describe('translations of the theme', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('building the example site reports no missing translation, in any language', () => {
+    /* Each entry names the language and the missing key. */
+    expect(findMissingTranslations(), 'translation keys missing from i18n/<language>.toml').toEqual([]);
   });
 });

@@ -1,4 +1,6 @@
 {{ define "main" }}
+  {{- /* The hero and the project cards list a stack the same way. */}}
+  {{- $stackSeparator := " · " }}
   {{- if or .Params.hero .Params.clients }}
   <div class="first-screen{{ if .Params.hero }} has-hero{{ end }}">
     {{- with .Params.hero }}
@@ -17,7 +19,7 @@
       </p>
       {{- end }}
       {{- with .stack }}
-      <p class="hero-stack">{{ delimit . " · " }}</p>
+      <p class="hero-stack">{{ delimit . $stackSeparator }}</p>
       {{- end }}
       {{- with .actions }}
       <p class="hero-actions">
@@ -53,6 +55,45 @@
     </div>
     {{- end }}
   </div>
+  {{- end }}
+  {{- with .Params.projects }}
+  {{- /* The featured pages are looked up once, for both the all-projects link and the cards. */}}
+  {{- $projects := slice }}
+  {{- range . }}
+  {{- with $.GetPage . }}{{ $projects = $projects | append . }}{{ else }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable : %s" . }}{{ end }}
+  {{- end }}
+  <section class="projects" aria-labelledby="projects-heading">
+    <h2 id="projects-heading">{{ i18n "selectedProjects" }}</h2>
+    {{- /* The all-projects link goes to the first project's section. */}}
+    {{- range first 1 $projects }}
+    {{- with .Parent }}
+    <a class="all-projects-link" href="{{ .RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
+    {{- end }}
+    {{- end }}
+    {{- range $projects }}
+    <article class="project-card">
+      <tick-pattern class="project-pattern" aria-hidden="true"></tick-pattern>
+      <h3>{{ .Title }}</h3>
+      {{- with .Params.role }}
+      <p class="project-role">{{ . }}</p>
+      {{- end }}
+      {{- with .Params.years }}
+      <p class="project-years">{{ . }}</p>
+      {{- end }}
+      {{- with .Description }}
+      <p class="project-description">{{ . }}</p>
+      {{- end }}
+      {{- with .Params.stack }}
+      <p class="project-stack">{{ delimit . $stackSeparator }}</p>
+      {{- end }}
+      {{- $build := .Params.build | default dict }}
+      {{- if ne $build.render "never" }}
+      {{- $seeDetail := i18n "seeDetail" }}
+      <a class="project-link" href="{{ .RelPermalink }}" aria-label="{{ $seeDetail }} – {{ .Title }}">{{ $seeDetail }} <span aria-hidden="true">→</span></a>
+      {{- end }}
+    </article>
+    {{- end }}
+  </section>
   {{- end }}
   {{ .Content }}
 {{ end }}

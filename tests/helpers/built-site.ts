@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -220,6 +220,44 @@ export const SITE_WITH_AN_EMPTY_CLIENT_NAME = testSite('empty-name');
    text made of three spaces only, '   ', instead of a name. */
 export const SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME = testSite('whitespace-only-name');
 
+/* The example site's French home page features four projects: this site
+   replaces that home page with the one of
+   tests/fixtures/other-projects/content, without a hero nor clients, which
+   features three other fictional projects, added under projets/, in an
+   order that is neither alphabetical nor reverse alphabetical: "Coucou de
+   la Forêt-Noire", "Baromètre à mercure", "Chronomètre de marine". The
+   barometer's page declares a title and a description only, without role,
+   years nor stack. The marine chronometer has no detail page: its page
+   declares [build] render = 'never', so that Hugo publishes nothing at
+   /fr/projets/chronometre-marine/. */
+export const SITE_WITH_OTHER_PROJECTS = testSite('other-projects');
+
+/* The example site's French home page features projects of the projets/
+   section: this site replaces that home page with the one of
+   tests/fixtures/projects-in-another-section/content, without a hero nor
+   clients, which features a single fictional project, "Pendule de voyage",
+   added in another section, realisations/, titled "Réalisations" and
+   published at /fr/realisations/. The example site's projets/ section is
+   still built. */
+export const SITE_WITH_PROJECTS_IN_ANOTHER_SECTION = testSite('projects-in-another-section');
+
+/* The example site's French home page features only projects whose pages
+   exist: this site replaces that home page with the one of
+   tests/fixtures/featured-ref-without-page/content, without a hero nor
+   clients, which features an existing project, 'projets/restauration-pendule',
+   then 'projets/sablier-introuvable', a page that does not exist. Its folder
+   name avoids that slug, which the error-message assertion looks for. */
+export const SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND = testSite('featured-ref-without-page');
+
+/* The example site's featured projects each set their own [build] options, if any: this site
+   replaces the French home page with the one of
+   tests/fixtures/section-without-detail-pages/content, without a hero nor clients, which
+   features the example site's 'projets/restauration-pendule', then "Régulateur de parquet",
+   added in another section, esquisses/. That project's page sets no [build] options of its own:
+   its section's _index.md declares [cascade.build] render = 'never', so that Hugo publishes
+   nothing at /fr/esquisses/regulateur-de-parquet/. */
+export const SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES = testSite('section-without-detail-pages');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
@@ -296,33 +334,71 @@ export interface BuildAttempt {
    killed, and the attempt throws. */
 const MAX_BUILD_DURATION_IN_MS = 60_000;
 
+/* Runs Hugo with the given arguments and returns its result, whatever its
+   exit code. If Hugo does not exit normally (cannot be started,
+   MAX_BUILD_DURATION_IN_MS exceeded, killed by a signal), it throws, so that
+   a test does not read a truncated output as a real one. */
+function runHugo(hugoArguments: string[]): SpawnSyncReturns<string> {
+  const result = spawnSync('hugo', hugoArguments, {
+    cwd: themeRoot,
+    encoding: 'utf8',
+    timeout: MAX_BUILD_DURATION_IN_MS,
+  });
+  if (result.error || result.signal) {
+    throw new Error(
+      `Hugo did not exit normally (signal: ${result.signal ?? 'none'})` +
+        (result.error ? `: ${result.error.message}` : ''),
+      { cause: result.error },
+    );
+  }
+  return result;
+}
+
 /* Builds the site like buildSite, but without throwing if the build fails,
    to observe what Hugo tells the person building the site about it. Without
    --quiet, which would silence its error messages; --logLevel error keeps
    only the errors. Only a normal exit of Hugo counts: succeeded is true if
    it exits with code 0, false with any other code. If it does not exit
-   normally (cannot be started, MAX_BUILD_DURATION_IN_MS exceeded, killed by
-   a signal), the attempt throws, so that a test expecting the build to fail
-   does not pass for the wrong reason. The temporary directory is removed in
-   every case. */
+   normally, the attempt throws (see runHugo), so that a test expecting the
+   build to fail does not pass for the wrong reason. The temporary directory
+   is removed in every case. */
 export function tryToBuildSite(site: BuiltSite): BuildAttempt {
   const destination = createBuildDirectory(site);
   try {
     const result = withSiteConfiguration(site, (configuration) =>
-      spawnSync('hugo', [...buildArguments(site, configuration, destination), '--logLevel', 'error'], {
-        cwd: themeRoot,
-        encoding: 'utf8',
-        timeout: MAX_BUILD_DURATION_IN_MS,
-      }),
+      runHugo([...buildArguments(site, configuration, destination), '--logLevel', 'error']),
     );
-    if (result.error || result.signal) {
-      throw new Error(
-        `Hugo did not exit normally (signal: ${result.signal ?? 'none'})` +
-          (result.error ? `: ${result.error.message}` : ''),
-        { cause: result.error },
-      );
-    }
     return { succeeded: result.status === 0, errors: result.stderr };
+  } finally {
+    removeDirectory(destination);
+  }
+}
+
+/* Builds the example site as it is, without a fixture, asking Hugo to warn
+   about every translation key a page uses that a language lacks
+   (--printI18nWarnings), and returns those warnings, one per missing key and
+   language, as Hugo words them ("i18n|MISSING_TRANSLATION|en|someKey").
+   Like tryToBuildSite, it throws if Hugo does not exit normally, and also if
+   the build fails, so that an empty list always means a complete build. */
+export function findMissingTranslations(): string[] {
+  const destination = mkdtempSync(path.join(tmpdir(), 'oc-portfolio-translations-'));
+  try {
+    const result = runHugo([
+      'build',
+      '--source', 'exampleSite',
+      '--environment', 'production',
+      '--destination', destination,
+      '--noBuildLock',
+      '--printI18nWarnings',
+      '--logLevel', 'warn',
+    ]);
+    if (result.status !== 0) {
+      throw new Error(`Hugo did not build the example site (exit code: ${result.status}):\n${result.stderr}`);
+    }
+    return `${result.stdout}\n${result.stderr}`
+      .split('\n')
+      .filter((line) => line.includes('i18n|MISSING_TRANSLATION'))
+      .map((line) => line.slice(line.indexOf('i18n|')).trim());
   } finally {
     removeDirectory(destination);
   }

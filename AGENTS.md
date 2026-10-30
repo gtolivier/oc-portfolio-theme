@@ -47,6 +47,20 @@ The roadmap (one conversation per feature) lives in the private repository
   tests deliberately leave open (a delay, a duration, a light curve), or a
   gap from the design that no test can catch without measuring pixels
   finely, is tuned by eye, in its own commit; the suite must stay green.
+- **Design fidelity**: the tests pin behaviors, never the look, and the
+  green step never sees the design, so TDD alone does not converge on the
+  mockup. For a step that has a mockup:
+  - the behaviors cover what a test states well (content, links,
+    accessibility, phone and desktop layout in broad strokes, reading
+    without JavaScript, `prefers-reduced-motion`), not each detail of the
+    layout: no red/green cycle for what the mockup's CSS already gives;
+  - right after the last cycle, one "port the mockup" commit carries over
+    its values (fonts, sizes, spacing, colours, opacities, borders,
+    alignment), adapting only what the tests or the phone layout require,
+    and says which values it kept from the theme and why;
+  - before the pull request, the section is compared with the mockup side
+    by side, in screenshots at 390 and 1280 px, by the agent, not left to
+    the user.
 - **Playwright e2e tests**: a test describes a behavior the visitor can see
   (text, link, navigation, rendering at a screen size), not an
   implementation detail. Only exception: a content error (badly filled

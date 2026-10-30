@@ -7,5 +7,14 @@ other = 'Ils me font confiance'
 [pauseClients]
 other = 'Mettre en pause le défilement'
 
+[selectedProjects]
+other = 'Projets sélectionnés'
+
+[allProjects]
+other = 'Tous les projets'
+
+[seeDetail]
+other = 'Voir le détail'
+
 [language]
 other = 'Langue'

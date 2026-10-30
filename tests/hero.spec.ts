@@ -38,7 +38,7 @@ import {
   pixelsChangedPerColumnInRectangle,
   pixelsNotOfBackgroundPerRow,
 } from './helpers/pixels';
-import { SIGNS, textOnScreen } from './helpers/text-on-screen';
+import { SIGNS, displayedText, textOnScreen } from './helpers/text-on-screen';
 
 /* Checks that each tagline line is visible in the area, and that each one starts below the
    previous one, in the given order. */
@@ -74,31 +74,6 @@ async function expectLinesInOrder(main: Locator, lines: string[]) {
     expect(current!.top - previous!.lastTop, `"${lines[i]}" starts below "${lines[i - 1]}"`)
       .toBeGreaterThanOrEqual(previous!.lastHeight / 2);
   }
-}
-
-/* Text an element displays on screen, in rendering order: its text nodes and the generated
-   content of its ::before and ::after pseudo-elements (without the alternative text of a
-   `content: "…" / "…"`), hidden elements excluded. Independent of the chosen markup. */
-async function displayedText(element: Locator): Promise<string> {
-  const text = await element.evaluate((root) => {
-    const generated = (el: Element, pseudo: '::before' | '::after') => {
-      const content = getComputedStyle(el, pseudo).content;
-      const strings = content.split(/\s+\/\s+/)[0].match(/"(?:[^"\\]|\\.)*"/g) ?? [];
-      return strings.map((string) => JSON.parse(string) as string).join('');
-    };
-    const walk = (el: Element): string => {
-      const style = getComputedStyle(el);
-      if (style.display === 'none' || style.visibility === 'hidden') return '';
-      let result = generated(el, '::before');
-      for (const child of Array.from(el.childNodes)) {
-        if (child.nodeType === Node.TEXT_NODE) result += child.textContent ?? '';
-        else if (child.nodeType === Node.ELEMENT_NODE) result += walk(child as Element);
-      }
-      return result + generated(el, '::after');
-    };
-    return walk(root);
-  });
-  return text.replace(/\s+/g, ' ').trim();
 }
 
 /* Components of a computed color, however the browser serializes it (`rgb(…)`, `rgba(…)` or
@@ -1020,7 +995,10 @@ test('on phone as on desktop, the hero’s veil darkens its text zone and fades 
    the client band are hidden too, still without moving anything: the hero sits between them
    at fractional positions, and a screenshot of the hero rounded out to whole device pixels
    holds the header's bottom border on its first row, or the band's top border on its last
-   one, which would look like ticks drawn in every column. */
+   one, which would look like ticks drawn in every column. So is the projects section, right
+   below the first screen: on a phone, the screenshot's last device column lies half outside
+   the window and would pick up the section's light paint, which would look like ticks drawn
+   in the rightmost column. */
 async function showOnlyTheField(hero: Locator, text: Record<string, Locator>): Promise<void> {
   const veil = hero.locator('.veil');
   await expect(veil).toHaveCount(1);
@@ -1028,7 +1006,9 @@ async function showOnlyTheField(hero: Locator, text: Record<string, Locator>): P
   await expect(header).toHaveCount(1);
   const clients = hero.page().locator('.clients');
   await expect(clients).toHaveCount(1);
-  for (const element of [...Object.values(text), veil, header, clients]) {
+  const projects = hero.page().locator('.projects');
+  await expect(projects).toHaveCount(1);
+  for (const element of [...Object.values(text), veil, header, clients, projects]) {
     await element.evaluate((el) => {
       (el as HTMLElement).style.visibility = 'hidden';
     });
