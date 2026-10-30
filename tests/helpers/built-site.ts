@@ -220,6 +220,14 @@ export const SITE_WITH_AN_EMPTY_CLIENT_NAME = testSite('empty-name');
    text made of three spaces only, '   ', instead of a name. */
 export const SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME = testSite('whitespace-only-name');
 
+/* The example site's French home page features four projects: this site
+   replaces that home page with the one of
+   tests/fixtures/other-projects/content, without a hero nor clients, which
+   features three other fictional projects, added under projets/, in an
+   order that is neither alphabetical nor reverse alphabetical: "Coucou de
+   la Forêt-Noire", "Baromètre à mercure", "Chronomètre de marine". */
+export const SITE_WITH_OTHER_PROJECTS = testSite('other-projects');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
