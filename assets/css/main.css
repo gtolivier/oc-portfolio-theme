@@ -823,10 +823,6 @@ tick-field > canvas {
   background: var(--color-paper);
   color: var(--color-ink);
   padding: 48px var(--page-gutter);
-  /* Its own compositing layer: otherwise, on a phone, a column of pixels at
-     the right edge of the first screen picks up the section's light paint
-     when the first screen is captured. */
-  will-change: transform;
 }
 
 .project-card {
