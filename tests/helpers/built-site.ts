@@ -241,6 +241,14 @@ export const SITE_WITH_OTHER_PROJECTS = testSite('other-projects');
    still built. */
 export const SITE_WITH_PROJECTS_IN_ANOTHER_SECTION = testSite('projects-in-another-section');
 
+/* The example site's French home page features only projects whose pages
+   exist: this site replaces that home page with the one of
+   tests/fixtures/featured-ref-without-page/content, without a hero nor
+   clients, which features an existing project, 'projets/restauration-pendule',
+   then 'projets/sablier-introuvable', a page that does not exist. Its folder
+   name avoids that slug, which the error-message assertion looks for. */
+export const SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND = testSite('featured-ref-without-page');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

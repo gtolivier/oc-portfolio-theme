@@ -1,11 +1,14 @@
 import { test, expect } from '@playwright/test';
 import {
   SITE_WITHOUT_HERO,
+  SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND,
   SITE_WITH_OTHER_PROJECTS,
   SITE_WITH_PROJECTS_IN_ANOTHER_SECTION,
   buildSite,
   removeDirectory,
+  runBuildTestsInOneProjectOnly,
   serveSite,
+  tryToBuildSite,
 } from './helpers/built-site';
 
 /* The projects the example site's French home page features, in the order its front matter lists
@@ -248,5 +251,30 @@ test.describe('home page of another site, featuring no projects', () => {
     for (const project of FEATURED_PROJECTS) {
       await expect(page.getByText(project.title)).toHaveCount(0);
     }
+  });
+});
+
+test.describe('featured project content errors: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a home page that features a page that does not exist makes the site build fail, with a French error message that names the projects parameter and that page reference, without a template execution error after it', () => {
+    /* tests/fixtures/featured-ref-without-page/content/_index.md features
+       'projets/restauration-pendule', an existing page, then 'projets/sablier-introuvable', which
+       no page answers. Rather than a section that silently drops that card, the person building
+       the site must get a failure whose French message names the projects parameter, in the style
+       of the clients messages ("le paramètre clients…"), and the reference as written in the front
+       matter, whatever the rest of the wording, and no Go template execution error that
+       would follow it and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
+    );
+    expect(build.errors, 'the French message should name the missing page reference').toContain(
+      'projets/sablier-introuvable',
+    );
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
   });
 });
