@@ -851,7 +851,6 @@ tick-field > canvas {
   --vignette-tick-offset: 0px;
   --vignette-set-tick-length: var(--vignette-long-tick-length);
   --vignette-set-tick-color: var(--color-accent);
-  content: "";
   position: absolute;
   /* Leaves a margin of background along each edge: no frame. */
   inset: 4px;
@@ -866,6 +865,14 @@ tick-field > canvas {
     #000 0 var(--vignette-set-tick-length),
     transparent var(--vignette-set-tick-length) var(--vignette-row-pitch)
   );
+}
+
+/* Without a script, the pattern is not drawn: the band stays empty. */
+@media (scripting: enabled) {
+  .project-vignette::before,
+  .project-vignette::after {
+    content: "";
+  }
 }
 
 .project-vignette::after {
