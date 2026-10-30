@@ -4,6 +4,7 @@ import {
   SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND,
   SITE_WITH_OTHER_PROJECTS,
   SITE_WITH_PROJECTS_IN_ANOTHER_SECTION,
+  SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -940,6 +941,36 @@ test.describe('home page of another site, featuring other projects', () => {
     }
     /* Nothing is published where the project's page would be. */
     const response = await page.goto(`${SITE_WITH_OTHER_PROJECTS.origin}/fr/projets/chronometre-marine/`);
+    expect(response?.status()).toBe(404);
+  });
+});
+
+test.describe('home page of another site, featuring a project whose section gives it no detail page', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('the card of a featured project that inherits render = "never" from its section’s cascade has no link, while the other card keeps its own, and the site publishes no page at that project’s address', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES, siteDirectory);
+    await page.goto(`${SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES.origin}/fr/`);
+    const section = page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
+    const cardOf = (title: string) =>
+      section.getByRole('article').filter({ has: page.getByRole('heading', { level: 3, name: title, exact: true }) });
+    /* tests/fixtures/section-without-detail-pages/content/esquisses/regulateur-de-parquet.md sets
+       no [build] options: its section's _index.md declares [cascade.build] render = 'never'. Its
+       card is still shown, with no link at all, not even an empty one. */
+    const card = cardOf('Régulateur de parquet');
+    await expect(card).toHaveCount(1);
+    await expect(card).toBeVisible();
+    await expect(card.locator('a')).toHaveCount(0);
+    /* The project that has a page keeps its link to it. */
+    await expect(cardOf('Restauration d’une pendule de cheminée').getByRole('link', { name: 'Voir le détail' })).toHaveCount(1);
+    /* Nothing is published where the project's page would be. */
+    const response = await page.goto(`${SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES.origin}/fr/esquisses/regulateur-de-parquet/`);
     expect(response?.status()).toBe(404);
   });
 });

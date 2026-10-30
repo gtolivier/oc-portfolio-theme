@@ -249,6 +249,15 @@ export const SITE_WITH_PROJECTS_IN_ANOTHER_SECTION = testSite('projects-in-anoth
    name avoids that slug, which the error-message assertion looks for. */
 export const SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND = testSite('featured-ref-without-page');
 
+/* The example site's featured projects each set their own [build] options, if any: this site
+   replaces the French home page with the one of
+   tests/fixtures/section-without-detail-pages/content, without a hero nor clients, which
+   features the example site's 'projets/restauration-pendule', then "Régulateur de parquet",
+   added in another section, esquisses/. That project's page sets no [build] options of its own:
+   its section's _index.md declares [cascade.build] render = 'never', so that Hugo publishes
+   nothing at /fr/esquisses/regulateur-de-parquet/. */
+export const SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES = testSite('section-without-detail-pages');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
