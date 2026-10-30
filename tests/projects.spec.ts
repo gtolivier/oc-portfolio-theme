@@ -525,6 +525,59 @@ test('on a wide window, the cards of the section "Projets sélectionnés" sit tw
   });
 });
 
+test('on the French home page, the "Tous les projets" link of the section "Projets sélectionnés" comes before the cards: on a wide window on the heading’s row, at the right end of the cards’ area; on a phone below the heading and above the first card', async ({ page }) => {
+  type Box = { left: number; right: number; top: number; bottom: number };
+  /* The box around the text an element displays, from the boxes of its lines: a heading's box
+     may stretch across the whole section. */
+  const textBox = (locator: Locator) => locator.evaluate((element): Box | null => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const lines = [...range.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0);
+    if (lines.length === 0) return null;
+    return {
+      left: Math.min(...lines.map((line) => line.left)),
+      right: Math.max(...lines.map((line) => line.right)),
+      top: Math.min(...lines.map((line) => line.top)),
+      bottom: Math.max(...lines.map((line) => line.bottom)),
+    };
+  });
+  const elementBox = (locator: Locator) => locator.evaluate((element): Box => {
+    const { left, right, top, bottom } = element.getBoundingClientRect();
+    return { left, right, top, bottom };
+  });
+  const span = (box: Box) => `${box.left.toFixed(1)}–${box.right.toFixed(1)} px × ${box.top.toFixed(1)}–${box.bottom.toFixed(1)} px`;
+  for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/fr/');
+    const cards = await cardsOnceLoaded(page);
+    const section = projectsSection(page);
+    const link = section.getByRole('link', { name: 'Tous les projets', exact: true });
+    await expect(link).toBeVisible();
+    const where = `${viewport.width}px wide`;
+    const [heading, linkBox, firstCard, secondCard] = await Promise.all([
+      textBox(section.getByRole('heading', { level: 2 })),
+      textBox(link),
+      elementBox(cards.nth(0)),
+      elementBox(cards.nth(1)),
+    ]);
+    expect(heading && linkBox, `${where}: the heading and the link each show text on screen`).toBeTruthy();
+    if (viewport.width >= 768) {
+      /* On the heading's row: the link overlaps the heading vertically, to its right… */
+      expect.soft(
+        linkBox!.top < heading!.bottom && linkBox!.bottom > heading!.top,
+        `${where}: the link (${span(linkBox!)}) overlaps vertically the heading (${span(heading!)})`,
+      ).toBe(true);
+      expect.soft(linkBox!.left, `${where}: the link's left edge against the heading's right edge (${heading!.right.toFixed(1)} px)`).toBeGreaterThanOrEqual(heading!.right);
+      /* …at the right end of the cards' area: lined up with the second card's right edge. */
+      expect.soft(Math.abs(linkBox!.right - secondCard.right), `${where}: the link's right edge (${linkBox!.right.toFixed(1)} px) against the second card's right edge (${secondCard.right.toFixed(1)} px)`).toBeLessThanOrEqual(3);
+    } else {
+      /* Between the heading and the first card. */
+      expect.soft(linkBox!.top, `${where}: the link's top against the heading's bottom (${heading!.bottom.toFixed(1)} px)`).toBeGreaterThanOrEqual(heading!.bottom - 1);
+      expect.soft(linkBox!.bottom, `${where}: the link's bottom against the first card's top (${firstCard.top.toFixed(1)} px)`).toBeLessThanOrEqual(firstCard.top + 1);
+    }
+  }
+});
+
 test('on the French home page, with JavaScript and without, each card of the section "Projets sélectionnés" shows a decorative tick pattern above its title, across the card’s width (its full width or its content box), hidden from assistive technologies', async ({ page, browser, baseURL }) => {
   /* The tick pattern's band is in the page whether or not scripts run. */
   const withoutJavaScript = await browser.newContext({ baseURL, viewport: page.viewportSize(), javaScriptEnabled: false });
@@ -1204,7 +1257,7 @@ test.describe('home pages whose featured projects live in sections of different 
     removeDirectory(siteDirectory);
   });
 
-  test('the section "Projets sélectionnés" has, once and after the cards, a "Tous les projets" link that opens the section holding the featured projects, at the site root and under /portfolio/', async ({ page, context }) => {
+  test('the section "Projets sélectionnés" has, once and outside the cards, a "Tous les projets" link that opens the section holding the featured projects, at the site root and under /portfolio/', async ({ page, context }) => {
     await serveSite(context, SITE_WITH_PROJECTS_IN_ANOTHER_SECTION, siteDirectory);
     const sites = [
       /* The example site, whose featured projects are in content/projets/ (title "Projets"),
@@ -1228,15 +1281,8 @@ test.describe('home pages whose featured projects live in sections of different 
       await expect(link).toBeVisible();
       await expect(link).toContainText('Tous les projets');
       await expect(link).toHaveAccessibleName('Tous les projets');
-      /* It belongs to the section, not to a card, and comes after every card. */
+      /* It belongs to the section, not to a card. */
       await expect(section.getByRole('article').getByRole('link', { name: 'Tous les projets' })).toHaveCount(0);
-      const lastCard = section.getByRole('article').last();
-      await expect(lastCard).toBeVisible();
-      const followsLastCard = await link.evaluate(
-        (anchor, card) => (card!.compareDocumentPosition(anchor) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
-        await lastCard.elementHandle(),
-      );
-      expect(followsLastCard).toBe(true);
       await link.click();
       await expect(page).toHaveURL(site.sectionAddress);
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(site.sectionTitle);
