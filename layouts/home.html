@@ -59,11 +59,14 @@
   {{- with .Params.projects }}
   <section class="projects" aria-labelledby="projects-heading">
     <h2 id="projects-heading">{{ i18n "selectedProjects" }}</h2>
-    {{- /* The first project's section is the one "Tous les projets" links to. */}}
-    {{- $firstProject := false }}
+    {{- /* The first project's section is the one "Tous les projets" links to; the link comes right after the heading. */}}
+    {{- with $.GetPage (index . 0) }}
+    {{- with .Parent }}
+    <a class="all-projects-link" href="{{ .RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
+    {{- end }}
+    {{- end }}
     {{- range $index, $_ := . }}
     {{- with $.GetPage . }}
-    {{- if eq $index 0 }}{{ $firstProject = . }}{{ end }}
     <article class="project-card">
       <tick-pattern class="project-pattern" aria-hidden="true"></tick-pattern>
       <h3>{{ .Title }}</h3>
@@ -87,11 +90,6 @@
     </article>
     {{- else }}
     {{- errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable : %s" . }}
-    {{- end }}
-    {{- end }}
-    {{- with $firstProject }}
-    {{- with .Parent }}
-    <a class="all-projects-link" href="{{ .RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
     {{- end }}
     {{- end }}
   </section>
