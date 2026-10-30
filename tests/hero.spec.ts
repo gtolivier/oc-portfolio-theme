@@ -1020,7 +1020,10 @@ test('on phone as on desktop, the hero’s veil darkens its text zone and fades 
    the client band are hidden too, still without moving anything: the hero sits between them
    at fractional positions, and a screenshot of the hero rounded out to whole device pixels
    holds the header's bottom border on its first row, or the band's top border on its last
-   one, which would look like ticks drawn in every column. */
+   one, which would look like ticks drawn in every column. So is the projects section, right
+   below the first screen: on a phone, the screenshot's last device column lies half outside
+   the window and would pick up the section's light paint, which would look like ticks drawn
+   in the rightmost column. */
 async function showOnlyTheField(hero: Locator, text: Record<string, Locator>): Promise<void> {
   const veil = hero.locator('.veil');
   await expect(veil).toHaveCount(1);
@@ -1028,7 +1031,9 @@ async function showOnlyTheField(hero: Locator, text: Record<string, Locator>): P
   await expect(header).toHaveCount(1);
   const clients = hero.page().locator('.clients');
   await expect(clients).toHaveCount(1);
-  for (const element of [...Object.values(text), veil, header, clients]) {
+  const projects = hero.page().locator('.projects');
+  await expect(projects).toHaveCount(1);
+  for (const element of [...Object.values(text), veil, header, clients, projects]) {
     await element.evaluate((el) => {
       (el as HTMLElement).style.visibility = 'hidden';
     });
