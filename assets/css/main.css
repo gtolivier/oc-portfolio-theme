@@ -826,9 +826,10 @@ tick-field > canvas {
 }
 
 .project-card {
+  --project-card-padding: 24px;
   background: var(--color-ink);
   color: var(--color-paper);
-  padding: 24px;
+  padding: var(--project-card-padding);
   margin-block: 16px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -859,7 +860,7 @@ tick-field > canvas {
   display: block;
   height: 96px;
   /* Edge to edge: cancels the card's padding on the top and the sides. */
-  margin: -24px -24px 16px;
+  margin: calc(-1 * var(--project-card-padding)) calc(-1 * var(--project-card-padding)) 16px;
 }
 
 /* A canvas is a replaced element: it is stretched to the box explicitly, and
