@@ -840,6 +840,17 @@ tick-field > canvas {
   height: 96px;
   margin-bottom: 16px;
   border: 1px solid var(--color-accent);
+  position: relative;
+}
+
+/* Short ticks in rows: vertical strokes, shown only in bands of 6px out of
+   every 12px. */
+.project-vignette::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(90deg, var(--color-accent) 0 2px, transparent 2px 8px);
+  mask: repeating-linear-gradient(180deg, #000 0 6px, transparent 6px 12px);
 }
 
 .project-link {
