@@ -865,6 +865,14 @@ tick-field > canvas {
   );
 }
 
+/* Every other card gets its own pattern, so that neighbouring vignettes differ. */
+.project-card:nth-of-type(even) .project-vignette::before {
+  --vignette-tick-width: 3px;
+  --vignette-tick-pitch: 11px;
+  --vignette-tick-length: 8px;
+  --vignette-row-pitch: 15px;
+}
+
 .project-link {
   color: var(--color-paper);
 }
