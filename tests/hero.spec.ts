@@ -981,20 +981,23 @@ test('on phone as on desktop, the hero’s veil darkens its text zone and fades 
   const textMiddle = headingBox.x - heroBox.x + headingBox.width / 2;
   const textMiddleHeight = (textTop + textBottom) / 2;
 
-  /* Zones 32px wide: a 32px square at the middle of the text zone, and one against each edge
-     of the hero, in the columns of the text zone's middle or at the height of it. Above the
-     heading, the strip along the hero's top edge is at most 32px high. The strip along its
-     bottom edge stops 1px short of it, where the client band's border can show on the
-     screenshot's last row of device pixels. The field is brighter at the top than at the
-     bottom: what each zone keeps of the field's brightness is measured against the same hero
-     without its veil. */
+  /* A 32px square at the middle of the text zone, and a strip against each edge of the hero,
+     in the columns of the text zone's middle or at the height of it. The strips along the top
+     and bottom edges are 32px wide; above the heading, the top one is at most 32px high. The
+     strip along the bottom edge stops 1px short of it, where the client band's border can show
+     on the screenshot's last row of device pixels. The strips along the left and right edges
+     are 32px high and 48px wide: the field's outermost column of ticks can stand just past 32px
+     from the hero's side (its margin plus the centring of the columns), and a 32px strip would
+     hold only a sliver of it. The field is brighter at the top than at the bottom: what each
+     zone keeps of the field's brightness is measured against the same hero without its veil. */
   const SIDE = 32;
+  const SIDE_STRIP = 48;
   const atText: Rectangle = { x: textMiddle - SIDE / 2, y: textMiddleHeight - SIDE / 2, width: SIDE, height: SIDE };
   const edges: { name: string; rectangle: Rectangle }[] = [
     { name: 'top', rectangle: { x: textMiddle - SIDE / 2, y: 0, width: SIDE, height: Math.min(SIDE, textTop) } },
     { name: 'bottom', rectangle: { x: textMiddle - SIDE / 2, y: heroBox.height - 1 - SIDE, width: SIDE, height: SIDE } },
-    { name: 'left', rectangle: { x: 0, y: textMiddleHeight - SIDE / 2, width: SIDE, height: SIDE } },
-    { name: 'right', rectangle: { x: heroBox.width - SIDE, y: textMiddleHeight - SIDE / 2, width: SIDE, height: SIDE } },
+    { name: 'left', rectangle: { x: 0, y: textMiddleHeight - SIDE / 2, width: SIDE_STRIP, height: SIDE } },
+    { name: 'right', rectangle: { x: heroBox.width - SIDE_STRIP, y: textMiddleHeight - SIDE / 2, width: SIDE_STRIP, height: SIDE } },
   ];
   expect(edges[0].rectangle.height, 'height of the strip along the hero’s top edge, above the heading').toBeGreaterThanOrEqual(24);
 

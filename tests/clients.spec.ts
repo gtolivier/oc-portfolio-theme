@@ -41,11 +41,11 @@ const PHONE_AND_DESKTOP_VIEWPORTS = [PHONE_VIEWPORT, DESKTOP_VIEWPORT];
 
 const NARROW_PHONE_TO_DESKTOP_VIEWPORTS = [NARROW_PHONE_VIEWPORT, ...PHONE_AND_DESKTOP_VIEWPORTS];
 
-/* The same windows, each with whether a test checks there that the band starts below the fold:
-   on the phone and desktop windows only. */
+/* The same windows, each with whether the hero ends at the window's bottom edge on arrival: not at
+   320 px, where its content runs taller than the window and pushes the band lower down. */
 const NARROW_PHONE_TO_DESKTOP_WINDOWS = [
-  { viewport: NARROW_PHONE_VIEWPORT, belowTheFold: false },
-  ...PHONE_AND_DESKTOP_VIEWPORTS.map((viewport) => ({ viewport, belowTheFold: true })),
+  { viewport: NARROW_PHONE_VIEWPORT, heroEndsAtWindowBottom: false },
+  ...PHONE_AND_DESKTOP_VIEWPORTS.map((viewport) => ({ viewport, heroEndsAtWindowBottom: true })),
 ];
 
 /* Checks that the page exposes the declared clients once each, in order, as the list named `name`. */
@@ -694,13 +694,14 @@ test.describe('home page without JavaScript', () => {
      enhancement: without the script that tells whether the list fits, the names must stay readable. */
   test.use({ javaScriptEnabled: false });
 
-  test('without JavaScript, on a phone, down to 320 px wide, and on a desktop, the client names stay still, and every one is shown at once, exactly once, whole, on as many lines as needed, in a band that starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window', async ({ page }) => {
-    for (const { viewport, belowTheFold } of NARROW_PHONE_TO_DESKTOP_WINDOWS) {
+  test('without JavaScript, on a phone, down to 320 px wide, and on a desktop, the client names stay still, and every one is shown at once, exactly once, whole, on as many lines as needed, in a band that starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window, or lower down at 320 px, where the hero runs taller than the window', async ({ page }) => {
+    for (const { viewport, heroEndsAtWindowBottom } of NARROW_PHONE_TO_DESKTOP_WINDOWS) {
       const where = `without JavaScript, at ${viewport.width} px`;
       await page.setViewportSize(viewport);
       const list = await openClientList(page);
       /* The names wrap, so the band grows taller: it must not shrink the hero above it. */
-      if (belowTheFold) await expectBandBelowTheFoldOnArrival(page, viewport);
+      if (heroEndsAtWindowBottom) await expectBandBelowTheFoldOnArrival(page, viewport);
+      else await expectBandOutOfSightOnArrival(page, viewport);
 
       /* Still: one second later, as the visitor lives it (the page's own time runs, untouched;
          without JavaScript, the page's timers never fire, so the test waits on its side), every
@@ -717,19 +718,20 @@ test.describe('home page without JavaScript', () => {
   });
 });
 
-test('when JavaScript is on but the theme’s script does not load, on a phone, down to 320 px wide, and on a desktop, the client names stay still, and every one is shown at once, exactly once, whole, on as many lines as needed, in a band that starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window', async ({ page }) => {
+test('when JavaScript is on but the theme’s script does not load, on a phone, down to 320 px wide, and on a desktop, the client names stay still, and every one is shown at once, exactly once, whole, on as many lines as needed, in a band that starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window, or lower down at 320 px, where the hero runs taller than the window', async ({ page }) => {
   /* The theme's bundle fails to load (a network or an extension refuses it); the page's inline
      scripts still run. Without the script that tells whether the list fits, the names must stay
      readable, as without JavaScript. */
   const blockedScripts = await blockRequests(page, themeScriptUrl());
-  for (const { viewport, belowTheFold } of NARROW_PHONE_TO_DESKTOP_WINDOWS) {
+  for (const { viewport, heroEndsAtWindowBottom } of NARROW_PHONE_TO_DESKTOP_WINDOWS) {
     const where = `without the theme’s script, at ${viewport.width} px`;
     await page.setViewportSize(viewport);
     const list = await openClientList(page);
     expect(blockedScripts, 'theme script request blocked').not.toEqual([]);
     /* The names wrap, as without JavaScript, so the band grows taller: it must not shrink the hero
        above it. */
-    if (belowTheFold) await expectBandBelowTheFoldOnArrival(page, viewport);
+    if (heroEndsAtWindowBottom) await expectBandBelowTheFoldOnArrival(page, viewport);
+    else await expectBandOutOfSightOnArrival(page, viewport);
 
     /* Still: one second later, as the visitor lives it (the page's own time runs, untouched), every
        name sits where it was. */
@@ -772,13 +774,11 @@ test('under prefers-reduced-motion: reduce, on a phone and on a desktop, the cli
 /* Checks, on the French home page just opened at `viewport` (its fonts loaded, the page scrolled to
    the top), that the hero alone fills the window below the header, and the client band begins at
    the bottom edge of the window. */
-async function expectBandBelowTheFoldOnArrival(page: Page, { width, height }: { width: number; height: number }) {
+async function expectBandBelowTheFoldOnArrival(page: Page, viewport: { width: number; height: number }) {
+  const { width, height } = viewport;
   const size = `${width} × ${height}`;
   const hero = heroRegion(page);
   await expect(hero.getByRole('heading', { level: 1 }), `heading at ${size}`).toBeVisible();
-  const band = await clientBandBox(page);
-  expect.soft(band, `at ${size}, a strip holding the list "Ils me font confiance" spans the page width`).not.toBeNull();
-  if (!band) return;
   /* Page scrolled to the top, on arrival: the hero runs from the bottom of the header to the
      bottom of the window… */
   const headerBox = (await page.locator('header').boundingBox())!;
@@ -790,6 +790,16 @@ async function expectBandBelowTheFoldOnArrival(page: Page, { width, height }: { 
   expect.soft(Math.abs(heroBottom - height), `at ${size}, bottom of the hero (${heroBottom} px) against the bottom of the window (${height} px)`)
     .toBeLessThanOrEqual(1);
   /* …and the band only begins there, out of sight until the visitor scrolls. */
+  await expectBandOutOfSightOnArrival(page, viewport);
+}
+
+/* Checks, on the French home page just opened at `viewport` and scrolled to the top, that the client
+   band begins at the bottom edge of the window or lower down: out of sight until the visitor scrolls. */
+async function expectBandOutOfSightOnArrival(page: Page, { width, height }: { width: number; height: number }) {
+  const size = `${width} × ${height}`;
+  const band = await clientBandBox(page);
+  expect.soft(band, `at ${size}, a strip holding the list "Ils me font confiance" spans the page width`).not.toBeNull();
+  if (!band) return;
   expect.soft(band.top, `at ${size}, top of the client band against the bottom of the window (${height} px)`)
     .toBeGreaterThanOrEqual(height - 1);
 }
@@ -914,7 +924,7 @@ function widthJustAboveFit({ lastNameRight, gap, gutter, pageWidthShortfall }: S
   return Math.round(lastNameRight + gap / 2 + gutter + pageWidthShortfall);
 }
 
-test('on a desktop, the client band stays still wherever the names fit, even only just, on arrival and after a resize without reloading: at 1920 px, and at a width where the names end about half a gap before the band’s inner right edge (one page gutter inside the window’s right edge), a fresh load leaves them still, at the latter width each shown once, whole; widened there from a scrolling 1280 px, they stay still, each shown once, whole, with no button "Mettre en pause le défilement"; widened to 1920 px, they stay still, each shown once; narrowed back to 1280 px, they scroll again', async ({ page }) => {
+test('on a desktop, the client band stays still wherever the names fit, even only just, on arrival and after a resize without reloading: at 1920 px, and at a width where the names end about half a gap before the band’s inner right edge (one page gutter inside the window’s right edge), a fresh load leaves them still, at the latter width each shown once, whole; widened there from a scrolling 1280 px, they stay still, each shown once, whole, with no button "Mettre en pause le défilement"; widened to 1920 px, they stay still, each shown once, whole; narrowed back to 1280 px, they scroll again', async ({ page }) => {
   /* At 1920 px wide, the example site's five clients fit in the band: still, they show where
      they sit whenever they fit, whatever the window's width (on a desktop, what comes before them
      does not change width). Read there where they sit. */
@@ -965,17 +975,11 @@ test('on a desktop, the client band stays still wherever the names fit, even onl
   await resizeWithoutReloading(page, DESKTOP_VIEWPORT);
   await expectNamesScroll(`narrowed back from ${width} px to 1280 px`);
 
-  /* Widened, without reloading, to 1920 px: still, each shown once. */
+  /* Widened, without reloading, to 1920 px: still, each shown once, whole. */
   await resizeWithoutReloading(page, WIDE_DESKTOP_VIEWPORT);
   const widenedTo1920 = 'widened from 1280 px to 1920 px';
   await expectNamesStillOverOneSecond(list, CLIENTS, widenedTo1920);
-  const shown = await clientNamesShown(page, CLIENTS);
-  for (const client of CLIENTS) {
-    const copies = shown.filter((occurrence) => occurrence.name === client);
-    /* Shown once: no copy of the name peeks in, even partly. */
-    expect.soft(copies.length, `${widenedTo1920}, number of times "${client}" shows on screen (${copies.map((copy) => `${copy.left}–${copy.right} px`).join(', ')})`)
-      .toBe(1);
-  }
+  expectEachNameShownOnceAndWhole(await clientNamesShown(page, CLIENTS), CLIENTS, widenedTo1920);
 
   /* Narrowed back to 1280 px once more: the band scrolls again. */
   await resizeWithoutReloading(page, DESKTOP_VIEWPORT);
