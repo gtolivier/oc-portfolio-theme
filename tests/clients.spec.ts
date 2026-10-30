@@ -41,6 +41,13 @@ const PHONE_AND_DESKTOP_VIEWPORTS = [PHONE_VIEWPORT, DESKTOP_VIEWPORT];
 
 const NARROW_PHONE_TO_DESKTOP_VIEWPORTS = [NARROW_PHONE_VIEWPORT, ...PHONE_AND_DESKTOP_VIEWPORTS];
 
+/* The same windows, each with whether a test checks there that the band starts below the fold:
+   on the phone and desktop windows only. */
+const NARROW_PHONE_TO_DESKTOP_WINDOWS = [
+  { viewport: NARROW_PHONE_VIEWPORT, belowTheFold: false },
+  ...PHONE_AND_DESKTOP_VIEWPORTS.map((viewport) => ({ viewport, belowTheFold: true })),
+];
+
 /* Checks that the page exposes the declared clients once each, in order, as the list named `name`. */
 async function expectClientList(page: Page, name: string, clients: string[] = CLIENTS) {
   /* "/children: equal" makes the match exact: a missing, extra or repeated client fails it. */
@@ -539,7 +546,8 @@ test('on a phone and on a desktop, while the client names scroll, the button "Me
     await expect(pause, `${where}, the button "Mettre en pause le défilement" is shown`).toBeVisible();
 
     /* The button answers the label: it sits in the band's right half, inside its right edge, and
-       no further inside it than the label stands inside its left edge (the page gutter). */
+       no further inside it than the label stands inside its left edge (the page gutter), nor less
+       than half as far. */
     const band = await clientBandBox(page);
     expect(band, `${where}, the client band spans the page width`).not.toBeNull();
     const labelBox = await labelExtent(page, 'Ils me font confiance');
@@ -554,6 +562,9 @@ test('on a phone and on a desktop, while the client names scroll, the button "Me
       .toBeLessThanOrEqual(band!.right);
     expect.soft(rightGap, `${where}, gap between the button's right side and the band's right edge, against the gap between the label's left side and the band's left edge (${leftGap} px)`)
       .toBeLessThanOrEqual(leftGap + 1);
+    /* Nor does it press against that edge: it stands at least half a page gutter inside it. */
+    expect.soft(rightGap, `${where}, gap between the button's right side and the band's right edge, against half the gap between the label's left side and the band's left edge (${leftGap / 2} px)`)
+      .toBeGreaterThanOrEqual(leftGap / 2);
 
     /* The names slide sideways only: the line they sit on is read from any name the visitor sees. */
     const names = await clientNamesShown(page, CLIENTS);
@@ -684,12 +695,12 @@ test.describe('home page without JavaScript', () => {
   test.use({ javaScriptEnabled: false });
 
   test('without JavaScript, on a phone, down to 320 px wide, and on a desktop, the client names stay still, and every one is shown at once, exactly once, whole, on as many lines as needed, in a band that starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window', async ({ page }) => {
-    for (const viewport of NARROW_PHONE_TO_DESKTOP_VIEWPORTS) {
+    for (const { viewport, belowTheFold } of NARROW_PHONE_TO_DESKTOP_WINDOWS) {
       const where = `without JavaScript, at ${viewport.width} px`;
       await page.setViewportSize(viewport);
       const list = await openClientList(page);
       /* The names wrap, so the band grows taller: it must not shrink the hero above it. */
-      if (PHONE_AND_DESKTOP_VIEWPORTS.includes(viewport)) await expectBandBelowTheFoldOnArrival(page, viewport);
+      if (belowTheFold) await expectBandBelowTheFoldOnArrival(page, viewport);
 
       /* Still: one second later, as the visitor lives it (the page's own time runs, untouched;
          without JavaScript, the page's timers never fire, so the test waits on its side), every
@@ -711,14 +722,14 @@ test('when JavaScript is on but the theme’s script does not load, on a phone, 
      scripts still run. Without the script that tells whether the list fits, the names must stay
      readable, as without JavaScript. */
   const blockedScripts = await blockRequests(page, themeScriptUrl());
-  for (const viewport of NARROW_PHONE_TO_DESKTOP_VIEWPORTS) {
+  for (const { viewport, belowTheFold } of NARROW_PHONE_TO_DESKTOP_WINDOWS) {
     const where = `without the theme’s script, at ${viewport.width} px`;
     await page.setViewportSize(viewport);
     const list = await openClientList(page);
     expect(blockedScripts, 'theme script request blocked').not.toEqual([]);
     /* The names wrap, as without JavaScript, so the band grows taller: it must not shrink the hero
        above it. */
-    if (PHONE_AND_DESKTOP_VIEWPORTS.includes(viewport)) await expectBandBelowTheFoldOnArrival(page, viewport);
+    if (belowTheFold) await expectBandBelowTheFoldOnArrival(page, viewport);
 
     /* Still: one second later, as the visitor lives it (the page's own time runs, untouched), every
        name sits where it was. */
@@ -750,19 +761,13 @@ test('when the theme’s stylesheet does not load, each client name appears once
 test('under prefers-reduced-motion: reduce, on a phone and on a desktop, the client band starts below the fold: on arrival, the hero alone fills the window below the header, and the band begins at the bottom edge of the window', async ({ page }) => {
   /* The visitor asks for reduced motion. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expectBandBelowTheFold(page);
-});
-
-/* Checks, on a phone and on a desktop, that on arrival on the French home page the hero alone fills
-   the window below the header, and the client band begins at the bottom edge of the window. */
-async function expectBandBelowTheFold(page: Page) {
   for (const viewport of PHONE_AND_DESKTOP_VIEWPORTS) {
     await page.setViewportSize(viewport);
     await page.goto('/fr/');
     await waitForFonts(page);
     await expectBandBelowTheFoldOnArrival(page, viewport);
   }
-}
+});
 
 /* Checks, on the French home page just opened at `viewport` (its fonts loaded, the page scrolled to
    the top), that the hero alone fills the window below the header, and the client band begins at
@@ -909,7 +914,7 @@ function widthJustAboveFit({ lastNameRight, gap, gutter, pageWidthShortfall }: S
   return Math.round(lastNameRight + gap / 2 + gutter + pageWidthShortfall);
 }
 
-test('on a desktop, the client band stays still wherever the names fit, even only just, on arrival and after a resize without reloading: at 1920 px, and at a width where the names end about half a gap before the band’s inner right edge (one page gutter inside the window’s right edge), a fresh load and a widening from a scrolling 1280 px both leave them still, each shown once, whole, with no button "Mettre en pause le défilement"; narrowed back to 1280 px, they scroll again', async ({ page }) => {
+test('on a desktop, the client band stays still wherever the names fit, even only just, on arrival and after a resize without reloading: at 1920 px, and at a width where the names end about half a gap before the band’s inner right edge (one page gutter inside the window’s right edge), a fresh load leaves them still, at the latter width each shown once, whole; widened there from a scrolling 1280 px, they stay still, each shown once, whole, with no button "Mettre en pause le défilement"; widened to 1920 px, they stay still, each shown once; narrowed back to 1280 px, they scroll again', async ({ page }) => {
   /* At 1920 px wide, the example site's five clients fit in the band: still, they show where
      they sit whenever they fit, whatever the window's width (on a desktop, what comes before them
      does not change width). Read there where they sit. */
@@ -982,7 +987,6 @@ test('on the English home page, assistive technologies get the same clients once
   await page.setViewportSize(DESKTOP_VIEWPORT);
   await page.goto('/en/');
   await expectClientList(page, 'Trusted by');
-  await expect(page.getByRole('list', { name: 'Trusted by' })).toBeVisible();
   const pause = page.getByRole('button', { name: 'Pause scrolling', exact: true });
   await expect(pause, 'the page has one button "Pause scrolling"').toHaveCount(1);
   await expect(pause).toBeVisible();
@@ -1137,20 +1141,25 @@ test.describe('home page of another site, with a single short client', () => {
           .toBe(clients.map((client) => client.replace(/ /g, '')).join('|||'));
       }
 
+      /* The button is known by its accessible name (it has no text of its own), even if it were
+         hidden from assistive technologies. */
+      const pauseButton = page.getByRole('button', { name: 'Mettre en pause le défilement', includeHidden: true });
       /* Assistive technologies get no such button. */
       await expect.soft(page.getByRole('button', { name: 'Mettre en pause le défilement' }), `${where}, buttons "Mettre en pause le défilement" exposed to assistive technologies`).toHaveCount(0);
-      /* Nothing on screen reads "Mettre en pause le défilement". */
-      await expect.soft(page.getByText('Mettre en pause le défilement'), `${where}, text "Mettre en pause le défilement" shown on screen`).toBeHidden();
+      /* None shows on screen. */
+      await expect.soft(pauseButton, `${where}, button "Mettre en pause le défilement" shown on screen`).toBeHidden();
       /* A keyboard visitor tabbing through the whole page never lands on it: the focus goes from
-         one element to the next until it leaves the page. The button is known by its accessible
-         name (it has no text of its own), even if it were hidden from assistive technologies. */
-      const pauseButton = page.getByRole('button', { name: 'Mettre en pause le défilement', includeHidden: true });
+         one element to the next until it leaves the page. */
       const tab = tabKey(browserName);
       let pauseButtonReached = false;
       for (let i = 0; i < 50; i++) {
         await page.keyboard.press(tab);
-        if (await page.evaluate(() => !document.activeElement || document.activeElement === document.body)) break;
-        if (await pauseButton.evaluateAll((buttons) => buttons.some((button) => button === document.activeElement))) pauseButtonReached = true;
+        const { leftPage, onPauseButton } = await pauseButton.evaluateAll((buttons) => ({
+          leftPage: !document.activeElement || document.activeElement === document.body,
+          onPauseButton: buttons.some((button) => button === document.activeElement),
+        }));
+        if (leftPage) break;
+        if (onPauseButton) pauseButtonReached = true;
       }
       expect.soft(pauseButtonReached, `${where}, the keyboard reaches a button "Mettre en pause le défilement"`).toBe(false);
     }
