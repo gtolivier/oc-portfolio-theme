@@ -832,76 +832,19 @@ tick-field > canvas {
   margin-block: 16px;
 }
 
-.project-vignette {
-  --vignette-tick-width: 2px;
-  --vignette-tick-pitch: 8px;
-  --vignette-long-tick-length: 6px;
-  --vignette-short-tick-length: calc(var(--vignette-long-tick-length) / 3);
-  --vignette-row-pitch: 12px;
+/* Without a script, tick-pattern draws nothing: the band stays empty. */
+.project-pattern {
+  display: block;
   height: 96px;
   margin-bottom: 16px;
-  position: relative;
 }
 
-/* Short ticks in rows: vertical strokes across the whole vignette, masked so
-   that only horizontal bands of them show. Two interleaved sets of columns:
-   ::before draws the long ticks, ::after, one pitch further, the short ones. */
-.project-vignette::before,
-.project-vignette::after {
-  --vignette-tick-offset: 0px;
-  --vignette-set-tick-length: var(--vignette-long-tick-length);
-  --vignette-set-tick-color: var(--color-accent);
-  position: absolute;
-  /* Leaves a margin of background along each edge: no frame. */
-  inset: 4px;
-  background: repeating-linear-gradient(
-    90deg,
-    transparent 0 var(--vignette-tick-offset),
-    var(--vignette-set-tick-color) var(--vignette-tick-offset) calc(var(--vignette-tick-offset) + var(--vignette-tick-width)),
-    transparent calc(var(--vignette-tick-offset) + var(--vignette-tick-width)) calc(2 * var(--vignette-tick-pitch))
-  );
-  mask: repeating-linear-gradient(
-    180deg,
-    #000 0 var(--vignette-set-tick-length),
-    transparent var(--vignette-set-tick-length) var(--vignette-row-pitch)
-  );
-}
-
-/* Without a script, the pattern is not drawn: the band stays empty. */
-@media (scripting: enabled) {
-  .project-vignette::before,
-  .project-vignette::after {
-    content: "";
-  }
-}
-
-.project-vignette::after {
-  --vignette-tick-offset: var(--vignette-tick-pitch);
-  --vignette-set-tick-length: var(--vignette-short-tick-length);
-  --vignette-set-tick-color: var(--color-paper);
-}
-
-/* Every other card gets its own pattern, so that neighbouring vignettes differ. */
-.project-card:nth-of-type(even) .project-vignette {
-  --vignette-tick-width: 3px;
-  --vignette-tick-pitch: 11px;
-  --vignette-long-tick-length: 8px;
-  --vignette-row-pitch: 15px;
-}
-
-/* The third and fourth cards each get a pattern of their own too. */
-.project-card:nth-of-type(3) .project-vignette {
-  --vignette-tick-width: 2px;
-  --vignette-tick-pitch: 10px;
-  --vignette-long-tick-length: 5px;
-  --vignette-row-pitch: 14px;
-}
-
-.project-card:nth-of-type(4) .project-vignette {
-  --vignette-tick-width: 3px;
-  --vignette-tick-pitch: 9px;
-  --vignette-long-tick-length: 7px;
-  --vignette-row-pitch: 10px;
+/* A canvas is a replaced element: it is stretched to the box explicitly, and
+   displayed as a block so that no line-box gap shows under it. */
+.project-pattern > canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .project-link {

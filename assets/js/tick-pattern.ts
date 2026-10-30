@@ -1,0 +1,90 @@
+/* A still pattern of short ticks in rows, drawn anew at every load: no seed, so each visit shows a
+   pattern of its own. */
+
+/* The box drawn in when the element has no layout of its own, in CSS pixels. */
+const PATTERN_FALLBACK_WIDTH_PX = 480;
+
+const PATTERN_FALLBACK_HEIGHT_PX = 96;
+
+/* Where the first column and row of ticks sit, and the empty margin left at the right and bottom. */
+const PATTERN_LEFT_PX = 14;
+
+const PATTERN_TOP_PX = 12;
+
+const PATTERN_RIGHT_MARGIN_PX = 8;
+
+const PATTERN_BOTTOM_MARGIN_PX = 14;
+
+const PATTERN_COLUMN_SPACING_PX = 11;
+
+const PATTERN_ROW_SPACING_PX = 20;
+
+const PATTERN_TICK_WIDTH_PX = 1.5;
+
+const PATTERN_TICK_MIN_HEIGHT_PX = 8;
+
+const PATTERN_TICK_MAX_HEIGHT_PX = 12;
+
+/* The share of ticks drawn bright, almost opaque; the others are see-through. */
+const PATTERN_BRIGHT_SHARE = 0.06;
+
+const PATTERN_BRIGHT_ALPHA = 0.95;
+
+const PATTERN_MIN_ALPHA = 0.2;
+
+const PATTERN_MAX_ALPHA = 0.5;
+
+/* The share of ticks in the accent colour, bright ones included; the others are paper-coloured. */
+const PATTERN_ACCENT_SHARE = 0.6;
+
+/* The theme's colours the pattern paints with. */
+type PatternColors = { accent: string; paper: string };
+
+function randomBetween(min: number, max: number): number {
+  return min + Math.random() * (max - min);
+}
+
+/* A decorative canvas filling the box, drawn once when connected. */
+class TickPattern extends HTMLElement {
+  private canvas = document.createElement('canvas');
+
+  connectedCallback(): void {
+    this.prepend(this.canvas);
+    this.draw();
+  }
+
+  private draw(): void {
+    /* One canvas pixel per device pixel, so the strokes stay crisp. */
+    const scale = window.devicePixelRatio || 1;
+    const width = this.offsetWidth || PATTERN_FALLBACK_WIDTH_PX;
+    const height = this.offsetHeight || PATTERN_FALLBACK_HEIGHT_PX;
+    this.canvas.width = Math.round(width * scale);
+    this.canvas.height = Math.round(height * scale);
+    const context = this.canvas.getContext('2d');
+    if (!context) return;
+    context.setTransform(scale, 0, 0, scale, 0, 0);
+    const colors = this.themeColors();
+    for (let x = PATTERN_LEFT_PX; x < width - PATTERN_RIGHT_MARGIN_PX; x += PATTERN_COLUMN_SPACING_PX) {
+      for (let y = PATTERN_TOP_PX; y < height - PATTERN_BOTTOM_MARGIN_PX; y += PATTERN_ROW_SPACING_PX) {
+        this.drawTick(context, colors, x, y);
+      }
+    }
+  }
+
+  /* One tick, its top-left corner at x, y in CSS pixels. */
+  private drawTick(context: CanvasRenderingContext2D, colors: PatternColors, x: number, y: number): void {
+    /* One roll sets both its brightness and its colour: every bright tick is in the accent colour. */
+    const roll = Math.random();
+    context.globalAlpha = roll < PATTERN_BRIGHT_SHARE ? PATTERN_BRIGHT_ALPHA : randomBetween(PATTERN_MIN_ALPHA, PATTERN_MAX_ALPHA);
+    context.fillStyle = roll < PATTERN_ACCENT_SHARE ? colors.accent : colors.paper;
+    context.fillRect(x, y, PATTERN_TICK_WIDTH_PX, randomBetween(PATTERN_TICK_MIN_HEIGHT_PX, PATTERN_TICK_MAX_HEIGHT_PX));
+  }
+
+  private themeColors(): PatternColors {
+    const style = getComputedStyle(this);
+    const color = (name: string): string => style.getPropertyValue(name).trim();
+    return { accent: color('--color-accent'), paper: color('--color-paper') };
+  }
+}
+
+customElements.define('tick-pattern', TickPattern);
