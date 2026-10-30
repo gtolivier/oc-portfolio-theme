@@ -835,7 +835,6 @@ tick-field > canvas {
 .project-vignette {
   height: 96px;
   margin-bottom: 16px;
-  border: 1px solid var(--color-accent);
   position: relative;
 }
 
@@ -848,7 +847,8 @@ tick-field > canvas {
   --vignette-row-pitch: 12px;
   content: "";
   position: absolute;
-  inset: 0;
+  /* Leaves a margin of background along each edge: no frame. */
+  inset: 4px;
   background: repeating-linear-gradient(
     90deg,
     var(--color-accent) 0 var(--vignette-tick-width),
