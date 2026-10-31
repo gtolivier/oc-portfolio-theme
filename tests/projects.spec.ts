@@ -16,6 +16,7 @@ import {
   SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF,
   SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT,
+  SITE_WITH_A_DRAFT_FEATURED_PROJECT,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1628,5 +1629,34 @@ test.describe('featured project content errors: build failure', () => {
         /execute of template failed|error calling/i,
       );
     }
+  });
+
+  test('a home page that features a project whose page is a draft makes the production build fail, with a French error message that names the projects parameter and that page reference and says the page may be unpublished: a draft, a future date or an expired page, without a template execution error after it', () => {
+    /* tests/fixtures/draft-ref/content/_index.md features 'projets/restauration-pendule', then
+       'projets/pendule-portique', whose page exists but declares draft = true, so that the
+       production build leaves it out. A message that only says the page cannot be found would send
+       the person building the site looking for a missing file, while the file is right there: the
+       French message must name the projects parameter and the reference as written in the front
+       matter, say that the page may be unpublished, and name the three reasons a production build
+       leaves a page out — a draft (brouillon), a date in the future (future, à venir) and an
+       expiry date passed (expirée) — whatever the rest of the wording, and no Go template
+       execution error must follow it and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_A_DRAFT_FEATURED_PROJECT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
+    );
+    expect(build.errors, 'the French message should name the unpublished page reference').toContain(
+      'projets/pendule-portique',
+    );
+    expect(build.errors, 'the French message should say the page may be unpublished').toMatch(/publi/i);
+    expect(build.errors, 'the French message should name a draft as a possible reason').toMatch(/brouillon/i);
+    expect(build.errors, 'the French message should name a future date as a possible reason').toMatch(
+      /futur|à venir/i,
+    );
+    expect(build.errors, 'the French message should name an expired page as a possible reason').toMatch(/expir/i);
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
   });
 });

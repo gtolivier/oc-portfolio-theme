@@ -337,6 +337,15 @@ export const SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT = testSit
    an English page). The example site's French home page is unchanged. */
 export const SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT = testSite('french-only-project');
 
+/* The example site's French home page features only published projects: this site replaces that
+   home page with the one of tests/fixtures/draft-ref/content, without a hero nor clients, which
+   features the example site's 'projets/restauration-pendule', then 'projets/pendule-portique', a
+   fictional project, "Pendule portique", added under projets/ in French only, whose page declares
+   draft = true: the production build leaves it out. Its folder name avoids that slug and the
+   French words for a draft, a future date and an expired page, which the error-message assertions
+   look for. */
+export const SITE_WITH_A_DRAFT_FEATURED_PROJECT = testSite('draft-ref');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
