@@ -1991,6 +1991,37 @@ test.describe('featured project content errors: build failure', () => {
     }
   });
 
+  test('a home page that features a project without a translation in its language makes the site build fail, with a French error message that gives a missing translation in that language as a possible cause', () => {
+    /* Same fixtures as the test above. A message that only says the page cannot be found, or only
+       blames an unpublished page (a draft, a future date, an expired page), would send the person
+       building the site looking for a missing or unpublished file, while the project's file is
+       right there, in the other language: the French message must also name a missing translation
+       (traduction, traduite…) as a possible cause, on the same line as the home page's language
+       code (fr, en), whatever the rest of the wording. The code is looked for as in the test
+       above, as a word that no other word follows. Both directions, so that a message naming a
+       language written in the template does not pass. */
+    const cases = [
+      {
+        name: 'a French home page featuring an English-only project',
+        site: SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT,
+        language: 'fr',
+      },
+      {
+        name: 'an English home page featuring a French-only project',
+        site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT,
+        language: 'en',
+      },
+    ];
+    for (const { name, site, language } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(
+        build.errors,
+        `with ${name}, the French message should give a missing translation in ${language} as a possible cause`,
+      ).toMatch(new RegExp(`^(?=.*tradu)(?=.*\\b${language}\\b(?!\\s+\\p{L})).*$`, 'imu'));
+    }
+  });
+
   test('a home page that features a project whose page is a draft makes the production build fail, with a French error message that names the projects parameter and that page reference and says the page may be unpublished: a draft, a future date or an expired page, without a template execution error after it', () => {
     /* tests/fixtures/draft-ref/content/_index.md features 'projets/restauration-pendule', then
        'projets/pendule-portique', whose page exists but declares draft = true, so that the
