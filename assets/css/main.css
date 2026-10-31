@@ -826,6 +826,9 @@ tick-field > canvas {
   --projects-gap: 24px;
   /* From the heading to the first card. */
   --projects-header-space: 40px;
+  /* What the item just above the first card adds to the gap to make that
+     space. */
+  --projects-header-margin: calc(var(--projects-header-space) - var(--projects-gap));
   --projects-max-width: 1280px;
   display: flex;
   flex-wrap: wrap;
@@ -850,12 +853,12 @@ tick-field > canvas {
 /* Without the link, the first card follows the heading directly: it gets the
    space the link's margin gives otherwise. */
 .projects h2 + .project-card {
-  margin-top: calc(var(--projects-header-space) - var(--projects-gap));
+  margin-top: var(--projects-header-margin);
 }
 
 .all-projects-link {
   align-self: baseline;
-  margin-bottom: calc(var(--projects-header-space) - var(--projects-gap));
+  margin-bottom: var(--projects-header-margin);
   padding-bottom: 2px;
   border-bottom: 1px solid var(--color-accent-dark);
   font-family: var(--font-mono);
@@ -1004,7 +1007,7 @@ tick-field > canvas {
      link: the link stays on the heading's line, at its right end. */
   .projects h2 {
     flex-basis: 50%;
-    margin-bottom: calc(var(--projects-header-space) - var(--projects-gap));
+    margin-bottom: var(--projects-header-margin);
   }
 
   .all-projects-link {
