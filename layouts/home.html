@@ -33,9 +33,9 @@
     {{- end }}
     {{- with .Params.clients }}
     {{- $clients := . }}
-    {{- /* errorf does not stop the template: after an error, the checks below and the band get an empty list, so that no template execution error buries the French message. */}}
-    {{- if not (reflect.IsSlice $clients) }}{{ errorf "clients : le paramètre clients de la page d’accueil doit être une liste de noms" }}{{ $clients = slice }}{{ end }}
-    {{- range $clients }}{{ if not (eq (printf "%T" .) "string") }}{{ errorf "clients : chaque entrée du paramètre clients de la page d’accueil doit être un nom" }}{{ $clients = slice }}{{ else if eq (strings.TrimSpace .) "" }}{{ errorf "clients : chaque entrée du paramètre clients de la page d’accueil doit être un nom non vide" }}{{ $clients = slice }}{{ end }}{{ end }}
+    {{- /* errorf does not stop the template: after an error, the checks below and the band get an empty list, so that no template execution error buries the message. */}}
+    {{- if not (reflect.IsSlice $clients) }}{{ errorf "clients: the home page's clients parameter must be a list of names" }}{{ $clients = slice }}{{ end }}
+    {{- range $clients }}{{ if not (eq (printf "%T" .) "string") }}{{ errorf "clients: each entry of the home page's clients parameter must be a name" }}{{ $clients = slice }}{{ else if eq (strings.TrimSpace .) "" }}{{ errorf "clients: each entry of the home page's clients parameter must be a non-empty name" }}{{ $clients = slice }}{{ end }}{{ end }}
     {{- $label := i18n "clients" }}
     <div class="clients" data-label="{{ $label }}">
       <div class="clients-window">
@@ -57,7 +57,7 @@
   </div>
   {{- end }}
   {{- $projects := partial "projects/featured.html" . }}
-  {{- /* The section is left out when no featured page is left, after an error too, so that no template execution error buries the French message. */}}
+  {{- /* The section is left out when no featured page is left, after an error too, so that no template execution error buries the message. */}}
   {{- if $projects }}
   <section class="projects" aria-labelledby="projects-heading">
     <div class="projects-header">
