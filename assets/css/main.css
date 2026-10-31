@@ -890,6 +890,7 @@ tick-field > canvas {
   --project-card-padding-bottom: 24px;
   --project-card-gap: 14px;
   --project-years-gap: 16px;
+  --project-title-min-width: 0;
   flex: 0 0 100%;
   min-width: 0;
   background: var(--color-ink);
@@ -899,7 +900,7 @@ tick-field > canvas {
   /* The years stay on one line while they fit in 60% of the card's text,
      their gap aside, and wrap beyond. Without years, this column is empty
      and collapses: the title takes the whole width. */
-  grid-template-columns: minmax(0, 1fr) fit-content(calc(60% + var(--project-years-gap)));
+  grid-template-columns: minmax(var(--project-title-min-width), 1fr) fit-content(calc(60% + var(--project-years-gap)));
   /* One named row per item, the years sharing the title's, so a missing
      item leaves an empty row. The description's row takes the free height:
      in a row of cards, the links line up at the bottom. */
@@ -950,7 +951,7 @@ tick-field > canvas {
    years give way before a word of the title is broken ("anywhere" would
    leave that minimum at one character). */
 .project-card:has(> .project-years) {
-  grid-template-columns: minmax(min-content, 1fr) fit-content(calc(60% + var(--project-years-gap)));
+  --project-title-min-width: min-content;
 }
 
 .project-card:has(> .project-years) > h3 {
