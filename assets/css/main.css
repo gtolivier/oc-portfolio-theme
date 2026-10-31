@@ -911,7 +911,6 @@ tick-field > canvas {
 /* Margins rather than a row gap, which an empty row would double. A long
    unbreakable word wraps rather than leaving the card. */
 .project-card > * {
-  grid-column: 1 / -1;
   margin: var(--project-card-gap) 0 0;
   min-width: 0;
   overflow-wrap: anywhere;
