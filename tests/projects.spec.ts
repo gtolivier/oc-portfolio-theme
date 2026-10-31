@@ -1348,6 +1348,41 @@ test.describe('home page of another site, featuring a project at the content roo
     await expect(section.getByRole('link', { name: 'Tous les projets' })).toHaveCount(0);
     await expect(section.getByText('Tous les projets')).toHaveCount(0);
   });
+
+  test('on a phone, without the "Tous les projets" link, the first card of the section "Projets sélectionnés" is as far below the heading as it is below the link on a home page that has it', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT, siteDirectory);
+    await page.setViewportSize(PHONE);
+    /* From the bottom of an element's box (the link's ends with its underline) to the top of the
+       first card's. */
+    const spaceAboveFirstCard = async (element: Locator, firstCard: Locator) => {
+      const [above, card] = await Promise.all(
+        [element, firstCard].map((locator) => locator.evaluate((el) => {
+          const { top, bottom } = el.getBoundingClientRect();
+          return { top, bottom };
+        })),
+      );
+      return card.top - above.bottom;
+    };
+    /* The example site's home page has the link, below the heading and above the first card. */
+    await page.goto('http://localhost:1314/fr/');
+    await page.evaluate(() => document.fonts.ready);
+    const sectionWithLink = projectsSection(page);
+    const link = sectionWithLink.getByRole('link', { name: 'Tous les projets', exact: true });
+    await expect(link).toBeVisible();
+    const belowLink = await spaceAboveFirstCard(link, sectionWithLink.getByRole('article').first());
+    /* This site's home page has no link: the first card comes right after the heading. */
+    await page.goto(`${SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT.origin}/fr/`);
+    await page.evaluate(() => document.fonts.ready);
+    const section = projectsSection(page);
+    await expect(section.getByRole('link', { name: 'Tous les projets' })).toHaveCount(0);
+    const firstCard = section.getByRole('article').first();
+    await expect(firstCard).toBeVisible();
+    const belowHeading = await spaceAboveFirstCard(section.getByRole('heading', { level: 2 }), firstCard);
+    expect(
+      Math.abs(belowHeading - belowLink),
+      `space from the heading to the first card without the link (${belowHeading.toFixed(1)} px) against the space from the link to the first card with it (${belowLink.toFixed(1)} px)`,
+    ).toBeLessThanOrEqual(2);
+  });
 });
 
 test.describe('home pages of other sites, featuring a project whose section has no published page', () => {
