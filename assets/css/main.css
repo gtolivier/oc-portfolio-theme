@@ -859,7 +859,8 @@ tick-field > canvas {
 /* Underlined links, each a flex or grid item, so min-height applies:
    minimum target size (WCAG 2.5.8). The text sits at the bottom of that
    height, so the underline stays 2px below it. */
-:is(.all-projects-link, .project-card > .project-link) {
+.all-projects-link,
+.project-card > .project-link {
   min-height: var(--min-target-size);
   align-content: end;
   padding-bottom: 2px;
