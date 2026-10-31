@@ -20,6 +20,7 @@ import {
   SITE_WITH_LONG_PROJECT_YEARS,
   SITE_WITH_LONG_PROJECT_WORDS,
   SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS,
+  SITE_WITH_UNUSUAL_RENDER_VALUES,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1436,6 +1437,39 @@ test.describe('home page of another site, featuring projects whose page is not p
     /* render = 'link' gives the clock an address, but nothing is published there. */
     const response = await page.goto(`${SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES.origin}/fr/projets/horloge-comtoise/`);
     expect(response?.status()).toBe(404);
+  });
+});
+
+test.describe('home page of another site, featuring projects whose page declares an unusual render value', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_UNUSUAL_RENDER_VALUES);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('the cards of featured projects whose page declares render = "Always" (capitalised) or a typo such as render = "nevr", which Hugo still publishes, keep their "Voir le détail" link, which opens that page', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_UNUSUAL_RENDER_VALUES, siteDirectory);
+    /* In tests/fixtures/unusual-render-values/content/projets/, horloge-a-poids.md declares
+       [build] render = 'Always' and pendulette-officier.md [build] render = 'nevr': Hugo reads the
+       value case-insensitively and treats a value it does not recognise as 'always', so that both
+       pages are published. */
+    const projects = [
+      { title: 'Horloge à poids', slug: 'horloge-a-poids' },
+      { title: 'Pendulette d’officier', slug: 'pendulette-officier' },
+    ];
+    for (const project of projects) {
+      await page.goto(`${SITE_WITH_UNUSUAL_RENDER_VALUES.origin}/fr/`);
+      const card = cardTitled(projectsSection(page), project.title);
+      await expect(card).toHaveCount(1);
+      const link = card.getByRole('link', { name: 'Voir le détail' });
+      await expect(link, `"Voir le détail" link in the card of "${project.title}"`).toHaveCount(1);
+      await expect(link).toBeVisible();
+      await link.click();
+      await expect(page).toHaveURL(`${SITE_WITH_UNUSUAL_RENDER_VALUES.origin}/fr/projets/${project.slug}/`);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(project.title);
+    }
   });
 });
 
