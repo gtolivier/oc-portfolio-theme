@@ -10,7 +10,7 @@
 {{- $page := $.GetPage $entry }}
 {{- if not $page }}{{ errorf "projects: the home page's projects parameter references a page that cannot be found (language: %s): %s. The page may not be translated into this language, or not published: a draft, a future date (scheduled) or an expired page" $.Language.Lang $entry }}{{ continue }}{{ end }}
 {{- if not $page.IsPage }}{{ errorf "projects: the home page's projects parameter references %s, which is not a project: \"%s\"" (index $nonProjectKindWords $page.Kind | default "a page of another type") $entry }}{{ continue }}{{ end }}
-{{- if and (isset $page.Params "build") (not (reflect.IsMap $page.Params.build)) }}{{ errorf "projects : le projet %s déclare un paramètre personnalisé build, que Hugo réserve à ses options de build : renommez ce paramètre" $entry }}{{ continue }}{{ end }}
+{{- if and (isset $page.Params "build") (not (reflect.IsMap $page.Params.build)) }}{{ errorf "projects: the project %s declares a custom param named build, which Hugo reserves for its build options: rename this param" $entry }}{{ continue }}{{ end }}
 {{- $projects = $projects | append $page }}
 {{- end }}
 {{- return $projects }}

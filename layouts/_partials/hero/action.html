@@ -9,15 +9,15 @@
   {{- with site.GetPage $ref }}
     {{- $href = .RelPermalink }}
     {{- if not (partial "is-published.html" .) }}
-      {{- errorf "hero : le pageRef %q désigne une page qui n’est pas publiée" $ref }}
+      {{- errorf "hero: the pageRef %q points to a page that is not published" $ref }}
     {{- end }}
   {{- else }}
-    {{- errorf "hero : le pageRef %q ne correspond à aucune page" $ref }}
+    {{- errorf "hero: the pageRef %q matches no page" $ref }}
   {{- end }}
 {{- end }}
-{{- if and .url .pageRef }}{{ errorf "hero : un bouton déclare à la fois un champ url et un champ pageRef, il n’en faut qu’un" }}{{ end }}
-{{- if and (not .url) (not .pageRef) }}{{ errorf "hero : un bouton n’a ni champ url ni champ pageRef" }}{{ end }}
-{{- if not .label }}{{ errorf "hero : un bouton n’a pas de champ label" }}{{ end -}}
+{{- if and .url .pageRef }}{{ errorf "hero: a button declares both a url field and a pageRef field; it needs only one" }}{{ end }}
+{{- if and (not .url) (not .pageRef) }}{{ errorf "hero: a button has neither a url field nor a pageRef field" }}{{ end }}
+{{- if not .label }}{{ errorf "hero: a button has no label field" }}{{ end -}}
 <a href="{{ $href }}">{{ .label }}</a>
 {{- /* Nothing after the link, not even the file's trailing newline:
      spacing between buttons belongs to the page that places them. */ -}}

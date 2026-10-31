@@ -1712,7 +1712,7 @@ test.describe('home page of a site served under /portfolio/, with a button decla
 test.describe('hero content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
-  test('a home page where a hero button declares a pageRef to a page that does not exist makes the site build fail with only the message that cites this pageRef, without the "ni champ url ni champ pageRef" message', () => {
+  test('a home page where a hero button declares a pageRef to a page that does not exist makes the site build fail with only the message that cites this pageRef, without the "neither url nor pageRef" message', () => {
     /* The first button of tests/fixtures/page-ref-not-found/content/_index.md declares
        pageRef = '/page-fictive-introuvable', which the site does not contain. Rather than a
        button without a destination, the person building the site must get a failure that
@@ -1721,33 +1721,33 @@ test.describe('hero content errors: build failure', () => {
     const build = tryToBuildSite(SITE_WITH_A_PAGE_REF_NOT_FOUND);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors).toContain('/page-fictive-introuvable');
-    expect(build.errors).not.toMatch(/\bni\s+(?:de\s+)?(?:champ\s+)?url\b/i);
+    expect(build.errors).not.toMatch(/\bneither\b/i);
   });
 
-  test('a home page where a hero button declares a pageRef to a page with [build] render = "never" makes the site build fail, with a French error message that cites this pageRef and says the page is not published', () => {
+  test('a home page where a hero button declares a pageRef to a page with [build] render = "never" makes the site build fail, with an error message that cites this pageRef and says the page is not published', () => {
     /* The first button of tests/fixtures/never-rendered-ref/content/_index.md declares
        pageRef = '/atelier-ferme', a page of the same fixture that exists but declares
        [build] render = 'never': Hugo finds it, but publishes nothing for it. Rather than a
        button with an empty address, the person building the site must get a failure that
-       names this pageRef and says, in French, that the page is not published, whatever exact
+       names this pageRef and says that the page is not published, whatever exact
        wording is chosen. */
     const build = tryToBuildSite(SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE);
     expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the French message should name the pageRef').toContain('/atelier-ferme');
-    expect(build.errors, 'the French message should say the page is not published').toMatch(/publiée/i);
+    expect(build.errors, 'the error message should name the pageRef').toContain('/atelier-ferme');
+    expect(build.errors, 'the error message should say the page is not published').toMatch(/\bnot\s+published\b/i);
   });
 
-  test('a home page where a hero button declares a pageRef to a page with [build] render = "link" makes the site build fail, with a French error message that cites this pageRef and says the page is not published', () => {
+  test('a home page where a hero button declares a pageRef to a page with [build] render = "link" makes the site build fail, with an error message that cites this pageRef and says the page is not published', () => {
     /* The first button of tests/fixtures/link-rendered-ref/content/_index.md declares
        pageRef = '/atelier-vitrine', a page of the same fixture that declares
        [build] render = 'link': Hugo gives it an address, but writes no page there. Rather than
        a button leading to a missing page, the person building the site must get a failure that
-       names this pageRef and says, in French, that the page is not published, whatever exact
+       names this pageRef and says that the page is not published, whatever exact
        wording is chosen. */
     const build = tryToBuildSite(SITE_WITH_A_PAGE_REF_TO_A_LINK_ONLY_PAGE);
     expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the French message should name the pageRef').toContain('/atelier-vitrine');
-    expect(build.errors, 'the French message should say the page is not published').toMatch(/publiée/i);
+    expect(build.errors, 'the error message should name the pageRef').toContain('/atelier-vitrine');
+    expect(build.errors, 'the error message should say the page is not published').toMatch(/\bnot\s+published\b/i);
   });
 
   test('a home page where a hero button has no label makes the site build fail, with an error message that cites the missing label field', () => {
@@ -1769,9 +1769,10 @@ test.describe('hero content errors: build failure', () => {
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors).toMatch(/\burl\b/);
     expect(build.errors).toMatch(/\bpageRef\b/);
+    expect(build.errors, 'the error message should say the button has neither field').toMatch(/\bneither\b/i);
   });
 
-  test('a home page where a hero button declares both a url and a pageRef makes the site build fail, with an error message that cites both fields, and not the "ni champ url ni champ pageRef" message', () => {
+  test('a home page where a hero button declares both a url and a pageRef makes the site build fail, with an error message that cites both fields, and not the "neither url nor pageRef" message', () => {
     /* The second button of tests/fixtures/button-with-two-destinations/content/_index.md has a
        label and declares both url = '#contact' and pageRef = '/projets', two valid
        destinations. Rather than a link where one of the two destinations would be silently
@@ -1782,7 +1783,7 @@ test.describe('hero content errors: build failure', () => {
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors).toMatch(/\burl\b/);
     expect(build.errors).toMatch(/\bpageRef\b/);
-    expect(build.errors).not.toMatch(/\bni\s+(?:de\s+)?(?:champ\s+)?url\b/i);
+    expect(build.errors).not.toMatch(/\bneither\b/i);
   });
 
   test('a site whose home page declares a hero without params.author being set makes the site build fail, with an error message that cites the author field', () => {

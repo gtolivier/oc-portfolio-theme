@@ -4,7 +4,7 @@
   {{- if or .Params.hero .Params.clients }}
   <div class="first-screen{{ if .Params.hero }} has-hero{{ end }}">
     {{- with .Params.hero }}
-    {{- if not site.Params.author }}{{ errorf "hero : le paramètre author du site n’est pas renseigné" }}{{ end }}
+    {{- if not site.Params.author }}{{ errorf "hero: the site's author parameter is not set" }}{{ end }}
     <tick-field class="hero" role="region" aria-labelledby="hero-heading">
       {{- /* The hero decodes faster than the default pace. The name and the title start decoding together. */}}
       {{- $heroLetterMs := 40 }}
