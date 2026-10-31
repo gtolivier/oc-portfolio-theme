@@ -1,6 +1,10 @@
-{{- /* Whether Hugo publishes the page: it does under any [build] render value (set on the page or through a cascade) except these, which Hugo reads as is; a capitalised or misspelled value is published. render = false is a boolean, hence the conversion to a string. */}}
-{{- $unpublishingRenders := slice "string:never" "string:link" "false" "0" }}
+{{- /* Whether Hugo publishes the page: it does under any [build] render value (set on the page or through a cascade) except these, which Hugo reads as is; a capitalised or misspelled value is published. Hugo reads "never" and "link" only as strings, and false and 0 only as a boolean and an integer: the string "false" is published. Each value is hence converted to a string, and a string value is tagged so as not to be mistaken for the boolean or the integer. */}}
+{{- $stringTag := "string:" }}
+{{- $unpublishingRenders := slice (print $stringTag "never") (print $stringTag "link") "false" "0" }}
 {{- $build := .Params.build | default dict }}
 {{- $render := "always" }}
-{{- if isset $build "render" }}{{ $render = printf "%v" $build.render }}{{ if eq (printf "%T" $build.render) "string" }}{{ $render = printf "string:%s" $render }}{{ end }}{{ end }}
+{{- if isset $build "render" }}
+  {{- $render = printf "%v" $build.render }}
+  {{- if eq (printf "%T" $build.render) "string" }}{{ $render = print $stringTag $render }}{{ end }}
+{{- end }}
 {{- return not (in $unpublishingRenders $render) }}
