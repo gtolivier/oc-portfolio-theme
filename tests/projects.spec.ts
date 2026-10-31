@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import {
+  EXAMPLE_SITE_UNDER_PORTFOLIO,
   SITE_WITHOUT_HERO,
   SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND,
   SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT,
@@ -46,6 +47,7 @@ import {
   pixelsNotOfBackgroundPerRow,
   verticalBands,
 } from './helpers/pixels';
+import { type Rgb, colorComponents, contrastRatio } from './helpers/colors';
 import { displayedText } from './helpers/text-on-screen';
 import { tabUntilFocused } from './helpers/keyboard';
 
@@ -196,23 +198,6 @@ function elementBox(locator: Locator): Promise<Box> {
   });
 }
 
-type Rgb = { red: number; green: number; blue: number };
-
-/* Components of a computed color, however the browser serializes it (`rgb(…)`, `rgba(…)` or
-   `color(srgb …)`): red, green and blue from 0 to 255, alpha from 0 to 1. */
-function colorComponents(color: string): Rgb & { alpha: number } {
-  const number = '([\\d.]+%?)';
-  const toUnit = (value: string) => (value.endsWith('%') ? parseFloat(value) / 100 : parseFloat(value));
-  const rgb = color.match(new RegExp(`^rgba?\\(\\s*${number}[\\s,]+${number}[\\s,]+${number}(?:\\s*[,/]\\s*${number})?\\s*\\)$`));
-  const srgb = color.match(new RegExp(`^color\\(srgb\\s+${number}\\s+${number}\\s+${number}(?:\\s*/\\s*${number})?\\s*\\)$`));
-  const match = rgb ?? srgb;
-  if (!match) throw new Error(`unrecognized color: ${color}`);
-  const scale = rgb ? 1 : 255;
-  const [red, green, blue] = match.slice(1, 4).map((value) => (value.endsWith('%') ? toUnit(value) * 255 : parseFloat(value) * scale));
-  const alpha = match[4] === undefined ? 1 : toUnit(match[4]);
-  return { red, green, blue, alpha };
-}
-
 /* A color painted over an opaque one, with its alpha. */
 function paintOver(color: string, below: Rgb): Rgb {
   const { red, green, blue, alpha } = colorComponents(color);
@@ -224,22 +209,6 @@ function paintOver(color: string, below: Rgb): Rgb {
    nearest first: each painted over the next, over the browser's white canvas. */
 function effectiveBackground(backgrounds: string[]): Rgb {
   return [...backgrounds].reverse().reduce<Rgb>((below, color) => paintOver(color, below), { red: 255, green: 255, blue: 255 });
-}
-
-/* Relative luminance of an opaque color, as WCAG defines it: from 0 (black) to 1 (white). */
-function relativeLuminance({ red, green, blue }: Rgb): number {
-  const [r, g, b] = [red, green, blue].map((value) => {
-    const channel = value / 255;
-    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-/* Contrast ratio between two opaque colors, as WCAG defines it: from 1 (same luminance) to 21
-   (black on white). */
-function contrastRatio(a: Rgb, b: Rgb): number {
-  const [lighter, darker] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
-  return (lighter + 0.05) / (darker + 0.05);
 }
 
 /* Light: it contrasts more with black than with white. */
@@ -263,6 +232,7 @@ async function backgroundChain(element: Locator): Promise<string[]> {
    text color and the background colors behind it, nearest first. */
 async function displayedTexts(root: Locator): Promise<{ text: string; color: string; backgrounds: string[] }[]> {
   return root.evaluate((rootElement) => {
+    /* As backgroundChain, inside the page. */
     const chainOf = (el: Element) => {
       const chain: string[] = [];
       for (let current: Element | null = el; current; current = current.parentElement) chain.push(getComputedStyle(current).backgroundColor);
@@ -470,7 +440,7 @@ test('on the French home page, no featured project’s card shows the years its 
 
 test('on the French home page, each featured project’s card ends with a "Voir le détail" link, separate from its title, whose accessible name names the project; following it opens the project’s page, at the site root and under /portfolio/', async ({ page }) => {
   /* The example site served at the root of its origin, then under a subpath (playwright.config.ts). */
-  for (const siteRoot of ['http://localhost:1314/', 'http://localhost:1315/portfolio/']) {
+  for (const siteRoot of ['/', EXAMPLE_SITE_UNDER_PORTFOLIO]) {
     for (const project of FEATURED_PROJECTS) {
       await page.goto(`${siteRoot}fr/`);
       const section = projectsSection(page);
@@ -1760,8 +1730,8 @@ test.describe('home pages whose featured projects live in sections of different 
     const sites = [
       /* The example site, whose featured projects are in content/projets/ (title "Projets"),
          served at the root of its origin, then under a subpath (playwright.config.ts)… */
-      { home: 'http://localhost:1314/fr/', sectionAddress: 'http://localhost:1314/fr/projets/', sectionTitle: 'Projets' },
-      { home: 'http://localhost:1315/portfolio/fr/', sectionAddress: 'http://localhost:1315/portfolio/fr/projets/', sectionTitle: 'Projets' },
+      { home: '/fr/', sectionAddress: '/fr/projets/', sectionTitle: 'Projets' },
+      { home: `${EXAMPLE_SITE_UNDER_PORTFOLIO}fr/`, sectionAddress: `${EXAMPLE_SITE_UNDER_PORTFOLIO}fr/projets/`, sectionTitle: 'Projets' },
       /* …and a site whose featured project is in content/realisations/, while projets/ still
          exists: a hard-coded /projets/ address cannot pass. */
       {
@@ -1823,7 +1793,7 @@ test.describe('home page of another site, featuring a project at the content roo
       return card.top - above.bottom;
     };
     /* The example site's home page has the link, below the heading and above the first card. */
-    await page.goto('http://localhost:1314/fr/');
+    await page.goto('/fr/');
     await page.evaluate(() => document.fonts.ready);
     const sectionWithLink = projectsSection(page);
     const link = sectionWithLink.getByRole('link', { name: 'Tous les projets', exact: true });

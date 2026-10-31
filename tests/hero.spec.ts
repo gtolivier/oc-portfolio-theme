@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import {
+  EXAMPLE_SITE_UNDER_PORTFOLIO,
   SITE_UNDER_PORTFOLIO_WITH_A_URL_FROM_THE_ROOT,
   SITE_UNDER_PORTFOLIO_WITH_A_URL_STARTING_WITH_THE_SUBPATH,
   SITE_WITHOUT_HERO,
@@ -24,6 +25,7 @@ import {
   tryToBuildSite,
 } from './helpers/built-site';
 import { clientBandBox, clientList } from './helpers/clients';
+import { colorComponents, contrastRatio } from './helpers/colors';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { blockRequests, fontFilesUrl, holdRequests, themeScriptUrl } from './helpers/held-requests';
 import { heroRegion } from './helpers/hero';
@@ -78,35 +80,11 @@ async function expectLinesInOrder(main: Locator, lines: string[]) {
   }
 }
 
-/* Components of a computed color, however the browser serializes it (`rgb(…)`, `rgba(…)` or
-   `color(srgb …)`): red, green and blue from 0 to 255 rounded to the unit, alpha from 0 to 1
-   rounded to the hundredth. */
-function colorComponents(color: string) {
-  const number = '([\\d.]+%?)';
-  const toUnit = (value: string) => (value.endsWith('%') ? parseFloat(value) / 100 : parseFloat(value));
-  const rgb = color.match(new RegExp(`^rgba?\\(\\s*${number}[\\s,]+${number}[\\s,]+${number}(?:\\s*[,/]\\s*${number})?\\s*\\)$`));
-  const srgb = color.match(new RegExp(`^color\\(srgb\\s+${number}\\s+${number}\\s+${number}(?:\\s*/\\s*${number})?\\s*\\)$`));
-  const match = rgb ?? srgb;
-  if (!match) throw new Error(`unrecognized color: ${color}`);
-  const scale = rgb ? 1 : 255;
-  const [red, green, blue] = match.slice(1, 4).map((value) =>
-    Math.round(value.endsWith('%') ? toUnit(value) * 255 : parseFloat(value) * scale));
-  const alpha = match[4] === undefined ? 1 : Math.round(toUnit(match[4]) * 100) / 100;
-  return { red, green, blue, alpha };
-}
-
-/* Contrast ratio between two opaque colors, as WCAG defines it: from 1 (same luminance) to 21
-   (black on white). */
-function contrastRatio(a: { red: number; green: number; blue: number }, b: { red: number; green: number; blue: number }) {
-  const luminance = ({ red, green, blue }: typeof a) => {
-    const [r, g, bl] = [red, green, blue].map((value) => {
-      const channel = value / 255;
-      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
-    });
-    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
-  };
-  const [lighter, darker] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (lighter + 0.05) / (darker + 0.05);
+/* Components of a computed color, rounded so that colors compare exactly: red, green and blue
+   to the unit, alpha to the hundredth. */
+function roundedColorComponents(color: string) {
+  const { red, green, blue, alpha } = colorComponents(color);
+  return { red: Math.round(red), green: Math.round(green), blue: Math.round(blue), alpha: Math.round(alpha * 100) / 100 };
 }
 
 /* Computed styles that decide how a button looks: text color, background, underline, and
@@ -128,10 +106,10 @@ async function buttonStyle(button: Locator) {
     };
   });
   return {
-    color: colorComponents(color),
-    background: colorComponents(background),
+    color: roundedColorComponents(color),
+    background: roundedColorComponents(background),
     textDecoration,
-    borders: borders.map((border) => ({ ...border, color: colorComponents(border.color) })),
+    borders: borders.map((border) => ({ ...border, color: roundedColorComponents(border.color) })),
   };
 }
 
@@ -1099,16 +1077,16 @@ test('on a phone, the hero’s tick field is faintest at the top left and most o
 });
 
 test('served under /portfolio/, the first hero button of the French home page, "Voir les projets", leads to /portfolio/fr/projets/', async ({ page }) => {
-  await page.goto('http://localhost:1315/portfolio/fr/');
+  await page.goto(`${EXAMPLE_SITE_UNDER_PORTFOLIO}fr/`);
   const firstButton = firstHeroButton(page);
   await expect(firstButton).toHaveText('Voir les projets');
   await expect(firstButton).toHaveAttribute('href', '/portfolio/fr/projets/');
   await firstButton.click();
-  await expect(page).toHaveURL('http://localhost:1315/portfolio/fr/projets/');
+  await expect(page).toHaveURL(`${EXAMPLE_SITE_UNDER_PORTFOLIO}fr/projets/`);
 });
 
 test('served under /portfolio/, the second hero button of the French home page, declared by the anchor "#contact", still leads to "#contact", without a prefix', async ({ page }) => {
-  await page.goto('http://localhost:1315/portfolio/fr/');
+  await page.goto(`${EXAMPLE_SITE_UNDER_PORTFOLIO}fr/`);
   /* The second button of exampleSite/content/_index.md declares url = '#contact': an anchor
      of the current page, which the site publication path must not prefix. */
   await expect(firstHeroButton(page)).toHaveText('Voir les projets');

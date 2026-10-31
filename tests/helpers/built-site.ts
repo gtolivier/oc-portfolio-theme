@@ -24,6 +24,12 @@ export interface BuiltSite {
 
 const themeRoot = path.resolve(__dirname, '..', '..');
 
+/* The address of the example site served under a subdirectory, /portfolio/,
+   by the second Hugo server of playwright.config.ts. The first one serves it
+   at the baseURL, where the tests open its pages by their path alone
+   ('/fr/'). */
+export const EXAMPLE_SITE_UNDER_PORTFOLIO = 'http://localhost:1315/portfolio/';
+
 /* Each test site has its own origin, hence its own port: ports are assigned
    in the order the sites are declared below, after those of the Hugo
    servers of playwright.config.ts (1314 and 1315). */
@@ -494,15 +500,18 @@ function fixtureConfiguration(site: BuiltSite): string[] {
   return existsSync(file) ? [file] : [];
 }
 
+/* The arguments of every build of the example site: production, into
+   `destination`, without the lock that would keep two builds from running at
+   once. */
+function baseBuildArguments(destination: string): string[] {
+  return ['build', '--source', 'exampleSite', '--environment', 'production', '--destination', destination, '--noBuildLock'];
+}
+
 function buildArguments(site: BuiltSite, configuration: string, destination: string): string[] {
   return [
-    'build',
-    '--source', 'exampleSite',
+    ...baseBuildArguments(destination),
     '--config', configuration,
-    '--environment', 'production',
     '--baseURL', `${site.origin}${site.subpath}`,
-    '--destination', destination,
-    '--noBuildLock',
   ];
 }
 
@@ -588,15 +597,7 @@ export function tryToBuildSite(site: BuiltSite): BuildAttempt {
 export function findMissingTranslations(): string[] {
   const destination = mkdtempSync(path.join(tmpdir(), 'oc-portfolio-translations-'));
   try {
-    const result = runHugo([
-      'build',
-      '--source', 'exampleSite',
-      '--environment', 'production',
-      '--destination', destination,
-      '--noBuildLock',
-      '--printI18nWarnings',
-      '--logLevel', 'warn',
-    ]);
+    const result = runHugo([...baseBuildArguments(destination), '--printI18nWarnings', '--logLevel', 'warn']);
     if (result.status !== 0) {
       throw new Error(`Hugo did not build the example site (exit code: ${result.status}):\n${result.stderr}`);
     }

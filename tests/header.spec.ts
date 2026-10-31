@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import {
+  EXAMPLE_SITE_UNDER_PORTFOLIO,
   SITE_WITH_A_LONG_MENU,
   SITE_WITH_A_SINGLE_LANGUAGE,
   SITE_WITH_ENGLISH_BY_DEFAULT,
@@ -140,7 +141,7 @@ test('the header navigation lists the entries of the site main menu', async ({ p
 
 test('served under /portfolio/, the "Contact" link of the header leads to /portfolio/{lang}/#contact, in French and in English', async ({ page }) => {
   for (const lang of ['fr', 'en']) {
-    await page.goto(`http://localhost:1315/portfolio/${lang}/`);
+    await page.goto(`${EXAMPLE_SITE_UNDER_PORTFOLIO}${lang}/`);
     const contact = page.locator('header nav').getByRole('link', { name: 'Contact', exact: true });
     await expect(contact).toHaveAttribute('href', `/portfolio/${lang}/#contact`);
   }

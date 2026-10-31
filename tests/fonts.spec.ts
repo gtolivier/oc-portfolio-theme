@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { EXAMPLE_SITE_UNDER_PORTFOLIO } from './helpers/built-site';
 
 function isAFont(resourceType: string, url: string): boolean {
   return resourceType === 'font' || /\.(woff2?|ttf|otf)(\?|#|$)/i.test(url);
@@ -75,7 +76,7 @@ test('served under a subpath (baseURL /portfolio/), the site still loads its IBM
     }
   });
 
-  await page.goto('http://localhost:1315/portfolio/fr/');
+  await page.goto(`${EXAMPLE_SITE_UNDER_PORTFOLIO}fr/`);
 
   const loadedFonts = await loadedFamilies(page);
   expect(failedFonts).toEqual([]);
