@@ -274,6 +274,21 @@ export const SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES = testSite('projects-wit
    site's projets/ section is still built. */
 export const SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT = testSite('project-at-the-root');
 
+/* The example site's featured projects live in a published section, projets/: this site replaces
+   the French home page with the one of tests/fixtures/unpublished-projects-section/content,
+   without a hero nor clients, which features a single fictional project, "Pendule œil-de-bœuf",
+   added in another section, carnets/, whose _index.md declares [cascade.build] render = 'never':
+   neither the section nor its project has a published page, so that Hugo publishes nothing at
+   /fr/carnets/. */
+export const SITE_WITH_AN_UNPUBLISHED_PROJECTS_SECTION = testSite('unpublished-projects-section');
+
+/* Same as SITE_WITH_AN_UNPUBLISHED_PROJECTS_SECTION, with the French home page of
+   tests/fixtures/unpublished-section-page/content, which features a single fictional project,
+   "Horloge de gare", added in another section, ebauches/, whose _index.md declares a plain
+   [build] render = 'never', without cascade: Hugo publishes nothing at /fr/ebauches/, while the
+   project's own page is still published, at /fr/ebauches/horloge-de-gare/. */
+export const SITE_WITH_AN_UNPUBLISHED_SECTION_PAGE = testSite('unpublished-section-page');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

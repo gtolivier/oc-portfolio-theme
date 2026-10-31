@@ -7,6 +7,8 @@ import {
   SITE_WITH_PROJECTS_IN_ANOTHER_SECTION,
   SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES,
   SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES,
+  SITE_WITH_AN_UNPUBLISHED_PROJECTS_SECTION,
+  SITE_WITH_AN_UNPUBLISHED_SECTION_PAGE,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1344,6 +1346,57 @@ test.describe('home page of another site, featuring a project at the content roo
        home page the visitor is on is not one. */
     await expect(section.getByRole('link', { name: 'Tous les projets' })).toHaveCount(0);
     await expect(section.getByText('Tous les projets')).toHaveCount(0);
+  });
+});
+
+test.describe('home pages of other sites, featuring a project whose section has no published page', () => {
+  /* Two ways for a section to have no published page: its _index.md declares render = 'never' in
+     its cascade, so that its projects have no page either, or under a plain [build], so that its
+     projects keep theirs. */
+  const sites = [
+    {
+      site: SITE_WITH_AN_UNPUBLISHED_PROJECTS_SECTION,
+      sectionPath: '/fr/carnets/',
+      projectTitle: 'Pendule œil-de-bœuf',
+      projectHasDetailLink: false,
+    },
+    {
+      site: SITE_WITH_AN_UNPUBLISHED_SECTION_PAGE,
+      sectionPath: '/fr/ebauches/',
+      projectTitle: 'Horloge de gare',
+      projectHasDetailLink: true,
+    },
+  ];
+  const siteDirectories: string[] = [];
+  test.beforeAll(() => {
+    for (const { site } of sites) siteDirectories.push(buildSite(site));
+  });
+  test.afterAll(() => {
+    for (const directory of siteDirectories) removeDirectory(directory);
+  });
+
+  test('the section "Projets sélectionnés" shows the card of a featured project whose section declares render = "never", in its cascade or in a plain [build], but no "Tous les projets" link, since that section has no published page', async ({ page, context }) => {
+    for (const [index, { site }] of sites.entries()) {
+      await serveSite(context, site, siteDirectories[index]);
+    }
+    for (const { site, sectionPath, projectTitle, projectHasDetailLink } of sites) {
+      /* tests/fixtures/unpublished-projects-section/content/carnets/_index.md declares
+         [cascade.build] render = 'never', tests/fixtures/unpublished-section-page/content/ebauches/_index.md
+         [build] render = 'never': nothing is published at the section's address… */
+      const sectionResponse = await page.goto(`${site.origin}${sectionPath}`);
+      expect(sectionResponse?.status(), `status of ${site.origin}${sectionPath}`).toBe(404);
+      await page.goto(`${site.origin}/fr/`);
+      const section = projectsSection(page);
+      /* …yet the home page still shows the section and the card of the project it features, with
+         its "Voir le détail" link when the project's own page is published… */
+      const card = cardTitled(section, projectTitle);
+      await expect(card).toHaveCount(1);
+      await expect(card).toBeVisible();
+      await expect(card.getByRole('link', { name: 'Voir le détail' })).toHaveCount(projectHasDetailLink ? 1 : 0);
+      /* …but no link claims to list all the projects, not even an empty one: it would lead nowhere. */
+      await expect.soft(section.getByRole('link', { name: 'Tous les projets' }), `"Tous les projets" links on ${site.origin}/fr/`).toHaveCount(0);
+      await expect.soft(section.getByText('Tous les projets'), `"Tous les projets" texts on ${site.origin}/fr/`).toHaveCount(0);
+    }
   });
 });
 
