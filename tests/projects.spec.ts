@@ -9,6 +9,7 @@ import {
   SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES,
   SITE_WITH_AN_UNPUBLISHED_PROJECTS_SECTION,
   SITE_WITH_AN_UNPUBLISHED_SECTION_PAGE,
+  SITE_WITH_PROJECTS_IN_TWO_SECTIONS,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1397,6 +1398,39 @@ test.describe('home pages of other sites, featuring a project whose section has 
       await expect.soft(section.getByRole('link', { name: 'Tous les projets' }), `"Tous les projets" links on ${site.origin}/fr/`).toHaveCount(0);
       await expect.soft(section.getByText('Tous les projets'), `"Tous les projets" texts on ${site.origin}/fr/`).toHaveCount(0);
     }
+  });
+});
+
+test.describe('home page of another site, featuring projects from two published sections', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_PROJECTS_IN_TWO_SECTIONS);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('the section "Projets sélectionnés" shows the cards of featured projects from two different published sections, but no "Tous les projets" link, since no single section holds them all', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_PROJECTS_IN_TWO_SECTIONS, siteDirectory);
+    const origin = SITE_WITH_PROJECTS_IN_TWO_SECTIONS.origin;
+    /* tests/fixtures/projects-in-two-sections/content/_index.md features a project of projets/,
+       then one of realisations/: both sections are published… */
+    for (const sectionPath of ['/fr/projets/', '/fr/realisations/']) {
+      const sectionResponse = await page.goto(`${origin}${sectionPath}`);
+      expect(sectionResponse?.status(), `status of ${origin}${sectionPath}`).toBe(200);
+    }
+    await page.goto(`${origin}/fr/`);
+    const section = projectsSection(page);
+    /* …and the home page shows the card of each featured project… */
+    for (const title of ['Restauration d’une pendule de cheminée', 'Coucou de chalet']) {
+      const card = cardTitled(section, title);
+      await expect(card).toHaveCount(1);
+      await expect(card).toBeVisible();
+    }
+    /* …but no link claims to list all the projects, not even an empty one: either section would
+       list only some of them. */
+    await expect.soft(section.getByRole('link', { name: 'Tous les projets' }), `"Tous les projets" links on ${origin}/fr/`).toHaveCount(0);
+    await expect.soft(section.getByText('Tous les projets'), `"Tous les projets" texts on ${origin}/fr/`).toHaveCount(0);
   });
 });
 

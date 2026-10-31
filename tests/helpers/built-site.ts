@@ -289,6 +289,13 @@ export const SITE_WITH_AN_UNPUBLISHED_PROJECTS_SECTION = testSite('unpublished-p
    project's own page is still published, at /fr/ebauches/horloge-de-gare/. */
 export const SITE_WITH_AN_UNPUBLISHED_SECTION_PAGE = testSite('unpublished-section-page');
 
+/* The example site's French home page features projects of a single section, projets/: this site
+   replaces that home page with the one of tests/fixtures/projects-in-two-sections/content, without
+   a hero nor clients, which features the example site's 'projets/restauration-pendule', then
+   "Coucou de chalet", added in another section, realisations/, titled "Réalisations". Both
+   sections are published, at /fr/projets/ and /fr/realisations/. */
+export const SITE_WITH_PROJECTS_IN_TWO_SECTIONS = testSite('projects-in-two-sections');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
