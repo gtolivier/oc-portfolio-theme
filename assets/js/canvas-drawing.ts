@@ -35,15 +35,16 @@ export function prepareCanvas(
   return context;
 }
 
-/* The window moving to a screen of another pixel density changes no size: redraw when the density
-   the canvas was drawn at stops matching, then watch the new one, until the signal aborts. */
+/* The window moving to a screen of another pixel density changes no size: when the density the
+   canvas was drawn at stops matching, watch the new one, then redraw, until the signal aborts.
+   Watching first keeps a redraw that throws from ending the watch. */
 export function watchPixelDensity(redraw: () => void, signal?: AbortSignal): void {
   const query = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
   query.addEventListener(
     'change',
     () => {
-      redraw();
       watchPixelDensity(redraw, signal);
+      redraw();
     },
     { once: true, signal },
   );
