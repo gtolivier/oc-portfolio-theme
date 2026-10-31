@@ -1,7 +1,7 @@
 /* A still pattern of short ticks in rows, drawn anew at every load: no seed, so each visit shows a
    pattern of its own. */
 
-import { customProperty, devicePixelSize, type PixelSize, prepareCanvas, watchPixelDensity } from './canvas-drawing';
+import { customProperty, type DevicePixelSize, devicePixelSize, prepareCanvas, watchPixelDensity } from './canvas-drawing';
 
 /* The box drawn in when the element has no layout of its own, in CSS pixels. */
 const PATTERN_FALLBACK_WIDTH_PX = 480;
@@ -84,7 +84,7 @@ class TickPattern extends HTMLElement {
   private box: PatternBox = { width: PATTERN_FALLBACK_WIDTH_PX, height: PATTERN_FALLBACK_HEIGHT_PX };
 
   /* The canvas size, in device pixels, of the last drawing; none before the first one. */
-  private drawnSize?: PixelSize;
+  private drawnSize?: DevicePixelSize;
 
   connectedCallback(): void {
     this.prepend(this.canvas);
