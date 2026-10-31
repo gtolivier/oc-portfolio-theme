@@ -889,20 +889,14 @@ tick-field > canvas {
   --project-card-padding-inline: 20px;
   --project-card-padding-bottom: 24px;
   --project-card-gap: 14px;
-  --project-years-gap: 16px;
-  --project-title-min-width: 0;
   flex: 0 0 100%;
   min-width: 0;
   background: var(--color-ink);
   color: var(--color-paper);
   padding: 0 var(--project-card-padding-inline) var(--project-card-padding-bottom);
   display: grid;
-  /* The years stay on one line while they fit in 60% of the card's text,
-     their gap aside, and wrap beyond. Without years, this column is empty
-     and collapses: the title takes the whole width. */
-  grid-template-columns: minmax(var(--project-title-min-width), 1fr) fit-content(calc(60% + var(--project-years-gap)));
-  /* One named row per item, the years sharing the title's, so a missing
-     item leaves an empty row. The description's row takes the free height:
+  grid-template-columns: minmax(0, 1fr);
+  /* One named row per item, so a missing item leaves an empty row. The description's row takes the free height:
      in a row of cards, the links line up at the bottom. */
   grid-template-rows: [pattern] auto [title] auto [role] auto [description] 1fr [stack] auto [link] auto;
 }
@@ -933,37 +927,12 @@ tick-field > canvas {
   height: 100%;
 }
 
-/* The years share the title's row, at the right end of the card's text. */
-.project-card > :is(h3, .project-years) {
-  grid-row: title;
-  align-self: baseline;
-  margin-top: 0;
-}
-
 .project-card > h3 {
-  grid-column: 1;
+  grid-row: title;
+  margin-top: 0;
   font-family: var(--font-mono);
   font-size: 24px;
   font-weight: 600;
-}
-
-/* With years, the title column keeps the width of its longest word, so the
-   years give way before a word of the title is broken ("anywhere" would
-   leave that minimum at one character). */
-.project-card:has(> .project-years) {
-  --project-title-min-width: min-content;
-}
-
-.project-card:has(> .project-years) > h3 {
-  overflow-wrap: break-word;
-}
-
-/* A margin rather than a column gap, which would stay without years. */
-.project-card > .project-years {
-  grid-column: 2;
-  margin-inline-start: var(--project-years-gap);
-  font-family: var(--font-mono);
-  font-size: 13px;
 }
 
 .project-card > .project-role {
