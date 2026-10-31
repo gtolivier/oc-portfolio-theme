@@ -258,6 +258,202 @@ export const SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND = testSite('featured-ref-wit
    nothing at /fr/esquisses/regulateur-de-parquet/. */
 export const SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES = testSite('section-without-detail-pages');
 
+/* The example site's featured projects all have a published page: this site replaces the French
+   home page with the one of tests/fixtures/projects-without-published-pages/content, without a
+   hero nor clients, which features "Horloge comtoise", the example site's
+   'projets/restauration-pendule', then "Sablier de marine", both added under projets/. Neither
+   added project has a published page: the clock's declares [build] render = 'link', so that Hugo
+   gives it an address, /fr/projets/horloge-comtoise/, but publishes nothing there; the
+   hourglass's declares [build] render = false, so that it has no address at all. */
+export const SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES = testSite('projects-without-published-pages');
+
+/* The example site's featured projects all live in a section, projets/: this site replaces the
+   French home page with the one of tests/fixtures/project-at-the-root/content, without a hero nor
+   clients, which features a single fictional project, "Pendule murale", added at the root of the
+   content, outside any section (pendule-murale.md, published at /fr/pendule-murale/). The example
+   site's projets/ section is still built. */
+export const SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT = testSite('project-at-the-root');
+
+/* The example site's featured projects live in a published section, projets/: this site replaces
+   the French home page with the one of tests/fixtures/unpublished-projects-section/content,
+   without a hero nor clients, which features a single fictional project, "Pendule œil-de-bœuf",
+   added in another section, carnets/, whose _index.md declares [cascade.build] render = 'never':
+   neither the section nor its project has a published page, so that Hugo publishes nothing at
+   /fr/carnets/. */
+export const SITE_WITH_AN_UNPUBLISHED_PROJECTS_SECTION = testSite('unpublished-projects-section');
+
+/* Same as SITE_WITH_AN_UNPUBLISHED_PROJECTS_SECTION, with the French home page of
+   tests/fixtures/unpublished-section-page/content, which features a single fictional project,
+   "Horloge de gare", added in another section, ebauches/, whose _index.md declares a plain
+   [build] render = 'never', without cascade: Hugo publishes nothing at /fr/ebauches/, while the
+   project's own page is still published, at /fr/ebauches/horloge-de-gare/. */
+export const SITE_WITH_AN_UNPUBLISHED_SECTION_PAGE = testSite('unpublished-section-page');
+
+/* The example site's French home page features projects of a single section, projets/: this site
+   replaces that home page with the one of tests/fixtures/projects-in-two-sections/content, without
+   a hero nor clients, which features the example site's 'projets/restauration-pendule', then
+   "Coucou de chalet", added in another section, realisations/, titled "Réalisations". Both
+   sections are published, at /fr/projets/ and /fr/realisations/. */
+export const SITE_WITH_PROJECTS_IN_TWO_SECTIONS = testSite('projects-in-two-sections');
+
+/* The example site's French home page features its projects as a list of page references: this
+   site replaces that home page with the one of tests/fixtures/single-ref-instead-of-list/content,
+   without a hero nor clients, whose params.projects is a text, 'projets/restauration-pendule' (an
+   existing page of the example site), instead of a list. Its folder name avoids the word projects,
+   which the error-message assertion looks for. */
+export const SITE_WITH_PROJECTS_AS_TEXT = testSite('single-ref-instead-of-list');
+
+/* Same as SITE_WITH_PROJECTS_AS_TEXT, with the home page of
+   tests/fixtures/empty-text-instead-of-list/content, whose params.projects is an empty text, '',
+   instead of a list. */
+export const SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT = testSite('empty-text-instead-of-list');
+
+/* Same as SITE_WITH_PROJECTS_AS_TEXT, with the home page of
+   tests/fixtures/false-instead-of-list/content, whose params.projects is the boolean false
+   instead of a list. */
+export const SITE_WITH_PROJECTS_AS_FALSE = testSite('false-instead-of-list');
+
+/* The example site's French home page features its projects as a list of page references: this
+   site replaces that home page with the one of tests/fixtures/table-instead-of-ref/content,
+   without a hero nor clients, whose params.projects is a list (so the check that projects is a
+   list lets it through) of 'projets/restauration-pendule', then a table,
+   { path = 'projets/restauration-pendule' }, instead of a page reference. Its folder name avoids
+   the word projects, which the error-message assertion looks for. */
+export const SITE_WITH_A_FEATURED_PROJECT_AS_MAP = testSite('table-instead-of-ref');
+
+/* The example site's French home page features its projects as a list of page references: this
+   site replaces that home page with the one of tests/fixtures/empty-ref/content, without a hero
+   nor clients, whose params.projects is a list of texts, as expected, of
+   'projets/restauration-pendule', then an empty text, '', instead of a page reference. Its folder
+   name avoids the word projects, which the error-message assertion looks for. */
+export const SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF = testSite('empty-ref');
+
+/* Same as SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF, with the home page of
+   tests/fixtures/whitespace-only-ref/content, whose second entry is a text made of three spaces
+   only, '   ', instead of a page reference. */
+export const SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF = testSite('whitespace-only-ref');
+
+/* The example site's home pages feature only projects translated in their own language: this site
+   replaces the French home page with the one of tests/fixtures/english-only-project/content,
+   without a hero nor clients, which features the example site's 'projets/restauration-pendule',
+   then 'projets/carillon-westminster', a fictional project, "Westminster chime", added under
+   projets/ in English only (carillon-westminster.en.md, without a French page). */
+export const SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT = testSite('english-only-project');
+
+/* The other way round: this site replaces the English home page with the one of
+   tests/fixtures/french-only-project/content, without a hero nor clients, which features the
+   example site's 'projets/restauration-pendule', then 'projets/horloge-morbier', a fictional
+   project, "Horloge de Morbier", added under projets/ in French only (horloge-morbier.md, without
+   an English page). The example site's French home page is unchanged. */
+export const SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT = testSite('french-only-project');
+
+/* The example site's French home page features only published projects: this site replaces that
+   home page with the one of tests/fixtures/draft-ref/content, without a hero nor clients, which
+   features the example site's 'projets/restauration-pendule', then 'projets/pendule-portique', a
+   fictional project, "Pendule portique", added under projets/ in French only, whose page declares
+   draft = true: the production build leaves it out. Its folder name avoids that slug and the
+   French words for a draft, a future date and an expired page, which the error-message assertions
+   look for. */
+export const SITE_WITH_A_DRAFT_FEATURED_PROJECT = testSite('draft-ref');
+
+/* The example site's featured projects declare roles, descriptions and stacks made of short
+   words: this site replaces the French home page with the one of
+   tests/fixtures/long-project-words/content, without a hero nor clients, which features the
+   example site's 'projets/restauration-pendule', then "Pendule aux mots longs", a fictional
+   project added under projets/ in French only, whose role, description and stack each hold a
+   single word, without a hyphen nor a space, wider than a phone-sized card. */
+export const SITE_WITH_LONG_PROJECT_WORDS = testSite('long-project-words');
+
+/* The example site's featured projects all declare years: this site replaces the French home
+   page with the one of tests/fixtures/long-project-title-without-years/content, without a hero
+   nor clients, which features the example site's 'projets/restauration-pendule', then a
+   fictional project added under projets/ in French only, whose page declares no years, and a
+   title and a description that each hold a single word, without a hyphen nor a space, wider
+   than a phone-sized card. */
+export const SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS = testSite('long-project-title-without-years');
+
+/* The example site's featured projects set no [build] options: this site replaces the French home
+   page with the one of tests/fixtures/unusual-render-values/content, without a hero nor clients,
+   which features "Horloge à poids", "Pendulette d’officier", "Montre de gousset" and "Carillon de
+   bureau", all added under projets/ in French only. The first page declares [build] render =
+   'Always', capitalised, the second [build] render = 'nevr', a typo: Hugo recognises neither and
+   treats a value it does not recognise as 'always', so that it publishes both pages, at
+   /fr/projets/horloge-a-poids/ and /fr/projets/pendulette-officier/. The third declares [build]
+   render = 0, an integer, which Hugo reads as 'never': it publishes nothing at
+   /fr/projets/montre-gousset/. The fourth declares [build] render = 'false', a quoted string
+   rather than the boolean: Hugo does not recognise it either, and publishes the page at
+   /fr/projets/carillon-de-bureau/. */
+export const SITE_WITH_UNUSUAL_RENDER_VALUES = testSite('unusual-render-values');
+
+/* The example site's featured projects declare no custom param named build: this site replaces
+   the French home page with the one of tests/fixtures/build-param-as-text/content, without a hero
+   nor clients, which features the example site's 'projets/restauration-pendule', then "Pendule
+   squelette", a fictional project added under projets/ in French only, whose page sets no [build]
+   options but declares, under [params], a custom param build = '2020', a text. Hugo publishes that
+   page as any other, at /fr/projets/pendule-squelette/. */
+export const SITE_WITH_A_BUILD_PARAM_AS_TEXT = testSite('build-param-as-text');
+
+/* The example site's French home page features only project pages: this site replaces that home
+   page with the one of tests/fixtures/self-ref/content, without a hero nor clients, whose
+   params.projects is a list of texts, as expected, of 'projets/restauration-pendule', then '/', a
+   reference to the home page itself, which exists but is no project. Its folder name avoids the
+   word projects, which the error-message assertion looks for. */
+export const SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT = testSite('self-ref');
+
+/* Same as SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT, with the home page of
+   tests/fixtures/dot-self-ref/content, whose second entry is '.', the current page, that is the
+   home page itself, rather than '/'. */
+export const SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT_WRITTEN_AS_A_DOT = testSite('dot-self-ref');
+
+/* The example site's French home page features only project pages: this site replaces that home
+   page with the one of tests/fixtures/section-ref/content, without a hero nor clients, whose
+   params.projects is a list of texts, as expected, of 'projets/restauration-pendule', then
+   'projets', a reference to the example site's projects section itself, which exists but is a
+   section page, no project. Its folder name avoids the word projects, which the error-message
+   assertion looks for. */
+export const SITE_WITH_A_SECTION_AS_FEATURED_PROJECT = testSite('section-ref');
+
+/* The example site disables the taxonomy and term kinds, which the theme itself does not: this
+   site enables them again (tests/fixtures/term-ref/hugo.toml), with Hugo's default tags taxonomy,
+   adds under projets/, in French only, a fictional project, "Pendule étiquetée", that carries the
+   tag 'horlogerie', and replaces the French home page with the one of
+   tests/fixtures/term-ref/content, without a hero nor clients, whose params.projects is a list of
+   texts, as expected, of 'projets/restauration-pendule', then 'tags/horlogerie', a reference to
+   the page of that tag, which exists but is a taxonomy term page, no project. Its folder name
+   avoids the word projects, which the error-message assertion looks for. */
+export const SITE_WITH_A_TERM_AS_FEATURED_PROJECT = testSite('term-ref');
+
+/* Same as SITE_WITH_A_TERM_AS_FEATURED_PROJECT (tags taxonomy enabled again by
+   tests/fixtures/taxonomy-ref/hugo.toml, a French-only fictional project, "Pendule classée", that
+   carries the tag 'horlogerie'), with the French home page of tests/fixtures/taxonomy-ref/content,
+   whose params.projects is 'projets/restauration-pendule', then 'tags', a reference to the page
+   listing every tag, which exists but is a taxonomy page, no project. Its folder name avoids the
+   word projects, which the error-message assertion looks for. */
+export const SITE_WITH_A_TAXONOMY_AS_FEATURED_PROJECT = testSite('taxonomy-ref');
+
+/* The example site's French home page features only project pages: this site replaces that home
+   page with the one of tests/fixtures/error-page-ref/content, without a hero nor clients, whose
+   params.projects is a list of texts, as expected, of 'projets/restauration-pendule', then '/404',
+   a reference to the site's 404 page, which Hugo creates even without a 404 template, so that it
+   exists, but is no project. Its folder name avoids the word projects and the number 404, which
+   the error-message assertions look for. */
+export const SITE_WITH_THE_404_PAGE_AS_FEATURED_PROJECT = testSite('error-page-ref');
+
+/* The example site's French home page has a hero whose every button leads to a published page or
+   to an address: this site replaces that home page with the one of
+   tests/fixtures/never-rendered-ref/content, whose first button declares pageRef =
+   '/atelier-ferme', and adds that page, which exists but declares [build] render = 'never', so
+   that Hugo publishes nothing for it. Its folder name and that page reference avoid the French
+   word for published, which the error-message assertion looks for. */
+export const SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE = testSite('never-rendered-ref');
+
+/* Same home page replacement, from tests/fixtures/link-rendered-ref/content, whose first button
+   declares pageRef = '/atelier-vitrine', and adds that page, which declares
+   [build] render = 'link': Hugo gives it an address, but writes no page there. Its folder name and
+   that page reference avoid the French word for published, which the error-message assertion
+   looks for. */
+export const SITE_WITH_A_PAGE_REF_TO_A_LINK_ONLY_PAGE = testSite('link-rendered-ref');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

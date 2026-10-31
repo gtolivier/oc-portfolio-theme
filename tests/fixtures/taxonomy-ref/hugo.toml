@@ -1,0 +1,5 @@
+# Configuration added to exampleSite/hugo.toml by the test of a taxonomy page
+# referenced as a featured project: the example site disables the taxonomy
+# and term kinds, which the theme itself does not, so this file enables them
+# again, and with them Hugo's default tags taxonomy.
+disableKinds = []
