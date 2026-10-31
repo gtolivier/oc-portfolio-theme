@@ -62,7 +62,8 @@
   {{- /* The featured pages are looked up once, for both the all-projects link and the cards. */}}
   {{- $projects := slice }}
   {{- range . }}
-  {{- with $.GetPage . }}{{ $projects = $projects | append . }}{{ else }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable : %s" . }}{{ end }}
+  {{- if not (eq (printf "%T" .) "string") }}{{ errorf "projects : chaque entrée du paramètre projects de la page d’accueil doit être une référence de page" }}
+  {{- else }}{{ with $.GetPage . }}{{ $projects = $projects | append . }}{{ else }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable : %s" . }}{{ end }}{{ end }}
   {{- end }}
   <section class="projects" aria-labelledby="projects-heading">
     <h2 id="projects-heading">{{ i18n "selectedProjects" }}</h2>
