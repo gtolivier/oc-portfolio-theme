@@ -57,7 +57,7 @@
   </div>
   {{- end }}
   {{- $featured := .Params.projects }}
-  {{- /* As for the clients: after an error, the section is left out or skips the entry, so that no template execution error buries the French message. */}}
+  {{- /* As for the clients: after an error, the section skips the entry, and is left out when no featured page is left, so that no template execution error buries the French message. */}}
   {{- if and $featured (not (reflect.IsSlice $featured)) }}{{ errorf "projects : le paramètre projects de la page d’accueil doit être une liste de pages" }}{{ $featured = slice }}{{ end }}
   {{- with $featured }}
   {{- /* The featured pages are looked up once, for both the all-projects link and the cards. */}}
@@ -67,6 +67,7 @@
   {{- else if eq (strings.TrimSpace .) "" }}{{ errorf "projects : chaque entrée du paramètre projects de la page d’accueil doit être une référence de page non vide" }}
   {{- else }}{{ with $.GetPage . }}{{ $projects = $projects | append . }}{{ else }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable (langue : %s) : %s. Cette page n’est peut-être pas publiée : brouillon, date dans le futur (à venir) ou page expirée" $.Language.Lang . }}{{ end }}{{ end }}
   {{- end }}
+  {{- if $projects }}
   <section class="projects" aria-labelledby="projects-heading">
     <h2 id="projects-heading">{{ i18n "selectedProjects" }}</h2>
     {{- /* The all-projects link goes to the section holding every featured project: with projects in several sections, no section lists them all. */}}
@@ -104,6 +105,7 @@
     </article>
     {{- end }}
   </section>
+  {{- end }}
   {{- end }}
   {{ .Content }}
 {{ end }}
