@@ -8,6 +8,9 @@
   {{- $ref := . }}
   {{- with site.GetPage $ref }}
     {{- $href = .RelPermalink }}
+    {{- if not $href }}
+      {{- errorf "hero : le pageRef %q désigne une page qui n’est pas publiée" $ref }}
+    {{- end }}
   {{- else }}
     {{- errorf "hero : le pageRef %q ne correspond à aucune page" $ref }}
   {{- end }}
