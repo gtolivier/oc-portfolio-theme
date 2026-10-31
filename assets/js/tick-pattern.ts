@@ -39,6 +39,9 @@ const PATTERN_MAX_ALPHA = 0.5;
 /* The share of ticks in the accent colour, bright ones included; the others are paper-coloured. */
 const PATTERN_ACCENT_SHARE = 0.6;
 
+/* The box the pattern covers, in CSS pixels. */
+type PatternBox = { width: number; height: number };
+
 /* The theme's colours the pattern paints with. */
 type PatternColors = { accent: string; paper: string };
 
@@ -73,10 +76,14 @@ class TickPattern extends HTMLElement {
 
   private observer?: ResizeObserver;
 
+  /* The box last measured, in CSS pixels: a change of density alone changes no size, so its redraw
+     reuses it. */
+  private box: PatternBox = { width: PATTERN_FALLBACK_WIDTH_PX, height: PATTERN_FALLBACK_HEIGHT_PX };
+
   connectedCallback(): void {
     this.prepend(this.canvas);
     /* The observer's first callback, as observing starts, draws the pattern for the first time. */
-    this.observer = new ResizeObserver(() => this.draw());
+    this.observer = new ResizeObserver(([entry]) => this.resize(entry));
     this.observer.observe(this);
     watchPixelDensity(() => this.draw());
   }
@@ -85,9 +92,15 @@ class TickPattern extends HTMLElement {
     this.observer?.disconnect();
   }
 
+  /* The entry's content box, unlike offsetWidth, keeps the fractional CSS pixels of the layout. */
+  private resize(entry: ResizeObserverEntry): void {
+    const { width, height } = entry.contentRect;
+    this.box = { width: width || PATTERN_FALLBACK_WIDTH_PX, height: height || PATTERN_FALLBACK_HEIGHT_PX };
+    this.draw();
+  }
+
   private draw(): void {
-    const width = this.offsetWidth || PATTERN_FALLBACK_WIDTH_PX;
-    const height = this.offsetHeight || PATTERN_FALLBACK_HEIGHT_PX;
+    const { width, height } = this.box;
     const context = prepareCanvas(this.canvas, width, height);
     if (!context) return;
     const colors = this.themeColors();
