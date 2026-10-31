@@ -11,6 +11,7 @@ import {
   SITE_WITH_AN_UNPUBLISHED_SECTION_PAGE,
   SITE_WITH_PROJECTS_IN_TWO_SECTIONS,
   SITE_WITH_PROJECTS_AS_TEXT,
+  SITE_WITH_A_FEATURED_PROJECT_AS_MAP,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1531,6 +1532,25 @@ test.describe('featured project content errors: build failure', () => {
        paramètre clients…"), whatever the rest of the wording, and no Go template execution error,
        about a range over a text, that would follow it and bury it in technical jargon. */
     const build = tryToBuildSite(SITE_WITH_PROJECTS_AS_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
+    );
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose projects list holds a table instead of a page reference makes the site build fail, with a French error message that names the projects parameter, without a template execution error after it', () => {
+    /* tests/fixtures/table-instead-of-ref/content/_index.md declares projects as a list (so the
+       check that projects is a list lets it through) whose second entry is a table,
+       { path = 'projets/restauration-pendule' }, rather than a page reference, although that page
+       exists. Rather than a section that looks that table up as a page, the person building the
+       site must get a failure whose French message names the projects parameter, in the style of
+       the clients messages ("le paramètre clients…"), whatever the rest of the wording, and no Go
+       template execution error, about a function called with a table, that would follow it and
+       bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_A_FEATURED_PROJECT_AS_MAP);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors, 'the French message should name the projects parameter').toMatch(
       /\bparamètre\s+projects\b/,

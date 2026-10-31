@@ -303,6 +303,14 @@ export const SITE_WITH_PROJECTS_IN_TWO_SECTIONS = testSite('projects-in-two-sect
    which the error-message assertion looks for. */
 export const SITE_WITH_PROJECTS_AS_TEXT = testSite('single-ref-instead-of-list');
 
+/* The example site's French home page features its projects as a list of page references: this
+   site replaces that home page with the one of tests/fixtures/table-instead-of-ref/content,
+   without a hero nor clients, whose params.projects is a list (so the check that projects is a
+   list lets it through) of 'projets/restauration-pendule', then a table,
+   { path = 'projets/restauration-pendule' }, instead of a page reference. Its folder name avoids
+   the word projects, which the error-message assertion looks for. */
+export const SITE_WITH_A_FEATURED_PROJECT_AS_MAP = testSite('table-instead-of-ref');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
