@@ -14,6 +14,7 @@ import {
   SITE_WITH_A_LONG_MENU,
   SITE_WITH_A_PAGE_REF_NOT_FOUND,
   SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE,
+  SITE_WITH_A_PAGE_REF_TO_A_LINK_ONLY_PAGE,
   SITE_WITH_A_SINGLE_LANGUAGE,
   SITE_WITH_OTHER_CLIENTS,
   buildSite,
@@ -1733,6 +1734,19 @@ test.describe('hero content errors: build failure', () => {
     const build = tryToBuildSite(SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors, 'the French message should name the pageRef').toContain('/atelier-ferme');
+    expect(build.errors, 'the French message should say the page is not published').toMatch(/publiée/i);
+  });
+
+  test('a home page where a hero button declares a pageRef to a page with [build] render = "link" makes the site build fail, with a French error message that cites this pageRef and says the page is not published', () => {
+    /* The first button of tests/fixtures/link-rendered-ref/content/_index.md declares
+       pageRef = '/atelier-vitrine', a page of the same fixture that declares
+       [build] render = 'link': Hugo gives it an address, but writes no page there. Rather than
+       a button leading to a missing page, the person building the site must get a failure that
+       names this pageRef and says, in French, that the page is not published, whatever exact
+       wording is chosen. */
+    const build = tryToBuildSite(SITE_WITH_A_PAGE_REF_TO_A_LINK_ONLY_PAGE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the pageRef').toContain('/atelier-vitrine');
     expect(build.errors, 'the French message should say the page is not published').toMatch(/publiée/i);
   });
 

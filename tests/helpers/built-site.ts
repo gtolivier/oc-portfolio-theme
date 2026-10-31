@@ -447,6 +447,13 @@ export const SITE_WITH_THE_404_PAGE_AS_FEATURED_PROJECT = testSite('error-page-r
    word for published, which the error-message assertion looks for. */
 export const SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE = testSite('never-rendered-ref');
 
+/* Same home page replacement, from tests/fixtures/link-rendered-ref/content, whose first button
+   declares pageRef = '/atelier-vitrine', and adds that page, which declares
+   [build] render = 'link': Hugo gives it an address, but writes no page there. Its folder name and
+   that page reference avoid the French word for published, which the error-message assertion
+   looks for. */
+export const SITE_WITH_A_PAGE_REF_TO_A_LINK_ONLY_PAGE = testSite('link-rendered-ref');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
