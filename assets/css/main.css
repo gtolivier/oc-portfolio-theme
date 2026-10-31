@@ -905,7 +905,8 @@ tick-field > canvas {
   column-gap: 16px;
 }
 
-/* Margins rather than a row gap, which an empty row would double. */
+/* Margins rather than a row gap, which an empty row would double. A long
+   unbreakable word wraps rather than leaving the card. */
 .project-card > * {
   grid-column: 1 / -1;
   margin: var(--project-card-gap) 0 0;
@@ -942,7 +943,6 @@ tick-field > canvas {
   font-family: var(--font-mono);
   font-size: 24px;
   font-weight: 600;
-  overflow-wrap: anywhere;
 }
 
 /* Without years, the title takes the whole width, the column gap included. */

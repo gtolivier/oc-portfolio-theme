@@ -57,6 +57,7 @@
   </div>
   {{- end }}
   {{- $featured := .Params.projects }}
+  {{- /* As for the clients: after an error, the section is left out or skips the entry, so that no template execution error buries the French message. */}}
   {{- if and $featured (not (reflect.IsSlice $featured)) }}{{ errorf "projects : le paramètre projects de la page d’accueil doit être une liste de pages" }}{{ $featured = slice }}{{ end }}
   {{- with $featured }}
   {{- /* The featured pages are looked up once, for both the all-projects link and the cards. */}}
@@ -74,8 +75,7 @@
     {{- range $projects }}{{ if not (.Parent.Eq $firstSection) }}{{ $isInOneSection = false }}{{ end }}{{ end }}
     {{- if $isInOneSection }}
     {{- with $firstSection }}
-    {{- /* A project at the content root has the home page as its parent: no section to open. */}}
-    {{- /* An unpublished section has no address to open. */}}
+    {{- /* No section to open when the projects sit at the content root (their parent is the home page) or in an unpublished section (it has no address). */}}
     {{- if and (not .IsHome) (partial "is-published.html" .) }}
     <a class="all-projects-link" href="{{ .RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
     {{- end }}
