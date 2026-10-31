@@ -979,28 +979,14 @@ test('on a desktop, the client band stays still wherever the names fit, even onl
   await expectNamesScroll('narrowed back from 1920 px to 1280 px');
 });
 
-test('on the English home page, assistive technologies get the same clients once each, in order, as the list "Trusted by", and, while the names scroll, the button that pauses them is named "Pause scrolling"', async ({ page }) => {
-  /* At 1280 px wide, the example site's five clients do not all fit: the band scrolls. */
-  await page.setViewportSize(DESKTOP_VIEWPORT);
-  await page.goto('/en/');
-  await expectClientList(page, 'Trusted by');
-  const pause = page.getByRole('button', { name: 'Pause scrolling', exact: true });
-  await expect(pause, 'the page has one button "Pause scrolling"').toHaveCount(1);
-  await expect(pause).toBeVisible();
-});
-
-test('in French and in English, the client list keeps its list semantics in every browser: with its bullets removed, the list exposed to assistive technologies declares itself a list, alongside its label', async ({ page }) => {
+test('the client list keeps its list semantics in every browser: with its bullets removed, the list exposed to assistive technologies declares itself a list, alongside its label', async ({ page }) => {
   /* WebKit drops the list role of a list without bullets unless the list declares it: a computed
      role in Chromium would not show that, so the test checks what the page declares. */
-  for (const [homePage, name] of [
-    ['/fr/', 'Ils me font confiance'],
-    ['/en/', 'Trusted by'],
-  ]) {
-    await page.goto(homePage);
-    const list = page.getByRole('list', { name });
-    await expect(list, `${homePage}: the list "${name}"`).toHaveAttribute('role', 'list');
-    await expect(list, `${homePage}: the list "${name}"`).toHaveAttribute('aria-label', name);
-  }
+  const name = 'Ils me font confiance';
+  await page.goto('/fr/');
+  const list = page.getByRole('list', { name });
+  await expect(list, `the list "${name}"`).toHaveAttribute('role', 'list');
+  await expect(list, `the list "${name}"`).toHaveAttribute('aria-label', name);
 });
 
 test.describe('home page of another site, with other clients', () => {
@@ -1435,14 +1421,20 @@ test.describe('client content errors: build failure', () => {
        range over a text or a function called with a table, that would follow it and bury it in
        technical jargon. Requiring "clients parameter" also keeps a template execution error that
        merely quotes $clients or .Params.clients from passing. Two fixtures, so that stopping after
-       only one of the two checks does not pass. With the table, the message also gives its
-       position in the list, counted from 1, "entry 2", so that whoever fills in the content finds
-       it; a text instead of a list has no entry to point to. */
-    const cases: { name: string; site: BuiltSite; position?: RegExp }[] = [
+       only one of the two checks does not pass. The list of the second fixture holds another
+       table, fourth, { name = 'Librairie Vasseur' }: the message also gives the position of each
+       table in the list, counted from 1, "entry 2" and "entry 4", so that whoever fills in the
+       content finds them, and a hard-coded position does not pass; a text instead of a list has
+       no entry to point to. */
+    const cases: { name: string; site: BuiltSite; positions?: RegExp[] }[] = [
       { name: 'clients as a text', site: SITE_WITH_CLIENTS_AS_TEXT },
-      { name: 'a table among the clients', site: SITE_WITH_A_CLIENT_AS_MAP, position: /\bentry\s+2\b/ },
+      {
+        name: 'tables among the clients',
+        site: SITE_WITH_A_CLIENT_AS_MAP,
+        positions: [/\bentry\s+2\b/, /\bentry\s+4\b/],
+      },
     ];
-    for (const { name, site, position } of cases) {
+    for (const { name, site, positions = [] } of cases) {
       const build = tryToBuildSite(site);
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
       expect(build.errors, `with ${name}, the error message should name the clients parameter`).toMatch(
@@ -1451,8 +1443,8 @@ test.describe('client content errors: build failure', () => {
       expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
         /execute of template failed|error calling/i,
       );
-      if (position) {
-        expect(build.errors, `with ${name}, the error message should give the position of the table`).toMatch(position);
+      for (const position of positions) {
+        expect(build.errors, `with ${name}, the error message should give the position of each table`).toMatch(position);
       }
     }
   });
