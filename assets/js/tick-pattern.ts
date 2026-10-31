@@ -1,7 +1,7 @@
 /* A still pattern of short ticks in rows, drawn anew at every load: no seed, so each visit shows a
    pattern of its own. */
 
-import { customProperty, prepareCanvas } from './canvas-drawing';
+import { customProperty, type DevicePixelSize, devicePixelSize, prepareCanvas, watchPixelDensity } from './canvas-drawing';
 
 /* The box drawn in when the element has no layout of its own, in CSS pixels. */
 const PATTERN_FALLBACK_WIDTH_PX = 480;
@@ -39,6 +39,9 @@ const PATTERN_MAX_ALPHA = 0.5;
 /* The share of ticks in the accent colour, bright ones included; the others are paper-coloured. */
 const PATTERN_ACCENT_SHARE = 0.6;
 
+/* The box the pattern covers, in CSS pixels. */
+type PatternBox = { width: number; height: number };
+
 /* The theme's colours the pattern paints with. */
 type PatternColors = { accent: string; paper: string };
 
@@ -49,6 +52,26 @@ function randomBetween(min: number, max: number): number {
 /* How many columns or rows of ticks fit, one every spacing from start, each starting before end. */
 function tickCount(start: number, end: number, spacing: number): number {
   return Math.max(0, Math.ceil((end - start) / spacing));
+}
+
+/* What a drawing of a box looks like: the canvas size, in device pixels, and the grid of ticks. */
+type PatternLayout = { canvas: DevicePixelSize; columns: number; rows: number };
+
+function patternLayout({ width, height }: PatternBox): PatternLayout {
+  return {
+    canvas: devicePixelSize(width, height),
+    columns: tickCount(PATTERN_LEFT_PX, width - PATTERN_RIGHT_MARGIN_PX, PATTERN_COLUMN_SPACING_PX),
+    rows: tickCount(PATTERN_TOP_PX, height - PATTERN_BOTTOM_MARGIN_PX, PATTERN_ROW_SPACING_PX),
+  };
+}
+
+function isSameLayout(layout: PatternLayout, other: PatternLayout): boolean {
+  return (
+    layout.canvas.width === other.canvas.width &&
+    layout.canvas.height === other.canvas.height &&
+    layout.columns === other.columns &&
+    layout.rows === other.rows
+  );
 }
 
 /* One tick as rolled once, kept so that a redraw shows it again. */
@@ -64,6 +87,11 @@ function rollTick(): Tick {
   };
 }
 
+/* One observer for every pattern on the page, each entry handed to the pattern it measured. */
+const patternResizeObserver = new ResizeObserver((entries) => {
+  for (const entry of entries) (entry.target as TickPattern).resize(entry);
+});
+
 /* A decorative canvas filling the box, completed with new ticks when the box widens. */
 class TickPattern extends HTMLElement {
   private canvas = document.createElement('canvas');
@@ -71,30 +99,50 @@ class TickPattern extends HTMLElement {
   /* The ticks rolled so far, by column then by row. */
   private columns: Tick[][] = [];
 
-  private observer?: ResizeObserver;
+  /* The box last measured, in CSS pixels: a change of density alone changes no size, so its redraw
+     reuses it. */
+  private box: PatternBox = { width: PATTERN_FALLBACK_WIDTH_PX, height: PATTERN_FALLBACK_HEIGHT_PX };
+
+  /* The layout of the last drawing; none before the first one. */
+  private drawnLayout?: PatternLayout;
+
+  /* Stops watching the pixel density once the element leaves the page. */
+  private densityWatch?: AbortController;
 
   connectedCallback(): void {
     this.prepend(this.canvas);
     /* The observer's first callback, as observing starts, draws the pattern for the first time. */
-    this.observer = new ResizeObserver(() => this.draw());
-    this.observer.observe(this);
+    patternResizeObserver.observe(this);
+    this.densityWatch = new AbortController();
+    watchPixelDensity(() => this.draw(), this.densityWatch.signal);
   }
 
   disconnectedCallback(): void {
-    this.observer?.disconnect();
+    patternResizeObserver.unobserve(this);
+    this.densityWatch?.abort();
+  }
+
+  /* The entry's content box, unlike offsetWidth, keeps the fractional CSS pixels of the layout. */
+  resize(entry: ResizeObserverEntry): void {
+    const { width, height } = entry.contentRect;
+    this.box = { width: width || PATTERN_FALLBACK_WIDTH_PX, height: height || PATTERN_FALLBACK_HEIGHT_PX };
+    if (!this.isDrawnAtBoxLayout()) this.draw();
+  }
+
+  /* A resize below a device pixel that adds no column or row would draw the same pattern again. */
+  private isDrawnAtBoxLayout(): boolean {
+    return this.drawnLayout !== undefined && isSameLayout(this.drawnLayout, patternLayout(this.box));
   }
 
   private draw(): void {
-    const width = this.offsetWidth || PATTERN_FALLBACK_WIDTH_PX;
-    const height = this.offsetHeight || PATTERN_FALLBACK_HEIGHT_PX;
-    const context = prepareCanvas(this.canvas, width, height);
+    const layout = patternLayout(this.box);
+    const context = prepareCanvas(this.canvas, this.box.width, this.box.height);
     if (!context) return;
+    this.drawnLayout = layout;
     const colors = this.themeColors();
-    const columns = tickCount(PATTERN_LEFT_PX, width - PATTERN_RIGHT_MARGIN_PX, PATTERN_COLUMN_SPACING_PX);
-    const rows = tickCount(PATTERN_TOP_PX, height - PATTERN_BOTTOM_MARGIN_PX, PATTERN_ROW_SPACING_PX);
-    for (let column = 0; column < columns; column += 1) {
+    for (let column = 0; column < layout.columns; column += 1) {
       const x = PATTERN_LEFT_PX + column * PATTERN_COLUMN_SPACING_PX;
-      for (let row = 0; row < rows; row += 1) {
+      for (let row = 0; row < layout.rows; row += 1) {
         const y = PATTERN_TOP_PX + row * PATTERN_ROW_SPACING_PX;
         this.drawTick(context, colors, x, y, this.tickAt(column, row));
       }
