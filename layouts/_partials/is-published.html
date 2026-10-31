@@ -1,6 +1,6 @@
-{{- /* Whether Hugo publishes the page: it does only under these [build] render values (set on the page or through a cascade). render = false is a boolean, hence the conversion to a string. */}}
-{{- $publishingRenders := slice "always" "true" }}
+{{- /* Whether Hugo publishes the page: it does under any [build] render value (set on the page or through a cascade) except these, which Hugo reads as is; a capitalised or misspelled value is published. render = false is a boolean, hence the conversion to a string. */}}
+{{- $unpublishingRenders := slice "never" "link" "false" }}
 {{- $build := .Params.build | default dict }}
 {{- $render := "always" }}
 {{- if isset $build "render" }}{{ $render = printf "%v" $build.render }}{{ end }}
-{{- return in $publishingRenders $render }}
+{{- return not (in $unpublishingRenders $render) }}
