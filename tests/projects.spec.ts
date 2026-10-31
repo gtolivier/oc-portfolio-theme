@@ -18,6 +18,7 @@ import {
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT,
   SITE_WITH_A_DRAFT_FEATURED_PROJECT,
   SITE_WITH_LONG_PROJECT_YEARS,
+  SITE_WITH_LONG_PROJECT_WORDS,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1505,6 +1506,26 @@ test.describe('home page of another site, featuring no projects', () => {
   });
 });
 
+/* A card's horizontal edges, and the horizontal edges of every line of every text it displays,
+   each with the text it belongs to. */
+async function cardAndTextLines(card: Locator): Promise<{ cardBox: { left: number; right: number }; lines: { text: string; left: number; right: number }[] }> {
+  return card.evaluate((article) => {
+    const { left, right } = article.getBoundingClientRect();
+    const found: { text: string; left: number; right: number }[] = [];
+    const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const text = (node.textContent ?? '').replace(/\s+/g, ' ').trim();
+      if (!text) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      for (const rect of range.getClientRects()) {
+        if (rect.width > 0 && rect.height > 0) found.push({ text, left: rect.left, right: rect.right });
+      }
+    }
+    return { cardBox: { left, right }, lines: found };
+  });
+}
+
 test.describe('home page of another site, featuring a project with long years', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
@@ -1529,21 +1550,46 @@ test.describe('home page of another site, featuring a project with long years', 
     /* Wrapped: the years are laid out on more than one line. */
     expect.soft((await textLineBoxes(yearsText)).length, `lines the years "${years}" are laid out on`).toBeGreaterThan(1);
     /* No text leaves the card: every line of every text it displays stays within its box. */
-    const { cardBox, lines } = await card.evaluate((article) => {
-      const { left, right } = article.getBoundingClientRect();
-      const found: { text: string; left: number; right: number }[] = [];
-      const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT);
-      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-        const text = (node.textContent ?? '').replace(/\s+/g, ' ').trim();
-        if (!text) continue;
-        const range = document.createRange();
-        range.selectNodeContents(node);
-        for (const rect of range.getClientRects()) {
-          if (rect.width > 0 && rect.height > 0) found.push({ text, left: rect.left, right: rect.right });
-        }
-      }
-      return { cardBox: { left, right }, lines: found };
-    });
+    const { cardBox, lines } = await cardAndTextLines(card);
+    expect(lines.length, 'lines of text the card displays').toBeGreaterThan(0);
+    for (const line of lines) {
+      expect.soft(line.left, `left edge of a line of "${line.text}" against the card's left edge (${cardBox.left.toFixed(1)} px)`).toBeGreaterThanOrEqual(cardBox.left - 1);
+      expect.soft(line.right, `right edge of a line of "${line.text}" against the card's right edge (${cardBox.right.toFixed(1)} px)`).toBeLessThanOrEqual(cardBox.right + 1);
+    }
+    const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect.soft(pageWidth, 'width of the page content').toBeLessThanOrEqual(PHONE.width);
+  });
+});
+
+test.describe('home page of another site, featuring a project with long words', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_LONG_PROJECT_WORDS);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a phone, the card of a featured project whose role, description and stack each hold a word wider than the card keeps them inside the card: no text of the card leaves it, and the page does not scroll horizontally', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_LONG_PROJECT_WORDS, siteDirectory);
+    await page.setViewportSize(PHONE);
+    await page.goto(`${SITE_WITH_LONG_PROJECT_WORDS.origin}/fr/`);
+    await page.evaluate(() => document.fonts.ready);
+    /* tests/fixtures/long-project-words/content/projets/pendule-aux-mots-longs.md declares a role,
+       a description and a stack that each hold a single word, without a hyphen nor a space,
+       wider than the card. */
+    const longWords = {
+      role: 'Restauratricedemouvementscompliquésetdecadransémaillésanciens',
+      description: 'Penduleastronomiqueàquantièmeperpétueléquationdutempsetphasesdelalune',
+      stack: 'Laitonrecuitdoréàlamercurepuisrecouvertdunvernisàlagommelaque',
+    };
+    const card = cardTitled(projectsSection(page), 'Pendule aux mots longs');
+    await expect(card).toHaveCount(1);
+    for (const [part, word] of Object.entries(longWords)) {
+      await expect(card.getByText(word), `the ${part} holding "${word}"`).toBeVisible();
+    }
+    /* No text leaves the card: every line of every text it displays stays within its box. */
+    const { cardBox, lines } = await cardAndTextLines(card);
     expect(lines.length, 'lines of text the card displays').toBeGreaterThan(0);
     for (const line of lines) {
       expect.soft(line.left, `left edge of a line of "${line.text}" against the card's left edge (${cardBox.left.toFixed(1)} px)`).toBeGreaterThanOrEqual(cardBox.left - 1);

@@ -354,6 +354,14 @@ export const SITE_WITH_A_DRAFT_FEATURED_PROJECT = testSite('draft-ref');
    words but wider on one line than a phone-sized card. */
 export const SITE_WITH_LONG_PROJECT_YEARS = testSite('long-project-years');
 
+/* The example site's featured projects declare roles, descriptions and stacks made of short
+   words: this site replaces the French home page with the one of
+   tests/fixtures/long-project-words/content, without a hero nor clients, which features the
+   example site's 'projets/restauration-pendule', then "Pendule aux mots longs", a fictional
+   project added under projets/ in French only, whose role, description and stack each hold a
+   single word, without a hyphen nor a space, wider than a phone-sized card. */
+export const SITE_WITH_LONG_PROJECT_WORDS = testSite('long-project-words');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
