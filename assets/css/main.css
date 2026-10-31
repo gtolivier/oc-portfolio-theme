@@ -884,6 +884,7 @@ tick-field > canvas {
     color: var(--color-ink);
     border-color: var(--color-accent);
     border-bottom-width: var(--link-underline-active-width);
+    padding-bottom: 1px;
   }
 }
 
@@ -891,6 +892,7 @@ tick-field > canvas {
   color: var(--color-ink);
   border-color: var(--color-accent);
   border-bottom-width: var(--link-underline-active-width);
+  padding-bottom: 1px;
 }
 
 .project-card {
@@ -986,12 +988,14 @@ tick-field > canvas {
   .project-card > .project-link:hover {
     border-color: var(--color-accent);
     border-bottom-width: var(--link-underline-active-width);
+    padding-bottom: 1px;
   }
 }
 
 .project-card > .project-link:focus-visible {
   border-color: var(--color-accent);
   border-bottom-width: var(--link-underline-active-width);
+  padding-bottom: 1px;
 }
 
 @media (min-width: 768px) {
