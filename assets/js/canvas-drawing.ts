@@ -4,6 +4,14 @@ export function customProperty(style: CSSStyleDeclaration, name: string): string
   return style.getPropertyValue(name).trim();
 }
 
+export type PixelSize = { width: number; height: number };
+
+/* The size, in device pixels, of the canvas drawing a box of width × height CSS pixels. */
+export function devicePixelSize(width: number, height: number): PixelSize {
+  const scale = window.devicePixelRatio || 1;
+  return { width: Math.round(width * scale), height: Math.round(height * scale) };
+}
+
 /* Readies the canvas for a new drawing of a box of width × height CSS pixels: one canvas pixel per
    device pixel, so the strokes stay crisp, cleared, with a context that draws in CSS pixels. */
 export function prepareCanvas(
@@ -12,7 +20,8 @@ export function prepareCanvas(
   height: number,
 ): CanvasRenderingContext2D | null {
   const scale = window.devicePixelRatio || 1;
-  resizeCanvas(canvas, Math.round(width * scale), Math.round(height * scale));
+  const size = devicePixelSize(width, height);
+  resizeCanvas(canvas, size.width, size.height);
   const context = canvas.getContext('2d');
   if (!context) return null;
   context.resetTransform();

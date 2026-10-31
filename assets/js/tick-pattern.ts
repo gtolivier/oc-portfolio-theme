@@ -1,7 +1,7 @@
 /* A still pattern of short ticks in rows, drawn anew at every load: no seed, so each visit shows a
    pattern of its own. */
 
-import { customProperty, prepareCanvas, watchPixelDensity } from './canvas-drawing';
+import { customProperty, devicePixelSize, type PixelSize, prepareCanvas, watchPixelDensity } from './canvas-drawing';
 
 /* The box drawn in when the element has no layout of its own, in CSS pixels. */
 const PATTERN_FALLBACK_WIDTH_PX = 480;
@@ -67,6 +67,11 @@ function rollTick(): Tick {
   };
 }
 
+/* One observer for every pattern on the page, each entry handed to the pattern it measured. */
+const patternResizeObserver = new ResizeObserver((entries) => {
+  for (const entry of entries) (entry.target as TickPattern).resize(entry);
+});
+
 /* A decorative canvas filling the box, completed with new ticks when the box widens. */
 class TickPattern extends HTMLElement {
   private canvas = document.createElement('canvas');
@@ -74,33 +79,40 @@ class TickPattern extends HTMLElement {
   /* The ticks rolled so far, by column then by row. */
   private columns: Tick[][] = [];
 
-  private observer?: ResizeObserver;
-
   /* The box last measured, in CSS pixels: a change of density alone changes no size, so its redraw
      reuses it. */
   private box: PatternBox = { width: PATTERN_FALLBACK_WIDTH_PX, height: PATTERN_FALLBACK_HEIGHT_PX };
 
+  /* The canvas size, in device pixels, of the last drawing; none before the first one. */
+  private drawnSize?: PixelSize;
+
   connectedCallback(): void {
     this.prepend(this.canvas);
     /* The observer's first callback, as observing starts, draws the pattern for the first time. */
-    this.observer = new ResizeObserver(([entry]) => this.resize(entry));
-    this.observer.observe(this);
+    patternResizeObserver.observe(this);
     watchPixelDensity(() => this.draw());
   }
 
   disconnectedCallback(): void {
-    this.observer?.disconnect();
+    patternResizeObserver.unobserve(this);
   }
 
   /* The entry's content box, unlike offsetWidth, keeps the fractional CSS pixels of the layout. */
-  private resize(entry: ResizeObserverEntry): void {
+  resize(entry: ResizeObserverEntry): void {
     const { width, height } = entry.contentRect;
     this.box = { width: width || PATTERN_FALLBACK_WIDTH_PX, height: height || PATTERN_FALLBACK_HEIGHT_PX };
-    this.draw();
+    if (!this.isDrawnAtBoxSize()) this.draw();
+  }
+
+  /* A resize below a device pixel would draw the same pattern again. */
+  private isDrawnAtBoxSize(): boolean {
+    const size = devicePixelSize(this.box.width, this.box.height);
+    return this.drawnSize?.width === size.width && this.drawnSize?.height === size.height;
   }
 
   private draw(): void {
     const { width, height } = this.box;
+    this.drawnSize = devicePixelSize(width, height);
     const context = prepareCanvas(this.canvas, width, height);
     if (!context) return;
     const colors = this.themeColors();
