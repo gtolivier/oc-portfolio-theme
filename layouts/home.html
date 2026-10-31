@@ -61,14 +61,14 @@
   {{- if and (isset .Params "projects") (not (reflect.IsSlice $featured)) }}{{ errorf "projects : le paramètre projects de la page d’accueil doit être une liste de pages" }}{{ $featured = slice }}{{ end }}
   {{- /* The featured pages are looked up once, for both the all-projects link and the cards. */}}
   {{- $projects := slice }}
-  {{- range $featured }}
+  {{- /* The kinds of page an entry may reference that are no project, each with the words the error uses for it. */}}
+  {{- $nonProjectKinds := dict "home" "la page d’accueil elle-même" "section" "une page de section" "term" "une page d’étiquette" }}
+  {{- range $entry := $featured }}
   {{- if not (eq (printf "%T" .) "string") }}{{ errorf "projects : chaque entrée du paramètre projects de la page d’accueil doit être une référence de page" }}{{ continue }}{{ end }}
   {{- if eq (strings.TrimSpace .) "" }}{{ errorf "projects : chaque entrée du paramètre projects de la page d’accueil doit être une référence de page non vide" }}{{ continue }}{{ end }}
   {{- $page := $.GetPage . }}
   {{- if not $page }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable (langue : %s) : %s. Cette page n’est peut-être pas traduite dans cette langue, ou pas publiée : brouillon, date dans le futur (à venir) ou page expirée" $.Language.Lang . }}{{ continue }}{{ end }}
-  {{- if $page.IsHome }}{{ errorf "projects : le paramètre projects de la page d’accueil référence la page d’accueil elle-même, qui n’est pas un projet : « %s »" . }}{{ continue }}{{ end }}
-  {{- if $page.IsSection }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page de section, qui n’est pas un projet : « %s »" . }}{{ continue }}{{ end }}
-  {{- if eq $page.Kind "term" }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page d’étiquette, qui n’est pas un projet : « %s »" . }}{{ continue }}{{ end }}
+  {{- with index $nonProjectKinds $page.Kind }}{{ errorf "projects : le paramètre projects de la page d’accueil référence %s, qui n’est pas un projet : « %s »" . $entry }}{{ continue }}{{ end }}
   {{- $projects = $projects | append $page }}
   {{- end }}
   {{- if $projects }}
