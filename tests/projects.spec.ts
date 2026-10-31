@@ -36,6 +36,7 @@ import {
   verticalBands,
 } from './helpers/pixels';
 import { displayedText } from './helpers/text-on-screen';
+import { tabUntilFocused } from './helpers/keyboard';
 
 /* The projects the example site's French home page features, in the order its front matter lists
    them (params.projects, page references to content/projets/<slug>). The order is neither
@@ -444,6 +445,48 @@ test('on the French home page, the cards of the section "Projets sélectionnés"
     const background = effectiveBackground(backgrounds);
     const ratio = contrastRatio(paintOver(color, background), background);
     expect.soft(ratio, `contrast of "${text}" (${color}) with what is behind it`).toBeGreaterThanOrEqual(4.5);
+  }
+});
+
+test('on the French home page, the "Voir le détail" link of each card stays readable while hovered with a fine pointer and while reached by keyboard: its text still contrasts at least 4.5:1 with the card’s background', async ({ page, hasTouch, browserName }) => {
+  await page.goto('/fr/');
+  const cards = await cardsOnceLoaded(page);
+  const links = await Promise.all(
+    (await cards.all()).map(async (card) => {
+      const link = card.getByRole('link', { name: 'Voir le détail' });
+      await expect(link).toHaveCount(1);
+      return link;
+    }),
+  );
+
+  /* Every text the link displays, its arrow included, against the background behind it. WCAG AA
+     for normal text: 4.5:1. */
+  const expectReadable = async (link: Locator, state: string, index: number) => {
+    const texts = await displayedTexts(link);
+    expect(texts.length, `${cardName(index)}: texts displayed by its link ${state}`).toBeGreaterThan(0);
+    for (const { text, color, backgrounds } of texts) {
+      const background = effectiveBackground(backgrounds);
+      const ratio = contrastRatio(paintOver(color, background), background);
+      expect.soft(ratio, `${cardName(index)}: contrast of "${text}" (${color}) ${state} with what is behind it`).toBeGreaterThanOrEqual(4.5);
+    }
+  };
+
+  /* Hovering needs a fine pointer; touch screens have none. */
+  if (!hasTouch) {
+    for (const [index, link] of links.entries()) {
+      await link.hover();
+      expect(await link.evaluate((el) => el.matches(':hover')), `${cardName(index)}: its link is hovered`).toBe(true);
+      await expectReadable(link, 'while hovered', index);
+    }
+    /* The pointer leaves the links, so that only the focus remains below. */
+    await page.mouse.move(0, 0);
+  }
+
+  /* A keyboard visitor tabs from one link to the next. */
+  for (const [index, link] of links.entries()) {
+    await tabUntilFocused(link, browserName, 60);
+    expect(await link.evaluate((el) => el.matches(':focus-visible')), `${cardName(index)}: its link shows the keyboard focus`).toBe(true);
+    await expectReadable(link, 'while focused by keyboard', index);
   }
 });
 
