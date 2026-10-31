@@ -509,6 +509,28 @@ test('on the French home page, on a phone and on a wide window, each card of the
   }
 });
 
+test('on the French home page, in reading order, each card of the section "Projets sélectionnés" gives its years right after its title, as they sit on the title’s row, and only then its role', async ({ page }) => {
+  await page.goto('/fr/');
+  const section = projectsSection(page);
+  for (const [index, project] of FEATURED_PROJECTS.entries()) {
+    const card = cardTitled(section, project.title);
+    await expect(card).toHaveCount(1);
+    /* The reading order is the document order, the one a screen reader or a page read without
+       the stylesheet follows: the card's text content, whitespace collapsed. */
+    const text = ((await card.textContent()) ?? '').replace(/\s+/g, ' ');
+    const titleEnd = text.indexOf(project.title) + project.title.length;
+    const yearsStart = text.indexOf(project.years);
+    const roleStart = text.indexOf(project.role);
+    expect(text.indexOf(project.title), `${cardName(index)}: the title in the card's text`).toBeGreaterThanOrEqual(0);
+    expect(yearsStart, `${cardName(index)}: the years "${project.years}" in the card's text`).toBeGreaterThanOrEqual(0);
+    expect(roleStart, `${cardName(index)}: the role "${project.role}" in the card's text`).toBeGreaterThanOrEqual(0);
+    /* Right after the title: nothing but whitespace between them. */
+    expect(text.slice(titleEnd, Math.max(titleEnd, yearsStart)).trim(), `${cardName(index)}: what is read between the title and the years, in "${text.trim()}"`).toBe('');
+    expect(yearsStart, `${cardName(index)}: the years are read after the title, in "${text.trim()}"`).toBeGreaterThanOrEqual(titleEnd);
+    expect(roleStart, `${cardName(index)}: the role is read after the years, in "${text.trim()}"`).toBeGreaterThan(yearsStart);
+  }
+});
+
 test('on a phone, the cards of the section "Projets sélectionnés" are stacked in a single column, each as wide as the section’s content, and the page does not scroll horizontally', async ({ page }) => {
   await page.setViewportSize(PHONE);
   await page.goto('/fr/');
