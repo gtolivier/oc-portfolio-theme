@@ -1677,12 +1677,15 @@ test.describe('home page of another site, featuring no projects', () => {
   });
 });
 
+/* The horizontal edges of one line of a text, with the text it belongs to. */
+type TextLine = { text: string; left: number; right: number };
+
 /* A card's horizontal edges, and the horizontal edges of every line of every text it displays,
    each with the text it belongs to. */
-async function cardAndTextLines(card: Locator): Promise<{ cardBox: { left: number; right: number }; lines: { text: string; left: number; right: number }[] }> {
+async function cardAndTextLines(card: Locator): Promise<{ cardBox: { left: number; right: number }; lines: TextLine[] }> {
   return card.evaluate((article) => {
     const { left, right } = article.getBoundingClientRect();
-    const found: { text: string; left: number; right: number }[] = [];
+    const found: TextLine[] = [];
     const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT);
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
       const text = (node.textContent ?? '').replace(/\s+/g, ' ').trim();
@@ -2041,6 +2044,21 @@ test.describe('featured project content errors: build failure', () => {
     );
   });
 
+  /* Both directions, each with the code of the home page's language: a French home page featuring
+     a project that only has an English page, and the other way round. */
+  const HOME_PAGES_FEATURING_AN_UNTRANSLATED_PROJECT = [
+    {
+      name: 'a French home page featuring an English-only project',
+      site: SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT,
+      language: 'fr',
+    },
+    {
+      name: 'an English home page featuring a French-only project',
+      site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT,
+      language: 'en',
+    },
+  ];
+
   test('a home page that features a project without a translation in its language makes the site build fail, with a French error message that names the projects parameter and that language, without a template execution error after it', () => {
     /* tests/fixtures/english-only-project features, on the French home page, a project that only
        has an English page; tests/fixtures/french-only-project features, on the English home page,
@@ -2053,19 +2071,7 @@ test.describe('featured project content errors: build failure', () => {
        technical jargon. The code is looked for as a word that no other word follows, so that the
        French preposition "en" ("n’existe qu’en anglais") does not pass for the English code. Both
        directions, so that a message naming a language written in the template does not pass. */
-    const cases = [
-      {
-        name: 'a French home page featuring an English-only project',
-        site: SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT,
-        language: 'fr',
-      },
-      {
-        name: 'an English home page featuring a French-only project',
-        site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT,
-        language: 'en',
-      },
-    ];
-    for (const { name, site, language } of cases) {
+    for (const { name, site, language } of HOME_PAGES_FEATURING_AN_UNTRANSLATED_PROJECT) {
       const build = tryToBuildSite(site);
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
       expect(build.errors, `with ${name}, the French message should name the projects parameter`).toMatch(
@@ -2089,19 +2095,7 @@ test.describe('featured project content errors: build failure', () => {
        code (fr, en), whatever the rest of the wording. The code is looked for as in the test
        above, as a word that no other word follows. Both directions, so that a message naming a
        language written in the template does not pass. */
-    const cases = [
-      {
-        name: 'a French home page featuring an English-only project',
-        site: SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT,
-        language: 'fr',
-      },
-      {
-        name: 'an English home page featuring a French-only project',
-        site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT,
-        language: 'en',
-      },
-    ];
-    for (const { name, site, language } of cases) {
+    for (const { name, site, language } of HOME_PAGES_FEATURING_AN_UNTRANSLATED_PROJECT) {
       const build = tryToBuildSite(site);
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
       expect(
