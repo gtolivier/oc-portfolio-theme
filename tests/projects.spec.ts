@@ -442,6 +442,21 @@ test('on the French home page, each featured project’s card gives the role, de
   }
 });
 
+test('on the French home page, no featured project’s card shows the years its page declares', async ({ page }) => {
+  await page.goto('/fr/');
+  const section = projectsSection(page);
+  for (const project of FEATURED_PROJECTS) {
+    /* The card is there, headed by its title, so that a missing card cannot pass for one
+       without years. */
+    const card = cardTitled(section, project.title);
+    await expect(card).toHaveCount(1);
+    /* The card's whole text, hidden parts included: the years appear nowhere in it. */
+    await expect(card).not.toContainText(project.years);
+  }
+  /* Nor anywhere else in the section. */
+  for (const project of FEATURED_PROJECTS) await expect(section).not.toContainText(project.years);
+});
+
 test('on the French home page, each featured project’s card ends with a "Voir le détail" link, separate from its title, whose accessible name names the project; following it opens the project’s page, at the site root and under /portfolio/', async ({ page }) => {
   /* The example site served at the root of its origin, then under a subpath (playwright.config.ts). */
   for (const siteRoot of ['http://localhost:1314/', 'http://localhost:1315/portfolio/']) {
