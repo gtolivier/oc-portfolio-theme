@@ -296,6 +296,13 @@ export const SITE_WITH_AN_UNPUBLISHED_SECTION_PAGE = testSite('unpublished-secti
    sections are published, at /fr/projets/ and /fr/realisations/. */
 export const SITE_WITH_PROJECTS_IN_TWO_SECTIONS = testSite('projects-in-two-sections');
 
+/* The example site's French home page features its projects as a list of page references: this
+   site replaces that home page with the one of tests/fixtures/single-ref-instead-of-list/content,
+   without a hero nor clients, whose params.projects is a text, 'projets/restauration-pendule' (an
+   existing page of the example site), instead of a list. Its folder name avoids the word projects,
+   which the error-message assertion looks for. */
+export const SITE_WITH_PROJECTS_AS_TEXT = testSite('single-ref-instead-of-list');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

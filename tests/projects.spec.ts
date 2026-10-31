@@ -10,6 +10,7 @@ import {
   SITE_WITH_AN_UNPUBLISHED_PROJECTS_SECTION,
   SITE_WITH_AN_UNPUBLISHED_SECTION_PAGE,
   SITE_WITH_PROJECTS_IN_TWO_SECTIONS,
+  SITE_WITH_PROJECTS_AS_TEXT,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1515,6 +1516,24 @@ test.describe('featured project content errors: build failure', () => {
     );
     expect(build.errors, 'the French message should name the missing page reference').toContain(
       'projets/sablier-introuvable',
+    );
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose projects parameter is a text instead of a list makes the site build fail, with a French error message that names the projects parameter, without a template execution error after it', () => {
+    /* tests/fixtures/single-ref-instead-of-list/content/_index.md declares
+       projects = 'projets/restauration-pendule', a text rather than a list of page references,
+       although that page exists. Rather than a section built from that text, or a build that
+       quietly treats it as a list of one, the person building the site must get a failure whose
+       French message names the projects parameter, in the style of the clients messages ("le
+       paramètre clients…"), whatever the rest of the wording, and no Go template execution error,
+       about a range over a text, that would follow it and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_PROJECTS_AS_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
     );
     expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
       /execute of template failed|error calling/i,
