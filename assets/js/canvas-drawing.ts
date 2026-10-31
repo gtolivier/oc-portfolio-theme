@@ -39,7 +39,7 @@ export function prepareCanvas(
    canvas was drawn at stops matching, watch the new one, then redraw, until the signal aborts.
    Watching first keeps a redraw that throws from ending the watch. */
 export function watchPixelDensity(redraw: () => void, signal?: AbortSignal): void {
-  const query = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+  const query = window.matchMedia(`(resolution: ${devicePixelScale()}dppx)`);
   query.addEventListener(
     'change',
     () => {
