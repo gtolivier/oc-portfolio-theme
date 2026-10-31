@@ -62,7 +62,7 @@
   {{- /* The featured pages are looked up once, for both the all-projects link and the cards. */}}
   {{- $projects := slice }}
   {{- /* The kinds of page an entry may reference that are no project, each with the words the error uses for it. */}}
-  {{- $nonProjectKinds := dict "home" "la page d’accueil elle-même" "section" "une page de section" "term" "une page d’étiquette" }}
+  {{- $nonProjectKinds := dict "home" "la page d’accueil elle-même" "section" "une page de section" "term" "une page d’étiquette" "taxonomy" "une page de taxonomie" }}
   {{- range $entry := $featured }}
   {{- if not (eq (printf "%T" .) "string") }}{{ errorf "projects : chaque entrée du paramètre projects de la page d’accueil doit être une référence de page" }}{{ continue }}{{ end }}
   {{- if eq (strings.TrimSpace .) "" }}{{ errorf "projects : chaque entrée du paramètre projects de la page d’accueil doit être une référence de page non vide" }}{{ continue }}{{ end }}
