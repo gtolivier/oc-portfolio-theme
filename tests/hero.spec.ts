@@ -971,24 +971,11 @@ test('on phone as on desktop, the hero’s veil darkens its text zone and fades 
 
 /* Leaves only the still hero's field showing: its text and its veil are hidden without moving
    anything, and the hero is given the page's background colour, which shows through it, so
-   that the pixels that differ from the hero's background are the ticks'. The site header and
-   the client band are hidden too, still without moving anything: the hero sits between them
-   at fractional positions, and a screenshot of the hero rounded out to whole device pixels
-   holds the header's bottom border on its first row, or the band's top border on its last
-   one, which would look like ticks drawn in every column. So is the projects section, right
-   below the first screen: on a phone, the screenshot's last device column lies half outside
-   the window and would pick up the section's light paint, which would look like ticks drawn
-   in the rightmost column. */
+   that the pixels that differ from the hero's background are the ticks'. */
 async function showOnlyTheField(hero: Locator, text: Record<string, Locator>): Promise<void> {
   const veil = hero.locator('.veil');
   await expect(veil).toHaveCount(1);
-  const header = hero.page().locator('.site-header');
-  await expect(header).toHaveCount(1);
-  const clients = hero.page().locator('.clients');
-  await expect(clients).toHaveCount(1);
-  const projects = hero.page().locator('.projects');
-  await expect(projects).toHaveCount(1);
-  for (const element of [...Object.values(text), veil, header, clients, projects]) {
+  for (const element of [...Object.values(text), veil]) {
     await element.evaluate((el) => {
       (el as HTMLElement).style.visibility = 'hidden';
     });
@@ -996,6 +983,27 @@ async function showOnlyTheField(hero: Locator, text: Record<string, Locator>): P
   await hero.evaluate((el) => {
     (el as HTMLElement).style.backgroundColor = getComputedStyle(document.body).backgroundColor;
   });
+}
+
+/* A screenshot of the hero's box shrunk inward to whole device pixels. The hero sits between
+   the site header and the client band at fractional positions, and on a phone its right edge
+   falls inside a device pixel of the window's last column: a screenshot rounded out to whole
+   device pixels would hold, on its edge rows and columns, the header's bottom border, the band's
+   top border or the paint of what lies beyond, which would look like ticks drawn along a whole
+   edge. Each side moves inward by less than a device pixel, so that positions read in it stay
+   within that of the hero's own. */
+async function screenshotInsideTheHero(hero: Locator): Promise<Buffer> {
+  const { left, top, right, bottom } = await hero.evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    const ratio = window.devicePixelRatio;
+    return {
+      left: Math.ceil(box.left * ratio) / ratio,
+      top: Math.ceil(box.top * ratio) / ratio,
+      right: Math.floor(Math.min(box.right, document.documentElement.clientWidth) * ratio) / ratio,
+      bottom: Math.floor(Math.min(box.bottom, window.innerHeight) * ratio) / ratio,
+    };
+  });
+  return hero.page().screenshot({ clip: { x: left, y: top, width: right - left, height: bottom - top } });
 }
 
 /* The bands the still field's leftmost and rightmost columns of ticks are measured in, as for
@@ -1052,7 +1060,7 @@ test('on a phone, the hero’s tick field is faintest at the top left and most o
 
   const box = (await hero.boundingBox())!;
   expect(box.width, `width of the hero in a ${size}px window`).toBeCloseTo(viewport.width, 0);
-  const screenshot = await hero.screenshot();
+  const screenshot = await screenshotInsideTheHero(hero);
   const { columns, firstRow, lastRow, tickWidth } = await cornerTicks(hero, screenshot, box.height, size);
 
   /* A tick's opacity, read as in the opacity test of any tick-field: a pixel the tick covers
@@ -1687,31 +1695,34 @@ test.describe('home page of a site served under /portfolio/, with a button decla
   });
 });
 
+/* The number of hero error messages in a failed build's output: Hugo logs each one once, on
+   its own line, and each starts with "hero:". */
+function heroErrorCount(errors: string): number {
+  return (errors.match(/\bhero:/g) ?? []).length;
+}
+
+/* A message saying a button has neither of its two destination fields, whatever the wording:
+   "neither a url nor a pageRef", "no url and no pageRef", "both fields are missing"… */
+const BOTH_FIELDS_MISSING =
+  /\bneither\b.*\bnor\b|\bno\s+url\b.*\b(?:and|or|nor)\s+(?:no\s+)?pageRef\b|\bno\s+pageRef\b.*\b(?:and|or|nor)\s+(?:no\s+)?url\b|\bboth\b.*\b(?:missing|absent)\b|\b(?:missing|lacks|lacking)\b.*\bboth\b/i;
+
 test.describe('hero content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
-  test('a home page where a hero button declares a pageRef to a page that does not exist makes the site build fail with only the message that cites this pageRef, without the "neither url nor pageRef" message', () => {
+  test('a home page where a hero button declares a pageRef that matches no page makes the site build fail with a single hero error message, which cites this pageRef and gives the possible causes: a missing translation, a draft, a future date or an expired page', () => {
     /* The first button of tests/fixtures/page-ref-not-found/content/_index.md declares
        pageRef = '/page-fictive-introuvable', which the site does not contain. Rather than a
-       button without a destination, the person building the site must get a failure that
-       names this pageRef. Also blaming them for having neither url nor pageRef would mislead
-       them: only this message must appear, whatever wording is chosen for the other one. */
+       button without a destination, the person building the site must get a failure that names
+       this pageRef. A message that only says the pageRef matches no page would send them looking
+       for a missing file, while the page may be right there, in another language or left out of
+       the build: as the projects error does for a page that cannot be found, the message must
+       give as possible causes a missing translation (translation, translated…), a draft, a date
+       in the future (future, scheduled) and an expiry date passed (expired), whatever the rest of
+       the wording. Any other hero message, such as blaming the button for having no destination
+       at all, would mislead them: this one must be the only one. */
     const build = tryToBuildSite(SITE_WITH_A_PAGE_REF_NOT_FOUND);
     expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors).toContain('/page-fictive-introuvable');
-    expect(build.errors).not.toMatch(/\bneither\b/i);
-  });
-
-  test('a home page where a hero button declares a pageRef that matches no page makes the site build fail, with an error message that cites this pageRef and gives the possible causes: a missing translation, a draft, a future date or an expired page', () => {
-    /* Same fixture as the test above: the first button declares
-       pageRef = '/page-fictive-introuvable'. A message that only says the pageRef matches no page
-       would send the person building the site looking for a missing file, while the page may be
-       right there, in another language or left out of the build: as the projects error does for a
-       page that cannot be found, the message must name the pageRef and give as possible causes a
-       missing translation (translation, translated…), a draft, a date in the future (future,
-       scheduled) and an expiry date passed (expired), whatever the rest of the wording. */
-    const build = tryToBuildSite(SITE_WITH_A_PAGE_REF_NOT_FOUND);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), 'number of hero error messages').toBe(1);
     expect(build.errors, 'the error message should name the pageRef').toContain('/page-fictive-introuvable');
     expect(build.errors, 'the error message should name a missing translation as a possible cause').toMatch(
       /translat/i,
@@ -1759,30 +1770,32 @@ test.describe('hero content errors: build failure', () => {
     expect(build.errors).toMatch(/\blabel\b/);
   });
 
-  test('a home page where a hero button has neither url nor pageRef makes the site build fail, with an error message that cites both fields', () => {
+  test('a home page where a hero button has neither url nor pageRef makes the site build fail, with an error message that cites both fields and says both are missing', () => {
     /* The second button of tests/fixtures/button-without-destination/content/_index.md has a
        label but neither url nor pageRef. Rather than a link that leads nowhere, the person
        building the site must get a failure whose message names the url and pageRef fields of
-       the front matter, whatever wording is chosen. */
+       the front matter and says that both are missing, whatever wording is chosen: "neither …
+       nor …", "no url and no pageRef", "both … missing"… */
     const build = tryToBuildSite(SITE_WITH_A_BUTTON_WITHOUT_DESTINATION);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors).toMatch(/\burl\b/);
     expect(build.errors).toMatch(/\bpageRef\b/);
-    expect(build.errors, 'the error message should say the button has neither field').toMatch(/\bneither\b/i);
+    expect(build.errors, 'the error message should say both fields are missing').toMatch(BOTH_FIELDS_MISSING);
   });
 
-  test('a home page where a hero button declares both a url and a pageRef makes the site build fail, with an error message that cites both fields, and not the "neither url nor pageRef" message', () => {
+  test('a home page where a hero button declares both a url and a pageRef makes the site build fail with a single hero error message, which cites both fields', () => {
     /* The second button of tests/fixtures/button-with-two-destinations/content/_index.md has a
        label and declares both url = '#contact' and pageRef = '/projets', two valid
        destinations. Rather than a link where one of the two destinations would be silently
        ignored, the person building the site must get a failure whose message names the url
-       and pageRef fields of the front matter, whatever wording is chosen; blaming them for
-       having neither would mislead them. */
+       and pageRef fields of the front matter, whatever wording is chosen. Any other hero
+       message, such as blaming them for having neither, would mislead them: this one must be
+       the only one. */
     const build = tryToBuildSite(SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF);
     expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), 'number of hero error messages').toBe(1);
     expect(build.errors).toMatch(/\burl\b/);
     expect(build.errors).toMatch(/\bpageRef\b/);
-    expect(build.errors).not.toMatch(/\bneither\b/i);
   });
 
   test('a site whose home page declares a hero without params.author being set makes the site build fail, with an error message that cites the author field', () => {
