@@ -65,7 +65,7 @@
   {{- if not (eq (printf "%T" .) "string") }}{{ errorf "projects : chaque entrée du paramètre projects de la page d’accueil doit être une référence de page" }}{{ continue }}{{ end }}
   {{- if eq (strings.TrimSpace .) "" }}{{ errorf "projects : chaque entrée du paramètre projects de la page d’accueil doit être une référence de page non vide" }}{{ continue }}{{ end }}
   {{- $page := $.GetPage . }}
-  {{- if not $page }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable (langue : %s) : %s. Cette page n’est peut-être pas publiée : brouillon, date dans le futur (à venir) ou page expirée, ou encore sans traduction dans cette langue" $.Language.Lang . }}{{ continue }}{{ end }}
+  {{- if not $page }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable (langue : %s) : %s. Cette page n’est peut-être pas traduite dans cette langue, ou pas publiée : brouillon, date dans le futur (à venir) ou page expirée" $.Language.Lang . }}{{ continue }}{{ end }}
   {{- if $page.IsHome }}{{ errorf "projects : le paramètre projects de la page d’accueil référence la page d’accueil elle-même, qui n’est pas un projet : « %s »" . }}{{ continue }}{{ end }}
   {{- $projects = $projects | append $page }}
   {{- end }}
