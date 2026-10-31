@@ -5,8 +5,9 @@ title = 'Accueil'
 projects = [
   'projets/horloge-a-poids',
   'projets/pendulette-officier',
+  'projets/montre-gousset',
 ]
 +++
 
 Accueil fictif d’un site qui met en avant des projets dont la page déclare une
-valeur de render inhabituelle, que Hugo publie quand même.
+valeur de render inhabituelle.

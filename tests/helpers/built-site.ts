@@ -372,11 +372,12 @@ export const SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS = testSite('long-proje
 
 /* The example site's featured projects set no [build] options: this site replaces the French home
    page with the one of tests/fixtures/unusual-render-values/content, without a hero nor clients,
-   which features "Horloge à poids" and "Pendulette d’officier", both added under projets/ in
-   French only. The first page declares [build] render = 'Always', capitalised, the second
-   [build] render = 'nevr', a typo: Hugo reads the value case-insensitively and treats any value it
-   does not recognise as 'always', so that it publishes both pages, at /fr/projets/horloge-a-poids/
-   and /fr/projets/pendulette-officier/. */
+   which features "Horloge à poids", "Pendulette d’officier" and "Montre de gousset", all added
+   under projets/ in French only. The first page declares [build] render = 'Always', capitalised,
+   the second [build] render = 'nevr', a typo: Hugo recognises neither and treats a value it does
+   not recognise as 'always', so that it publishes both pages, at /fr/projets/horloge-a-poids/
+   and /fr/projets/pendulette-officier/. The third declares [build] render = 0, an integer, which
+   Hugo reads as 'never': it publishes nothing at /fr/projets/montre-gousset/. */
 export const SITE_WITH_UNUSUAL_RENDER_VALUES = testSite('unusual-render-values');
 
 /* Hugo only reads a configuration from a file: the one that mounts the

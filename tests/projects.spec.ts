@@ -1471,6 +1471,20 @@ test.describe('home page of another site, featuring projects whose page declares
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(project.title);
     }
   });
+
+  test('the card of a featured project whose page declares render = 0, which Hugo reads as "never" and does not publish, has no "Voir le détail" link', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_UNUSUAL_RENDER_VALUES, siteDirectory);
+    /* tests/fixtures/unusual-render-values/content/projets/montre-gousset.md declares
+       [build] render = 0, an integer: Hugo publishes nothing at that project's address… */
+    const response = await page.goto(`${SITE_WITH_UNUSUAL_RENDER_VALUES.origin}/fr/projets/montre-gousset/`);
+    expect(response?.status()).toBe(404);
+    /* …yet its card is still shown, with no link at all, not even an empty one. */
+    await page.goto(`${SITE_WITH_UNUSUAL_RENDER_VALUES.origin}/fr/`);
+    const card = cardTitled(projectsSection(page), 'Montre de gousset');
+    await expect(card).toHaveCount(1);
+    await expect(card).toBeVisible();
+    await expect(card.locator('a')).toHaveCount(0);
+  });
 });
 
 test.describe('home pages whose featured projects live in sections of different names', () => {
