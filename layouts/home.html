@@ -58,7 +58,7 @@
   {{- end }}
   {{- $featured := .Params.projects }}
   {{- /* As for the clients: after an error, the section skips the entry, and is left out when no featured page is left, so that no template execution error buries the French message. */}}
-  {{- if and $featured (not (reflect.IsSlice $featured)) }}{{ errorf "projects : le paramètre projects de la page d’accueil doit être une liste de pages" }}{{ $featured = slice }}{{ end }}
+  {{- if and (isset .Params "projects") (not (reflect.IsSlice $featured)) }}{{ errorf "projects : le paramètre projects de la page d’accueil doit être une liste de pages" }}{{ $featured = slice }}{{ end }}
   {{- with $featured }}
   {{- /* The featured pages are looked up once, for both the all-projects link and the cards. */}}
   {{- $projects := slice }}
