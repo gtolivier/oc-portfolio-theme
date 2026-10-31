@@ -64,9 +64,12 @@
   {{- end }}
   <section class="projects" aria-labelledby="projects-heading">
     <h2 id="projects-heading">{{ i18n "selectedProjects" }}</h2>
-    {{- /* The all-projects link goes to the first project's section. */}}
-    {{- range first 1 $projects }}
-    {{- with .Parent }}
+    {{- /* The all-projects link goes to the section holding every featured project: with projects in several sections, no section lists them all. */}}
+    {{- $firstSection := (index $projects 0).Parent }}
+    {{- $oneSection := true }}
+    {{- range $projects }}{{ if not (.Parent.Eq $firstSection) }}{{ $oneSection = false }}{{ end }}{{ end }}
+    {{- if $oneSection }}
+    {{- with $firstSection }}
     {{- /* A project at the content root has the home page as its parent: no section to open. */}}
     {{- /* An unpublished section has no address to open. */}}
     {{- if and (not .IsHome) (partial "is-published.html" .) }}
