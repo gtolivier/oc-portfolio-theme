@@ -2049,7 +2049,7 @@ test.describe('featured project content errors: build failure', () => {
     );
   });
 
-  test('a home page whose projects list holds a table instead of a page reference makes the site build fail, with an error message that names the projects parameter, without a template execution error after it', () => {
+  test('a home page whose projects list holds a table instead of a page reference makes the site build fail, with an error message that names the projects parameter and the position of the table, without a template execution error after it', () => {
     /* tests/fixtures/table-instead-of-ref/content/_index.md declares projects as a list (so the
        check that projects is a list lets it through) whose second entry is a table,
        { path = 'projets/restauration-pendule' }, rather than a page reference, although that page
@@ -2057,7 +2057,9 @@ test.describe('featured project content errors: build failure', () => {
        site must get a failure whose message names the projects parameter, in the style of the
        clients messages, which name the clients parameter, whatever the rest of the wording, and
        no Go template execution error, about a function called with a table, that would follow it
-       and bury it in technical jargon. */
+       and bury it in technical jargon. The message also gives the table's position in the list,
+       counted from 1, "entry 2", as the clients messages do, so that whoever fills in the content
+       finds it. */
     const build = tryToBuildSite(SITE_WITH_A_FEATURED_PROJECT_AS_MAP);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors, 'the error message should name the projects parameter').toMatch(
@@ -2066,24 +2068,32 @@ test.describe('featured project content errors: build failure', () => {
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       /execute of template failed|error calling/i,
     );
+    expect(build.errors, 'the error message should give the position of the table').toMatch(/\bentry\s+2\b/);
   });
 
-  test('a home page whose projects list holds an empty or whitespace-only page reference makes the site build fail, with an error message that names the projects parameter, without a template execution error after it', () => {
+  test('a home page whose projects list holds an empty or whitespace-only page reference makes the site build fail, with an error message that names the projects parameter and the position of the blank entry, without a template execution error after it', () => {
     /* tests/fixtures/empty-ref and tests/fixtures/whitespace-only-ref declare projects as a list
-       of texts, so the checks on the list and on its entries let them through, but their second
-       entry is '' in one and '   ' in the other: a reference that names no page. Rather than a
-       section with a card of whatever page such a reference happens to resolve to (the home page
-       itself, for ''), the person building the site must get, in both cases, a failure whose
+       of texts, so the checks on the list and on its entries let them through, but the second
+       entry of one is '' and the third entry of the other, after two references, is '   ': a
+       reference that names no page. Rather than a section with a card of whatever page such a
+       reference happens to resolve to (the home page itself, for ''), the person building the site must get, in both cases, a failure whose
        message names the projects parameter of the front matter, in the style of the clients
        messages, which name the clients parameter, whatever the rest of the wording, and no Go
        template execution error, such as the one today's template raises when it looks up the
        parent of the page '' resolves to, that would follow it and bury it in technical jargon.
-       Two fixtures, so that rejecting only the empty reference does not pass. */
+       The message also gives the position of the blank entry in the list, counted from 1
+       ("entry 2", "entry 3"), as the clients messages do, so that whoever fills in the content
+       finds it. Two fixtures, so that rejecting only the empty reference does not pass, and two
+       positions, so that a hard-coded position does not pass. */
     const cases = [
-      { name: 'an empty reference', site: SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF },
-      { name: 'a whitespace-only reference', site: SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF },
+      { name: 'an empty reference', site: SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF, position: /\bentry\s+2\b/ },
+      {
+        name: 'a whitespace-only reference',
+        site: SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF,
+        position: /\bentry\s+3\b/,
+      },
     ];
-    for (const { name, site } of cases) {
+    for (const { name, site, position } of cases) {
       const build = tryToBuildSite(site);
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
       expect(build.errors, `with ${name}, the error message should name the projects parameter`).toMatch(
@@ -2091,6 +2101,9 @@ test.describe('featured project content errors: build failure', () => {
       );
       expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
         /execute of template failed|error calling/i,
+      );
+      expect(build.errors, `with ${name}, the error message should give the position of the blank entry`).toMatch(
+        position,
       );
     }
   });

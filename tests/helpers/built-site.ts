@@ -330,8 +330,9 @@ export const SITE_WITH_A_FEATURED_PROJECT_AS_MAP = testSite('table-instead-of-re
 export const SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF = testSite('empty-ref');
 
 /* Same as SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF, with the home page of
-   tests/fixtures/whitespace-only-ref/content, whose second entry is a text made of three spaces
-   only, '   ', instead of a page reference. */
+   tests/fixtures/whitespace-only-ref/content, whose third entry, after
+   'projets/restauration-pendule' and 'projets/montre-grande-complication', is a text made of
+   three spaces only, '   ', instead of a page reference. */
 export const SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF = testSite('whitespace-only-ref');
 
 /* The example site's home pages feature only projects translated in their own language: this site
