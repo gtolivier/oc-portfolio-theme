@@ -415,6 +415,14 @@ export const SITE_WITH_A_SECTION_AS_FEATURED_PROJECT = testSite('section-ref');
    avoids the word projects, which the error-message assertion looks for. */
 export const SITE_WITH_A_TERM_AS_FEATURED_PROJECT = testSite('term-ref');
 
+/* Same as SITE_WITH_A_TERM_AS_FEATURED_PROJECT (tags taxonomy enabled again by
+   tests/fixtures/taxonomy-ref/hugo.toml, a French-only fictional project, "Pendule classée", that
+   carries the tag 'horlogerie'), with the French home page of tests/fixtures/taxonomy-ref/content,
+   whose params.projects is 'projets/restauration-pendule', then 'tags', a reference to the page
+   listing every tag, which exists but is a taxonomy page, no project. Its folder name avoids the
+   word projects, which the error-message assertion looks for. */
+export const SITE_WITH_A_TAXONOMY_AS_FEATURED_PROJECT = testSite('taxonomy-ref');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

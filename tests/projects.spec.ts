@@ -20,6 +20,7 @@ import {
   SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT_WRITTEN_AS_A_DOT,
   SITE_WITH_A_SECTION_AS_FEATURED_PROJECT,
   SITE_WITH_A_TERM_AS_FEATURED_PROJECT,
+  SITE_WITH_A_TAXONOMY_AS_FEATURED_PROJECT,
   SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT,
   SITE_WITH_A_DRAFT_FEATURED_PROJECT,
@@ -2002,6 +2003,35 @@ test.describe('featured project content errors: build failure', () => {
     );
     expect(build.errors, 'the French message should name the entry "tags/horlogerie" as written in the front matter').toMatch(
       /\bparamètre\s+projects\b.*(?:^|[\s:«"'‘“(])tags\/horlogerie(?=$|[\s»"'’”),.;])/m,
+    );
+    expect(build.errors, 'the French message should say that entry is not a project').toMatch(
+      /\bparamètre\s+projects\b.*\bpas\s+un\s+projet\b/im,
+    );
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose projects list references a taxonomy page, such as "tags", the page listing every tag, makes the site build fail, with a French error message that names the projects parameter and that entry and says it is not a project, without a template execution error after it', () => {
+    /* tests/fixtures/taxonomy-ref enables the tags taxonomy, which the example site disables,
+       adds a project that carries the tag 'horlogerie', and its content/_index.md features
+       'projets/restauration-pendule', then 'tags': the page listing every tag, which exists, so
+       that the check for a page not found lets it through, and is neither the home page, nor a
+       section page, nor a tag's own page, so that those checks let it through too, but is a
+       taxonomy page, no project. Rather than a section with a card of that page, the person
+       building the site must get a failure whose French message names the projects parameter, in
+       the style of the clients messages ("le paramètre clients…"), the entry as written in the
+       front matter, and says that it is not a project ("pas un projet"), whatever the rest of the
+       wording. The entry, 'tags', is looked for on the message's line as a token of its own,
+       between spaces, quotes or punctuation other than a slash, so that a path such as
+       'tags/horlogerie' does not pass for it; "pas un projet" is looked for on that same line. */
+    const build = tryToBuildSite(SITE_WITH_A_TAXONOMY_AS_FEATURED_PROJECT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
+    );
+    expect(build.errors, 'the French message should name the entry "tags" as written in the front matter').toMatch(
+      /\bparamètre\s+projects\b.*(?:^|[\s:«"'‘“(])tags(?=$|[\s»"'’”),.;])/m,
     );
     expect(build.errors, 'the French message should say that entry is not a project').toMatch(
       /\bparamètre\s+projects\b.*\bpas\s+un\s+projet\b/im,
