@@ -308,6 +308,11 @@ export const SITE_WITH_PROJECTS_AS_TEXT = testSite('single-ref-instead-of-list')
    instead of a list. */
 export const SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT = testSite('empty-text-instead-of-list');
 
+/* Same as SITE_WITH_PROJECTS_AS_TEXT, with the home page of
+   tests/fixtures/false-instead-of-list/content, whose params.projects is the boolean false
+   instead of a list. */
+export const SITE_WITH_PROJECTS_AS_FALSE = testSite('false-instead-of-list');
+
 /* The example site's French home page features its projects as a list of page references: this
    site replaces that home page with the one of tests/fixtures/table-instead-of-ref/content,
    without a hero nor clients, whose params.projects is a list (so the check that projects is a

@@ -12,6 +12,7 @@ import {
   SITE_WITH_PROJECTS_IN_TWO_SECTIONS,
   SITE_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT,
+  SITE_WITH_PROJECTS_AS_FALSE,
   SITE_WITH_A_FEATURED_PROJECT_AS_MAP,
   SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF,
   SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF,
@@ -1911,6 +1912,23 @@ test.describe('featured project content errors: build failure', () => {
        the clients messages ("le paramètre clients…"), whatever the rest of the wording, and no Go
        template execution error that would follow it and bury it in technical jargon. */
     const build = tryToBuildSite(SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
+    );
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose projects parameter is false instead of a list makes the site build fail, with a French error message that names the projects parameter, without a template execution error after it', () => {
+    /* tests/fixtures/false-instead-of-list/content/_index.md declares projects = false, a
+       boolean rather than a list of page references. Rather than a home page that quietly
+       leaves out the projects section, as if the parameter were absent, the person building the
+       site must get a failure whose French message names the projects parameter, in the style of
+       the clients messages ("le paramètre clients…"), whatever the rest of the wording, and no Go
+       template execution error that would follow it and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_PROJECTS_AS_FALSE);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors, 'the French message should name the projects parameter').toMatch(
       /\bparamètre\s+projects\b/,
