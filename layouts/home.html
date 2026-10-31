@@ -67,7 +67,10 @@
     {{- /* The all-projects link goes to the first project's section. */}}
     {{- range first 1 $projects }}
     {{- with .Parent }}
+    {{- /* A project at the content root has the home page as its parent: no section to open. */}}
+    {{- if not .IsHome }}
     <a class="all-projects-link" href="{{ .RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
+    {{- end }}
     {{- end }}
     {{- end }}
     {{- range $projects }}
