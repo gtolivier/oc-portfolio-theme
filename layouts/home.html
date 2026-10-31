@@ -63,6 +63,7 @@
   {{- $projects := slice }}
   {{- range . }}
   {{- if not (eq (printf "%T" .) "string") }}{{ errorf "projects : chaque entrée du paramètre projects de la page d’accueil doit être une référence de page" }}
+  {{- else if eq (strings.TrimSpace .) "" }}{{ errorf "projects : chaque entrée du paramètre projects de la page d’accueil doit être une référence de page non vide" }}
   {{- else }}{{ with $.GetPage . }}{{ $projects = $projects | append . }}{{ else }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable : %s" . }}{{ end }}{{ end }}
   {{- end }}
   <section class="projects" aria-labelledby="projects-heading">
