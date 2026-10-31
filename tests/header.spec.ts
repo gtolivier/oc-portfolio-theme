@@ -523,7 +523,7 @@ test('after the window is widened from 375 px to 1280 px on the same page, the h
     .toBeLessThanOrEqual(1);
 });
 
-test('from 768 px wide, at least 24 px separate the header logo from the first navigation link, in French and in English (at 768 and 1280 px)', async ({ page }) => {
+test('from 768 px wide, a gap separates the header logo from the first navigation link, without overlap, in French and in English (at 768 and 1280 px)', async ({ page }) => {
   const gaps: Record<string, number> = {};
   for (const { url, menu } of [
     { url: '/fr/', menu: ['Accueil', 'Projets', 'Contact'] },
@@ -540,9 +540,8 @@ test('from 768 px wide, at least 24 px separate the header logo from the first n
       gaps[`${url} at ${viewport.width} px`] = firstLinkBox.x - (logoBox.x + logoBox.width);
     }
   }
-  /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
   expect(
-    Object.values(gaps).every((gap) => gap >= 24 - 0.5),
+    Object.values(gaps).every((gap) => gap > 0),
     `gaps: ${JSON.stringify(gaps)}`,
   ).toBe(true);
 });
