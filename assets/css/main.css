@@ -861,16 +861,20 @@ tick-field > canvas {
    height, so the underline stays 2px below it. */
 .all-projects-link,
 .project-card > .project-link {
+  --link-underline-width: 1px;
   /* On hover and keyboard focus, the underline thickens to this width. */
   --link-underline-active-width: 2px;
+  /* Underline and the gap above it together: a thicker underline takes
+     its room from the gap, so the text stays where it is. */
+  --link-underline-room: 3px;
   min-height: var(--min-target-size);
   align-content: end;
-  padding-bottom: 2px;
+  padding-bottom: calc(var(--link-underline-room) - var(--link-underline-width));
 }
 
 .all-projects-link {
   align-self: baseline;
-  border-bottom: 1px solid var(--color-accent-dark);
+  border-bottom: var(--link-underline-width) solid var(--color-accent-dark);
   font-family: var(--font-mono);
   font-size: 15px;
   color: var(--color-accent-dark);
@@ -883,16 +887,14 @@ tick-field > canvas {
   .all-projects-link:hover {
     color: var(--color-ink);
     border-color: var(--color-accent);
-    border-bottom-width: var(--link-underline-active-width);
-    padding-bottom: 1px;
+    --link-underline-width: var(--link-underline-active-width);
   }
 }
 
 .all-projects-link:focus-visible {
   color: var(--color-ink);
   border-color: var(--color-accent);
-  border-bottom-width: var(--link-underline-active-width);
-  padding-bottom: 1px;
+  --link-underline-width: var(--link-underline-active-width);
 }
 
 .project-card {
@@ -977,7 +979,7 @@ tick-field > canvas {
   grid-row: link;
   justify-self: start;
   margin-top: calc(var(--project-card-gap) + 4px);
-  border-bottom: 1px solid var(--color-paper);
+  border-bottom: var(--link-underline-width) solid var(--color-paper);
   font-family: var(--font-mono);
   font-size: 14px;
   color: var(--color-paper);
@@ -987,15 +989,13 @@ tick-field > canvas {
 @media (hover: hover) {
   .project-card > .project-link:hover {
     border-color: var(--color-accent);
-    border-bottom-width: var(--link-underline-active-width);
-    padding-bottom: 1px;
+    --link-underline-width: var(--link-underline-active-width);
   }
 }
 
 .project-card > .project-link:focus-visible {
   border-color: var(--color-accent);
-  border-bottom-width: var(--link-underline-active-width);
-  padding-bottom: 1px;
+  --link-underline-width: var(--link-underline-active-width);
 }
 
 @media (min-width: 768px) {
