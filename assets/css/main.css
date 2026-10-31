@@ -943,6 +943,11 @@ tick-field > canvas {
   overflow-wrap: anywhere;
 }
 
+/* Without years, the title takes the whole width, the column gap included. */
+.project-card > h3:not(:has(~ .project-years)) {
+  grid-column: 1 / -1;
+}
+
 .project-card > .project-years {
   grid-column: 2;
   font-family: var(--font-mono);
