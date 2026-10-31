@@ -362,6 +362,14 @@ export const SITE_WITH_LONG_PROJECT_YEARS = testSite('long-project-years');
    single word, without a hyphen nor a space, wider than a phone-sized card. */
 export const SITE_WITH_LONG_PROJECT_WORDS = testSite('long-project-words');
 
+/* The example site's featured projects all declare years: this site replaces the French home
+   page with the one of tests/fixtures/long-project-title-without-years/content, without a hero
+   nor clients, which features the example site's 'projets/restauration-pendule', then a
+   fictional project added under projets/ in French only, whose page declares no years, and a
+   title and a description that each hold a single word, without a hyphen nor a space, wider
+   than a phone-sized card. */
+export const SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS = testSite('long-project-title-without-years');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

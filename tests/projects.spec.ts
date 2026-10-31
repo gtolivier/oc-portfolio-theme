@@ -19,6 +19,7 @@ import {
   SITE_WITH_A_DRAFT_FEATURED_PROJECT,
   SITE_WITH_LONG_PROJECT_YEARS,
   SITE_WITH_LONG_PROJECT_WORDS,
+  SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1597,6 +1598,56 @@ test.describe('home page of another site, featuring a project with long words', 
     }
     const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect.soft(pageWidth, 'width of the page content').toBeLessThanOrEqual(PHONE.width);
+  });
+});
+
+test.describe('home page of another site, featuring a project with a long title and no years', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a phone, the card of a featured project without years lets its long title use the whole width of the card’s text: the wrapped title reaches the right end of the card’s text, where the description’s lines end, rather than stopping short where years would be', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS, siteDirectory);
+    await page.setViewportSize(PHONE);
+    await page.goto(`${SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS.origin}/fr/`);
+    await page.evaluate(() => document.fonts.ready);
+    /* tests/fixtures/long-project-title-without-years/content/projets/pendule-sans-annees.md
+       declares no years, and a title and a description that each hold a single word wider than
+       the card. A word that wraps anywhere fills each of its lines but the last to less than one
+       character short of the width it is given, whatever that width: how far right the title
+       reaches shows the width it gets. */
+    const title = 'Penduleàrépétitiondesquartsetàsonneriegrandeetpetitesansannées';
+    const description = 'Remise en marche d’une Penduleastronomiqueàquantièmeperpétueléquationdutempsetphasesdelalune de l’atelier.';
+    const card = cardTitled(projectsSection(page), title);
+    await expect(card).toHaveCount(1);
+    const heading = card.getByRole('heading', { level: 3, name: title, exact: true });
+    const descriptionText = card.getByText(description, { exact: true });
+    await expect(descriptionText).toBeVisible();
+    /* Wrapped: the title is laid out on more than one line. */
+    const titleLines = await textLineBoxes(heading);
+    expect(titleLines.length, `lines the title "${title}" is laid out on`).toBeGreaterThan(1);
+    /* The right end of the card's text: where the description's paragraph, across the card,
+       ends its lines. */
+    const descriptionBox = await descriptionText.boundingBox();
+    expect(descriptionBox, 'box of the description').not.toBeNull();
+    const textRight = descriptionBox!.x + descriptionBox!.width;
+    /* One character of the title, in its monospace font. */
+    const titleCharacterWidth = await heading.evaluate((element) => {
+      const range = document.createRange();
+      const text = element.firstChild as Text;
+      range.setStart(text, 0);
+      range.setEnd(text, 1);
+      return range.getBoundingClientRect().width;
+    });
+    const titleRight = boxAround(titleLines)?.right ?? Number.NaN;
+    expect(
+      titleRight,
+      `right edge of the title's widest line, against the right end of the card's text (${textRight.toFixed(1)} px), less one character of the title (${titleCharacterWidth.toFixed(1)} px)`,
+    ).toBeGreaterThan(textRight - titleCharacterWidth);
   });
 });
 
