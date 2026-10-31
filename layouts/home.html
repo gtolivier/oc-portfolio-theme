@@ -85,11 +85,11 @@
     <article class="project-card">
       <tick-pattern class="project-pattern" aria-hidden="true"></tick-pattern>
       <h3>{{ .Title }}</h3>
-      {{- with .Params.role }}
-      <p class="project-role">{{ . }}</p>
-      {{- end }}
       {{- with .Params.years }}
       <p class="project-years">{{ . }}</p>
+      {{- end }}
+      {{- with .Params.role }}
+      <p class="project-role">{{ . }}</p>
       {{- end }}
       {{- with .Description }}
       <p class="project-description">{{ . }}</p>
