@@ -267,6 +267,13 @@ export const SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES = testSite('section-withou
    hourglass's declares [build] render = false, so that it has no address at all. */
 export const SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES = testSite('projects-without-published-pages');
 
+/* The example site's featured projects all live in a section, projets/: this site replaces the
+   French home page with the one of tests/fixtures/project-at-the-root/content, without a hero nor
+   clients, which features a single fictional project, "Pendule murale", added at the root of the
+   content, outside any section (pendule-murale.md, published at /fr/pendule-murale/). The example
+   site's projets/ section is still built. */
+export const SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT = testSite('project-at-the-root');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

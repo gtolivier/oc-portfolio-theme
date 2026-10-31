@@ -2,6 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 import {
   SITE_WITHOUT_HERO,
   SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND,
+  SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT,
   SITE_WITH_OTHER_PROJECTS,
   SITE_WITH_PROJECTS_IN_ANOTHER_SECTION,
   SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES,
@@ -1317,6 +1318,32 @@ test.describe('home pages whose featured projects live in sections of different 
       await expect(page).toHaveURL(site.sectionAddress);
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(site.sectionTitle);
     }
+  });
+});
+
+test.describe('home page of another site, featuring a project at the content root', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('the section "Projets sélectionnés" shows the card of a featured project that lives at the content root, outside any section, but no "Tous les projets" link, since no section holds that project', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT, siteDirectory);
+    await page.goto(`${SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT.origin}/fr/`);
+    const section = projectsSection(page);
+    /* tests/fixtures/project-at-the-root/content/_index.md features 'pendule-murale', a page at the
+       root of the content: the section and its card are still shown… */
+    const card = cardTitled(section, 'Pendule murale');
+    await expect(card).toHaveCount(1);
+    await expect(card).toBeVisible();
+    await expect(card.getByRole('link', { name: 'Voir le détail' })).toHaveCount(1);
+    /* …but no link claims to list all the projects: there is no projects section to open, and the
+       home page the visitor is on is not one. */
+    await expect(section.getByRole('link', { name: 'Tous les projets' })).toHaveCount(0);
+    await expect(section.getByText('Tous les projets')).toHaveCount(0);
   });
 });
 
