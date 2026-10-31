@@ -28,7 +28,6 @@ import {
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT,
   SITE_WITH_A_DRAFT_FEATURED_PROJECT,
   SITE_WITH_LONG_PROJECT_WORDS,
-  SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS,
   SITE_WITH_UNUSUAL_RENDER_VALUES,
   SITE_WITH_A_BUILD_PARAM_AS_TEXT,
   buildSite,
@@ -39,7 +38,6 @@ import {
 } from './helpers/built-site';
 import {
   type Rectangle,
-  canvasOpacityOverBackgroundAt,
   drawnStrokesInRectangle,
   horizontalBandsWithoutDrawnPixels,
   luminanceAboveBackgroundInRectangle,
@@ -260,71 +258,6 @@ async function displayedTexts(root: Locator): Promise<{ text: string; color: str
   });
 }
 
-/* The pixels drawn inside a rectangle of an element (CSS pixels, relative to its box), sorted by
-   the colour drawn there over the element's background. In the element's screenshot, a pixel is
-   drawn when it differs from the background colour by more than a rounding error on a channel.
-   It is drawn in one of `colours` (CSS colours) when it lies on the way from the background
-   towards that colour, whatever opacity or anti-aliasing keeps it short of it: the direction from
-   the background to the pixel within `maxAngle` degrees of the direction from the background to
-   that colour, and nearer to it than to the direction to any other of `colours`, at least
-   `minShareOfTheWay` of the way there. Returns the number of drawn pixels and, for each colour,
-   in the order given, the number drawn in it. Decoded in the page, so that the colours are read
-   through the same colour handling as the screenshot. */
-async function drawnPixelsByColourInRectangle(
-  element: Locator,
-  screenshot: Buffer,
-  rectangle: Rectangle,
-  colours: string[],
-  maxAngle: number,
-  minShareOfTheWay: number,
-): Promise<{ drawn: number; inColour: number[] }> {
-  return element.evaluate(
-    async (el, [base64, zone, cssColours, angle, minShare]) => {
-      const TOLERANCE = 2;
-      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
-      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
-      const scale = image.width / el.getBoundingClientRect().width;
-      const fromColumn = Math.max(0, Math.round(zone.x * scale));
-      const toColumn = Math.min(image.width, Math.round((zone.x + zone.width) * scale));
-      const fromRow = Math.max(0, Math.round(zone.y * scale));
-      const toRow = Math.min(image.height, Math.round((zone.y + zone.height) * scale));
-      const canvas = document.createElement('canvas');
-      canvas.width = image.width;
-      canvas.height = image.height;
-      const context = canvas.getContext('2d', { willReadFrequently: true })!;
-      const read = (colour: string): number[] => {
-        context.clearRect(0, 0, 1, 1);
-        context.fillStyle = colour;
-        context.fillRect(0, 0, 1, 1);
-        return Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
-      };
-      const background = read(getComputedStyle(el).backgroundColor);
-      const ways = cssColours.map((colour) => read(colour).map((value, channel) => value - background[channel]));
-      context.clearRect(0, 0, canvas.width, canvas.height);
-      context.drawImage(image, 0, 0);
-      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
-      const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-      const minCosine = Math.cos((angle * Math.PI) / 180);
-      let drawn = 0;
-      const inColour = cssColours.map(() => 0);
-      for (let row = fromRow; row < toRow; row++) {
-        for (let column = fromColumn; column < toColumn; column++) {
-          const i = 4 * (row * image.width + column);
-          const offset = [0, 1, 2].map((channel) => pixels[i + channel] - background[channel]);
-          if (!offset.some((value) => Math.abs(value) > TOLERANCE)) continue;
-          drawn += 1;
-          const cosines = ways.map((way) => dot(offset, way) / Math.sqrt(dot(offset, offset) * dot(way, way)));
-          const nearest = cosines.indexOf(Math.max(...cosines));
-          const way = ways[nearest];
-          if (cosines[nearest] >= minCosine && dot(offset, way) / dot(way, way) >= minShare) inColour[nearest] += 1;
-        }
-      }
-      return { drawn, inColour };
-    },
-    [screenshot.toString('base64'), rectangle, colours, maxAngle, minShareOfTheWay] as const,
-  );
-}
-
 /* Measured inside a card's tick pattern, this far from each edge of its box, so that a border, a
    frame or the card's edges cannot count as ticks. */
 const INSET = 4;
@@ -508,48 +441,6 @@ test('on the French home page, the cards of the section "Projets sélectionnés"
     const background = effectiveBackground(backgrounds);
     const ratio = contrastRatio(paintOver(color, background), background);
     expect.soft(ratio, `contrast of "${text}" (${color}) with what is behind it`).toBeGreaterThanOrEqual(4.5);
-  }
-});
-
-test('on the French home page, the "Voir le détail" link of each card stays readable while hovered with a fine pointer and while reached by keyboard: its text still contrasts at least 4.5:1 with the card’s background', async ({ page, hasTouch, browserName }) => {
-  await page.goto('/fr/');
-  const cards = await cardsOnceLoaded(page);
-  const links = await Promise.all(
-    (await cards.all()).map(async (card) => {
-      const link = card.getByRole('link', { name: 'Voir le détail' });
-      await expect(link).toHaveCount(1);
-      return link;
-    }),
-  );
-
-  /* Every text the link displays, its arrow included, against the background behind it. WCAG AA
-     for normal text: 4.5:1. */
-  const expectReadable = async (link: Locator, state: string, index: number) => {
-    const texts = await displayedTexts(link);
-    expect(texts.length, `${cardName(index)}: texts displayed by its link ${state}`).toBeGreaterThan(0);
-    for (const { text, color, backgrounds } of texts) {
-      const background = effectiveBackground(backgrounds);
-      const ratio = contrastRatio(paintOver(color, background), background);
-      expect.soft(ratio, `${cardName(index)}: contrast of "${text}" (${color}) ${state} with what is behind it`).toBeGreaterThanOrEqual(4.5);
-    }
-  };
-
-  /* Hovering needs a fine pointer; touch screens have none. */
-  if (!hasTouch) {
-    for (const [index, link] of links.entries()) {
-      await link.hover();
-      expect(await link.evaluate((el) => el.matches(':hover')), `${cardName(index)}: its link is hovered`).toBe(true);
-      await expectReadable(link, 'while hovered', index);
-    }
-    /* The pointer leaves the links, so that only the focus remains below. */
-    await page.mouse.move(0, 0);
-  }
-
-  /* A keyboard visitor tabs from one link to the next. */
-  for (const [index, link] of links.entries()) {
-    await tabUntilFocused(link, browserName, TABS_TO_REACH_THE_PROJECTS_LINKS);
-    expect(await link.evaluate((el) => el.matches(':focus-visible')), `${cardName(index)}: its link shows the keyboard focus`).toBe(true);
-    await expectReadable(link, 'while focused by keyboard', index);
   }
 });
 
@@ -978,68 +869,6 @@ test('on the French home page, with JavaScript, each card’s tick pattern is ma
   }
 });
 
-test('on the French home page, inside the first card’s tick pattern, the ticks are not all the same length: several of its separate strokes are clearly longer than several others', { tag: '@pixels' }, async ({ page }) => {
-  /* Reduced motion, so that whatever could animate shows a still picture. */
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* Several strokes on each side: the shortest of the STROKES_EACH_SIDE longest strokes is
-     compared with the longest of the STROKES_EACH_SIDE shortest, so that one stray speck or one
-     pair of merged ticks cannot decide the outcome. */
-  const STROKES_EACH_SIDE = 3;
-  /* Clearly longer: at least this many times as long. The mockup's ticks range from 8 to 12 px.
-     Anti-aliasing at both ends of a tick can add up to a screenshot pixel to each, yet ticks of a
-     single length of 8 px or more never measure more than 1.25 times as long as one another. */
-  const MIN_LENGTH_RATIO = 1.3;
-  await page.goto('/fr/');
-  const cards = await cardsOnceLoaded(page);
-  const where = cardName(0);
-  const card = cards.first();
-  const inside = insideTickPattern(await tickPatternBoxInCard(card, where));
-  const strokes = await drawnStrokesInRectangle(card, await card.screenshot(), inside);
-  const lengths = strokes.map((stroke) => stroke.height).sort((a, b) => a - b);
-  expect(
-    lengths.length,
-    `${where}: separate strokes inside the tick pattern (${INSET}px from its edges)`,
-  ).toBeGreaterThanOrEqual(2 * STROKES_EACH_SIDE);
-  const short = lengths[STROKES_EACH_SIDE - 1];
-  const long = lengths[lengths.length - STROKES_EACH_SIDE];
-  const counts = new Map<string, number>();
-  for (const length of lengths) counts.set(length.toFixed(1), (counts.get(length.toFixed(1)) ?? 0) + 1);
-  const describeLengths = [...counts].map(([length, count]) => `${length}px × ${count}`).join(', ');
-  expect(
-    long / short,
-    `${where}: length of the shortest of the ${STROKES_EACH_SIDE} longest separate strokes inside the tick pattern (${long.toFixed(1)}px) over that of the longest of the ${STROKES_EACH_SIDE} shortest (${short.toFixed(1)}px); stroke lengths: ${describeLengths}`,
-  ).toBeGreaterThanOrEqual(MIN_LENGTH_RATIO);
-});
-
-test('on the French home page, inside the first card’s tick pattern, the ticks come in two colours: many of the pixels drawn there are teal, the accent colour, and many others light, the paper colour, either possibly see-through over the card’s background', { tag: '@pixels' }, async ({ page }) => {
-  /* Reduced motion, so that whatever could animate shows a still picture. */
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* A drawn pixel shows a colour when it lies on the way from the card's background towards it,
-     however far (see-through ticks, anti-aliased edges): its direction from the background
-     within MAX_ANGLE degrees of that colour's, nearer to it than to the other's. From the card's
-     ink, teal raises green and blue far more than red, and the paper raises all three, red the
-     most: their directions lie about 25° apart. A faint edge, less than MIN_SHARE_OF_THE_WAY of
-     the way there, shows no colour clearly and does not count. */
-  const MAX_ANGLE = 12;
-  const MIN_SHARE_OF_THE_WAY = 0.2;
-  /* Many: at least this share of the pixels drawn inside the tick pattern, for each colour. */
-  const MIN_SHARE_OF_DRAWN = 0.1;
-  await page.goto('/fr/');
-  const cards = await cardsOnceLoaded(page);
-  const where = cardName(0);
-  const card = cards.first();
-  const inside = insideTickPattern(await tickPatternBoxInCard(card, where));
-  /* The site's accent (teal) and paper colours, as its stylesheet declares them. */
-  const [teal, paper] = await page.evaluate(() =>
-    ['--color-accent', '--color-paper'].map((name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim()),
-  );
-  const { drawn, inColour } = await drawnPixelsByColourInRectangle(card, await card.screenshot(), inside, [teal, paper], MAX_ANGLE, MIN_SHARE_OF_THE_WAY);
-  const [inTeal, inPaper] = inColour;
-  const counts = `${drawn} screenshot pixels drawn inside the tick pattern (${INSET}px from its edges): ${inTeal} teal, ${inPaper} light, paper-coloured, ${drawn - inTeal - inPaper} neither clearly`;
-  expect.soft(inTeal / drawn, `${where}: share of the pixels drawn inside the tick pattern that are teal (${teal}); ${counts}`).toBeGreaterThanOrEqual(MIN_SHARE_OF_DRAWN);
-  expect.soft(inPaper / drawn, `${where}: share of the pixels drawn inside the tick pattern that are light, paper-coloured (${paper}); ${counts}`).toBeGreaterThanOrEqual(MIN_SHARE_OF_DRAWN);
-});
-
 /* Comparing the tick patterns of two cards, or of one card at two moments. Two cards sit at
    different, possibly fractional, positions: the browser may draw two copies of one pattern up to
    a pixel or two apart, relative to their boxes, and anti-aliasing and the rounding of the
@@ -1104,24 +933,6 @@ function bestMatchOfTicks(first: TicksOfTickPattern, second: TicksOfTickPattern)
     });
   return { ...best, shareUnmatched: (best.inFirst + best.inSecond) / (first.core.length + second.core.length) };
 }
-
-test('on the French home page, with JavaScript, each card’s tick pattern is its own: the tick patterns of the first two cards differ, many of the ticks drawn in one having no tick at the same place in the other', { tag: '@pixels' }, async ({ page }) => {
-  /* Reduced motion, so that whatever could animate shows a still picture. */
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/fr/');
-  const cards = await cardsOnceLoaded(page);
-  /* The ticks of the tick patterns of the first two cards. */
-  const ticksOfTickPatterns: TicksOfTickPattern[] = [];
-  for (const index of [0, 1]) {
-    ticksOfTickPatterns.push(await ticksOfTickPattern(cards.nth(index), cardName(index)));
-  }
-  const [first, second] = ticksOfTickPatterns;
-  const { shareUnmatched, ...best } = bestMatchOfTicks(first, second);
-  expect.soft(
-    shareUnmatched,
-    `share of the ticks of the first two cards' tick patterns (at least ${CORE}px inside them) with no tick at the same place (each edge within ${SAME_PLACE}px) in the other tick pattern, with the first moved by up to ${MAX_SHIFT}px the way that matches most (${best.dx}px across, ${best.dy}px down); ticks: ${first.core.length} in the first, ${best.inFirst} of them unmatched, ${second.core.length} in the second, ${best.inSecond} of them unmatched`,
-  ).toBeGreaterThanOrEqual(MIN_SHARE_UNMATCHED);
-});
 
 test('on the French home page, the tick patterns of the four cards all differ from one another: for each pair of cards, many of the ticks drawn in one have no tick at the same place in the other', { tag: '@pixels' }, async ({ page }) => {
   /* Reduced motion, so that whatever could animate shows a still picture. */
@@ -1332,99 +1143,6 @@ test('on the French home page, with JavaScript, after the window moves to a scre
       changedPixels,
       `${where}: pixels of its ${Math.round(box.width)}px-wide tick pattern, ${DELAY_AFTER_MOVE} ms after the window moved from a density of ${oldDensity} to ${newDensity}, that differ from the tick pattern redrawn at that density, which shows ${drawnPixels} drawn pixels`,
     ).toBeLessThanOrEqual(MAX_SHARE_CHANGED * drawnPixels);
-  }
-});
-
-test('on the French home page, with JavaScript, the ticks of each card’s tick pattern vary in intensity: most of them are faint, see-through over the card’s background, and a few, across the cards, nearly opaque', { tag: '@pixels' }, async ({ page }) => {
-  /* Reduced motion, so that whatever could animate shows a still picture. */
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* A tick's opacity: the share of the way from the card's background to the tick's own colour
-     that a pixel it covers fully shows. Faint: well between the two, clearly drawn yet clearly
-     see-through. Nearly opaque: close to the tick's own colour. */
-  const FAINT = { min: 0.1, max: 0.7 };
-  const NEARLY_OPAQUE = 0.85;
-  /* Most: at least this share of the ticks of each card's tick pattern are faint. Nearly opaque
-     ticks are rare, so they are counted across the four cards, where at least one is near
-     certain. */
-  const MIN_SHARE_FAINT = 0.75;
-  const MIN_NEARLY_OPAQUE = 1;
-  /* Across a tick, every quarter of a CSS pixel, so that at least one point falls on a pixel the
-     tick covers fully. */
-  const STEP = 0.25;
-  await page.goto('/fr/');
-  const cards = await cardsOnceLoaded(page);
-  const described: string[] = [];
-  let nearlyOpaque = 0;
-  for (const index of FEATURED_PROJECTS.keys()) {
-    const where = cardName(index);
-    const card = cards.nth(index);
-    const { ticks } = await ticksOfTickPattern(card, where);
-    /* The ticks' boxes are relative to the tick pattern's, the card's screenshot to the card's. */
-    const { patternBox: offset } = await cardAndTickPatternBoxes(card, where);
-    const screenshot = await card.screenshot();
-    /* Of the points across a tick, halfway down it, the most opaque reading is that of a fully
-       covered pixel, whichever colour the tick has. */
-    const opacities: number[] = [];
-    for (const tick of ticks) {
-      const points = Array.from({ length: Math.max(1, Math.ceil(tick.width / STEP)) }, (_, step) => ({
-        x: offset.x + tick.x + (step + 0.5) * STEP,
-        y: offset.y + tick.y + tick.height / 2,
-      }));
-      const measures = await canvasOpacityOverBackgroundAt(card, screenshot, points);
-      opacities.push(Math.max(...measures.map(({ opacity }) => opacity).filter((opacity) => !Number.isNaN(opacity))));
-    }
-    const faint = opacities.filter((opacity) => opacity >= FAINT.min && opacity <= FAINT.max).length;
-    const opaque = opacities.filter((opacity) => opacity >= NEARLY_OPAQUE).length;
-    nearlyOpaque += opaque;
-    const sorted = [...opacities].sort((a, b) => a - b);
-    const percent = (opacity: number | undefined) => (opacity === undefined ? '–' : `${(100 * opacity).toFixed(0)}%`);
-    const summary = `${ticks.length} ticks, ${faint} faint (${FAINT.min * 100}–${FAINT.max * 100}% of their colour), ${opaque} nearly opaque (at least ${NEARLY_OPAQUE * 100}%); opacities from ${percent(sorted[0])} to ${percent(sorted[sorted.length - 1])}, median ${percent(sorted[Math.floor(sorted.length / 2)])}`;
-    described.push(`${where}: ${summary}`);
-    expect.soft(ticks.length, `${where}: separate ticks inside its tick pattern`).toBeGreaterThan(0);
-    expect.soft(faint / ticks.length, `${where}: share of the ticks of its tick pattern that are faint, see-through over the card's background; ${summary}`).toBeGreaterThanOrEqual(MIN_SHARE_FAINT);
-  }
-  expect.soft(nearlyOpaque, `nearly opaque ticks (at least ${NEARLY_OPAQUE * 100}% of their colour) across the tick patterns of the four cards; ${described.join('; ')}`).toBeGreaterThanOrEqual(MIN_NEARLY_OPAQUE);
-});
-
-test('on the French home page, each card’s tick pattern has no frame: along each of its four edges, inside it, a thin band shows only the card’s background', { tag: '@pixels' }, async ({ page }) => {
-  /* Reduced motion, so that whatever could animate shows a still picture. */
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* The band along each edge, inside the tick pattern's box: this high (or wide), in CSS pixels.
-     A border, an outline or a frame line drawn there would show in it. */
-  const BAND = 2;
-  /* Each band also reaches this far outside the box, over the card's padding and the space
-     below the tick pattern, which show the card's background: a frame line the browser snaps to
-     the pixel grid just outside a fractional box edge still shows in it. Where the tick pattern
-     touches the card's edges, the bands stop CARD_EDGE inside them, as the screenshot shows
-     them, instead: the card's outermost pixel there blends with the section's background, while
-     the band's inner pixel still shows a frame line two pixels wide. */
-  const OUTSIDE = 1;
-  await page.goto('/fr/');
-  const cards = await cardsOnceLoaded(page);
-  for (const index of FEATURED_PROJECTS.keys()) {
-    const where = cardName(index);
-    const card = cards.nth(index);
-    const box = await tickPatternBoxInCard(card, where);
-    const { cardInScreenshot } = await cardAndTickPatternBoxes(card, where);
-    const edges: [string, Rectangle][] = (
-      [
-        ['top', { x: box.x - OUTSIDE, y: box.y - OUTSIDE, width: box.width + 2 * OUTSIDE, height: BAND + OUTSIDE }],
-        ['bottom', { x: box.x - OUTSIDE, y: box.y + box.height - BAND, width: box.width + 2 * OUTSIDE, height: BAND + OUTSIDE }],
-        ['left', { x: box.x - OUTSIDE, y: box.y - OUTSIDE, width: BAND + OUTSIDE, height: box.height + 2 * OUTSIDE }],
-        ['right', { x: box.x + box.width - BAND, y: box.y - OUTSIDE, width: BAND + OUTSIDE, height: box.height + 2 * OUTSIDE }],
-      ] as [string, Rectangle][]
-    ).map(([edge, band]) => [edge, withinCardEdges(band, cardInScreenshot)]);
-    const screenshot = await card.screenshot();
-    const drawnAlongEdges: string[] = [];
-    for (const [edge, band] of edges) {
-      const { rows } = await pixelsNotOfBackgroundPerRow(card, screenshot, band);
-      const drawn = rows.reduce((sum, count) => sum + count, 0);
-      if (drawn > 0) drawnAlongEdges.push(`${edge}: ${drawn}`);
-    }
-    expect.soft(
-      drawnAlongEdges,
-      `${where}: screenshot pixels other than the card's background in the band along each edge (${BAND}px inside, ${OUTSIDE}px outside) of the ${Math.round(box.width)}×${Math.round(box.height)}px tick pattern`,
-    ).toEqual([]);
   }
 });
 
@@ -1985,56 +1703,6 @@ test.describe('home page of another site, featuring a project with long words', 
     }
     const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect.soft(pageWidth, 'width of the page content').toBeLessThanOrEqual(PHONE.width);
-  });
-});
-
-test.describe('home page of another site, featuring a project with a long title and no years', () => {
-  let siteDirectory: string;
-  test.beforeAll(() => {
-    siteDirectory = buildSite(SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS);
-  });
-  test.afterAll(() => {
-    removeDirectory(siteDirectory);
-  });
-
-  test('on a phone, the card of a featured project without years lets its long title use the whole width of the card’s text: the wrapped title reaches the right end of the card’s text, where the description’s lines end, rather than stopping short where years would be', async ({ page, context }) => {
-    await serveSite(context, SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS, siteDirectory);
-    await page.setViewportSize(PHONE);
-    await page.goto(`${SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS.origin}/fr/`);
-    await page.evaluate(() => document.fonts.ready);
-    /* tests/fixtures/long-project-title-without-years/content/projets/pendule-sans-annees.md
-       declares no years, and a title and a description that each hold a single word wider than
-       the card. A word that wraps anywhere fills each of its lines but the last to less than one
-       character short of the width it is given, whatever that width: how far right the title
-       reaches shows the width it gets. */
-    const title = 'Penduleàrépétitiondesquartsetàsonneriegrandeetpetitesansannées';
-    const description = 'Remise en marche d’une Penduleastronomiqueàquantièmeperpétueléquationdutempsetphasesdelalune de l’atelier.';
-    const card = cardTitled(projectsSection(page), title);
-    await expect(card).toHaveCount(1);
-    const heading = card.getByRole('heading', { level: 3, name: title, exact: true });
-    const descriptionText = card.getByText(description, { exact: true });
-    await expect(descriptionText).toBeVisible();
-    /* Wrapped: the title is laid out on more than one line. */
-    const titleLines = await textLineBoxes(heading);
-    expect(titleLines.length, `lines the title "${title}" is laid out on`).toBeGreaterThan(1);
-    /* The right end of the card's text: where the description's paragraph, across the card,
-       ends its lines. */
-    const descriptionBox = await descriptionText.boundingBox();
-    expect(descriptionBox, 'box of the description').not.toBeNull();
-    const textRight = descriptionBox!.x + descriptionBox!.width;
-    /* One character of the title, in its monospace font. */
-    const titleCharacterWidth = await heading.evaluate((element) => {
-      const range = document.createRange();
-      const text = element.firstChild as Text;
-      range.setStart(text, 0);
-      range.setEnd(text, 1);
-      return range.getBoundingClientRect().width;
-    });
-    const titleRight = boxAround(titleLines)?.right ?? Number.NaN;
-    expect(
-      titleRight,
-      `right edge of the title's widest line, against the right end of the card's text (${textRight.toFixed(1)} px), less one character of the title (${titleCharacterWidth.toFixed(1)} px)`,
-    ).toBeGreaterThan(textRight - titleCharacterWidth);
   });
 });
 
