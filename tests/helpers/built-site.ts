@@ -335,6 +335,13 @@ export const SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF = testSite('empty-ref');
    three spaces only, '   ', instead of a page reference. */
 export const SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF = testSite('whitespace-only-ref');
 
+/* Same as SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF, with the home page of
+   tests/fixtures/padded-ref/content, whose two entries reference existing pages of the example
+   site but with a space Hugo does not trim: a trailing one, 'projets/restauration-pendule ', then
+   a leading one, ' projets/montre-grande-complication'. Its folder name avoids the word space,
+   which the error-message assertion looks for. */
+export const SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_SPACES = testSite('padded-ref');
+
 /* The example site's home pages feature only projects translated in their own language: this site
    replaces the French home page with the one of tests/fixtures/english-only-project/content,
    without a hero nor clients, which features the example site's 'projets/restauration-pendule',

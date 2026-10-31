@@ -16,6 +16,7 @@ import {
   SITE_WITH_A_FEATURED_PROJECT_AS_MAP,
   SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF,
   SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF,
+  SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_SPACES,
   SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT,
   SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT_WRITTEN_AS_A_DOT,
   SITE_WITH_A_SECTION_AS_FEATURED_PROJECT,
@@ -2104,6 +2105,30 @@ test.describe('featured project content errors: build failure', () => {
       );
       expect(build.errors, `with ${name}, the error message should give the position of the blank entry`).toMatch(
         position,
+      );
+    }
+  });
+
+  test('a home page whose projects list holds a page reference with a leading or trailing space makes the site build fail, with an error message, for each such reference, that names the projects parameter and that reference and says it has a space', () => {
+    /* tests/fixtures/padded-ref/content/_index.md features 'projets/restauration-pendule ', with
+       a trailing space, then ' projets/montre-grande-complication', with a leading one: both
+       pages exist, but Hugo does not trim the space, so that it finds neither. A message that
+       only says the page cannot be found would show the person building the site a reference that
+       looks right, the space being invisible in it: the message must also say that the reference
+       has a space (space, whitespace…), on the same line as the projects parameter and that
+       reference, whatever the rest of the wording. Both a trailing and a leading space, so that
+       checking only one end does not pass. */
+    const build = tryToBuildSite(SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_SPACES);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    for (const { name, reference } of [
+      { name: 'a trailing space', reference: 'projets/restauration-pendule' },
+      { name: 'a leading space', reference: 'projets/montre-grande-complication' },
+    ]) {
+      expect(
+        build.errors,
+        `for the reference with ${name}, the error message should name the projects parameter and that reference and say it has a space`,
+      ).toMatch(
+        new RegExp(`^(?=.*\\bprojects\\s+parameter\\b)(?=.*${reference})(?=.*\\b(?:white)?spaces?\\b).*$`, 'im'),
       );
     }
   });
