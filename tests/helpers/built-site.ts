@@ -216,8 +216,9 @@ export const SITE_WITH_A_CLIENT_AS_MAP = testSite('map-instead-of-name');
 export const SITE_WITH_AN_EMPTY_CLIENT_NAME = testSite('empty-name');
 
 /* Same as SITE_WITH_AN_EMPTY_CLIENT_NAME, with the home page of
-   tests/fixtures/whitespace-only-name/content, whose second entry is a
-   text made of three spaces only, '   ', instead of a name. */
+   tests/fixtures/whitespace-only-name/content, whose third entry, after
+   two names, is a text made of three spaces only, '   ', instead of a
+   name. */
 export const SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME = testSite('whitespace-only-name');
 
 /* The example site's French home page features four projects: this site
@@ -329,9 +330,17 @@ export const SITE_WITH_A_FEATURED_PROJECT_AS_MAP = testSite('table-instead-of-re
 export const SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF = testSite('empty-ref');
 
 /* Same as SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF, with the home page of
-   tests/fixtures/whitespace-only-ref/content, whose second entry is a text made of three spaces
-   only, '   ', instead of a page reference. */
+   tests/fixtures/whitespace-only-ref/content, whose third entry, after
+   'projets/restauration-pendule' and 'projets/montre-grande-complication', is a text made of
+   three spaces only, '   ', instead of a page reference. */
 export const SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF = testSite('whitespace-only-ref');
+
+/* Same as SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF, with the home page of
+   tests/fixtures/padded-ref/content, whose two entries reference existing pages of the example
+   site but with a space Hugo does not trim: a trailing one, 'projets/restauration-pendule ', then
+   a leading one, ' projets/montre-grande-complication'. Its folder name avoids the word space,
+   which the error-message assertion looks for. */
+export const SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_SPACES = testSite('padded-ref');
 
 /* The example site's home pages feature only projects translated in their own language: this site
    replaces the French home page with the one of tests/fixtures/english-only-project/content,

@@ -14,6 +14,7 @@ import {
   runBuildTestsInOneProjectOnly,
   serveSite,
   tryToBuildSite,
+  type BuiltSite,
 } from './helpers/built-site';
 import { clientBandBox, clientList } from './helpers/clients';
 import { blockRequests, holdRequests, themeScriptUrl, themeStylesheetUrl } from './helpers/held-requests';
@@ -1402,49 +1403,57 @@ test.describe('home page of another site, without clients', () => {
 test.describe('client content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
-  test('a home page whose clients list holds an empty or whitespace-only name makes the site build fail, with a French error message that names the clients parameter', () => {
+  test('a home page whose clients list holds an empty or whitespace-only name makes the site build fail, with an error message that names the clients parameter and the position of the blank entry', () => {
     /* tests/fixtures/empty-name and tests/fixtures/whitespace-only-name declare clients as a list
-       of texts, so the checks on the list and on its entries let them through, but their second
-       entry is '' in one and '   ' in the other: a name that shows nothing. Rather than a band
-       with a blank slot, the person building the site must get, in both cases, a failure whose
-       French message names the clients parameter of the front matter, whatever the rest of the
-       wording. Two fixtures, so that rejecting only the empty name does not pass. */
+       of texts, so the checks on the list and on its entries let them through, but the second
+       entry of one is '' and the third entry of the other, after two names, is '   ': a name that
+       shows nothing. Rather than a band with a blank slot, the person building the site must get,
+       in both cases, a failure whose message names the clients parameter of the front matter and
+       the position of the blank entry in the list, counted from 1 ("entry 2", "entry 3"), so that
+       they find it, whatever the rest of the wording. Two fixtures, so that rejecting only the
+       empty name does not pass, and two positions, so that a hard-coded position does not pass. */
     const cases = [
-      { name: 'an empty name', site: SITE_WITH_AN_EMPTY_CLIENT_NAME },
-      { name: 'a whitespace-only name', site: SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME },
+      { name: 'an empty name', site: SITE_WITH_AN_EMPTY_CLIENT_NAME, position: /\bentry\s+2\b/ },
+      { name: 'a whitespace-only name', site: SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME, position: /\bentry\s+3\b/ },
     ];
-    for (const { name, site } of cases) {
+    for (const { name, site, position } of cases) {
       const build = tryToBuildSite(site);
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
-      expect(build.errors).toMatch(/\bparamètre\s+clients\b/);
+      expect(build.errors).toMatch(/\bclients\s+parameter\b/);
+      expect(build.errors, `with ${name}, the error message should give the position of the blank entry`).toMatch(position);
     }
   });
 
-  test('a home page whose clients parameter is a text instead of a list, or whose clients list holds a table instead of a name, makes the site build fail with a French error message that names the clients parameter, alone, without a template execution error after it', () => {
+  test('a home page whose clients parameter is a text instead of a list, or whose clients list holds a table instead of a name, makes the site build fail with an error message that names the clients parameter, alone, without a template execution error after it', () => {
     /* tests/fixtures/text-instead-of-list declares clients = 'Maison Delorme', a text rather than
        a list of names, and tests/fixtures/map-instead-of-name a list (so the check that clients is
        a list lets it through) whose second entry is a table, { name = 'Maison Delorme' }, rather
        than a name. Rather than a band built from that text or showing that table as raw text, the
-       person building the site must read a French message that names the clients parameter of the
-       front matter, in the style of the hero's messages ("le paramètre author…"), whatever the
-       rest of the wording, and nothing else: no Go template execution error, about a range over a
-       text or a function called with a table, that would follow it and bury it in technical
-       jargon. Requiring "paramètre clients" also keeps a template execution error that merely
-       quotes $clients or .Params.clients from passing. Two fixtures, so that stopping after only
-       one of the two checks does not pass. */
-    const cases = [
+       person building the site must read a message that names the clients parameter of the
+       front matter, in the style of the hero's messages, which name the parameter they are about,
+       whatever the rest of the wording, and nothing else: no Go template execution error, about a
+       range over a text or a function called with a table, that would follow it and bury it in
+       technical jargon. Requiring "clients parameter" also keeps a template execution error that
+       merely quotes $clients or .Params.clients from passing. Two fixtures, so that stopping after
+       only one of the two checks does not pass. With the table, the message also gives its
+       position in the list, counted from 1, "entry 2", so that whoever fills in the content finds
+       it; a text instead of a list has no entry to point to. */
+    const cases: { name: string; site: BuiltSite; position?: RegExp }[] = [
       { name: 'clients as a text', site: SITE_WITH_CLIENTS_AS_TEXT },
-      { name: 'a table among the clients', site: SITE_WITH_A_CLIENT_AS_MAP },
+      { name: 'a table among the clients', site: SITE_WITH_A_CLIENT_AS_MAP, position: /\bentry\s+2\b/ },
     ];
-    for (const { name, site } of cases) {
+    for (const { name, site, position } of cases) {
       const build = tryToBuildSite(site);
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
-      expect(build.errors, `with ${name}, the French message should be shown`).toMatch(
-        /\bparamètre\s+clients\b/,
+      expect(build.errors, `with ${name}, the error message should name the clients parameter`).toMatch(
+        /\bclients\s+parameter\b/,
       );
-      expect(build.errors, `with ${name}, no template execution error should follow the French message`).not.toMatch(
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
         /execute of template failed|error calling/i,
       );
+      if (position) {
+        expect(build.errors, `with ${name}, the error message should give the position of the table`).toMatch(position);
+      }
     }
   });
 });
