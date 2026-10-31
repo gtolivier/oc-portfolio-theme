@@ -87,7 +87,9 @@
       <p class="project-stack">{{ delimit . $stackSeparator }}</p>
       {{- end }}
       {{- $build := .Params.build | default dict }}
-      {{- if ne $build.render "never" }}
+      {{- $render := "always" }}
+      {{- if isset $build "render" }}{{ $render = printf "%v" $build.render }}{{ end }}
+      {{- if in (slice "always" "true") $render }}
       {{- $seeDetail := i18n "seeDetail" }}
       <a class="project-link" href="{{ .RelPermalink }}" aria-label="{{ $seeDetail }} – {{ .Title }}">{{ $seeDetail }} <span aria-hidden="true">→</span></a>
       {{- end }}
