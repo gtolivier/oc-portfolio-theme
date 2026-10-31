@@ -56,7 +56,9 @@
     {{- end }}
   </div>
   {{- end }}
-  {{- with .Params.projects }}
+  {{- $featured := .Params.projects }}
+  {{- if and $featured (not (reflect.IsSlice $featured)) }}{{ errorf "projects : le paramètre projects de la page d’accueil doit être une liste de pages" }}{{ $featured = slice }}{{ end }}
+  {{- with $featured }}
   {{- /* The featured pages are looked up once, for both the all-projects link and the cards. */}}
   {{- $projects := slice }}
   {{- range . }}
