@@ -439,6 +439,14 @@ export const SITE_WITH_A_TAXONOMY_AS_FEATURED_PROJECT = testSite('taxonomy-ref')
    the error-message assertions look for. */
 export const SITE_WITH_THE_404_PAGE_AS_FEATURED_PROJECT = testSite('error-page-ref');
 
+/* The example site's French home page has a hero whose every button leads to a published page or
+   to an address: this site replaces that home page with the one of
+   tests/fixtures/never-rendered-ref/content, whose first button declares pageRef =
+   '/atelier-ferme', and adds that page, which exists but declares [build] render = 'never', so
+   that Hugo publishes nothing for it. Its folder name and that page reference avoid the French
+   word for published, which the error-message assertion looks for. */
+export const SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE = testSite('never-rendered-ref');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
