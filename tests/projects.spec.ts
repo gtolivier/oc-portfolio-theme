@@ -126,6 +126,12 @@ function cardName(index: number): string {
   return `card ${index + 1} ("${FEATURED_PROJECTS[index].title}")`;
 }
 
+/* A pattern that matches the text as written, wherever it appears: its special characters are
+   escaped. */
+function containing(text: string): RegExp {
+  return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+}
+
 /* The cards of the section "Projets sélectionnés" of the page just loaded, once its fonts are
    ready: one per project the example site features. */
 async function cardsOnceLoaded(page: Page): Promise<Locator> {
@@ -165,6 +171,14 @@ function boxAround(lines: Box[]): Box | null {
 /* The box around the text an element displays, or null when it shows none. */
 async function textBox(element: Locator): Promise<Box | null> {
   return boxAround(await textLineBoxes(element));
+}
+
+/* The box of an element itself, whatever text it displays. */
+function elementBox(locator: Locator): Promise<Box> {
+  return locator.evaluate((element): Box => {
+    const { left, right, top, bottom } = element.getBoundingClientRect();
+    return { left, right, top, bottom };
+  });
 }
 
 type Rgb = { red: number; green: number; blue: number };
@@ -440,7 +454,7 @@ test('on the French home page, each featured project’s card ends with a "Voir 
       await expect(link).toContainText('Voir le détail');
       /* Every card shows the same text: the accessible name also names the project, so that a
          list of the page's links tells them apart. The arrow is decorative: not in the name. */
-      await expect(link).toHaveAccessibleName(new RegExp(project.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+      await expect(link).toHaveAccessibleName(containing(project.title));
       await expect(link).not.toHaveAccessibleName(/→/);
       await link.click();
       await expect(page).toHaveURL(`${siteRoot}fr/projets/${project.slug}/`);
@@ -462,7 +476,7 @@ test('on the English home page, the section "Selected projects" shows the Englis
     const link = card.getByRole('link', { name: 'See details' });
     await expect(link).toHaveCount(1);
     await expect(link).toContainText('See details');
-    await expect(link).toHaveAccessibleName(new RegExp(project.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    await expect(link).toHaveAccessibleName(containing(project.title));
     await expect(link).toHaveAttribute('href', `/en/projects/${project.slug}/`);
   }
   /* Following a link lands on the English page of its project. */
@@ -531,9 +545,11 @@ test('on the French home page, the "Voir le détail" link of each card stays rea
     await page.mouse.move(0, 0);
   }
 
-  /* A keyboard visitor tabs from one link to the next. */
+  /* A keyboard visitor tabs from one link to the next. The cards' links come after every
+     focusable element above the section: more tabs than tabUntilFocused allows by default. */
+  const MAX_TABS = 60;
   for (const [index, link] of links.entries()) {
-    await tabUntilFocused(link, browserName, 60);
+    await tabUntilFocused(link, browserName, MAX_TABS);
     expect(await link.evaluate((el) => el.matches(':focus-visible')), `${cardName(index)}: its link shows the keyboard focus`).toBe(true);
     await expectReadable(link, 'while focused by keyboard', index);
   }
@@ -682,10 +698,6 @@ test('on a wide window, the cards of the section "Projets sélectionnés" sit tw
 });
 
 test('on the French home page, the "Tous les projets" link of the section "Projets sélectionnés" comes before the cards: on a wide window on the heading’s row, at the right end of the cards’ area; on a phone below the heading and above the first card', async ({ page }) => {
-  const elementBox = (locator: Locator) => locator.evaluate((element): Box => {
-    const { left, right, top, bottom } = element.getBoundingClientRect();
-    return { left, right, top, bottom };
-  });
   const span = (box: Box) => `${box.left.toFixed(1)}–${box.right.toFixed(1)} px × ${box.top.toFixed(1)}–${box.bottom.toFixed(1)} px`;
   for (const viewport of [WIDE_WINDOW, PHONE]) {
     await page.setViewportSize(viewport);
@@ -1500,12 +1512,7 @@ test.describe('home page of another site, featuring a project at the content roo
     /* From the bottom of an element's box (the link's ends with its underline) to the top of the
        first card's. */
     const spaceAboveFirstCard = async (element: Locator, firstCard: Locator) => {
-      const [above, card] = await Promise.all(
-        [element, firstCard].map((locator) => locator.evaluate((el) => {
-          const { top, bottom } = el.getBoundingClientRect();
-          return { top, bottom };
-        })),
-      );
+      const [above, card] = await Promise.all([elementBox(element), elementBox(firstCard)]);
       return card.top - above.bottom;
     };
     /* The example site's home page has the link, below the heading and above the first card. */
