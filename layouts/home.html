@@ -86,10 +86,12 @@
       {{- with .Params.stack }}
       <p class="project-stack">{{ delimit . $stackSeparator }}</p>
       {{- end }}
+      {{- /* Hugo publishes a page only under these [build] render values; render = false is a boolean, hence the conversion to a string. */}}
+      {{- $publishingRenders := slice "always" "true" }}
       {{- $build := .Params.build | default dict }}
       {{- $render := "always" }}
       {{- if isset $build "render" }}{{ $render = printf "%v" $build.render }}{{ end }}
-      {{- if in (slice "always" "true") $render }}
+      {{- if in $publishingRenders $render }}
       {{- $seeDetail := i18n "seeDetail" }}
       <a class="project-link" href="{{ .RelPermalink }}" aria-label="{{ $seeDetail }} – {{ .Title }}">{{ $seeDetail }} <span aria-hidden="true">→</span></a>
       {{- end }}
