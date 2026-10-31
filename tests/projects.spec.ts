@@ -670,6 +670,27 @@ test('on the French home page, the "Tous les projets" link of the section "Proje
   }
 });
 
+test('on the French home page, on a phone and on a wide window, the "Voir le détail" link of each card and the "Tous les projets" link of the section "Projets sélectionnés" are each at least 24 px high (WCAG 2.5.8)', async ({ page }) => {
+  for (const viewport of [PHONE, WIDE_WINDOW]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/fr/');
+    await cardsOnceLoaded(page);
+    const section = projectsSection(page);
+    const where = `${viewport.width}px wide`;
+    const links: Record<string, Locator> = {
+      '"Tous les projets" link': section.getByRole('link', { name: 'Tous les projets', exact: true }),
+    };
+    FEATURED_PROJECTS.forEach((project, index) => {
+      links[`"Voir le détail" link of ${cardName(index)}`] = cardTitled(section, project.title).getByRole('link', { name: 'Voir le détail' });
+    });
+    for (const [name, link] of Object.entries(links)) {
+      await expect(link, `${where}: ${name}`).toBeVisible();
+      const box = (await link.boundingBox())!;
+      expect.soft(box.height, `${where}: target height of the ${name}`).toBeGreaterThanOrEqual(24);
+    }
+  }
+});
+
 test('on the French home page, with JavaScript and without, each card of the section "Projets sélectionnés" shows a decorative tick pattern above its title, across the card’s width (its full width or its content box), hidden from assistive technologies', async ({ page, browser, baseURL }) => {
   /* The tick pattern's band is in the page whether or not scripts run. */
   const withoutJavaScript = await browser.newContext({ baseURL, viewport: page.viewportSize(), javaScriptEnabled: false });
