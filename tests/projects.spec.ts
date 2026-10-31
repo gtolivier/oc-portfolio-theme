@@ -80,6 +80,32 @@ const FEATURED_PROJECTS = [
   },
 ];
 
+/* The same projects, as the English home page features them: the title and description their
+   English pages (content/projets/<slug>.en.md) declare, each different from the French one. Their
+   English pages live in the projets/ section's English address, /en/projects/<slug>/. */
+const FEATURED_PROJECTS_IN_ENGLISH = [
+  {
+    slug: 'restauration-pendule',
+    title: 'Restoration of a mantel clock',
+    description: 'An Empire gilt-bronze clock brought back to life: movement cleaned, suspension rebuilt, dial touched up.',
+  },
+  {
+    slug: 'montre-grande-complication',
+    title: 'Grand complication pocket watch',
+    description: 'A perpetual calendar and minute repeater calibre, designed then assembled part by part.',
+  },
+  {
+    slug: 'horloge-astronomique',
+    title: 'The workshop’s astronomical clock',
+    description: 'A wall clock showing the phases of the moon, the equation of time and sunrise at the workshop’s latitude.',
+  },
+  {
+    slug: 'regulateur-noyer',
+    title: 'Walnut floor regulator',
+    description: 'A regulator with a compensated pendulum, housed in a hand-carved solid walnut case.',
+  },
+];
+
 /* The window sizes the layout is checked at: a phone's, and a wide window's, where the cards sit
    two per row. */
 const PHONE = { width: 390, height: 844 };
@@ -421,6 +447,29 @@ test('on the French home page, each featured project’s card ends with a "Voir 
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(project.title);
     }
   }
+});
+
+test('on the English home page, the section "Selected projects" shows the English title and description of each featured project, in the order the home page lists them, and each card’s "See details" link opens the project’s English page', async ({ page }) => {
+  await page.goto('/en/');
+  const section = page.getByRole('main').getByRole('region', { name: 'Selected projects' });
+  await expect(section.getByRole('heading', { level: 2, name: 'Selected projects' })).toBeVisible();
+  /* An array makes the match exact: a French, missing, extra or misplaced title fails it. */
+  await expect(section.getByRole('heading', { level: 3 })).toHaveText(FEATURED_PROJECTS_IN_ENGLISH.map((project) => project.title));
+  for (const project of FEATURED_PROJECTS_IN_ENGLISH) {
+    const card = cardTitled(section, project.title);
+    await expect(card).toHaveCount(1);
+    await expect(card.getByText(project.description, { exact: true })).toBeVisible();
+    const link = card.getByRole('link', { name: 'See details' });
+    await expect(link).toHaveCount(1);
+    await expect(link).toContainText('See details');
+    await expect(link).toHaveAccessibleName(new RegExp(project.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    await expect(link).toHaveAttribute('href', `/en/projects/${project.slug}/`);
+  }
+  /* Following a link lands on the English page of its project. */
+  const [first] = FEATURED_PROJECTS_IN_ENGLISH;
+  await cardTitled(section, first.title).getByRole('link', { name: 'See details' }).click();
+  await expect(page).toHaveURL(`/en/projects/${first.slug}/`);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(first.title);
 });
 
 test('on the French home page, the cards of the section "Projets sélectionnés" are readable: dark cards on the section’s light background, and every text of the section, its heading’s number included, contrasts at least 4.5:1 with what is behind it', async ({ page }) => {
