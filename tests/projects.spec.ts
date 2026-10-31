@@ -14,6 +14,8 @@ import {
   SITE_WITH_A_FEATURED_PROJECT_AS_MAP,
   SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF,
   SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF,
+  SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT,
+  SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1582,6 +1584,45 @@ test.describe('featured project content errors: build failure', () => {
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
       expect(build.errors, `with ${name}, the French message should name the projects parameter`).toMatch(
         /\bparamètre\s+projects\b/,
+      );
+      expect(build.errors, `with ${name}, no template execution error should follow the French message`).not.toMatch(
+        /execute of template failed|error calling/i,
+      );
+    }
+  });
+
+  test('a home page that features a project without a translation in its language makes the site build fail, with a French error message that names the projects parameter and that language, without a template execution error after it', () => {
+    /* tests/fixtures/english-only-project features, on the French home page, a project that only
+       has an English page; tests/fixtures/french-only-project features, on the English home page,
+       a project that only has a French page. Rather than a section that drops that card, or one
+       that shows the project in the other language, the person building the site must get, in
+       both cases, a failure whose French message names the projects parameter, in the style of the
+       clients messages ("le paramètre clients…"), and the home page's language by its code, as
+       written in the site's configuration and in the content file names (fr, en), whatever the
+       rest of the wording, and no Go template execution error that would follow it and bury it in
+       technical jargon. The code is looked for as a word that no other word follows, so that the
+       French preposition "en" ("n’existe qu’en anglais") does not pass for the English code. Both
+       directions, so that a message naming a language written in the template does not pass. */
+    const cases = [
+      {
+        name: 'a French home page featuring an English-only project',
+        site: SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT,
+        language: 'fr',
+      },
+      {
+        name: 'an English home page featuring a French-only project',
+        site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT,
+        language: 'en',
+      },
+    ];
+    for (const { name, site, language } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(build.errors, `with ${name}, the French message should name the projects parameter`).toMatch(
+        /\bparamètre\s+projects\b/,
+      );
+      expect(build.errors, `with ${name}, the French message should name the home page's language`).toMatch(
+        new RegExp(`\\b${language}\\b(?!\\s+\\p{L})`, 'u'),
       );
       expect(build.errors, `with ${name}, no template execution error should follow the French message`).not.toMatch(
         /execute of template failed|error calling/i,

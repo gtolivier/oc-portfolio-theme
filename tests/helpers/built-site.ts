@@ -323,6 +323,20 @@ export const SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF = testSite('empty-ref');
    only, '   ', instead of a page reference. */
 export const SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF = testSite('whitespace-only-ref');
 
+/* The example site's home pages feature only projects translated in their own language: this site
+   replaces the French home page with the one of tests/fixtures/english-only-project/content,
+   without a hero nor clients, which features the example site's 'projets/restauration-pendule',
+   then 'projets/carillon-westminster', a fictional project, "Westminster chime", added under
+   projets/ in English only (carillon-westminster.en.md, without a French page). */
+export const SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT = testSite('english-only-project');
+
+/* The other way round: this site replaces the English home page with the one of
+   tests/fixtures/french-only-project/content, without a hero nor clients, which features the
+   example site's 'projets/restauration-pendule', then 'projets/horloge-morbier', a fictional
+   project, "Horloge de Morbier", added under projets/ in French only (horloge-morbier.md, without
+   an English page). The example site's French home page is unchanged. */
+export const SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT = testSite('french-only-project');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
