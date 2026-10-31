@@ -397,6 +397,14 @@ export const SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT = testSite('self-ref');
    home page itself, rather than '/'. */
 export const SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT_WRITTEN_AS_A_DOT = testSite('dot-self-ref');
 
+/* The example site's French home page features only project pages: this site replaces that home
+   page with the one of tests/fixtures/section-ref/content, without a hero nor clients, whose
+   params.projects is a list of texts, as expected, of 'projets/restauration-pendule', then
+   'projets', a reference to the example site's projects section itself, which exists but is a
+   section page, no project. Its folder name avoids the word projects, which the error-message
+   assertion looks for. */
+export const SITE_WITH_A_SECTION_AS_FEATURED_PROJECT = testSite('section-ref');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
