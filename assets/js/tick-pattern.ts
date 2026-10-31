@@ -54,6 +54,26 @@ function tickCount(start: number, end: number, spacing: number): number {
   return Math.max(0, Math.ceil((end - start) / spacing));
 }
 
+/* What a drawing of a box looks like: the canvas size, in device pixels, and the grid of ticks. */
+type PatternLayout = { canvas: DevicePixelSize; columns: number; rows: number };
+
+function patternLayout({ width, height }: PatternBox): PatternLayout {
+  return {
+    canvas: devicePixelSize(width, height),
+    columns: tickCount(PATTERN_LEFT_PX, width - PATTERN_RIGHT_MARGIN_PX, PATTERN_COLUMN_SPACING_PX),
+    rows: tickCount(PATTERN_TOP_PX, height - PATTERN_BOTTOM_MARGIN_PX, PATTERN_ROW_SPACING_PX),
+  };
+}
+
+function isSameLayout(layout: PatternLayout, other: PatternLayout): boolean {
+  return (
+    layout.canvas.width === other.canvas.width &&
+    layout.canvas.height === other.canvas.height &&
+    layout.columns === other.columns &&
+    layout.rows === other.rows
+  );
+}
+
 /* One tick as rolled once, kept so that a redraw shows it again. */
 type Tick = { alpha: number; isAccent: boolean; height: number };
 
@@ -83,44 +103,46 @@ class TickPattern extends HTMLElement {
      reuses it. */
   private box: PatternBox = { width: PATTERN_FALLBACK_WIDTH_PX, height: PATTERN_FALLBACK_HEIGHT_PX };
 
-  /* The canvas size, in device pixels, of the last drawing; none before the first one. */
-  private drawnSize?: DevicePixelSize;
+  /* The layout of the last drawing; none before the first one. */
+  private drawnLayout?: PatternLayout;
+
+  /* Stops watching the pixel density once the element leaves the page. */
+  private densityWatch?: AbortController;
 
   connectedCallback(): void {
     this.prepend(this.canvas);
     /* The observer's first callback, as observing starts, draws the pattern for the first time. */
     patternResizeObserver.observe(this);
-    watchPixelDensity(() => this.draw());
+    this.densityWatch = new AbortController();
+    watchPixelDensity(() => this.draw(), this.densityWatch.signal);
   }
 
   disconnectedCallback(): void {
     patternResizeObserver.unobserve(this);
+    this.densityWatch?.abort();
   }
 
   /* The entry's content box, unlike offsetWidth, keeps the fractional CSS pixels of the layout. */
   resize(entry: ResizeObserverEntry): void {
     const { width, height } = entry.contentRect;
     this.box = { width: width || PATTERN_FALLBACK_WIDTH_PX, height: height || PATTERN_FALLBACK_HEIGHT_PX };
-    if (!this.isDrawnAtBoxSize()) this.draw();
+    if (!this.isDrawnAtBoxLayout()) this.draw();
   }
 
-  /* A resize below a device pixel would draw the same pattern again. */
-  private isDrawnAtBoxSize(): boolean {
-    const size = devicePixelSize(this.box.width, this.box.height);
-    return this.drawnSize?.width === size.width && this.drawnSize?.height === size.height;
+  /* A resize below a device pixel that adds no column or row would draw the same pattern again. */
+  private isDrawnAtBoxLayout(): boolean {
+    return this.drawnLayout !== undefined && isSameLayout(this.drawnLayout, patternLayout(this.box));
   }
 
   private draw(): void {
-    const { width, height } = this.box;
-    this.drawnSize = devicePixelSize(width, height);
-    const context = prepareCanvas(this.canvas, width, height);
+    const layout = patternLayout(this.box);
+    const context = prepareCanvas(this.canvas, this.box.width, this.box.height);
     if (!context) return;
+    this.drawnLayout = layout;
     const colors = this.themeColors();
-    const columns = tickCount(PATTERN_LEFT_PX, width - PATTERN_RIGHT_MARGIN_PX, PATTERN_COLUMN_SPACING_PX);
-    const rows = tickCount(PATTERN_TOP_PX, height - PATTERN_BOTTOM_MARGIN_PX, PATTERN_ROW_SPACING_PX);
-    for (let column = 0; column < columns; column += 1) {
+    for (let column = 0; column < layout.columns; column += 1) {
       const x = PATTERN_LEFT_PX + column * PATTERN_COLUMN_SPACING_PX;
-      for (let row = 0; row < rows; row += 1) {
+      for (let row = 0; row < layout.rows; row += 1) {
         const y = PATTERN_TOP_PX + row * PATTERN_ROW_SPACING_PX;
         this.drawTick(context, colors, x, y, this.tickAt(column, row));
       }
