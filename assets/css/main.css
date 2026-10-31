@@ -994,13 +994,11 @@ tick-field > canvas {
 
 @media (hover: hover) {
   .project-card > .project-link:hover {
-    color: var(--color-accent);
     border-color: var(--color-accent);
   }
 }
 
 .project-card > .project-link:focus-visible {
-  color: var(--color-accent);
   border-color: var(--color-accent);
 }
 
