@@ -59,19 +59,15 @@
   {{- $featured := .Params.projects }}
   {{- /* As for the clients: after an error, the section skips the entry, and is left out when no featured page is left, so that no template execution error buries the French message. */}}
   {{- if and (isset .Params "projects") (not (reflect.IsSlice $featured)) }}{{ errorf "projects : le paramètre projects de la page d’accueil doit être une liste de pages" }}{{ $featured = slice }}{{ end }}
-  {{- with $featured }}
   {{- /* The featured pages are looked up once, for both the all-projects link and the cards. */}}
   {{- $projects := slice }}
-  {{- range . }}
-  {{- if not (eq (printf "%T" .) "string") }}{{ errorf "projects : chaque entrée du paramètre projects de la page d’accueil doit être une référence de page" }}
-  {{- else if eq (strings.TrimSpace .) "" }}{{ errorf "projects : chaque entrée du paramètre projects de la page d’accueil doit être une référence de page non vide" }}
-  {{- else }}
+  {{- range $featured }}
+  {{- if not (eq (printf "%T" .) "string") }}{{ errorf "projects : chaque entrée du paramètre projects de la page d’accueil doit être une référence de page" }}{{ continue }}{{ end }}
+  {{- if eq (strings.TrimSpace .) "" }}{{ errorf "projects : chaque entrée du paramètre projects de la page d’accueil doit être une référence de page non vide" }}{{ continue }}{{ end }}
   {{- $page := $.GetPage . }}
-  {{- if not $page }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable (langue : %s) : %s. Cette page n’est peut-être pas publiée : brouillon, date dans le futur (à venir) ou page expirée" $.Language.Lang . }}
-  {{- else if $page.IsHome }}{{ errorf "projects : le paramètre projects de la page d’accueil référence la page d’accueil elle-même, qui n’est pas un projet : « %s »" . }}
-  {{- else }}{{ $projects = $projects | append $page }}
-  {{- end }}
-  {{- end }}
+  {{- if not $page }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable (langue : %s) : %s. Cette page n’est peut-être pas publiée : brouillon, date dans le futur (à venir) ou page expirée" $.Language.Lang . }}{{ continue }}{{ end }}
+  {{- if $page.IsHome }}{{ errorf "projects : le paramètre projects de la page d’accueil référence la page d’accueil elle-même, qui n’est pas un projet : « %s »" . }}{{ continue }}{{ end }}
+  {{- $projects = $projects | append $page }}
   {{- end }}
   {{- if $projects }}
   <section class="projects" aria-labelledby="projects-heading">
@@ -80,13 +76,9 @@
     {{- $firstSection := (index $projects 0).Parent }}
     {{- $isInOneSection := true }}
     {{- range $projects }}{{ if not (.Parent.Eq $firstSection) }}{{ $isInOneSection = false }}{{ end }}{{ end }}
-    {{- if $isInOneSection }}
-    {{- with $firstSection }}
     {{- /* No section to open when the projects sit at the content root (their parent is the home page) or in an unpublished section (it has no address). */}}
-    {{- if and (not .IsHome) (partial "is-published.html" .) }}
-    <a class="all-projects-link" href="{{ .RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
-    {{- end }}
-    {{- end }}
+    {{- if and $isInOneSection (not $firstSection.IsHome) (partial "is-published.html" $firstSection) }}
+    <a class="all-projects-link" href="{{ $firstSection.RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
     {{- end }}
     {{- range $projects }}
     <article class="project-card">
@@ -108,7 +100,6 @@
     </article>
     {{- end }}
   </section>
-  {{- end }}
   {{- end }}
   {{ .Content }}
 {{ end }}

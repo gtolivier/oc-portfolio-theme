@@ -856,15 +856,18 @@ tick-field > canvas {
   margin-top: var(--projects-header-margin);
 }
 
-/* A flex item, so min-height applies: minimum target size (WCAG 2.5.8).
-   The text sits at the bottom of that height, so the underline stays 2px
-   below it. */
-.all-projects-link {
-  align-self: baseline;
+/* Underlined links, each a flex or grid item, so min-height applies:
+   minimum target size (WCAG 2.5.8). The text sits at the bottom of that
+   height, so the underline stays 2px below it. */
+:is(.all-projects-link, .project-card > .project-link) {
   min-height: var(--min-target-size);
   align-content: end;
-  margin-bottom: var(--projects-header-margin);
   padding-bottom: 2px;
+}
+
+.all-projects-link {
+  align-self: baseline;
+  margin-bottom: var(--projects-header-margin);
   border-bottom: 1px solid var(--color-accent-dark);
   font-family: var(--font-mono);
   font-size: 15px;
@@ -964,16 +967,11 @@ tick-field > canvas {
   color: rgb(var(--color-paper-channels) / 0.62);
 }
 
-/* As wide as its text, so is its underline. A grid item, so min-height
-   applies: minimum target size (WCAG 2.5.8). The text sits at the bottom of
-   that height, so the underline stays 2px below it. */
+/* As wide as its text, so is its underline. */
 .project-card > .project-link {
   grid-row: link;
   justify-self: start;
-  min-height: var(--min-target-size);
-  align-content: end;
   margin-top: calc(var(--project-card-gap) + 4px);
-  padding-bottom: 2px;
   border-bottom: 1px solid var(--color-paper);
   font-family: var(--font-mono);
   font-size: 14px;
