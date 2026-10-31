@@ -2077,11 +2077,12 @@ test.describe('featured project content errors: build failure', () => {
        of texts, so the checks on the list and on its entries let them through, but the second
        entry of one is '' and the third entry of the other, after two references, is '   ': a
        reference that names no page. Rather than a section with a card of whatever page such a
-       reference happens to resolve to (the home page itself, for ''), the person building the site must get, in both cases, a failure whose
-       message names the projects parameter of the front matter, in the style of the clients
-       messages, which name the clients parameter, whatever the rest of the wording, and no Go
-       template execution error, such as the one today's template raises when it looks up the
-       parent of the page '' resolves to, that would follow it and bury it in technical jargon.
+       reference happens to resolve to (the home page itself, for ''), the person building the
+       site must get, in both cases, a failure whose message names the projects parameter of the
+       front matter, in the style of the clients messages, which name the clients parameter,
+       whatever the rest of the wording, and no Go template execution error, such as the one
+       today's template raises when it looks up the parent of the page '' resolves to, that would
+       follow it and bury it in technical jargon.
        The message also gives the position of the blank entry in the list, counted from 1
        ("entry 2", "entry 3"), as the clients messages do, so that whoever fills in the content
        finds it. Two fixtures, so that rejecting only the empty reference does not pass, and two

@@ -14,6 +14,7 @@ import {
   runBuildTestsInOneProjectOnly,
   serveSite,
   tryToBuildSite,
+  type BuiltSite,
 } from './helpers/built-site';
 import { clientBandBox, clientList } from './helpers/clients';
 import { blockRequests, holdRequests, themeScriptUrl, themeStylesheetUrl } from './helpers/held-requests';
@@ -1437,7 +1438,7 @@ test.describe('client content errors: build failure', () => {
        only one of the two checks does not pass. With the table, the message also gives its
        position in the list, counted from 1, "entry 2", so that whoever fills in the content finds
        it; a text instead of a list has no entry to point to. */
-    const cases: { name: string; site: typeof SITE_WITH_CLIENTS_AS_TEXT; position?: RegExp }[] = [
+    const cases: { name: string; site: BuiltSite; position?: RegExp }[] = [
       { name: 'clients as a text', site: SITE_WITH_CLIENTS_AS_TEXT },
       { name: 'a table among the clients', site: SITE_WITH_A_CLIENT_AS_MAP, position: /\bentry\s+2\b/ },
     ];
