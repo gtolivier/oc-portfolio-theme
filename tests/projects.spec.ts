@@ -579,6 +579,100 @@ test('on the French home page, the "Voir le détail" link of each card stays rea
   }
 });
 
+test('on the French home page, the "Tous les projets" link and the "Voir le détail" link of each card show, while hovered with a fine pointer and while reached by keyboard, an underline in the accent colour thicker than their underline at rest, their text still contrasting at least 4.5:1 with what is behind it', async ({ page, hasTouch, browserName }) => {
+  await page.goto('/fr/');
+  const cards = await cardsOnceLoaded(page);
+  const section = projectsSection(page);
+  /* In the order a keyboard visitor reaches them: the "Tous les projets" link comes before the
+     cards. */
+  const links: { name: string; link: Locator }[] = [{ name: '"Tous les projets" link', link: section.getByRole('link', { name: 'Tous les projets', exact: true }) }];
+  for (const [index, card] of (await cards.all()).entries()) {
+    links.push({ name: `"Voir le détail" link of ${cardName(index)}`, link: card.getByRole('link', { name: 'Voir le détail' }) });
+  }
+  for (const { name, link } of links) await expect(link, name).toHaveCount(1);
+
+  /* The accent colour, as the page defines it, resolved to a computed colour. */
+  const accent = colorComponents(
+    await page.evaluate(() => {
+      const probe = document.createElement('span');
+      probe.style.color = 'var(--color-accent)';
+      document.body.append(probe);
+      const color = getComputedStyle(probe).color;
+      probe.remove();
+      return color;
+    }),
+  );
+  const isAccent = (color: string) => {
+    const { red, green, blue, alpha } = colorComponents(color);
+    return alpha === 1 && Math.abs(red - accent.red) <= 1 && Math.abs(green - accent.green) <= 1 && Math.abs(blue - accent.blue) <= 1;
+  };
+
+  /* A link's underline: the thickest of the visible lines drawn under its text, whether a bottom
+     border or a text underline. Null without any. */
+  type Underline = { width: number; color: string };
+  const underlineOf = async (link: Locator): Promise<Underline | null> => {
+    const lines = await link.evaluate((el) => {
+      const style = getComputedStyle(el);
+      const drawn: { width: number; color: string }[] = [];
+      if (!['none', 'hidden'].includes(style.borderBottomStyle)) drawn.push({ width: parseFloat(style.borderBottomWidth), color: style.borderBottomColor });
+      if (style.textDecorationLine.includes('underline')) drawn.push({ width: parseFloat(style.textDecorationThickness), color: style.textDecorationColor || style.color });
+      return drawn;
+    });
+    const visible = lines.filter(({ width, color }) => width > 0 && colorComponents(color).alpha > 0);
+    if (visible.length === 0) return null;
+    return visible.reduce((thickest, line) => (line.width > thickest.width ? line : thickest));
+  };
+  const describe = (underline: Underline | null) => (underline ? `${underline.width}px ${underline.color}` : 'none');
+
+  /* At rest: before any pointer or keyboard interaction. */
+  const atRest: (Underline | null)[] = [];
+  for (const { name, link } of links) {
+    const underline = await underlineOf(link);
+    expect(underline, `${name}: underline at rest`).not.toBeNull();
+    atRest.push(underline);
+  }
+
+  /* Thicker than at rest, in the accent colour, and the text still readable. WCAG AA for normal
+     text: 4.5:1. */
+  const expectHighlighted = async (index: number, state: string) => {
+    const { name, link } = links[index];
+    const rest = atRest[index]!;
+    const underline = await underlineOf(link);
+    expect.soft(underline, `${name}: underline ${state}`).not.toBeNull();
+    if (underline) {
+      expect.soft(underline.width, `${name}: thickness of its underline ${state} (${describe(underline)}) against its underline at rest (${describe(rest)})`).toBeGreaterThan(rest.width);
+      expect.soft(isAccent(underline.color), `${name}: colour of its underline ${state} (${underline.color}) is the accent colour (${JSON.stringify(accent)})`).toBe(true);
+    }
+    const texts = await displayedTexts(link);
+    expect(texts.length, `${name}: texts displayed ${state}`).toBeGreaterThan(0);
+    for (const { text, color, backgrounds } of texts) {
+      const background = effectiveBackground(backgrounds);
+      const ratio = contrastRatio(paintOver(color, background), background);
+      expect.soft(ratio, `${name}: contrast of "${text}" (${color}) ${state} with what is behind it`).toBeGreaterThanOrEqual(4.5);
+    }
+  };
+
+  /* Hovering needs a fine pointer; touch screens have none. */
+  if (!hasTouch) {
+    for (const [index, { name, link }] of links.entries()) {
+      await link.hover();
+      expect(await link.evaluate((el) => el.matches(':hover')), `${name}: it is hovered`).toBe(true);
+      await expectHighlighted(index, 'while hovered');
+    }
+    /* The pointer leaves the links, so that only the focus remains below. */
+    await page.mouse.move(0, 0);
+  }
+
+  /* A keyboard visitor tabs from one link to the next. The links come after every focusable
+     element above the section: more tabs than tabUntilFocused allows by default. */
+  const MAX_TABS = 60;
+  for (const [index, { name, link }] of links.entries()) {
+    await tabUntilFocused(link, browserName, MAX_TABS);
+    expect(await link.evaluate((el) => el.matches(':focus-visible')), `${name}: it shows the keyboard focus`).toBe(true);
+    await expectHighlighted(index, 'while focused by keyboard');
+  }
+});
+
 test('on the French home page, on a phone and on a wide window, each card of the section "Projets sélectionnés" shows its role below its title and above its description', async ({ page }) => {
   for (const viewport of [PHONE, WIDE_WINDOW]) {
     await page.setViewportSize(viewport);
