@@ -1627,29 +1627,27 @@ test.describe('home page of another site, featuring projects whose page declares
   });
 });
 
-test.describe('home page of another site, featuring a project whose page declares a custom param named build', () => {
-  test('a featured project whose page declares a custom param build = "2020", a text, does not break the build, and its card keeps its "Voir le détail" link, which opens that page', async ({ page, context }) => {
+test.describe('featured project whose page declares a custom param named build: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a featured project whose page declares a custom param build = "2020", a text rather than a table, makes the site build fail, with a French error message that says Hugo reserves build for its build options and names that project, without a template execution error after it', () => {
     /* tests/fixtures/build-param-as-text/content/projets/pendule-squelette.md sets no [build]
-       options, but declares under [params] a custom param build = '2020'. The site is built in the
-       test itself: the build not failing is part of the behavior, and a failure must show Hugo's
-       error messages. */
+       options, but declares under [params] a custom param build = '2020'. Hugo reserves build for
+       the page's build options: .Params.build holds the real [build] table, and a custom build param
+       replaces it, so the theme cannot tell whether that page is published. Rather than a card
+       guessed from that text, the person building the site must get a failure whose French message
+       names the build param, says Hugo reserves it, and names that project by its reference or
+       path, whatever the rest of the wording, and no Go template execution error that would follow
+       it and bury it in technical jargon. */
     const build = tryToBuildSite(SITE_WITH_A_BUILD_PARAM_AS_TEXT);
-    expect(build.succeeded, `the site build should succeed, Hugo reported:\n${build.errors}`).toBe(true);
-    const siteDirectory = buildSite(SITE_WITH_A_BUILD_PARAM_AS_TEXT);
-    try {
-      await serveSite(context, SITE_WITH_A_BUILD_PARAM_AS_TEXT, siteDirectory);
-      await page.goto(`${SITE_WITH_A_BUILD_PARAM_AS_TEXT.origin}/fr/`);
-      const card = cardTitled(projectsSection(page), 'Pendule squelette');
-      await expect(card).toHaveCount(1);
-      const link = card.getByRole('link', { name: 'Voir le détail' });
-      await expect(link, '"Voir le détail" link in the card of "Pendule squelette"').toHaveCount(1);
-      await expect(link).toBeVisible();
-      await link.click();
-      await expect(page).toHaveURL(`${SITE_WITH_A_BUILD_PARAM_AS_TEXT.origin}/fr/projets/pendule-squelette/`);
-      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Pendule squelette');
-    } finally {
-      removeDirectory(siteDirectory);
-    }
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the build param').toMatch(/\bbuild\b/);
+    expect(build.errors, 'the French message should say the build param is reserved').toMatch(/réserv/i);
+    expect(build.errors, 'the French message should name Hugo').toMatch(/\bHugo\b/);
+    expect(build.errors, 'the French message should name the project').toContain('projets/pendule-squelette');
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
   });
 });
 
