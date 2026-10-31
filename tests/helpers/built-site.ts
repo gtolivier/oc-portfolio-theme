@@ -423,6 +423,14 @@ export const SITE_WITH_A_TERM_AS_FEATURED_PROJECT = testSite('term-ref');
    word projects, which the error-message assertion looks for. */
 export const SITE_WITH_A_TAXONOMY_AS_FEATURED_PROJECT = testSite('taxonomy-ref');
 
+/* The example site's French home page features only project pages: this site replaces that home
+   page with the one of tests/fixtures/error-page-ref/content, without a hero nor clients, whose
+   params.projects is a list of texts, as expected, of 'projets/restauration-pendule', then '/404',
+   a reference to the site's 404 page, which Hugo creates even without a 404 template, so that it
+   exists, but is no project. Its folder name avoids the word projects and the number 404, which
+   the error-message assertions look for. */
+export const SITE_WITH_THE_404_PAGE_AS_FEATURED_PROJECT = testSite('error-page-ref');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
