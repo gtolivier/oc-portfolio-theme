@@ -356,14 +356,6 @@ export const SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT = testSit
    look for. */
 export const SITE_WITH_A_DRAFT_FEATURED_PROJECT = testSite('draft-ref');
 
-/* The example site's featured projects declare short years, such as '2019 – 2020': this site
-   replaces the French home page with the one of tests/fixtures/long-project-years/content, without
-   a hero nor clients, which features the example site's 'projets/restauration-pendule', then
-   "Pendule de voyage", a fictional project added under projets/ in French only, whose page
-   declares years = '1998 – 2003, puis 2011 – 2014, puis de 2019 à aujourd’hui', made of short
-   words but wider on one line than a phone-sized card. */
-export const SITE_WITH_LONG_PROJECT_YEARS = testSite('long-project-years');
-
 /* The example site's featured projects declare roles, descriptions and stacks made of short
    words: this site replaces the French home page with the one of
    tests/fixtures/long-project-words/content, without a hero nor clients, which features the
@@ -379,14 +371,6 @@ export const SITE_WITH_LONG_PROJECT_WORDS = testSite('long-project-words');
    title and a description that each hold a single word, without a hyphen nor a space, wider
    than a phone-sized card. */
 export const SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS = testSite('long-project-title-without-years');
-
-/* The example site's featured projects declare short years, such as '2019 – 2020': this site
-   replaces the French home page with the one of tests/fixtures/long-project-title-words/content,
-   without a hero nor clients, which features the example site's 'projets/restauration-pendule',
-   then "Restauration horlogère contemporaine", a fictional project added under projets/ in French
-   only, whose title is made of long words, each narrower than a phone-sized card's text, and
-   whose page declares long years, '2019 — aujourd’hui'. */
-export const SITE_WITH_LONG_PROJECT_TITLE_WORDS = testSite('long-project-title-words');
 
 /* The example site's featured projects set no [build] options: this site replaces the French home
    page with the one of tests/fixtures/unusual-render-values/content, without a hero nor clients,

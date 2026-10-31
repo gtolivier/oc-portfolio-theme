@@ -21,10 +21,8 @@ import {
   SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT,
   SITE_WITH_A_DRAFT_FEATURED_PROJECT,
-  SITE_WITH_LONG_PROJECT_YEARS,
   SITE_WITH_LONG_PROJECT_WORDS,
   SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS,
-  SITE_WITH_LONG_PROJECT_TITLE_WORDS,
   SITE_WITH_UNUSUAL_RENDER_VALUES,
   buildSite,
   removeDirectory,
@@ -423,7 +421,7 @@ test('on the French home page, the section "Projets sélectionnés" shows one ca
   await expect(section.getByRole('heading', { level: 3 })).toHaveText(FEATURED_PROJECTS.map((project) => project.title));
 });
 
-test('on the French home page, each featured project’s card gives the role, years, description and stack its page declares, the description as a paragraph and the stack on one line, items separated by " · "', async ({ page }) => {
+test('on the French home page, each featured project’s card gives the role, description and stack its page declares, the description as a paragraph and the stack on one line, items separated by " · "', async ({ page }) => {
   await page.goto('/fr/');
   const section = projectsSection(page);
   for (const project of FEATURED_PROJECTS) {
@@ -432,7 +430,7 @@ test('on the French home page, each featured project’s card gives the role, ye
     const card = cardTitled(section, project.title);
     await expect(card).toHaveCount(1);
     const stack = project.stack.join(' · ');
-    for (const text of [project.years, project.role, stack]) {
+    for (const text of [project.role, stack]) {
       await expect(card.getByText(text, { exact: true })).toBeVisible();
       /* Shown once in the section: in this card only. */
       await expect(section.getByText(text, { exact: true })).toHaveCount(1);
@@ -561,41 +559,7 @@ test('on the French home page, the "Voir le détail" link of each card stays rea
   }
 });
 
-test('on the French home page, on a phone and on a wide window, each card of the section "Projets sélectionnés" shows its years on its title’s row, on one line, to the right of the title, at the right end of the card’s text', async ({ page }) => {
-  for (const viewport of [PHONE, WIDE_WINDOW]) {
-    await page.setViewportSize(viewport);
-    await page.goto('/fr/');
-    await cardsOnceLoaded(page);
-    const section = projectsSection(page);
-    for (const [index, project] of FEATURED_PROJECTS.entries()) {
-      const where = `${viewport.width}px wide, ${cardName(index)}`;
-      const card = cardTitled(section, project.title);
-      await expect(card).toHaveCount(1);
-      const years = card.getByText(project.years, { exact: true });
-      await expect(years).toBeVisible();
-      const titleLines = await textLineBoxes(card.getByRole('heading', { level: 3 }));
-      const yearsLines = await textLineBoxes(years);
-      expect.soft(yearsLines.length, `${where}: lines the years "${project.years}" are laid out on`).toBe(1);
-      if (titleLines.length === 0 || yearsLines.length === 0) continue;
-      const yearsBox = boxAround(yearsLines)!;
-      /* On the title's row: the years overlap the title's first line vertically. */
-      const firstLine = titleLines.reduce((first, line) => (line.top < first.top ? line : first));
-      expect.soft(
-        yearsBox.top < firstLine.bottom && yearsBox.bottom > firstLine.top,
-        `${where}: the years (${yearsBox.top.toFixed(1)}–${yearsBox.bottom.toFixed(1)} px) overlap vertically the title's first line (${firstLine.top.toFixed(1)}–${firstLine.bottom.toFixed(1)} px)`,
-      ).toBe(true);
-      /* To the right of the title: no line of the title on the years' row reaches into them. */
-      for (const line of titleLines.filter((line) => line.top < yearsBox.bottom && line.bottom > yearsBox.top)) {
-        expect.soft(line.right, `${where}: right edge of a title line on the years' row, against the years' left edge (${yearsBox.left.toFixed(1)} px)`).toBeLessThanOrEqual(yearsBox.left + 1);
-      }
-      /* At the right end of the card's text: lined up with the description's right edge. */
-      const descriptionRight = await card.getByText(project.description, { exact: true }).evaluate((element) => element.getBoundingClientRect().right);
-      expect.soft(Math.abs(yearsBox.right - descriptionRight), `${where}: the years' right edge (${yearsBox.right.toFixed(1)} px) against the description's right edge (${descriptionRight.toFixed(1)} px)`).toBeLessThanOrEqual(2);
-    }
-  }
-});
-
-test('on the French home page, on a phone and on a wide window, each card of the section "Projets sélectionnés" shows its role below its title’s row, below both the title and the years, and above its description', async ({ page }) => {
+test('on the French home page, on a phone and on a wide window, each card of the section "Projets sélectionnés" shows its role below its title and above its description', async ({ page }) => {
   for (const viewport of [PHONE, WIDE_WINDOW]) {
     await page.setViewportSize(viewport);
     await page.goto('/fr/');
@@ -607,41 +571,17 @@ test('on the French home page, on a phone and on a wide window, each card of the
       await expect(card).toHaveCount(1);
       const role = card.getByText(project.role, { exact: true });
       await expect(role).toBeVisible();
-      const [title, years, roleBox, description] = await Promise.all([
+      const [title, roleBox, description] = await Promise.all([
         textBox(card.getByRole('heading', { level: 3 })),
-        textBox(card.getByText(project.years, { exact: true })),
         textBox(role),
         textBox(card.getByText(project.description, { exact: true })),
       ]);
-      expect(title && years && roleBox && description, `${where}: the title, years, role and description each show text on screen`).toBeTruthy();
-      /* Below the title's row: under the title's last line and under the years. */
-      const rowBottom = Math.max(title!.bottom, years!.bottom);
-      expect.soft(roleBox!.top, `${where}: top of the role "${project.role}" against the bottom of the title's row (title ${title!.bottom.toFixed(1)} px, years ${years!.bottom.toFixed(1)} px)`).toBeGreaterThanOrEqual(rowBottom - 1);
+      expect(title && roleBox && description, `${where}: the title, role and description each show text on screen`).toBeTruthy();
+      /* Below the title: under its last line. */
+      expect.soft(roleBox!.top, `${where}: top of the role "${project.role}" against the bottom of the title (${title!.bottom.toFixed(1)} px)`).toBeGreaterThanOrEqual(title!.bottom - 1);
       /* Above the description. */
       expect.soft(roleBox!.bottom, `${where}: bottom of the role "${project.role}" against the top of the description (${description!.top.toFixed(1)} px)`).toBeLessThanOrEqual(description!.top + 1);
     }
-  }
-});
-
-test('on the French home page, in reading order, each card of the section "Projets sélectionnés" gives its years right after its title, as they sit on the title’s row, and only then its role', async ({ page }) => {
-  await page.goto('/fr/');
-  const section = projectsSection(page);
-  for (const [index, project] of FEATURED_PROJECTS.entries()) {
-    const card = cardTitled(section, project.title);
-    await expect(card).toHaveCount(1);
-    /* The reading order is the document order, the one a screen reader or a page read without
-       the stylesheet follows: the card's text content, whitespace collapsed. */
-    const text = ((await card.textContent()) ?? '').replace(/\s+/g, ' ');
-    const titleEnd = text.indexOf(project.title) + project.title.length;
-    const yearsStart = text.indexOf(project.years);
-    const roleStart = text.indexOf(project.role);
-    expect(text.indexOf(project.title), `${cardName(index)}: the title in the card's text`).toBeGreaterThanOrEqual(0);
-    expect(yearsStart, `${cardName(index)}: the years "${project.years}" in the card's text`).toBeGreaterThanOrEqual(0);
-    expect(roleStart, `${cardName(index)}: the role "${project.role}" in the card's text`).toBeGreaterThanOrEqual(0);
-    /* Right after the title: nothing but whitespace between them. */
-    expect(text.slice(titleEnd, Math.max(titleEnd, yearsStart)).trim(), `${cardName(index)}: what is read between the title and the years, in "${text.trim()}"`).toBe('');
-    expect(yearsStart, `${cardName(index)}: the years are read after the title, in "${text.trim()}"`).toBeGreaterThanOrEqual(titleEnd);
-    expect(roleStart, `${cardName(index)}: the role is read after the years, in "${text.trim()}"`).toBeGreaterThan(yearsStart);
   }
 });
 
@@ -1739,41 +1679,6 @@ async function cardAndTextLines(card: Locator): Promise<{ cardBox: { left: numbe
   });
 }
 
-test.describe('home page of another site, featuring a project with long years', () => {
-  let siteDirectory: string;
-  test.beforeAll(() => {
-    siteDirectory = buildSite(SITE_WITH_LONG_PROJECT_YEARS);
-  });
-  test.afterAll(() => {
-    removeDirectory(siteDirectory);
-  });
-
-  test('on a phone, the card of a featured project whose years are too long for one line wraps them inside the card: no text of the card leaves it, and the page does not scroll horizontally', async ({ page, context }) => {
-    await serveSite(context, SITE_WITH_LONG_PROJECT_YEARS, siteDirectory);
-    await page.setViewportSize(PHONE);
-    await page.goto(`${SITE_WITH_LONG_PROJECT_YEARS.origin}/fr/`);
-    await page.evaluate(() => document.fonts.ready);
-    /* tests/fixtures/long-project-years/content/projets/pendule-de-voyage.md declares years made
-       of short words, wider on one line than the card. */
-    const years = '1998 – 2003, puis 2011 – 2014, puis de 2019 à aujourd’hui';
-    const card = cardTitled(projectsSection(page), 'Pendule de voyage');
-    await expect(card).toHaveCount(1);
-    const yearsText = card.getByText(years, { exact: true });
-    await expect(yearsText).toBeVisible();
-    /* Wrapped: the years are laid out on more than one line. */
-    expect.soft((await textLineBoxes(yearsText)).length, `lines the years "${years}" are laid out on`).toBeGreaterThan(1);
-    /* No text leaves the card: every line of every text it displays stays within its box. */
-    const { cardBox, lines } = await cardAndTextLines(card);
-    expect(lines.length, 'lines of text the card displays').toBeGreaterThan(0);
-    for (const line of lines) {
-      expect.soft(line.left, `left edge of a line of "${line.text}" against the card's left edge (${cardBox.left.toFixed(1)} px)`).toBeGreaterThanOrEqual(cardBox.left - 1);
-      expect.soft(line.right, `right edge of a line of "${line.text}" against the card's right edge (${cardBox.right.toFixed(1)} px)`).toBeLessThanOrEqual(cardBox.right + 1);
-    }
-    const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-    expect.soft(pageWidth, 'width of the page content').toBeLessThanOrEqual(PHONE.width);
-  });
-});
-
 test.describe('home page of another site, featuring a project with long words', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
@@ -1860,53 +1765,6 @@ test.describe('home page of another site, featuring a project with a long title 
       titleRight,
       `right edge of the title's widest line, against the right end of the card's text (${textRight.toFixed(1)} px), less one character of the title (${titleCharacterWidth.toFixed(1)} px)`,
     ).toBeGreaterThan(textRight - titleCharacterWidth);
-  });
-});
-
-test.describe('home page of another site, featuring a project with a title of long words and long years', () => {
-  let siteDirectory: string;
-  test.beforeAll(() => {
-    siteDirectory = buildSite(SITE_WITH_LONG_PROJECT_TITLE_WORDS);
-  });
-  test.afterAll(() => {
-    removeDirectory(siteDirectory);
-  });
-
-  test('on a phone, the card of a featured project whose years are long keeps each long word of its title whole, on one line, rather than breaking it inside the word', async ({ page, context }) => {
-    await serveSite(context, SITE_WITH_LONG_PROJECT_TITLE_WORDS, siteDirectory);
-    await page.setViewportSize(PHONE);
-    await page.goto(`${SITE_WITH_LONG_PROJECT_TITLE_WORDS.origin}/fr/`);
-    await page.evaluate(() => document.fonts.ready);
-    /* tests/fixtures/long-project-title-words/content/projets/restauration-horlogere.md declares
-       long years and a title made of long words, each narrower than the card's text. */
-    const title = 'Restauration horlogère contemporaine';
-    const years = '2019 — aujourd’hui';
-    const card = cardTitled(projectsSection(page), title);
-    await expect(card).toHaveCount(1);
-    await expect(card.getByText(years, { exact: true })).toBeVisible();
-    const heading = card.getByRole('heading', { level: 3, name: title, exact: true });
-    /* For each word of the title, the top of the line each of its characters is laid out on: a
-       word kept whole has all its characters on one line. */
-    const wordLineTops = await heading.evaluate((element) => {
-      const text = element.firstChild as Text;
-      const words: { word: string; tops: number[] }[] = [];
-      for (const match of (text.textContent ?? '').matchAll(/\S+/g)) {
-        const tops: number[] = [];
-        for (let offset = match.index; offset < match.index + match[0].length; offset++) {
-          const range = document.createRange();
-          range.setStart(text, offset);
-          range.setEnd(text, offset + 1);
-          const rect = range.getBoundingClientRect();
-          if (rect.width > 0 && rect.height > 0) tops.push(Math.round(rect.top));
-        }
-        words.push({ word: match[0], tops });
-      }
-      return words;
-    });
-    expect(wordLineTops.map(({ word }) => word), 'words of the title').toEqual(title.split(' '));
-    for (const { word, tops } of wordLineTops) {
-      expect.soft(new Set(tops).size, `lines the word "${word}" of the title is laid out on`).toBe(1);
-    }
   });
 });
 
