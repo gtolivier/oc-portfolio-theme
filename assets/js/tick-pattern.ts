@@ -78,6 +78,21 @@ class TickPattern extends HTMLElement {
     /* The observer's first callback, as observing starts, draws the pattern for the first time. */
     this.observer = new ResizeObserver(() => this.draw());
     this.observer.observe(this);
+    this.watchPixelDensity();
+  }
+
+  /* The window moving to a screen of another pixel density changes no size: redraw when the density
+     the pattern was drawn at stops matching, then watch the new one. */
+  private watchPixelDensity(): void {
+    const query = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    query.addEventListener(
+      'change',
+      () => {
+        this.draw();
+        this.watchPixelDensity();
+      },
+      { once: true },
+    );
   }
 
   disconnectedCallback(): void {
