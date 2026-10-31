@@ -15,6 +15,7 @@ import {
   SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF,
   SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF,
   SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT,
+  SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT_WRITTEN_AS_A_DOT,
   SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT,
   SITE_WITH_A_DRAFT_FEATURED_PROJECT,
@@ -1964,6 +1965,30 @@ test.describe('featured project content errors: build failure', () => {
     );
     expect(build.errors, 'the French message should name the entry "/" as written in the front matter').toMatch(
       /\bparamètre\s+projects\b.*(?:^|[\s:«"'‘“(])\/(?=$|[\s»"'’”),.;])/m,
+    );
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose projects list references the home page itself, as ".", makes the site build fail, with a French error message that names the projects parameter and that entry, without a template execution error after it', () => {
+    /* tests/fixtures/dot-self-ref/content/_index.md features 'projets/restauration-pendule', then
+       '.': the current page, that is the home page itself, written another way than '/'. It is no
+       project either: the person building the site must get the same failure as for '/', whose
+       French message names the projects parameter, in the style of the clients messages ("le
+       paramètre clients…"), and the entry as written in the front matter, whatever the rest of the
+       wording, rather than a message that calls that page not found or a section with a card of
+       the home page. The entry, a lone '.', is looked for on the message's line as a token of its
+       own, between spaces, quotes or punctuation other than a dot, so that neither the dots of a
+       file name nor a sentence's full stop pass for it, nor a full stop right after the entry
+       for the entry followed by a full stop. */
+    const build = tryToBuildSite(SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT_WRITTEN_AS_A_DOT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
+    );
+    expect(build.errors, 'the French message should name the entry "." as written in the front matter').toMatch(
+      /\bparamètre\s+projects\b.*(?:^|[\s:«"'‘“(])\.(?=$|[\s»"'’”),;])/m,
     );
     expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
       /execute of template failed|error calling/i,

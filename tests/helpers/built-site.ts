@@ -390,6 +390,11 @@ export const SITE_WITH_UNUSUAL_RENDER_VALUES = testSite('unusual-render-values')
    word projects, which the error-message assertion looks for. */
 export const SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT = testSite('self-ref');
 
+/* Same as SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT, with the home page of
+   tests/fixtures/dot-self-ref/content, whose second entry is '.', the current page, that is the
+   home page itself, rather than '/'. */
+export const SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT_WRITTEN_AS_A_DOT = testSite('dot-self-ref');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
