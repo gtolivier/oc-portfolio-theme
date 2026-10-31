@@ -209,8 +209,9 @@ export const SITE_WITH_CLIENTS_AS_TEXT = testSite('text-instead-of-list');
    names: this site replaces that home page with the one of
    tests/fixtures/map-instead-of-name/content, without a hero, whose
    params.clients is a list, as expected, but whose second entry is a table,
-   { name = 'Maison Delorme' }, instead of a name. Its folder name avoids
-   the word clients, which the error-message assertion looks for. */
+   { name = 'Maison Delorme' }, instead of a name, and so is its fourth,
+   { name = 'Librairie Vasseur' }. Its folder name avoids the word clients,
+   which the error-message assertion looks for. */
 export const SITE_WITH_A_CLIENT_AS_MAP = testSite('map-instead-of-name');
 
 /* The example site's French home page declares its clients as a list of
@@ -324,8 +325,10 @@ export const SITE_WITH_PROJECTS_AS_FALSE = testSite('false-instead-of-list');
    site replaces that home page with the one of tests/fixtures/table-instead-of-ref/content,
    without a hero nor clients, whose params.projects is a list (so the check that projects is a
    list lets it through) of 'projets/restauration-pendule', then a table,
-   { path = 'projets/restauration-pendule' }, instead of a page reference. Its folder name avoids
-   the word projects, which the error-message assertion looks for. */
+   { path = 'projets/restauration-pendule' }, instead of a page reference, then
+   'projets/montre-grande-complication', then another table,
+   { path = 'projets/montre-grande-complication' }. Its folder name avoids the word projects,
+   which the error-message assertion looks for. */
 export const SITE_WITH_A_FEATURED_PROJECT_AS_MAP = testSite('table-instead-of-ref');
 
 /* The example site's French home page features its projects as a list of page references: this
@@ -343,10 +346,10 @@ export const SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF = testSite('whites
 
 /* Same as SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF, with the home page of
    tests/fixtures/padded-ref/content, whose two entries reference existing pages of the example
-   site but with a space Hugo does not trim: a trailing one, 'projets/restauration-pendule ', then
-   a leading one, ' projets/montre-grande-complication'. Its folder name avoids the word space,
-   which the error-message assertion looks for. */
-export const SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_SPACES = testSite('padded-ref');
+   site but with whitespace Hugo does not trim: a trailing space, 'projets/restauration-pendule ',
+   then a leading tab, "\tprojets/montre-grande-complication". Its folder name avoids the word
+   whitespace, which the error-message assertion looks for. */
+export const SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_WHITESPACE = testSite('padded-ref');
 
 /* The example site's home pages feature only projects translated in their own language: this site
    replaces the French home page with the one of tests/fixtures/english-only-project/content,
@@ -421,22 +424,15 @@ export const SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT_WRITTEN_AS_A_DOT = test
 export const SITE_WITH_A_SECTION_AS_FEATURED_PROJECT = testSite('section-ref');
 
 /* The example site disables the taxonomy and term kinds, which the theme itself does not: this
-   site enables them again (tests/fixtures/term-ref/hugo.toml), with Hugo's default tags taxonomy,
-   adds under projets/, in French only, a fictional project, "Pendule étiquetée", that carries the
-   tag 'horlogerie', and replaces the French home page with the one of
-   tests/fixtures/term-ref/content, without a hero nor clients, whose params.projects is a list of
-   texts, as expected, of 'projets/restauration-pendule', then 'tags/horlogerie', a reference to
-   the page of that tag, which exists but is a taxonomy term page, no project. Its folder name
+   site enables them again (tests/fixtures/taxonomy-refs/hugo.toml), with Hugo's default tags
+   taxonomy, adds under projets/, in French only, a fictional project, "Pendule étiquetée", that
+   carries the tag 'horlogerie', and replaces the French home page with the one of
+   tests/fixtures/taxonomy-refs/content, without a hero nor clients, whose params.projects is a
+   list of texts, as expected, of 'projets/restauration-pendule', then 'tags/horlogerie', a
+   reference to the page of that tag, a taxonomy term page, then 'tags', a reference to the page
+   listing every tag, a taxonomy page: both exist, but neither is a project. Its folder name
    avoids the word projects, which the error-message assertion looks for. */
-export const SITE_WITH_A_TERM_AS_FEATURED_PROJECT = testSite('term-ref');
-
-/* Same as SITE_WITH_A_TERM_AS_FEATURED_PROJECT (tags taxonomy enabled again by
-   tests/fixtures/taxonomy-ref/hugo.toml, a French-only fictional project, "Pendule classée", that
-   carries the tag 'horlogerie'), with the French home page of tests/fixtures/taxonomy-ref/content,
-   whose params.projects is 'projets/restauration-pendule', then 'tags', a reference to the page
-   listing every tag, which exists but is a taxonomy page, no project. Its folder name avoids the
-   word projects, which the error-message assertion looks for. */
-export const SITE_WITH_A_TAXONOMY_AS_FEATURED_PROJECT = testSite('taxonomy-ref');
+export const SITE_WITH_TAXONOMY_PAGES_AS_FEATURED_PROJECTS = testSite('taxonomy-refs');
 
 /* The example site's French home page features only project pages: this site replaces that home
    page with the one of tests/fixtures/error-page-ref/content, without a hero nor clients, whose

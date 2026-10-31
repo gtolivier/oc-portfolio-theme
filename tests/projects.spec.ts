@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import {
   EXAMPLE_SITE_UNDER_PORTFOLIO,
+  type BuildAttempt,
   SITE_WITHOUT_HERO,
   SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND,
   SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT,
@@ -17,12 +18,11 @@ import {
   SITE_WITH_A_FEATURED_PROJECT_AS_MAP,
   SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF,
   SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF,
-  SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_SPACES,
+  SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_WHITESPACE,
   SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT,
   SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT_WRITTEN_AS_A_DOT,
   SITE_WITH_A_SECTION_AS_FEATURED_PROJECT,
-  SITE_WITH_A_TERM_AS_FEATURED_PROJECT,
-  SITE_WITH_A_TAXONOMY_AS_FEATURED_PROJECT,
+  SITE_WITH_TAXONOMY_PAGES_AS_FEATURED_PROJECTS,
   SITE_WITH_THE_404_PAGE_AS_FEATURED_PROJECT,
   SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT,
@@ -1245,7 +1245,7 @@ test.describe('home page of another site, featuring other projects', () => {
     ]);
   });
 
-  test('a featured project whose page declares only a title and a description gets a card with just those: no empty slot for the role, years or stack, no stray separator', async ({ page }) => {
+  test('a featured project whose page declares only a title and a description gets a card with just those: no empty slot for the role or stack, no stray separator', async ({ page }) => {
     const section = projectsSection(page);
     /* tests/fixtures/other-projects/content/projets/barometre-mercure.md declares no [params]. */
     const title = 'Baromètre à mercure';
@@ -1254,8 +1254,7 @@ test.describe('home page of another site, featuring other projects', () => {
     await expect(card).toHaveCount(1);
     await expect(card.getByText(description, { exact: true })).toHaveRole('paragraph');
     /* Outside links (the link to the project's page has its own text), the title and the
-       description are all the card shows: no role, years or stack text, no separator left
-       alone… */
+       description are all the card shows: no role or stack text, no separator left alone… */
     const textOutsideLinks = () =>
       card.evaluate((article) => {
         const copy = article.cloneNode(true) as HTMLElement;
@@ -1359,8 +1358,8 @@ test.describe('home page of another site, featuring projects whose page declares
     await serveSite(context, SITE_WITH_UNUSUAL_RENDER_VALUES, siteDirectory);
     /* In tests/fixtures/unusual-render-values/content/projets/, horloge-a-poids.md declares
        [build] render = 'Always' and pendulette-officier.md [build] render = 'nevr': Hugo reads the
-       value case-insensitively and treats a value it does not recognise as 'always', so that both
-       pages are published. */
+       value case-sensitively, so that 'Always' and 'nevr' are both values it does not recognise,
+       which it treats as 'always' (as for render = 'false', below): both pages are published. */
     const projects = [
       { title: 'Horloge à poids', slug: 'horloge-a-poids' },
       { title: 'Pendulette d’officier', slug: 'pendulette-officier' },
@@ -1706,6 +1705,21 @@ test.describe('home page of another site, featuring a project with long words', 
   });
 });
 
+/* The three checks every featured project content error shares: the build fails, its message
+   names the projects parameter, in the style of the clients messages, which name the clients
+   parameter, and no Go template execution error follows it and buries it in technical jargon.
+   The context, if any, starts each assertion message ("with an empty reference"). */
+function expectProjectsBuildError(build: BuildAttempt, context = ''): void {
+  const prefix = context ? `${context}, ` : '';
+  expect(build.succeeded, `${prefix}the site build should fail`).toBe(false);
+  expect(build.errors, `${prefix}the error message should name the projects parameter`).toMatch(
+    /\bprojects\s+parameter\b/,
+  );
+  expect(build.errors, `${prefix}no template execution error should follow the error message`).not.toMatch(
+    /execute of template failed|error calling/i,
+  );
+}
+
 test.describe('featured project content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
@@ -1718,90 +1732,73 @@ test.describe('featured project content errors: build failure', () => {
        front matter, whatever the rest of the wording, and no Go template execution error that
        would follow it and bury it in technical jargon. */
     const build = tryToBuildSite(SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
+    expectProjectsBuildError(build);
     expect(build.errors, 'the error message should name the missing page reference').toContain(
       'projets/sablier-introuvable',
     );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
-    );
   });
 
-  test('a home page whose projects parameter is a text instead of a list makes the site build fail, with an error message that names the projects parameter, without a template execution error after it', () => {
+  test('a home page whose projects parameter is a text instead of a list makes the site build fail, with an error message that names the projects parameter and says it must be a list, without a template execution error after it', () => {
     /* tests/fixtures/single-ref-instead-of-list/content/_index.md declares
        projects = 'projets/restauration-pendule', a text rather than a list of page references,
        although that page exists. Rather than a section built from that text, or a build that
        quietly treats it as a list of one, the person building the site must get a failure whose
        message names the projects parameter, in the style of the clients messages, which name the
-       clients parameter, whatever the rest of the wording, and no Go template execution error,
-       about a range over a text, that would follow it and bury it in technical jargon. */
+       clients parameter, and says, on that same line, that it must be a list, whatever the rest
+       of the wording, and no Go template execution error, about a range over a text, that would
+       follow it and bury it in technical jargon. */
     const build = tryToBuildSite(SITE_WITH_PROJECTS_AS_TEXT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+    expectProjectsBuildError(build);
+    expect(build.errors, 'the error message should say the projects parameter must be a list').toMatch(
+      /\bprojects\s+parameter\b.*\blist\b/,
     );
   });
 
-  test('a home page whose projects parameter is an empty text instead of a list makes the site build fail, with an error message that names the projects parameter, without a template execution error after it', () => {
+  test('a home page whose projects parameter is an empty text instead of a list makes the site build fail, with an error message that names the projects parameter and says it must be a list, without a template execution error after it', () => {
     /* tests/fixtures/empty-text-instead-of-list/content/_index.md declares projects = '', an
        empty text rather than a list of page references. Rather than a home page that quietly
        leaves out the projects section, as if the parameter were absent, the person building the
        site must get a failure whose message names the projects parameter, in the style of the
-       clients messages, which name the clients parameter, whatever the rest of the wording, and
-       no Go template execution error that would follow it and bury it in technical jargon. */
+       clients messages, which name the clients parameter, and says, on that same line, that it
+       must be a list, whatever the rest of the wording, and no Go template execution error that
+       would follow it and bury it in technical jargon. */
     const build = tryToBuildSite(SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+    expectProjectsBuildError(build);
+    expect(build.errors, 'the error message should say the projects parameter must be a list').toMatch(
+      /\bprojects\s+parameter\b.*\blist\b/,
     );
   });
 
-  test('a home page whose projects parameter is false instead of a list makes the site build fail, with an error message that names the projects parameter, without a template execution error after it', () => {
+  test('a home page whose projects parameter is false instead of a list makes the site build fail, with an error message that names the projects parameter and says it must be a list, without a template execution error after it', () => {
     /* tests/fixtures/false-instead-of-list/content/_index.md declares projects = false, a
        boolean rather than a list of page references. Rather than a home page that quietly
        leaves out the projects section, as if the parameter were absent, the person building the
        site must get a failure whose message names the projects parameter, in the style of the
-       clients messages, which name the clients parameter, whatever the rest of the wording, and
-       no Go template execution error that would follow it and bury it in technical jargon. */
+       clients messages, which name the clients parameter, and says, on that same line, that it
+       must be a list, whatever the rest of the wording, and no Go template execution error that
+       would follow it and bury it in technical jargon. */
     const build = tryToBuildSite(SITE_WITH_PROJECTS_AS_FALSE);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+    expectProjectsBuildError(build);
+    expect(build.errors, 'the error message should say the projects parameter must be a list').toMatch(
+      /\bprojects\s+parameter\b.*\blist\b/,
     );
   });
 
-  test('a home page whose projects list holds a table instead of a page reference makes the site build fail, with an error message that names the projects parameter and the position of the table, without a template execution error after it', () => {
+  test('a home page whose projects list holds tables instead of page references makes the site build fail, with an error message that names the projects parameter and the position of each table, without a template execution error after it', () => {
     /* tests/fixtures/table-instead-of-ref/content/_index.md declares projects as a list (so the
        check that projects is a list lets it through) whose second entry is a table,
        { path = 'projets/restauration-pendule' }, rather than a page reference, although that page
-       exists. Rather than a section that looks that table up as a page, the person building the
+       exists, and so is its fourth, { path = 'projets/montre-grande-complication' }. Rather than a section that looks that table up as a page, the person building the
        site must get a failure whose message names the projects parameter, in the style of the
        clients messages, which name the clients parameter, whatever the rest of the wording, and
        no Go template execution error, about a function called with a table, that would follow it
-       and bury it in technical jargon. The message also gives the table's position in the list,
-       counted from 1, "entry 2", as the clients messages do, so that whoever fills in the content
-       finds it. */
+       and bury it in technical jargon. The message also gives each table's position in the list,
+       counted from 1, "entry 2" and "entry 4", as the clients messages do, so that whoever fills
+       in the content finds them. Two tables, so that a hard-coded position does not pass. */
     const build = tryToBuildSite(SITE_WITH_A_FEATURED_PROJECT_AS_MAP);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
-    );
-    expect(build.errors, 'the error message should give the position of the table').toMatch(/\bentry\s+2\b/);
+    expectProjectsBuildError(build);
+    expect(build.errors, 'the error message should give the position of the first table').toMatch(/\bentry\s+2\b/);
+    expect(build.errors, 'the error message should give the position of the second table').toMatch(/\bentry\s+4\b/);
   });
 
   test('a home page whose projects list holds an empty or whitespace-only page reference makes the site build fail, with an error message that names the projects parameter and the position of the blank entry, without a template execution error after it', () => {
@@ -1829,39 +1826,33 @@ test.describe('featured project content errors: build failure', () => {
     ];
     for (const { name, site, position } of cases) {
       const build = tryToBuildSite(site);
-      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
-      expect(build.errors, `with ${name}, the error message should name the projects parameter`).toMatch(
-        /\bprojects\s+parameter\b/,
-      );
-      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
-        /execute of template failed|error calling/i,
-      );
+      expectProjectsBuildError(build, `with ${name}`);
       expect(build.errors, `with ${name}, the error message should give the position of the blank entry`).toMatch(
         position,
       );
     }
   });
 
-  test('a home page whose projects list holds a page reference with a leading or trailing space makes the site build fail, with an error message, for each such reference, that names the projects parameter and that reference and says it has a space', () => {
+  test('a home page whose projects list holds a page reference with leading or trailing whitespace makes the site build fail, with an error message, for each such reference, that names the projects parameter and that reference and says it has whitespace', () => {
     /* tests/fixtures/padded-ref/content/_index.md features 'projets/restauration-pendule ', with
-       a trailing space, then ' projets/montre-grande-complication', with a leading one: both
-       pages exist, but Hugo does not trim the space, so that it finds neither. A message that
-       only says the page cannot be found would show the person building the site a reference that
-       looks right, the space being invisible in it: the message must also say that the reference
-       has a space (space, whitespace…), on the same line as the projects parameter and that
-       reference, whatever the rest of the wording. Both a trailing and a leading space, so that
-       checking only one end does not pass. */
-    const build = tryToBuildSite(SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_SPACES);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
+       a trailing space, then "\tprojets/montre-grande-complication", with a leading tab: both
+       pages exist, but Hugo does not trim the whitespace, so that it finds neither. A message
+       that only says the page cannot be found would show the person building the site a
+       reference that looks right, the whitespace being invisible in it: the message must also
+       say that the reference has whitespace, on the same line as the projects parameter and that
+       reference, whatever the rest of the wording. A trailing space and a leading tab, so that
+       checking only one end, or only the space character, does not pass. */
+    const build = tryToBuildSite(SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_WHITESPACE);
+    expectProjectsBuildError(build);
     for (const { name, reference } of [
       { name: 'a trailing space', reference: 'projets/restauration-pendule' },
-      { name: 'a leading space', reference: 'projets/montre-grande-complication' },
+      { name: 'a leading tab', reference: 'projets/montre-grande-complication' },
     ]) {
       expect(
         build.errors,
-        `for the reference with ${name}, the error message should name the projects parameter and that reference and say it has a space`,
+        `for the reference with ${name}, the error message should name the projects parameter and that reference and say it has whitespace`,
       ).toMatch(
-        new RegExp(`^(?=.*\\bprojects\\s+parameter\\b)(?=.*${reference})(?=.*\\b(?:white)?spaces?\\b).*$`, 'im'),
+        new RegExp(`^(?=.*\\bprojects\\s+parameter\\b)(?=.*${reference})(?=.*\\bwhitespace\\b).*$`, 'im'),
       );
     }
   });
@@ -1877,15 +1868,9 @@ test.describe('featured project content errors: build failure', () => {
        The entry, a lone '/', is looked for on the message's line as a token of its own, between
        spaces, quotes or punctuation, so that the slashes of a file path do not pass for it. */
     const build = tryToBuildSite(SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
+    expectProjectsBuildError(build);
     expect(build.errors, 'the error message should name the entry "/" as written in the front matter').toMatch(
       /\bprojects\s+parameter\b.*(?:^|[\s:«"'‘“(])\/(?=$|[\s»"'’”),.;])/m,
-    );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
     );
   });
 
@@ -1901,15 +1886,9 @@ test.describe('featured project content errors: build failure', () => {
        file name nor a sentence's full stop pass for it, nor a full stop right after the entry
        for the entry followed by a full stop. */
     const build = tryToBuildSite(SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT_WRITTEN_AS_A_DOT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
+    expectProjectsBuildError(build);
     expect(build.errors, 'the error message should name the entry "." as written in the front matter').toMatch(
       /\bprojects\s+parameter\b.*(?:^|[\s:«"'‘“(])\.(?=$|[\s»"'’”),;])/m,
-    );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
     );
   });
 
@@ -1926,24 +1905,18 @@ test.describe('featured project content errors: build failure', () => {
        file path or another page reference under projets/ does not pass for it; "not a project"
        is looked for on that same line. */
     const build = tryToBuildSite(SITE_WITH_A_SECTION_AS_FEATURED_PROJECT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
+    expectProjectsBuildError(build);
     expect(build.errors, 'the error message should name the entry "projets" as written in the front matter').toMatch(
       /\bprojects\s+parameter\b.*(?:^|[\s:«"'‘“(])projets(?=$|[\s»"'’”),.;])/m,
     );
     expect(build.errors, 'the error message should say that entry is not a project').toMatch(
       /\bprojects\s+parameter\b.*\bnot\s+a\s+project\b/im,
     );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
-    );
   });
 
   test('a home page whose projects list references a taxonomy term page, such as "tags/horlogerie", the page of a tag a project carries, makes the site build fail, with an error message that names the projects parameter and that entry and says it is not a project, without a template execution error after it', () => {
-    /* tests/fixtures/term-ref enables the tags taxonomy, which the example site disables, adds a
-       project that carries the tag 'horlogerie', and its content/_index.md features
+    /* tests/fixtures/taxonomy-refs enables the tags taxonomy, which the example site disables,
+       adds a project that carries the tag 'horlogerie', and its content/_index.md features
        'projets/restauration-pendule', then 'tags/horlogerie': the page of that tag, which exists,
        so that the check for a page not found lets it through, and is neither the home page nor a
        section page, so that those checks let it through too, but is a taxonomy term page, no
@@ -1953,49 +1926,38 @@ test.describe('featured project content errors: build failure', () => {
        says that it is "not a project", whatever the rest of the wording. The entry,
        'tags/horlogerie', is looked for on the message's line as a token of its own, between
        spaces, quotes or punctuation other than a slash, so that a longer path ending or starting
-       with it does not pass for it; "not a project" is looked for on that same line. */
-    const build = tryToBuildSite(SITE_WITH_A_TERM_AS_FEATURED_PROJECT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
-    expect(build.errors, 'the error message should name the entry "tags/horlogerie" as written in the front matter').toMatch(
-      /\bprojects\s+parameter\b.*(?:^|[\s:«"'‘“(])tags\/horlogerie(?=$|[\s»"'’”),.;])/m,
-    );
-    expect(build.errors, 'the error message should say that entry is not a project').toMatch(
-      /\bprojects\s+parameter\b.*\bnot\s+a\s+project\b/im,
-    );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+       with it does not pass for it; "not a project" is looked for on that same line. The same
+       site also features 'tags', which the next test checks: since its own message says "not a
+       project" too, both are looked for on the line that names this entry. */
+    const build = tryToBuildSite(SITE_WITH_TAXONOMY_PAGES_AS_FEATURED_PROJECTS);
+    expectProjectsBuildError(build);
+    expect(
+      build.errors,
+      'the error message should name the entry "tags/horlogerie" as written in the front matter and say it is not a project',
+    ).toMatch(
+      /^(?=.*\bprojects\s+parameter\b)(?=.*(?:^|[\s:«"'‘“(])tags\/horlogerie(?=$|[\s»"'’”),.;]))(?=.*\bnot\s+a\s+project\b).*$/im,
     );
   });
 
   test('a home page whose projects list references a taxonomy page, such as "tags", the page listing every tag, makes the site build fail, with an error message that names the projects parameter and that entry and says it is not a project, without a template execution error after it', () => {
-    /* tests/fixtures/taxonomy-ref enables the tags taxonomy, which the example site disables,
-       adds a project that carries the tag 'horlogerie', and its content/_index.md features
-       'projets/restauration-pendule', then 'tags': the page listing every tag, which exists, so
-       that the check for a page not found lets it through, and is neither the home page, nor a
-       section page, nor a tag's own page, so that those checks let it through too, but is a
-       taxonomy page, no project. Rather than a section with a card of that page, the person
-       building the site must get a failure whose message names the projects parameter, in the
-       style of the clients messages, which name the clients parameter, the entry as written in
-       the front matter, and says that it is "not a project", whatever the rest of the wording.
-       The entry, 'tags', is looked for on the message's line as a token of its own, between
-       spaces, quotes or punctuation other than a slash, so that a path such as 'tags/horlogerie'
-       does not pass for it; "not a project" is looked for on that same line. */
-    const build = tryToBuildSite(SITE_WITH_A_TAXONOMY_AS_FEATURED_PROJECT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
-    expect(build.errors, 'the error message should name the entry "tags" as written in the front matter').toMatch(
-      /\bprojects\s+parameter\b.*(?:^|[\s:«"'‘“(])tags(?=$|[\s»"'’”),.;])/m,
-    );
-    expect(build.errors, 'the error message should say that entry is not a project').toMatch(
-      /\bprojects\s+parameter\b.*\bnot\s+a\s+project\b/im,
-    );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+    /* Same site as the test above, whose content/_index.md also features, third, 'tags': the
+       page listing every tag, which exists, so that the check for a page not found lets it
+       through, and is neither the home page, nor a section page, nor a tag's own page, so that
+       those checks let it through too, but is a taxonomy page, no project. Rather than a section
+       with a card of that page, the person building the site must get a failure whose message
+       names the projects parameter, in the style of the clients messages, which name the clients
+       parameter, the entry as written in the front matter, and says that it is "not a project",
+       whatever the rest of the wording. The entry, 'tags', is looked for on the message's line as
+       a token of its own, between spaces, quotes or punctuation other than a slash, so that a
+       path such as 'tags/horlogerie' does not pass for it; "not a project" is looked for on that
+       same line, not on the line of 'tags/horlogerie'. */
+    const build = tryToBuildSite(SITE_WITH_TAXONOMY_PAGES_AS_FEATURED_PROJECTS);
+    expectProjectsBuildError(build);
+    expect(
+      build.errors,
+      'the error message should name the entry "tags" as written in the front matter and say it is not a project',
+    ).toMatch(
+      /^(?=.*\bprojects\s+parameter\b)(?=.*(?:^|[\s:«"'‘“(])tags(?=$|[\s»"'’”),.;]))(?=.*\bnot\s+a\s+project\b).*$/im,
     );
   });
 
@@ -2012,18 +1974,12 @@ test.describe('featured project content errors: build failure', () => {
        punctuation other than a slash, so that a longer path ending or starting with it does not
        pass for it; "not a project" is looked for on that same line. */
     const build = tryToBuildSite(SITE_WITH_THE_404_PAGE_AS_FEATURED_PROJECT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
+    expectProjectsBuildError(build);
     expect(build.errors, 'the error message should name the entry "/404" as written in the front matter').toMatch(
       /\bprojects\s+parameter\b.*(?:^|[\s:«"'‘“(])\/404(?=$|[\s»"'’”),.;])/m,
     );
     expect(build.errors, 'the error message should say that entry is not a project').toMatch(
       /\bprojects\s+parameter\b.*\bnot\s+a\s+project\b/im,
-    );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
     );
   });
 
@@ -2042,7 +1998,7 @@ test.describe('featured project content errors: build failure', () => {
     },
   ];
 
-  test('a home page that features a project without a translation in its language makes the site build fail, with an error message that names the projects parameter and that language, without a template execution error after it', () => {
+  test('a home page that features a project without a translation in its language makes the site build fail, with an error message that names the projects parameter and that language and gives a missing translation in that language as a possible cause, without a template execution error after it', () => {
     /* tests/fixtures/english-only-project features, on the French home page, a project that only
        has an English page; tests/fixtures/french-only-project features, on the English home page,
        a project that only has a French page. Rather than a section that drops that card, or one
@@ -2051,37 +2007,21 @@ test.describe('featured project content errors: build failure', () => {
        clients messages, which name the clients parameter, and the home page's language by its
        code, as written in the site's configuration and in the content file names (fr, en),
        whatever the rest of the wording, and no Go template execution error that would follow it
-       and bury it in technical jargon. The code is looked for as a word that no other word
-       follows, so that the letters "en" or "fr" met as a word inside the message's prose, followed
-       by more of the sentence, do not pass for the code. Both directions, so that a message naming
-       a language written in the template does not pass. */
+       and bury it in technical jargon.
+       A message that only says the page cannot be found, or only blames an unpublished page (a
+       draft, a future date, an expired page), would send the person building the site looking
+       for a missing or unpublished file, while the project's file is right there, in the other
+       language: the message must also name a missing translation (translation, translated…) as a
+       possible cause, on the same line as the language code. The code is looked for as a word
+       that no other word follows, so that the letters "en" or "fr" met as a word inside the
+       message's prose, followed by more of the sentence, do not pass for the code. Both
+       directions, so that a message naming a language written in the template does not pass. */
     for (const { name, site, language } of HOME_PAGES_FEATURING_AN_UNTRANSLATED_PROJECT) {
       const build = tryToBuildSite(site);
-      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
-      expect(build.errors, `with ${name}, the error message should name the projects parameter`).toMatch(
-        /\bprojects\s+parameter\b/,
-      );
+      expectProjectsBuildError(build, `with ${name}`);
       expect(build.errors, `with ${name}, the error message should name the home page's language`).toMatch(
         new RegExp(`\\b${language}\\b(?!\\s+\\p{L})`, 'u'),
       );
-      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
-        /execute of template failed|error calling/i,
-      );
-    }
-  });
-
-  test('a home page that features a project without a translation in its language makes the site build fail, with an error message that gives a missing translation in that language as a possible cause', () => {
-    /* Same fixtures as the test above. A message that only says the page cannot be found, or only
-       blames an unpublished page (a draft, a future date, an expired page), would send the person
-       building the site looking for a missing or unpublished file, while the project's file is
-       right there, in the other language: the error message must also name a missing translation
-       (translation, translated…) as a possible cause, on the same line as the home page's language
-       code (fr, en), whatever the rest of the wording. The code is looked for as in the test
-       above, as a word that no other word follows. Both directions, so that a message naming a
-       language written in the template does not pass. */
-    for (const { name, site, language } of HOME_PAGES_FEATURING_AN_UNTRANSLATED_PROJECT) {
-      const build = tryToBuildSite(site);
-      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
       expect(
         build.errors,
         `with ${name}, the error message should give a missing translation in ${language} as a possible cause`,
@@ -2100,10 +2040,7 @@ test.describe('featured project content errors: build failure', () => {
        passed (expired) — whatever the rest of the wording, and no Go template execution error
        must follow it and bury it in technical jargon. */
     const build = tryToBuildSite(SITE_WITH_A_DRAFT_FEATURED_PROJECT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
+    expectProjectsBuildError(build);
     expect(build.errors, 'the error message should name the unpublished page reference').toContain(
       'projets/pendule-portique',
     );
@@ -2113,8 +2050,5 @@ test.describe('featured project content errors: build failure', () => {
       /future|scheduled/i,
     );
     expect(build.errors, 'the error message should name an expired page as a possible reason').toMatch(/expir/i);
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
-    );
   });
 });
