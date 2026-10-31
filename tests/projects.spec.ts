@@ -120,6 +120,10 @@ const FEATURED_PROJECTS_IN_ENGLISH = [
 const PHONE = { width: 390, height: 844 };
 const WIDE_WINDOW = { width: 1280, height: 800 };
 
+/* The section's links come after every focusable element above the section: a keyboard visitor
+   needs more tabs to reach them than tabUntilFocused allows by default. */
+const TABS_TO_REACH_THE_PROJECTS_LINKS = 60;
+
 /* The section "Projets sélectionnés" of the page's main content. */
 function projectsSection(page: Page): Locator {
   return page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
@@ -569,11 +573,9 @@ test('on the French home page, the "Voir le détail" link of each card stays rea
     await page.mouse.move(0, 0);
   }
 
-  /* A keyboard visitor tabs from one link to the next. The cards' links come after every
-     focusable element above the section: more tabs than tabUntilFocused allows by default. */
-  const MAX_TABS = 60;
+  /* A keyboard visitor tabs from one link to the next. */
   for (const [index, link] of links.entries()) {
-    await tabUntilFocused(link, browserName, MAX_TABS);
+    await tabUntilFocused(link, browserName, TABS_TO_REACH_THE_PROJECTS_LINKS);
     expect(await link.evaluate((el) => el.matches(':focus-visible')), `${cardName(index)}: its link shows the keyboard focus`).toBe(true);
     await expectReadable(link, 'while focused by keyboard', index);
   }
@@ -613,7 +615,7 @@ test('on the French home page, the "Tous les projets" link and the "Voir le dét
   const underlineOf = async (link: Locator): Promise<Underline | null> => {
     const lines = await link.evaluate((el) => {
       const style = getComputedStyle(el);
-      const drawn: { width: number; color: string }[] = [];
+      const drawn: Underline[] = [];
       if (!['none', 'hidden'].includes(style.borderBottomStyle)) drawn.push({ width: parseFloat(style.borderBottomWidth), color: style.borderBottomColor });
       if (style.textDecorationLine.includes('underline')) drawn.push({ width: parseFloat(style.textDecorationThickness), color: style.textDecorationColor || style.color });
       return drawn;
@@ -663,11 +665,9 @@ test('on the French home page, the "Tous les projets" link and the "Voir le dét
     await page.mouse.move(0, 0);
   }
 
-  /* A keyboard visitor tabs from one link to the next. The links come after every focusable
-     element above the section: more tabs than tabUntilFocused allows by default. */
-  const MAX_TABS = 60;
+  /* A keyboard visitor tabs from one link to the next. */
   for (const [index, { name, link }] of links.entries()) {
-    await tabUntilFocused(link, browserName, MAX_TABS);
+    await tabUntilFocused(link, browserName, TABS_TO_REACH_THE_PROJECTS_LINKS);
     expect(await link.evaluate((el) => el.matches(':focus-visible')), `${name}: it shows the keyboard focus`).toBe(true);
     await expectHighlighted(index, 'while focused by keyboard');
   }
