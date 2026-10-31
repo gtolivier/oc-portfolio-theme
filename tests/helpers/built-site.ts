@@ -380,6 +380,14 @@ export const SITE_WITH_LONG_PROJECT_WORDS = testSite('long-project-words');
    than a phone-sized card. */
 export const SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS = testSite('long-project-title-without-years');
 
+/* The example site's featured projects declare short years, such as '2019 – 2020': this site
+   replaces the French home page with the one of tests/fixtures/long-project-title-words/content,
+   without a hero nor clients, which features the example site's 'projets/restauration-pendule',
+   then "Restauration horlogère contemporaine", a fictional project added under projets/ in French
+   only, whose title is made of long words, each narrower than a phone-sized card's text, and
+   whose page declares long years, '2019 — aujourd’hui'. */
+export const SITE_WITH_LONG_PROJECT_TITLE_WORDS = testSite('long-project-title-words');
+
 /* The example site's featured projects set no [build] options: this site replaces the French home
    page with the one of tests/fixtures/unusual-render-values/content, without a hero nor clients,
    which features "Horloge à poids", "Pendulette d’officier", "Montre de gousset" and "Carillon de

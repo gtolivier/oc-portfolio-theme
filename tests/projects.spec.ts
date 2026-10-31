@@ -24,6 +24,7 @@ import {
   SITE_WITH_LONG_PROJECT_YEARS,
   SITE_WITH_LONG_PROJECT_WORDS,
   SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS,
+  SITE_WITH_LONG_PROJECT_TITLE_WORDS,
   SITE_WITH_UNUSUAL_RENDER_VALUES,
   buildSite,
   removeDirectory,
@@ -1859,6 +1860,53 @@ test.describe('home page of another site, featuring a project with a long title 
       titleRight,
       `right edge of the title's widest line, against the right end of the card's text (${textRight.toFixed(1)} px), less one character of the title (${titleCharacterWidth.toFixed(1)} px)`,
     ).toBeGreaterThan(textRight - titleCharacterWidth);
+  });
+});
+
+test.describe('home page of another site, featuring a project with a title of long words and long years', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_LONG_PROJECT_TITLE_WORDS);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a phone, the card of a featured project whose years are long keeps each long word of its title whole, on one line, rather than breaking it inside the word', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_LONG_PROJECT_TITLE_WORDS, siteDirectory);
+    await page.setViewportSize(PHONE);
+    await page.goto(`${SITE_WITH_LONG_PROJECT_TITLE_WORDS.origin}/fr/`);
+    await page.evaluate(() => document.fonts.ready);
+    /* tests/fixtures/long-project-title-words/content/projets/restauration-horlogere.md declares
+       long years and a title made of long words, each narrower than the card's text. */
+    const title = 'Restauration horlogère contemporaine';
+    const years = '2019 — aujourd’hui';
+    const card = cardTitled(projectsSection(page), title);
+    await expect(card).toHaveCount(1);
+    await expect(card.getByText(years, { exact: true })).toBeVisible();
+    const heading = card.getByRole('heading', { level: 3, name: title, exact: true });
+    /* For each word of the title, the top of the line each of its characters is laid out on: a
+       word kept whole has all its characters on one line. */
+    const wordLineTops = await heading.evaluate((element) => {
+      const text = element.firstChild as Text;
+      const words: { word: string; tops: number[] }[] = [];
+      for (const match of (text.textContent ?? '').matchAll(/\S+/g)) {
+        const tops: number[] = [];
+        for (let offset = match.index; offset < match.index + match[0].length; offset++) {
+          const range = document.createRange();
+          range.setStart(text, offset);
+          range.setEnd(text, offset + 1);
+          const rect = range.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) tops.push(Math.round(rect.top));
+        }
+        words.push({ word: match[0], tops });
+      }
+      return words;
+    });
+    expect(wordLineTops.map(({ word }) => word), 'words of the title').toEqual(title.split(' '));
+    for (const { word, tops } of wordLineTops) {
+      expect.soft(new Set(tops).size, `lines the word "${word}" of the title is laid out on`).toBe(1);
+    }
   });
 });
 
