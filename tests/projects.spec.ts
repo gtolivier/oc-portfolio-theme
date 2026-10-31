@@ -14,6 +14,7 @@ import {
   SITE_WITH_A_FEATURED_PROJECT_AS_MAP,
   SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF,
   SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF,
+  SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT,
   SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT,
   SITE_WITH_A_DRAFT_FEATURED_PROJECT,
@@ -1944,6 +1945,29 @@ test.describe('featured project content errors: build failure', () => {
         /execute of template failed|error calling/i,
       );
     }
+  });
+
+  test('a home page whose projects list references the home page itself, as "/", makes the site build fail, with a French error message that names the projects parameter and that entry, without a template execution error after it', () => {
+    /* tests/fixtures/self-ref/content/_index.md features 'projets/restauration-pendule', then '/':
+       a reference to the home page itself, which exists, so that the check for a page not found
+       lets it through, but is no project. Rather than a section with a card of the home page, or
+       the Go template execution error today's template raises when it looks up the parent of the
+       home page, which has none, the person building the site must get a failure whose French
+       message names the projects parameter, in the style of the clients messages ("le paramètre
+       clients…"), and the entry as written in the front matter, whatever the rest of the wording.
+       The entry, a lone '/', is looked for on the message's line as a token of its own, between
+       spaces, quotes or punctuation, so that the slashes of a file path do not pass for it. */
+    const build = tryToBuildSite(SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
+    );
+    expect(build.errors, 'the French message should name the entry "/" as written in the front matter').toMatch(
+      /\bparamètre\s+projects\b.*(?:^|[\s:«"'‘“(])\/(?=$|[\s»"'’”),.;])/m,
+    );
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
   });
 
   test('a home page that features a project without a translation in its language makes the site build fail, with a French error message that names the projects parameter and that language, without a template execution error after it', () => {
