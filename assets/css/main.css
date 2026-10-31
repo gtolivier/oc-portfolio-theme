@@ -946,6 +946,17 @@ tick-field > canvas {
   font-weight: 600;
 }
 
+/* With years, the title column keeps the width of its longest word, so the
+   years give way before a word of the title is broken ("anywhere" would
+   leave that minimum at one character). */
+.project-card:has(> .project-years) {
+  grid-template-columns: minmax(min-content, 1fr) fit-content(calc(60% + var(--project-years-gap)));
+}
+
+.project-card:has(> .project-years) > h3 {
+  overflow-wrap: break-word;
+}
+
 /* A margin rather than a column gap, which would stay without years. */
 .project-card > .project-years {
   grid-column: 2;
