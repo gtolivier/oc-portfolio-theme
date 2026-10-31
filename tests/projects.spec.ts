@@ -1278,6 +1278,9 @@ test('on the French home page, with JavaScript, after the window moves to a scre
   /* What it shows once redrawn, within this share of its drawn pixels: the old drawing stretched
      to the new density smears the edges of every tick. */
   const MAX_SHARE_CHANGED = 0.02;
+  /* Time left after the move, once the page is rendered on the new screen: the redraw waits for
+     nothing else. */
+  const DELAY_AFTER_MOVE = 100;
   await page.goto('/fr/');
   const cards = await cardsOnceLoaded(page);
   const viewport = page.viewportSize();
@@ -1307,8 +1310,7 @@ test('on the French home page, with JavaScript, after the window moves to a scre
           observer.observe(element);
         }),
     );
-    /* Then 100 ms. */
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(DELAY_AFTER_MOVE);
   };
   /* A screenshot of a card at the new screen's density, taken through the same protocol:
      Playwright's own screenshot would bring back the density it emulates. Its clip is rounded
@@ -1358,7 +1360,7 @@ test('on the French home page, with JavaScript, after the window moves to a scre
     const changedPixels = columns.reduce((sum, count) => sum + count, 0);
     expect.soft(
       changedPixels,
-      `${where}: pixels of its ${Math.round(box.width)}px-wide tick pattern, 100 ms after the window moved from a density of ${oldDensity} to ${newDensity}, that differ from the tick pattern redrawn at that density, which shows ${drawnPixels} drawn pixels`,
+      `${where}: pixels of its ${Math.round(box.width)}px-wide tick pattern, ${DELAY_AFTER_MOVE} ms after the window moved from a density of ${oldDensity} to ${newDensity}, that differ from the tick pattern redrawn at that density, which shows ${drawnPixels} drawn pixels`,
     ).toBeLessThanOrEqual(MAX_SHARE_CHANGED * drawnPixels);
   }
 });
