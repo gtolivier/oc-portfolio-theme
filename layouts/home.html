@@ -60,7 +60,7 @@
   {{- /* errorf does not stop the template: after an error, only the bad entry is skipped (a list that is not one counts as empty), and the section is left out when no featured page is left, so that no template execution error buries the French message. */}}
   {{- if and (isset .Params "projects") (not (reflect.IsSlice $featured)) }}{{ errorf "projects : le paramètre projects de la page d’accueil doit être une liste de pages" }}{{ $featured = slice }}{{ end }}
   {{- /* The kinds of page an entry may reference that are no project, each with the words the error uses for it. */}}
-  {{- $nonProjectKinds := dict "home" "la page d’accueil elle-même" "section" "une page de section" "term" "une page d’étiquette" "taxonomy" "une page de taxonomie" }}
+  {{- $nonProjectKinds := dict "home" "la page d’accueil elle-même" "section" "une page de section" "term" "une page d’étiquette" "taxonomy" "une page de taxonomie" "404" "la page d’erreur 404" }}
   {{- /* Each entry is checked and its page looked up once, for both the all-projects link and the cards: only the project pages are kept. */}}
   {{- $projects := slice }}
   {{- range $entry := $featured }}
