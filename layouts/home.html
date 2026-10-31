@@ -68,7 +68,11 @@
     {{- range first 1 $projects }}
     {{- with .Parent }}
     {{- /* A project at the content root has the home page as its parent: no section to open. */}}
-    {{- if not .IsHome }}
+    {{- /* A section whose [build] render keeps it from being published (alone or through its cascade) has no address to open. */}}
+    {{- $sectionBuild := .Params.build | default dict }}
+    {{- $sectionRender := "always" }}
+    {{- if isset $sectionBuild "render" }}{{ $sectionRender = printf "%v" $sectionBuild.render }}{{ end }}
+    {{- if and (not .IsHome) (in (slice "always" "true") $sectionRender) }}
     <a class="all-projects-link" href="{{ .RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
     {{- end }}
     {{- end }}
