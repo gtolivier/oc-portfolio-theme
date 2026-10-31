@@ -7,8 +7,9 @@
 {{- range $index, $entry := $featured }}
 {{- $entryNumber := add $index 1 }}
 {{- if ne (printf "%T" $entry) "string" }}{{ errorf "projects: entry %d of the home page's projects parameter must be a page reference" $entryNumber }}{{ continue }}{{ end }}
-{{- if eq (strings.TrimSpace $entry) "" }}{{ errorf "projects: entry %d of the home page's projects parameter must be a non-empty page reference" $entryNumber }}{{ continue }}{{ end }}
-{{- if ne $entry (strings.TrimSpace $entry) }}{{ errorf "projects: the home page's projects parameter references a page with a space at its start or end, which Hugo does not trim: \"%s\"" (strings.TrimSpace $entry) }}{{ continue }}{{ end }}
+{{- $trimmedEntry := strings.TrimSpace $entry }}
+{{- if eq $trimmedEntry "" }}{{ errorf "projects: entry %d of the home page's projects parameter must be a non-empty page reference" $entryNumber }}{{ continue }}{{ end }}
+{{- if ne $entry $trimmedEntry }}{{ errorf "projects: the home page's projects parameter references a page with a space at its start or end, which Hugo does not trim: \"%s\"" $trimmedEntry }}{{ continue }}{{ end }}
 {{- $page := $.GetPage $entry }}
 {{- if not $page }}{{ errorf "projects: the home page's projects parameter references a page that cannot be found (language: %s): %s. The page may not be translated into this language, or not published: a draft, a future date (scheduled) or an expired page" $.Language.Lang $entry }}{{ continue }}{{ end }}
 {{- if not $page.IsPage }}{{ errorf "projects: the home page's projects parameter references %s, which is not a project: \"%s\"" (index $nonProjectKindWords $page.Kind | default "a page of another type") $entry }}{{ continue }}{{ end }}
