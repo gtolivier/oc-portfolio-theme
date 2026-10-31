@@ -907,6 +907,8 @@ tick-field > canvas {
 .project-card > * {
   grid-column: 1 / -1;
   margin: var(--project-card-gap) 0 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* Without a script, tick-pattern draws nothing: the band stays empty. */
