@@ -673,6 +673,70 @@ test('on the French home page, the "Tous les projets" link and the "Voir le dét
   }
 });
 
+test('on the French home page, the text of the "Tous les projets" link and of the "Voir le détail" link of each card stays where it is at rest while the link is hovered with a fine pointer and while it is reached by keyboard, as the header menu’s links do when their underline appears', async ({ page, hasTouch, browserName }) => {
+  await page.goto('/fr/');
+  const cards = await cardsOnceLoaded(page);
+  const section = projectsSection(page);
+  /* In the order a keyboard visitor reaches them: the "Tous les projets" link comes before the
+     cards. */
+  const links: { name: string; link: Locator }[] = [{ name: '"Tous les projets" link', link: section.getByRole('link', { name: 'Tous les projets', exact: true }) }];
+  for (const [index, card] of (await cards.all()).entries()) {
+    links.push({ name: `"Voir le détail" link of ${cardName(index)}`, link: card.getByRole('link', { name: 'Voir le détail' }) });
+  }
+  for (const { name, link } of links) await expect(link, name).toHaveCount(1);
+
+  /* Where the link's text is drawn, in CSS pixels from the page's top left corner, so that the
+     scrolling a hover or a tab may cause does not count: the box of its first line of text, the
+     link's own box being free to change around it. */
+  const textPosition = (link: Locator) =>
+    link.evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const line = [...range.getClientRects()].find((rect) => rect.width > 0 && rect.height > 0);
+      if (!line) return null;
+      return { left: line.left + window.scrollX, top: line.top + window.scrollY };
+    });
+
+  /* At rest: before any pointer or keyboard interaction. */
+  const atRest: { left: number; top: number }[] = [];
+  for (const { name, link } of links) {
+    const position = await textPosition(link);
+    expect(position, `${name}: its text at rest`).not.toBeNull();
+    atRest.push(position!);
+  }
+
+  /* Compared with a sub-pixel tolerance: rendered positions may carry rounding, while a thicker
+     underline pushing or pulling the text moves it by a whole pixel at least. */
+  const expectInPlace = async (index: number, state: string) => {
+    const { name, link } = links[index];
+    const rest = atRest[index];
+    const position = await textPosition(link);
+    expect.soft(position, `${name}: its text ${state}`).not.toBeNull();
+    if (position) {
+      expect.soft(Math.abs(position.top - rest.top), `${name}: vertical shift of its text ${state} (top ${position.top} against ${rest.top} at rest)`).toBeLessThan(0.5);
+      expect.soft(Math.abs(position.left - rest.left), `${name}: horizontal shift of its text ${state} (left ${position.left} against ${rest.left} at rest)`).toBeLessThan(0.5);
+    }
+  };
+
+  /* Hovering needs a fine pointer; touch screens have none. */
+  if (!hasTouch) {
+    for (const [index, { name, link }] of links.entries()) {
+      await link.hover();
+      expect(await link.evaluate((el) => el.matches(':hover')), `${name}: it is hovered`).toBe(true);
+      await expectInPlace(index, 'while hovered');
+    }
+    /* The pointer leaves the links, so that only the focus remains below. */
+    await page.mouse.move(0, 0);
+  }
+
+  /* A keyboard visitor tabs from one link to the next. */
+  for (const [index, { name, link }] of links.entries()) {
+    await tabUntilFocused(link, browserName, TABS_TO_REACH_THE_PROJECTS_LINKS);
+    expect(await link.evaluate((el) => el.matches(':focus-visible')), `${name}: it shows the keyboard focus`).toBe(true);
+    await expectInPlace(index, 'while focused by keyboard');
+  }
+});
+
 test('on the French home page, on a phone and on a wide window, each card of the section "Projets sélectionnés" shows its role below its title and above its description', async ({ page }) => {
   for (const viewport of [PHONE, WIDE_WINDOW]) {
     await page.setViewportSize(viewport);
