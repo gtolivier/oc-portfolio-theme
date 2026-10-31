@@ -1,11 +1,11 @@
-{{- /* The home page's featured projects: the pages its params.projects references, each entry checked and its page looked up once, for both the all-projects link and the cards. errorf does not stop the template: after an error, only the bad entry is skipped (a list that is not one counts as empty), so that no template execution error buries the French message. */}}
+{{- /* The home page's featured projects: the pages its params.projects references, each entry checked and its page looked up once, for both the all-projects link and the cards. errorf does not stop the template: after an error, only the bad entry is skipped (a list that is not one counts as empty), so that no template execution error buries the error message. */}}
 {{- $featured := .Params.projects }}
 {{- if and (isset .Params "projects") (not (reflect.IsSlice $featured)) }}{{ errorf "projects: the home page's projects parameter must be a list of pages" }}{{ $featured = slice }}{{ end }}
 {{- /* Only regular pages are projects. The words the error uses for each other kind of page an entry may reference; a kind missing here gets the generic wording, so that it is still rejected. */}}
 {{- $nonProjectKindWords := dict "home" "la page d’accueil elle-même" "section" "une page de section" "term" "une page d’étiquette" "taxonomy" "une page de taxonomie" "404" "la page d’erreur 404" }}
 {{- $projects := slice }}
 {{- range $entry := $featured }}
-{{- if ne (printf "%T" $entry) "string" }}{{ errorf "projects: each entry of the home page's projects parameter must be a page reference"}}{{ continue }}{{ end }}
+{{- if ne (printf "%T" $entry) "string" }}{{ errorf "projects: each entry of the home page's projects parameter must be a page reference" }}{{ continue }}{{ end }}
 {{- if eq (strings.TrimSpace $entry) "" }}{{ errorf "projects: each entry of the home page's projects parameter must be a non-empty page reference" }}{{ continue }}{{ end }}
 {{- $page := $.GetPage $entry }}
 {{- if not $page }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable (langue : %s) : %s. Cette page n’est peut-être pas traduite dans cette langue, ou pas publiée : brouillon, date dans le futur (à venir) ou page expirée" $.Language.Lang $entry }}{{ continue }}{{ end }}
