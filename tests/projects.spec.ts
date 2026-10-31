@@ -17,6 +17,7 @@ import {
   SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT,
   SITE_WITH_A_DRAFT_FEATURED_PROJECT,
+  SITE_WITH_LONG_PROJECT_YEARS,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1501,6 +1502,55 @@ test.describe('home page of another site, featuring no projects', () => {
     for (const project of FEATURED_PROJECTS) {
       await expect(page.getByText(project.title)).toHaveCount(0);
     }
+  });
+});
+
+test.describe('home page of another site, featuring a project with long years', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_LONG_PROJECT_YEARS);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a phone, the card of a featured project whose years are too long for one line wraps them inside the card: no text of the card leaves it, and the page does not scroll horizontally', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_LONG_PROJECT_YEARS, siteDirectory);
+    await page.setViewportSize(PHONE);
+    await page.goto(`${SITE_WITH_LONG_PROJECT_YEARS.origin}/fr/`);
+    await page.evaluate(() => document.fonts.ready);
+    /* tests/fixtures/long-project-years/content/projets/pendule-de-voyage.md declares years made
+       of short words, wider on one line than the card. */
+    const years = '1998 – 2003, puis 2011 – 2014, puis de 2019 à aujourd’hui';
+    const card = cardTitled(projectsSection(page), 'Pendule de voyage');
+    await expect(card).toHaveCount(1);
+    const yearsText = card.getByText(years, { exact: true });
+    await expect(yearsText).toBeVisible();
+    /* Wrapped: the years are laid out on more than one line. */
+    expect.soft((await textLineBoxes(yearsText)).length, `lines the years "${years}" are laid out on`).toBeGreaterThan(1);
+    /* No text leaves the card: every line of every text it displays stays within its box. */
+    const { cardBox, lines } = await card.evaluate((article) => {
+      const { left, right } = article.getBoundingClientRect();
+      const found: { text: string; left: number; right: number }[] = [];
+      const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const text = (node.textContent ?? '').replace(/\s+/g, ' ').trim();
+        if (!text) continue;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        for (const rect of range.getClientRects()) {
+          if (rect.width > 0 && rect.height > 0) found.push({ text, left: rect.left, right: rect.right });
+        }
+      }
+      return { cardBox: { left, right }, lines: found };
+    });
+    expect(lines.length, 'lines of text the card displays').toBeGreaterThan(0);
+    for (const line of lines) {
+      expect.soft(line.left, `left edge of a line of "${line.text}" against the card's left edge (${cardBox.left.toFixed(1)} px)`).toBeGreaterThanOrEqual(cardBox.left - 1);
+      expect.soft(line.right, `right edge of a line of "${line.text}" against the card's right edge (${cardBox.right.toFixed(1)} px)`).toBeLessThanOrEqual(cardBox.right + 1);
+    }
+    const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect.soft(pageWidth, 'width of the page content').toBeLessThanOrEqual(PHONE.width);
   });
 });
 

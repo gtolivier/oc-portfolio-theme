@@ -346,6 +346,14 @@ export const SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT = testSit
    look for. */
 export const SITE_WITH_A_DRAFT_FEATURED_PROJECT = testSite('draft-ref');
 
+/* The example site's featured projects declare short years, such as '2019 – 2020': this site
+   replaces the French home page with the one of tests/fixtures/long-project-years/content, without
+   a hero nor clients, which features the example site's 'projets/restauration-pendule', then
+   "Pendule de voyage", a fictional project added under projets/ in French only, whose page
+   declares years = '1998 – 2003, puis 2011 – 2014, puis de 2019 à aujourd’hui', made of short
+   words but wider on one line than a phone-sized card. */
+export const SITE_WITH_LONG_PROJECT_YEARS = testSite('long-project-years');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
