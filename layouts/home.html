@@ -63,10 +63,15 @@
   {{- /* The featured pages are looked up once, for both the all-projects link and the cards. */}}
   {{- $projects := slice }}
   {{- range . }}
-  {{- $entry := . }}
   {{- if not (eq (printf "%T" .) "string") }}{{ errorf "projects : chaque entrée du paramètre projects de la page d’accueil doit être une référence de page" }}
   {{- else if eq (strings.TrimSpace .) "" }}{{ errorf "projects : chaque entrée du paramètre projects de la page d’accueil doit être une référence de page non vide" }}
-  {{- else }}{{ with $.GetPage . }}{{ if .IsHome }}{{ errorf "projects : le paramètre projects de la page d’accueil référence la page d’accueil elle-même, qui n’est pas un projet : « %s »" $entry }}{{ else }}{{ $projects = $projects | append . }}{{ end }}{{ else }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable (langue : %s) : %s. Cette page n’est peut-être pas publiée : brouillon, date dans le futur (à venir) ou page expirée" $.Language.Lang . }}{{ end }}{{ end }}
+  {{- else }}
+  {{- $page := $.GetPage . }}
+  {{- if not $page }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable (langue : %s) : %s. Cette page n’est peut-être pas publiée : brouillon, date dans le futur (à venir) ou page expirée" $.Language.Lang . }}
+  {{- else if $page.IsHome }}{{ errorf "projects : le paramètre projects de la page d’accueil référence la page d’accueil elle-même, qui n’est pas un projet : « %s »" . }}
+  {{- else }}{{ $projects = $projects | append $page }}
+  {{- end }}
+  {{- end }}
   {{- end }}
   {{- if $projects }}
   <section class="projects" aria-labelledby="projects-heading">
