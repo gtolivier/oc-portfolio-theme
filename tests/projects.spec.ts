@@ -48,6 +48,8 @@ import {
 import { type Rgb, colorComponents, contrastRatio } from './helpers/colors';
 import { displayedText } from './helpers/text-on-screen';
 import { tabUntilFocused } from './helpers/keyboard';
+import { stopClockBeforeLoad } from './helpers/clock';
+import { DELAY_AFTER_MOVE_MS, moveToScreenOfDensity } from './helpers/screen-density';
 
 /* The projects the example site's French home page features, in the order its front matter lists
    them (params.projects, page references to content/projets/<slug>). The order is neither
@@ -1053,77 +1055,39 @@ test('on the French home page, with JavaScript, when the window widens, the firs
   ).toBeLessThanOrEqual(stripBefore + spacing + SPACING_TOLERANCE);
 });
 
-test('on the French home page, with JavaScript, after the window moves to a screen with twice the pixel density without changing size, each card’s tick pattern is redrawn at the new density without anything else happening: 100 ms after the move, it shows what it shows once redrawn at that density, the same ticks, crisp, not its old drawing stretched', { tag: '@pixels' }, async ({ page, isMobile }) => {
+test('on the French home page, with JavaScript, after the window moves to a screen with twice the pixel density without changing size, each card’s tick pattern is redrawn at the new density: shortly after the move, with nothing else happening, it shows what it shows once drawn anew at that density, the same ticks, crisp, not its old drawing stretched', { tag: '@pixels' }, async ({ page, isMobile }) => {
   /* Reduced motion, so that whatever could animate shows a still picture. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* What it shows once redrawn, within this share of its drawn pixels: the old drawing stretched
-     to the new density smears the edges of every tick. */
+  /* What it shows once drawn anew, within this share of its drawn pixels: the old drawing
+     stretched to the new density smears the edges of every tick. */
   const MAX_SHARE_CHANGED = 0.02;
-  /* Time left after the move, once the page is rendered on the new screen: the redraw waits for
-     nothing else. */
-  const DELAY_AFTER_MOVE = 100;
+  /* Time stands still, so that nothing but the move can redraw a pattern. */
+  await stopClockBeforeLoad(page);
   await page.goto('/fr/');
   const cards = await cardsOnceLoaded(page);
-  const viewport = page.viewportSize();
-  expect(viewport, 'the page has a viewport size').not.toBeNull();
+  const patterns = page.locator('tick-pattern');
   const oldDensity = await page.evaluate(() => window.devicePixelRatio);
   const newDensity = 2 * oldDensity;
 
-  /* The window moves to a screen with another pixel density, at the same size in CSS pixels.
-     Chromium emulates the screen through the DevTools protocol. */
-  const session = await page.context().newCDPSession(page);
-  const moveToScreen = async (width: number): Promise<void> => {
-    await session.send('Emulation.setDeviceMetricsOverride', {
-      width,
-      height: viewport!.height,
-      deviceScaleFactor: newDensity,
-      mobile: isMobile,
-    });
-    /* Resolves once the browser has rendered the page on the new screen: a resize observer
-       reports the first tick pattern's box, as it does once it starts observing it. */
-    await tickPatternOf(cards.first()).evaluate(
-      (element) =>
-        new Promise<void>((resolve) => {
-          const observer = new ResizeObserver(() => {
-            observer.disconnect();
-            resolve();
-          });
-          observer.observe(element);
-        }),
-    );
-    await page.waitForTimeout(DELAY_AFTER_MOVE);
-  };
-  /* A screenshot of a card at the new screen's density, taken through the same protocol:
-     Playwright's own screenshot would bring back the density it emulates. Its clip is rounded
-     out to whole CSS pixels, as Playwright's element screenshots are, so that the boxes from
-     cardAndTickPatternBoxes read it. */
-  const cardScreenshotsOnNewScreen = async (): Promise<Buffer[]> => {
+  const screen = await moveToScreenOfDensity(page, { density: newDensity, isMobile, rendered: tickPatternOf(cards.first()) });
+  const cardScreenshots = async (): Promise<Buffer[]> => {
     const screenshots: Buffer[] = [];
-    for (const index of FEATURED_PROJECTS.keys()) {
-      const card = cards.nth(index);
-      await card.scrollIntoViewIfNeeded();
-      const clip = await card.evaluate((element) => {
-        const box = element.getBoundingClientRect();
-        const left = Math.floor(box.left + window.scrollX);
-        const top = Math.floor(box.top + window.scrollY);
-        const right = Math.ceil(box.right + window.scrollX);
-        const bottom = Math.ceil(box.bottom + window.scrollY);
-        return { x: left, y: top, width: right - left, height: bottom - top, scale: 1 };
-      });
-      const { data } = await session.send('Page.captureScreenshot', { format: 'png', clip });
-      screenshots.push(Buffer.from(data, 'base64'));
-    }
+    for (const index of FEATURED_PROJECTS.keys()) screenshots.push(await screen.screenshot(cards.nth(index)));
     return screenshots;
   };
-  await moveToScreen(viewport!.width);
-  const afterMove = await cardScreenshotsOnNewScreen();
+  const afterMove = await cardScreenshots();
 
-  /* The reference: the same tick patterns drawn anew at the new density, once the window has been
-     narrowed by one CSS pixel and widened back, at the same size as before. They keep their ticks
-     across redraws. */
-  await moveToScreen(viewport!.width - 1);
-  await moveToScreen(viewport!.width);
-  const redrawn = await cardScreenshotsOnNewScreen();
+  /* The reference: each tick pattern taken off the page and put back in its place, which draws
+     it anew at the new density, whatever the layout. It keeps its ticks. */
+  await patterns.evaluateAll((elements) => {
+    for (const element of elements) {
+      const [parent, next] = [element.parentNode!, element.nextSibling];
+      element.remove();
+      parent.insertBefore(element, next);
+    }
+  });
+  await screen.waitForRender(tickPatternOf(cards.first()));
+  const redrawn = await cardScreenshots();
   expect(await page.evaluate(() => window.devicePixelRatio), 'pixel density of the new screen').toBeCloseTo(newDensity, 3);
 
   for (const index of FEATURED_PROJECTS.keys()) {
@@ -1136,12 +1100,12 @@ test('on the French home page, with JavaScript, after the window moves to a scre
     const box = withinCardEdges(patternBox, cardInScreenshot);
     const { rows } = await pixelsNotOfBackgroundPerRow(card, redrawn[index], box);
     const drawnPixels = rows.reduce((sum, count) => sum + count, 0);
-    expect.soft(drawnPixels, `${where}: pixels of its tick pattern redrawn at the new density that differ from the card's background`).toBeGreaterThan(0);
+    expect.soft(drawnPixels, `${where}: pixels of its tick pattern drawn anew at the new density that differ from the card's background`).toBeGreaterThan(0);
     const { columns } = await pixelsChangedPerColumnInRectangle(card, afterMove[index], redrawn[index], box);
     const changedPixels = columns.reduce((sum, count) => sum + count, 0);
     expect.soft(
       changedPixels,
-      `${where}: pixels of its ${Math.round(box.width)}px-wide tick pattern, ${DELAY_AFTER_MOVE} ms after the window moved from a density of ${oldDensity} to ${newDensity}, that differ from the tick pattern redrawn at that density, which shows ${drawnPixels} drawn pixels`,
+      `${where}: pixels of its ${Math.round(box.width)}px-wide tick pattern, ${DELAY_AFTER_MOVE_MS} ms after the window moved from a density of ${oldDensity} to ${newDensity}, that differ from the tick pattern drawn anew at that density, which shows ${drawnPixels} drawn pixels`,
     ).toBeLessThanOrEqual(MAX_SHARE_CHANGED * drawnPixels);
   }
 });

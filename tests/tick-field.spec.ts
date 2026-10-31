@@ -1,6 +1,7 @@
 import { type BrowserContext, type Locator, type Page, test, expect } from '@playwright/test';
 import { CATALOG_SITE, buildSite, removeDirectory, serveSite } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
+import { DELAY_AFTER_MOVE_MS, moveToScreenOfDensity } from './helpers/screen-density';
 import { clickOrTap, middleOfFirstLine } from './helpers/pointer';
 import {
   type Rectangle,
@@ -1052,71 +1053,36 @@ test.describe('catalog: tick-field', () => {
     ).toEqual([]);
   });
 
-  test('once revealed and idle, after the window moves to a screen with twice the pixel density without changing size, a tick-field is redrawn at the new density without the pointer moving: 100 ms after the move, it shows what it shows once redrawn at that density, not its old drawing stretched', { tag: '@pixels' }, async ({ page, context, isMobile }) => {
+  test('once revealed and idle, after the window moves to a screen with twice the pixel density without changing size, a tick-field is redrawn at the new density: shortly after the move, with nothing else happening, the pointer still, it shows what it shows when the page loads on that screen, not its old drawing stretched', { tag: '@pixels' }, async ({ page, context, isMobile }) => {
+    /* What it shows when loaded on that screen, within this share of its drawn pixels: the old
+       drawing stretched to the new density smears the edges of every tick. */
+    const MAX_SHARE_CHANGED = 0.02;
     const tickField = await openRevealedTickField(page, context);
-    const viewport = page.viewportSize();
-    expect(viewport, 'the page has a viewport size').not.toBeNull();
     const oldDensity = await page.evaluate(() => window.devicePixelRatio);
     const newDensity = 2 * oldDensity;
 
-    /* The window moves to a screen with another pixel density, at the same size in CSS pixels;
-       the pointer stays where it is. Chromium emulates the screen through the DevTools protocol. */
-    const session = await page.context().newCDPSession(page);
-    const moveToScreen = async (width: number): Promise<void> => {
-      await session.send('Emulation.setDeviceMetricsOverride', {
-        width,
-        height: viewport!.height,
-        deviceScaleFactor: newDensity,
-        mobile: isMobile,
-      });
-      /* Resolves once the browser has rendered the page on the new screen: a resize observer
-         reports the tick-field's box, as it does once it starts observing it. */
-      await tickField.evaluate(
-        (element) =>
-          new Promise<void>((resolve) => {
-            const observer = new ResizeObserver(() => {
-              observer.disconnect();
-              resolve();
-            });
-            observer.observe(element);
-          }),
-      );
-      /* Then a few animation frames. */
-      await page.clock.runFor(100);
-    };
-    /* A screenshot of the tick-field at the new screen's density, taken through the same
-       protocol: Playwright's own screenshot would bring back the density it emulates. */
-    const screenshotOnNewScreen = async (): Promise<Buffer> => {
-      const clip = await tickField.evaluate((element) => {
-        const box = element.getBoundingClientRect();
-        return { x: box.left + window.scrollX, y: box.top + window.scrollY, width: box.width, height: box.height, scale: 1 };
-      });
-      const { data } = await session.send('Page.captureScreenshot', { format: 'png', clip });
-      return Buffer.from(data, 'base64');
-    };
-    await moveToScreen(viewport!.width);
-    const afterMove = await screenshotOnNewScreen();
+    const screen = await moveToScreenOfDensity(page, { density: newDensity, isMobile, rendered: tickField });
+    const afterMove = await screen.screenshot(tickField);
 
-    /* The reference: the same field drawn anew at the new density, once the window has been
-       narrowed by one CSS pixel and widened back, at the same size as before. */
-    await moveToScreen(viewport!.width - 1);
-    await moveToScreen(viewport!.width);
-    const redrawn = await screenshotOnNewScreen();
+    /* The reference: the same page loaded anew on that screen, and revealed again. The field
+       draws the same ticks at every load. */
+    await page.reload();
+    await expect(tickField).toBeVisible();
+    await tickField.scrollIntoViewIfNeeded();
+    await page.clock.runFor(2000);
+    const redrawn = await screen.screenshot(tickField);
     expect(await page.evaluate(() => window.devicePixelRatio), 'pixel density of the new screen').toBeCloseTo(newDensity, 3);
 
     const fieldBox = await tickField.boundingBox();
     expect(fieldBox, 'the tick-field has a box on screen').not.toBeNull();
     const whole = { x: 0, y: 0, width: fieldBox!.width, height: fieldBox!.height };
     const drawnPixels = await countPixelsNotOfBackground(tickField, redrawn);
-    expect(drawnPixels, 'pixels of the tick-field redrawn at the new density that differ from its background').toBeGreaterThan(0);
+    expect(drawnPixels, 'pixels of the tick-field loaded on the new screen that differ from its background').toBeGreaterThan(0);
     const { columns } = await pixelsChangedPerColumnInRectangle(tickField, afterMove, redrawn, whole);
     const changedPixels = columns.reduce((sum, count) => sum + count, 0);
-
-    /* What it shows once redrawn, within 2% of its drawn pixels: the old drawing stretched to
-       the new density smears the edges of every tick. */
     expect(
       changedPixels,
-      `pixels of the ${Math.round(fieldBox!.width)}px-wide tick-field, 100 ms after the window moved from a density of ${oldDensity} to ${newDensity}, that differ from the field redrawn at that density, which shows ${drawnPixels} drawn pixels`,
-    ).toBeLessThanOrEqual(0.02 * drawnPixels);
+      `pixels of the ${Math.round(fieldBox!.width)}px-wide tick-field, ${DELAY_AFTER_MOVE_MS} ms after the window moved from a density of ${oldDensity} to ${newDensity}, that differ from the field loaded on that screen, which shows ${drawnPixels} drawn pixels`,
+    ).toBeLessThanOrEqual(MAX_SHARE_CHANGED * drawnPixels);
   });
 });
