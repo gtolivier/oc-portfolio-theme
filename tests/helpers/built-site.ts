@@ -405,6 +405,16 @@ export const SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT_WRITTEN_AS_A_DOT = test
    assertion looks for. */
 export const SITE_WITH_A_SECTION_AS_FEATURED_PROJECT = testSite('section-ref');
 
+/* The example site disables the taxonomy and term kinds, which the theme itself does not: this
+   site enables them again (tests/fixtures/term-ref/hugo.toml), with Hugo's default tags taxonomy,
+   adds under projets/, in French only, a fictional project, "Pendule étiquetée", that carries the
+   tag 'horlogerie', and replaces the French home page with the one of
+   tests/fixtures/term-ref/content, without a hero nor clients, whose params.projects is a list of
+   texts, as expected, of 'projets/restauration-pendule', then 'tags/horlogerie', a reference to
+   the page of that tag, which exists but is a taxonomy term page, no project. Its folder name
+   avoids the word projects, which the error-message assertion looks for. */
+export const SITE_WITH_A_TERM_AS_FEATURED_PROJECT = testSite('term-ref');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
