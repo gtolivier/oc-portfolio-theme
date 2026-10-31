@@ -68,11 +68,8 @@
     {{- range first 1 $projects }}
     {{- with .Parent }}
     {{- /* A project at the content root has the home page as its parent: no section to open. */}}
-    {{- /* A section whose [build] render keeps it from being published (alone or through its cascade) has no address to open. */}}
-    {{- $sectionBuild := .Params.build | default dict }}
-    {{- $sectionRender := "always" }}
-    {{- if isset $sectionBuild "render" }}{{ $sectionRender = printf "%v" $sectionBuild.render }}{{ end }}
-    {{- if and (not .IsHome) (in (slice "always" "true") $sectionRender) }}
+    {{- /* An unpublished section has no address to open. */}}
+    {{- if and (not .IsHome) (partial "is-published.html" .) }}
     <a class="all-projects-link" href="{{ .RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
     {{- end }}
     {{- end }}
@@ -93,12 +90,7 @@
       {{- with .Params.stack }}
       <p class="project-stack">{{ delimit . $stackSeparator }}</p>
       {{- end }}
-      {{- /* Hugo publishes a page only under these [build] render values; render = false is a boolean, hence the conversion to a string. */}}
-      {{- $publishingRenders := slice "always" "true" }}
-      {{- $build := .Params.build | default dict }}
-      {{- $render := "always" }}
-      {{- if isset $build "render" }}{{ $render = printf "%v" $build.render }}{{ end }}
-      {{- if in $publishingRenders $render }}
+      {{- if partial "is-published.html" . }}
       {{- $seeDetail := i18n "seeDetail" }}
       <a class="project-link" href="{{ .RelPermalink }}" aria-label="{{ $seeDetail }} – {{ .Title }}">{{ $seeDetail }} <span aria-hidden="true">→</span></a>
       {{- end }}
