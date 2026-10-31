@@ -4,9 +4,10 @@
 {{- /* Only regular pages are projects. The words the error uses for each other kind of page an entry may reference; a kind missing here gets the generic wording, so that it is still rejected. */}}
 {{- $nonProjectKindWords := dict "home" "the home page itself" "section" "a section page" "term" "a taxonomy term page" "taxonomy" "a taxonomy page" "404" "the 404 error page" }}
 {{- $projects := slice }}
-{{- range $entry := $featured }}
-{{- if ne (printf "%T" $entry) "string" }}{{ errorf "projects: each entry of the home page's projects parameter must be a page reference" }}{{ continue }}{{ end }}
-{{- if eq (strings.TrimSpace $entry) "" }}{{ errorf "projects: each entry of the home page's projects parameter must be a non-empty page reference" }}{{ continue }}{{ end }}
+{{- range $index, $entry := $featured }}
+{{- $entryNumber := add $index 1 }}
+{{- if ne (printf "%T" $entry) "string" }}{{ errorf "projects: entry %d of the home page's projects parameter must be a page reference" $entryNumber }}{{ continue }}{{ end }}
+{{- if eq (strings.TrimSpace $entry) "" }}{{ errorf "projects: entry %d of the home page's projects parameter must be a non-empty page reference" $entryNumber }}{{ continue }}{{ end }}
 {{- $page := $.GetPage $entry }}
 {{- if not $page }}{{ errorf "projects: the home page's projects parameter references a page that cannot be found (language: %s): %s. The page may not be translated into this language, or not published: a draft, a future date (scheduled) or an expired page" $.Language.Lang $entry }}{{ continue }}{{ end }}
 {{- if not $page.IsPage }}{{ errorf "projects: the home page's projects parameter references %s, which is not a project: \"%s\"" (index $nonProjectKindWords $page.Kind | default "a page of another type") $entry }}{{ continue }}{{ end }}
