@@ -856,10 +856,13 @@ tick-field > canvas {
   margin-top: var(--projects-header-margin);
 }
 
-/* A flex item, so min-height applies: minimum target size (WCAG 2.5.8). */
+/* A flex item, so min-height applies: minimum target size (WCAG 2.5.8).
+   The text sits at the bottom of that height, so the underline stays 2px
+   below it. */
 .all-projects-link {
   align-self: baseline;
   min-height: var(--min-target-size);
+  align-content: end;
   margin-bottom: var(--projects-header-margin);
   padding-bottom: 2px;
   border-bottom: 1px solid var(--color-accent-dark);
@@ -896,8 +899,9 @@ tick-field > canvas {
   padding: 0 var(--project-card-padding-inline) var(--project-card-padding-bottom);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  /* One named row per item, so a missing item leaves an empty row. The description's row takes the free height:
-     in a row of cards, the links line up at the bottom. */
+  /* One named row per item, so a missing item leaves an empty row. The
+     description's row takes the free height: in a row of cards, the links
+     line up at the bottom. */
   grid-template-rows: [pattern] auto [title] auto [role] auto [description] 1fr [stack] auto [link] auto;
 }
 
@@ -961,11 +965,13 @@ tick-field > canvas {
 }
 
 /* As wide as its text, so is its underline. A grid item, so min-height
-   applies: minimum target size (WCAG 2.5.8). */
+   applies: minimum target size (WCAG 2.5.8). The text sits at the bottom of
+   that height, so the underline stays 2px below it. */
 .project-card > .project-link {
   grid-row: link;
   justify-self: start;
   min-height: var(--min-target-size);
+  align-content: end;
   margin-top: calc(var(--project-card-gap) + 4px);
   padding-bottom: 2px;
   border-bottom: 1px solid var(--color-paper);
