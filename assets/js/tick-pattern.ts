@@ -1,7 +1,7 @@
 /* A still pattern of short ticks in rows, drawn anew at every load: no seed, so each visit shows a
    pattern of its own. */
 
-import { customProperty, prepareCanvas } from './canvas-drawing';
+import { customProperty, prepareCanvas, watchPixelDensity } from './canvas-drawing';
 
 /* The box drawn in when the element has no layout of its own, in CSS pixels. */
 const PATTERN_FALLBACK_WIDTH_PX = 480;
@@ -78,21 +78,7 @@ class TickPattern extends HTMLElement {
     /* The observer's first callback, as observing starts, draws the pattern for the first time. */
     this.observer = new ResizeObserver(() => this.draw());
     this.observer.observe(this);
-    this.watchPixelDensity();
-  }
-
-  /* The window moving to a screen of another pixel density changes no size: redraw when the density
-     the pattern was drawn at stops matching, then watch the new one. */
-  private watchPixelDensity(): void {
-    const query = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
-    query.addEventListener(
-      'change',
-      () => {
-        this.draw();
-        this.watchPixelDensity();
-      },
-      { once: true },
-    );
+    watchPixelDensity(() => this.draw());
   }
 
   disconnectedCallback(): void {

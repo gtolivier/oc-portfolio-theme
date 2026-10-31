@@ -21,6 +21,20 @@ export function prepareCanvas(
   return context;
 }
 
+/* The window moving to a screen of another pixel density changes no size: redraw when the density
+   the canvas was drawn at stops matching, then watch the new one. */
+export function watchPixelDensity(redraw: () => void): void {
+  const query = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+  query.addEventListener(
+    'change',
+    () => {
+      redraw();
+      watchPixelDensity(redraw);
+    },
+    { once: true },
+  );
+}
+
 /* Setting a canvas's size reallocates its pixels, even to the same size: only when it changes. */
 function resizeCanvas(canvas: HTMLCanvasElement, width: number, height: number): void {
   if (canvas.width !== width) canvas.width = width;

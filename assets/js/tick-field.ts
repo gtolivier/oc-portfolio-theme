@@ -1,4 +1,4 @@
-import { customProperty, prepareCanvas } from './canvas-drawing';
+import { customProperty, prepareCanvas, watchPixelDensity } from './canvas-drawing';
 import { reducedMotionQuery } from './reduced-motion';
 
 const FIELD_REVEAL_DELAY_MS = 50;
@@ -190,21 +190,7 @@ class TickField extends HTMLElement {
     this.trackOnScreen();
     this.requestDraw();
     new ResizeObserver(() => this.draw()).observe(this);
-    this.watchPixelDensity();
-  }
-
-  /* The window moving to a screen of another pixel density changes no size: redraw when the density
-     the field was drawn at stops matching, then watch the new one. */
-  private watchPixelDensity(): void {
-    const query = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
-    query.addEventListener(
-      'change',
-      () => {
-        this.draw();
-        this.watchPixelDensity();
-      },
-      { once: true },
-    );
+    watchPixelDensity(() => this.draw());
   }
 
   private localPoint(event: MouseEvent): Point {
