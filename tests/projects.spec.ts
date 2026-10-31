@@ -5,6 +5,7 @@ import {
   SITE_WITH_OTHER_PROJECTS,
   SITE_WITH_PROJECTS_IN_ANOTHER_SECTION,
   SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES,
+  SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1242,6 +1243,37 @@ test.describe('home page of another site, featuring a project whose section give
     await expect(cardTitled(section, 'Restauration d’une pendule de cheminée').getByRole('link', { name: 'Voir le détail' })).toHaveCount(1);
     /* Nothing is published where the project's page would be. */
     const response = await page.goto(`${SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES.origin}/fr/esquisses/regulateur-de-parquet/`);
+    expect(response?.status()).toBe(404);
+  });
+});
+
+test.describe('home page of another site, featuring projects whose page is not published', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('the cards of featured projects whose page declares render = "link" or render = false have no link, while the other card keeps its own', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES, siteDirectory);
+    await page.goto(`${SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES.origin}/fr/`);
+    const section = projectsSection(page);
+    /* In tests/fixtures/projects-without-published-pages/content/projets/, horloge-comtoise.md
+       declares [build] render = 'link' and sablier-de-marine.md [build] render = false: neither
+       has a published page. Their cards are still shown, with no link at all, not even an empty
+       one. */
+    for (const title of ['Horloge comtoise', 'Sablier de marine']) {
+      const card = cardTitled(section, title);
+      await expect(card).toHaveCount(1);
+      await expect(card).toBeVisible();
+      await expect.soft(card.locator('a'), `links in the card of "${title}"`).toHaveCount(0);
+    }
+    /* The project that has a page keeps its link to it. */
+    await expect(cardTitled(section, 'Restauration d’une pendule de cheminée').getByRole('link', { name: 'Voir le détail' })).toHaveCount(1);
+    /* render = 'link' gives the clock an address, but nothing is published there. */
+    const response = await page.goto(`${SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES.origin}/fr/projets/horloge-comtoise/`);
     expect(response?.status()).toBe(404);
   });
 });

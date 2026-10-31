@@ -258,6 +258,15 @@ export const SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND = testSite('featured-ref-wit
    nothing at /fr/esquisses/regulateur-de-parquet/. */
 export const SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES = testSite('section-without-detail-pages');
 
+/* The example site's featured projects all have a published page: this site replaces the French
+   home page with the one of tests/fixtures/projects-without-published-pages/content, without a
+   hero nor clients, which features "Horloge comtoise", the example site's
+   'projets/restauration-pendule', then "Sablier de marine", both added under projets/. Neither
+   added project has a published page: the clock's declares [build] render = 'link', so that Hugo
+   gives it an address, /fr/projets/horloge-comtoise/, but publishes nothing there; the
+   hourglass's declares [build] render = false, so that it has no address at all. */
+export const SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES = testSite('projects-without-published-pages');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
