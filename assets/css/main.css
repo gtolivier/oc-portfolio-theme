@@ -881,12 +881,14 @@ tick-field > canvas {
   .all-projects-link:hover {
     color: var(--color-ink);
     border-color: var(--color-accent);
+    border-bottom-width: 2px;
   }
 }
 
 .all-projects-link:focus-visible {
   color: var(--color-ink);
   border-color: var(--color-accent);
+  border-bottom-width: 2px;
 }
 
 .project-card {
@@ -981,11 +983,13 @@ tick-field > canvas {
 @media (hover: hover) {
   .project-card > .project-link:hover {
     border-color: var(--color-accent);
+    border-bottom-width: 2px;
   }
 }
 
 .project-card > .project-link:focus-visible {
   border-color: var(--color-accent);
+  border-bottom-width: 2px;
 }
 
 @media (min-width: 768px) {
