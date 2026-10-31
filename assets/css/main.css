@@ -889,6 +889,7 @@ tick-field > canvas {
   --project-card-padding-inline: 20px;
   --project-card-padding-bottom: 24px;
   --project-card-gap: 14px;
+  --project-years-gap: 16px;
   flex: 0 0 100%;
   min-width: 0;
   background: var(--color-ink);
@@ -896,13 +897,13 @@ tick-field > canvas {
   padding: 0 var(--project-card-padding-inline) var(--project-card-padding-bottom);
   display: grid;
   /* The years stay on one line while they fit in 60% of the card's text,
-     and wrap beyond. */
-  grid-template-columns: minmax(0, 1fr) fit-content(60%);
+     their gap aside, and wrap beyond. Without years, this column is empty
+     and collapses: the title takes the whole width. */
+  grid-template-columns: minmax(0, 1fr) fit-content(calc(60% + var(--project-years-gap)));
   /* One named row per item, the years sharing the title's, so a missing
      item leaves an empty row. The description's row takes the free height:
      in a row of cards, the links line up at the bottom. */
   grid-template-rows: [pattern] auto [title] auto [role] auto [description] 1fr [stack] auto [link] auto;
-  column-gap: 16px;
 }
 
 /* Margins rather than a row gap, which an empty row would double. A long
@@ -945,13 +946,10 @@ tick-field > canvas {
   font-weight: 600;
 }
 
-/* Without years, the title takes the whole width, the column gap included. */
-.project-card > h3:not(:has(~ .project-years)) {
-  grid-column: 1 / -1;
-}
-
+/* A margin rather than a column gap, which would stay without years. */
 .project-card > .project-years {
   grid-column: 2;
+  margin-inline-start: var(--project-years-gap);
   font-family: var(--font-mono);
   font-size: 13px;
 }
