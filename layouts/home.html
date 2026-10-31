@@ -66,7 +66,7 @@
       {{- $firstSection := (index $projects 0).Parent }}
       {{- $isInOneSection := true }}
       {{- range $projects }}{{ if not (.Parent.Eq $firstSection) }}{{ $isInOneSection = false }}{{ end }}{{ end }}
-      {{- /* No section to open when the projects sit at the content root (their parent is the home page) or in an unpublished section (it has no address). */}}
+      {{- /* No section to open when the projects sit at the content root (their parent is the home page) or in a section Hugo does not publish: no address, or one with no page written behind it ([build] render = 'link'), so .RelPermalink alone is not enough. */}}
       {{- if and $isInOneSection (not $firstSection.IsHome) (partial "is-published.html" $firstSection) }}
       <a class="all-projects-link" href="{{ $firstSection.RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
       {{- end }}

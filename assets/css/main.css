@@ -916,11 +916,18 @@ tick-field > canvas {
   grid-template-rows: [pattern] auto [title] auto [role] auto [description] 1fr [stack] auto [link] auto;
 }
 
-/* Margins rather than a row gap, which an empty row would double. A long
-   unbreakable word wraps rather than leaving the card. */
+/* Margins rather than a row gap, which an empty row would double. */
 .project-card > * {
   margin: var(--project-card-gap) 0 0;
   min-width: 0;
+}
+
+/* A long unbreakable word in the content wraps rather than leaving the
+   card. */
+.project-card > h3,
+.project-card > .project-role,
+.project-card > .project-description,
+.project-card > .project-stack {
   overflow-wrap: anywhere;
 }
 
