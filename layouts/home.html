@@ -56,20 +56,34 @@
     {{- end }}
   </div>
   {{- end }}
-  {{- with .Params.projects }}
-  {{- /* The featured pages are looked up once, for both the all-projects link and the cards. */}}
+  {{- $featured := .Params.projects }}
+  {{- /* errorf does not stop the template: after an error, only the bad entry is skipped (a list that is not one counts as empty), and the section is left out when no featured page is left, so that no template execution error buries the French message. */}}
+  {{- if and (isset .Params "projects") (not (reflect.IsSlice $featured)) }}{{ errorf "projects : le paramètre projects de la page d’accueil doit être une liste de pages" }}{{ $featured = slice }}{{ end }}
+  {{- /* Only regular pages are projects. The words the error uses for each other kind of page an entry may reference; a kind missing here gets the generic wording, so that it is still rejected. */}}
+  {{- $nonProjectKindWords := dict "home" "la page d’accueil elle-même" "section" "une page de section" "term" "une page d’étiquette" "taxonomy" "une page de taxonomie" "404" "la page d’erreur 404" }}
+  {{- /* Each entry is checked and its page looked up once, for both the all-projects link and the cards: only the project pages are kept. */}}
   {{- $projects := slice }}
-  {{- range . }}
-  {{- with $.GetPage . }}{{ $projects = $projects | append . }}{{ else }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable : %s" . }}{{ end }}
+  {{- range $entry := $featured }}
+  {{- if ne (printf "%T" $entry) "string" }}{{ errorf "projects : chaque entrée du paramètre projects de la page d’accueil doit être une référence de page" }}{{ continue }}{{ end }}
+  {{- if eq (strings.TrimSpace $entry) "" }}{{ errorf "projects : chaque entrée du paramètre projects de la page d’accueil doit être une référence de page non vide" }}{{ continue }}{{ end }}
+  {{- $page := $.GetPage $entry }}
+  {{- if not $page }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable (langue : %s) : %s. Cette page n’est peut-être pas traduite dans cette langue, ou pas publiée : brouillon, date dans le futur (à venir) ou page expirée" $.Language.Lang $entry }}{{ continue }}{{ end }}
+  {{- if not $page.IsPage }}{{ errorf "projects : le paramètre projects de la page d’accueil référence %s, qui n’est pas un projet : « %s »" (index $nonProjectKindWords $page.Kind | default "une page d’un autre type") $entry }}{{ continue }}{{ end }}
+  {{- $projects = $projects | append $page }}
   {{- end }}
+  {{- if $projects }}
   <section class="projects" aria-labelledby="projects-heading">
-    <h2 id="projects-heading">{{ i18n "selectedProjects" }}</h2>
-    {{- /* The all-projects link goes to the first project's section. */}}
-    {{- range first 1 $projects }}
-    {{- with .Parent }}
-    <a class="all-projects-link" href="{{ .RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
-    {{- end }}
-    {{- end }}
+    <div class="projects-header">
+      <h2 id="projects-heading">{{ i18n "selectedProjects" }}</h2>
+      {{- /* The all-projects link goes to the section holding every featured project: with projects in several sections, no section lists them all. */}}
+      {{- $firstSection := (index $projects 0).Parent }}
+      {{- $isInOneSection := true }}
+      {{- range $projects }}{{ if not (.Parent.Eq $firstSection) }}{{ $isInOneSection = false }}{{ end }}{{ end }}
+      {{- /* No section to open when the projects sit at the content root (their parent is the home page) or in an unpublished section (it has no address). */}}
+      {{- if and $isInOneSection (not $firstSection.IsHome) (partial "is-published.html" $firstSection) }}
+      <a class="all-projects-link" href="{{ $firstSection.RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
+      {{- end }}
+    </div>
     {{- range $projects }}
     <article class="project-card">
       <tick-pattern class="project-pattern" aria-hidden="true"></tick-pattern>
@@ -77,17 +91,13 @@
       {{- with .Params.role }}
       <p class="project-role">{{ . }}</p>
       {{- end }}
-      {{- with .Params.years }}
-      <p class="project-years">{{ . }}</p>
-      {{- end }}
       {{- with .Description }}
       <p class="project-description">{{ . }}</p>
       {{- end }}
       {{- with .Params.stack }}
       <p class="project-stack">{{ delimit . $stackSeparator }}</p>
       {{- end }}
-      {{- $build := .Params.build | default dict }}
-      {{- if ne $build.render "never" }}
+      {{- if partial "is-published.html" . }}
       {{- $seeDetail := i18n "seeDetail" }}
       <a class="project-link" href="{{ .RelPermalink }}" aria-label="{{ $seeDetail }} – {{ .Title }}">{{ $seeDetail }} <span aria-hidden="true">→</span></a>
       {{- end }}

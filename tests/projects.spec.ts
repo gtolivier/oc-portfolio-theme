@@ -2,9 +2,32 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 import {
   SITE_WITHOUT_HERO,
   SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND,
+  SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT,
   SITE_WITH_OTHER_PROJECTS,
   SITE_WITH_PROJECTS_IN_ANOTHER_SECTION,
   SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES,
+  SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES,
+  SITE_WITH_AN_UNPUBLISHED_PROJECTS_SECTION,
+  SITE_WITH_AN_UNPUBLISHED_SECTION_PAGE,
+  SITE_WITH_PROJECTS_IN_TWO_SECTIONS,
+  SITE_WITH_PROJECTS_AS_TEXT,
+  SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT,
+  SITE_WITH_PROJECTS_AS_FALSE,
+  SITE_WITH_A_FEATURED_PROJECT_AS_MAP,
+  SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF,
+  SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF,
+  SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT,
+  SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT_WRITTEN_AS_A_DOT,
+  SITE_WITH_A_SECTION_AS_FEATURED_PROJECT,
+  SITE_WITH_A_TERM_AS_FEATURED_PROJECT,
+  SITE_WITH_A_TAXONOMY_AS_FEATURED_PROJECT,
+  SITE_WITH_THE_404_PAGE_AS_FEATURED_PROJECT,
+  SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT,
+  SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT,
+  SITE_WITH_A_DRAFT_FEATURED_PROJECT,
+  SITE_WITH_LONG_PROJECT_WORDS,
+  SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS,
+  SITE_WITH_UNUSUAL_RENDER_VALUES,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -21,6 +44,7 @@ import {
   verticalBands,
 } from './helpers/pixels';
 import { displayedText } from './helpers/text-on-screen';
+import { tabUntilFocused } from './helpers/keyboard';
 
 /* The projects the example site's French home page features, in the order its front matter lists
    them (params.projects, page references to content/projets/<slug>). The order is neither
@@ -64,6 +88,32 @@ const FEATURED_PROJECTS = [
   },
 ];
 
+/* The same projects, as the English home page features them: the title and description their
+   English pages (content/projets/<slug>.en.md) declare, each different from the French one. Their
+   English pages live in the projets/ section's English address, /en/projects/<slug>/. */
+const FEATURED_PROJECTS_IN_ENGLISH = [
+  {
+    slug: 'restauration-pendule',
+    title: 'Restoration of a mantel clock',
+    description: 'An Empire gilt-bronze clock brought back to life: movement cleaned, suspension rebuilt, dial touched up.',
+  },
+  {
+    slug: 'montre-grande-complication',
+    title: 'Grand complication pocket watch',
+    description: 'A perpetual calendar and minute repeater calibre, designed then assembled part by part.',
+  },
+  {
+    slug: 'horloge-astronomique',
+    title: 'The workshop’s astronomical clock',
+    description: 'A wall clock showing the phases of the moon, the equation of time and sunrise at the workshop’s latitude.',
+  },
+  {
+    slug: 'regulateur-noyer',
+    title: 'Walnut floor regulator',
+    description: 'A regulator with a compensated pendulum, housed in a hand-carved solid walnut case.',
+  },
+];
+
 /* The window sizes the layout is checked at: a phone's, and a wide window's, where the cards sit
    two per row. */
 const PHONE = { width: 390, height: 844 };
@@ -82,6 +132,12 @@ function cardTitled(section: Locator, title: string): Locator {
 /* How the assertion messages name the card of the example site's featured project at `index`. */
 function cardName(index: number): string {
   return `card ${index + 1} ("${FEATURED_PROJECTS[index].title}")`;
+}
+
+/* A pattern that matches the text as written, wherever it appears: its special characters are
+   escaped. */
+function containing(text: string): RegExp {
+  return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 }
 
 /* The cards of the section "Projets sélectionnés" of the page just loaded, once its fonts are
@@ -123,6 +179,14 @@ function boxAround(lines: Box[]): Box | null {
 /* The box around the text an element displays, or null when it shows none. */
 async function textBox(element: Locator): Promise<Box | null> {
   return boxAround(await textLineBoxes(element));
+}
+
+/* The box of an element itself, whatever text it displays. */
+function elementBox(locator: Locator): Promise<Box> {
+  return locator.evaluate((element): Box => {
+    const { left, right, top, bottom } = element.getBoundingClientRect();
+    return { left, right, top, bottom };
+  });
 }
 
 type Rgb = { red: number; green: number; blue: number };
@@ -361,7 +425,7 @@ test('on the French home page, the section "Projets sélectionnés" shows one ca
   await expect(section.getByRole('heading', { level: 3 })).toHaveText(FEATURED_PROJECTS.map((project) => project.title));
 });
 
-test('on the French home page, each featured project’s card gives the role, years, description and stack its page declares, the description as a paragraph and the stack on one line, items separated by " · "', async ({ page }) => {
+test('on the French home page, each featured project’s card gives the role, description and stack its page declares, the description as a paragraph and the stack on one line, items separated by " · "', async ({ page }) => {
   await page.goto('/fr/');
   const section = projectsSection(page);
   for (const project of FEATURED_PROJECTS) {
@@ -370,7 +434,7 @@ test('on the French home page, each featured project’s card gives the role, ye
     const card = cardTitled(section, project.title);
     await expect(card).toHaveCount(1);
     const stack = project.stack.join(' · ');
-    for (const text of [project.years, project.role, stack]) {
+    for (const text of [project.role, stack]) {
       await expect(card.getByText(text, { exact: true })).toBeVisible();
       /* Shown once in the section: in this card only. */
       await expect(section.getByText(text, { exact: true })).toHaveCount(1);
@@ -380,6 +444,21 @@ test('on the French home page, each featured project’s card gives the role, ye
     await expect(description).toHaveRole('paragraph');
     await expect(section.getByText(project.description, { exact: true })).toHaveCount(1);
   }
+});
+
+test('on the French home page, no featured project’s card shows the years its page declares', async ({ page }) => {
+  await page.goto('/fr/');
+  const section = projectsSection(page);
+  for (const project of FEATURED_PROJECTS) {
+    /* The card is there, headed by its title, so that a missing card cannot pass for one
+       without years. */
+    const card = cardTitled(section, project.title);
+    await expect(card).toHaveCount(1);
+    /* The card's whole text, hidden parts included: the years appear nowhere in it. */
+    await expect(card).not.toContainText(project.years);
+  }
+  /* Nor anywhere else in the section. */
+  for (const project of FEATURED_PROJECTS) await expect(section).not.toContainText(project.years);
 });
 
 test('on the French home page, each featured project’s card ends with a "Voir le détail" link, separate from its title, whose accessible name names the project; following it opens the project’s page, at the site root and under /portfolio/', async ({ page }) => {
@@ -398,13 +477,36 @@ test('on the French home page, each featured project’s card ends with a "Voir 
       await expect(link).toContainText('Voir le détail');
       /* Every card shows the same text: the accessible name also names the project, so that a
          list of the page's links tells them apart. The arrow is decorative: not in the name. */
-      await expect(link).toHaveAccessibleName(new RegExp(project.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+      await expect(link).toHaveAccessibleName(containing(project.title));
       await expect(link).not.toHaveAccessibleName(/→/);
       await link.click();
       await expect(page).toHaveURL(`${siteRoot}fr/projets/${project.slug}/`);
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(project.title);
     }
   }
+});
+
+test('on the English home page, the section "Selected projects" shows the English title and description of each featured project, in the order the home page lists them, and each card’s "See details" link opens the project’s English page', async ({ page }) => {
+  await page.goto('/en/');
+  const section = page.getByRole('main').getByRole('region', { name: 'Selected projects' });
+  await expect(section.getByRole('heading', { level: 2, name: 'Selected projects' })).toBeVisible();
+  /* An array makes the match exact: a French, missing, extra or misplaced title fails it. */
+  await expect(section.getByRole('heading', { level: 3 })).toHaveText(FEATURED_PROJECTS_IN_ENGLISH.map((project) => project.title));
+  for (const project of FEATURED_PROJECTS_IN_ENGLISH) {
+    const card = cardTitled(section, project.title);
+    await expect(card).toHaveCount(1);
+    await expect(card.getByText(project.description, { exact: true })).toBeVisible();
+    const link = card.getByRole('link', { name: 'See details' });
+    await expect(link).toHaveCount(1);
+    await expect(link).toContainText('See details');
+    await expect(link).toHaveAccessibleName(containing(project.title));
+    await expect(link).toHaveAttribute('href', `/en/projects/${project.slug}/`);
+  }
+  /* Following a link lands on the English page of its project. */
+  const [first] = FEATURED_PROJECTS_IN_ENGLISH;
+  await cardTitled(section, first.title).getByRole('link', { name: 'See details' }).click();
+  await expect(page).toHaveURL(`/en/projects/${first.slug}/`);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(first.title);
 });
 
 test('on the French home page, the cards of the section "Projets sélectionnés" are readable: dark cards on the section’s light background, and every text of the section, its heading’s number included, contrasts at least 4.5:1 with what is behind it', async ({ page }) => {
@@ -432,41 +534,51 @@ test('on the French home page, the cards of the section "Projets sélectionnés"
   }
 });
 
-test('on the French home page, on a phone and on a wide window, each card of the section "Projets sélectionnés" shows its years on its title’s row, on one line, to the right of the title, at the right end of the card’s text', async ({ page }) => {
-  for (const viewport of [PHONE, WIDE_WINDOW]) {
-    await page.setViewportSize(viewport);
-    await page.goto('/fr/');
-    await cardsOnceLoaded(page);
-    const section = projectsSection(page);
-    for (const [index, project] of FEATURED_PROJECTS.entries()) {
-      const where = `${viewport.width}px wide, ${cardName(index)}`;
-      const card = cardTitled(section, project.title);
-      await expect(card).toHaveCount(1);
-      const years = card.getByText(project.years, { exact: true });
-      await expect(years).toBeVisible();
-      const titleLines = await textLineBoxes(card.getByRole('heading', { level: 3 }));
-      const yearsLines = await textLineBoxes(years);
-      expect.soft(yearsLines.length, `${where}: lines the years "${project.years}" are laid out on`).toBe(1);
-      if (titleLines.length === 0 || yearsLines.length === 0) continue;
-      const yearsBox = boxAround(yearsLines)!;
-      /* On the title's row: the years overlap the title's first line vertically. */
-      const firstLine = titleLines.reduce((first, line) => (line.top < first.top ? line : first));
-      expect.soft(
-        yearsBox.top < firstLine.bottom && yearsBox.bottom > firstLine.top,
-        `${where}: the years (${yearsBox.top.toFixed(1)}–${yearsBox.bottom.toFixed(1)} px) overlap vertically the title's first line (${firstLine.top.toFixed(1)}–${firstLine.bottom.toFixed(1)} px)`,
-      ).toBe(true);
-      /* To the right of the title: no line of the title on the years' row reaches into them. */
-      for (const line of titleLines.filter((line) => line.top < yearsBox.bottom && line.bottom > yearsBox.top)) {
-        expect.soft(line.right, `${where}: right edge of a title line on the years' row, against the years' left edge (${yearsBox.left.toFixed(1)} px)`).toBeLessThanOrEqual(yearsBox.left + 1);
-      }
-      /* At the right end of the card's text: lined up with the description's right edge. */
-      const descriptionRight = await card.getByText(project.description, { exact: true }).evaluate((element) => element.getBoundingClientRect().right);
-      expect.soft(Math.abs(yearsBox.right - descriptionRight), `${where}: the years' right edge (${yearsBox.right.toFixed(1)} px) against the description's right edge (${descriptionRight.toFixed(1)} px)`).toBeLessThanOrEqual(2);
+test('on the French home page, the "Voir le détail" link of each card stays readable while hovered with a fine pointer and while reached by keyboard: its text still contrasts at least 4.5:1 with the card’s background', async ({ page, hasTouch, browserName }) => {
+  await page.goto('/fr/');
+  const cards = await cardsOnceLoaded(page);
+  const links = await Promise.all(
+    (await cards.all()).map(async (card) => {
+      const link = card.getByRole('link', { name: 'Voir le détail' });
+      await expect(link).toHaveCount(1);
+      return link;
+    }),
+  );
+
+  /* Every text the link displays, its arrow included, against the background behind it. WCAG AA
+     for normal text: 4.5:1. */
+  const expectReadable = async (link: Locator, state: string, index: number) => {
+    const texts = await displayedTexts(link);
+    expect(texts.length, `${cardName(index)}: texts displayed by its link ${state}`).toBeGreaterThan(0);
+    for (const { text, color, backgrounds } of texts) {
+      const background = effectiveBackground(backgrounds);
+      const ratio = contrastRatio(paintOver(color, background), background);
+      expect.soft(ratio, `${cardName(index)}: contrast of "${text}" (${color}) ${state} with what is behind it`).toBeGreaterThanOrEqual(4.5);
     }
+  };
+
+  /* Hovering needs a fine pointer; touch screens have none. */
+  if (!hasTouch) {
+    for (const [index, link] of links.entries()) {
+      await link.hover();
+      expect(await link.evaluate((el) => el.matches(':hover')), `${cardName(index)}: its link is hovered`).toBe(true);
+      await expectReadable(link, 'while hovered', index);
+    }
+    /* The pointer leaves the links, so that only the focus remains below. */
+    await page.mouse.move(0, 0);
+  }
+
+  /* A keyboard visitor tabs from one link to the next. The cards' links come after every
+     focusable element above the section: more tabs than tabUntilFocused allows by default. */
+  const MAX_TABS = 60;
+  for (const [index, link] of links.entries()) {
+    await tabUntilFocused(link, browserName, MAX_TABS);
+    expect(await link.evaluate((el) => el.matches(':focus-visible')), `${cardName(index)}: its link shows the keyboard focus`).toBe(true);
+    await expectReadable(link, 'while focused by keyboard', index);
   }
 });
 
-test('on the French home page, on a phone and on a wide window, each card of the section "Projets sélectionnés" shows its role below its title’s row, below both the title and the years, and above its description', async ({ page }) => {
+test('on the French home page, on a phone and on a wide window, each card of the section "Projets sélectionnés" shows its role below its title and above its description', async ({ page }) => {
   for (const viewport of [PHONE, WIDE_WINDOW]) {
     await page.setViewportSize(viewport);
     await page.goto('/fr/');
@@ -478,16 +590,14 @@ test('on the French home page, on a phone and on a wide window, each card of the
       await expect(card).toHaveCount(1);
       const role = card.getByText(project.role, { exact: true });
       await expect(role).toBeVisible();
-      const [title, years, roleBox, description] = await Promise.all([
+      const [title, roleBox, description] = await Promise.all([
         textBox(card.getByRole('heading', { level: 3 })),
-        textBox(card.getByText(project.years, { exact: true })),
         textBox(role),
         textBox(card.getByText(project.description, { exact: true })),
       ]);
-      expect(title && years && roleBox && description, `${where}: the title, years, role and description each show text on screen`).toBeTruthy();
-      /* Below the title's row: under the title's last line and under the years. */
-      const rowBottom = Math.max(title!.bottom, years!.bottom);
-      expect.soft(roleBox!.top, `${where}: top of the role "${project.role}" against the bottom of the title's row (title ${title!.bottom.toFixed(1)} px, years ${years!.bottom.toFixed(1)} px)`).toBeGreaterThanOrEqual(rowBottom - 1);
+      expect(title && roleBox && description, `${where}: the title, role and description each show text on screen`).toBeTruthy();
+      /* Below the title: under its last line. */
+      expect.soft(roleBox!.top, `${where}: top of the role "${project.role}" against the bottom of the title (${title!.bottom.toFixed(1)} px)`).toBeGreaterThanOrEqual(title!.bottom - 1);
       /* Above the description. */
       expect.soft(roleBox!.bottom, `${where}: bottom of the role "${project.role}" against the top of the description (${description!.top.toFixed(1)} px)`).toBeLessThanOrEqual(description!.top + 1);
     }
@@ -553,10 +663,6 @@ test('on a wide window, the cards of the section "Projets sélectionnés" sit tw
 });
 
 test('on the French home page, the "Tous les projets" link of the section "Projets sélectionnés" comes before the cards: on a wide window on the heading’s row, at the right end of the cards’ area; on a phone below the heading and above the first card', async ({ page }) => {
-  const elementBox = (locator: Locator) => locator.evaluate((element): Box => {
-    const { left, right, top, bottom } = element.getBoundingClientRect();
-    return { left, right, top, bottom };
-  });
   const span = (box: Box) => `${box.left.toFixed(1)}–${box.right.toFixed(1)} px × ${box.top.toFixed(1)}–${box.bottom.toFixed(1)} px`;
   for (const viewport of [WIDE_WINDOW, PHONE]) {
     await page.setViewportSize(viewport);
@@ -586,6 +692,27 @@ test('on the French home page, the "Tous les projets" link of the section "Proje
       /* Between the heading and the first card. */
       expect.soft(linkBox!.top, `${where}: the link's top against the heading's bottom (${heading!.bottom.toFixed(1)} px)`).toBeGreaterThanOrEqual(heading!.bottom - 1);
       expect.soft(linkBox!.bottom, `${where}: the link's bottom against the first card's top (${firstCard.top.toFixed(1)} px)`).toBeLessThanOrEqual(firstCard.top + 1);
+    }
+  }
+});
+
+test('on the French home page, on a phone and on a wide window, the "Voir le détail" link of each card and the "Tous les projets" link of the section "Projets sélectionnés" are each at least 24 px high (WCAG 2.5.8)', async ({ page }) => {
+  for (const viewport of [PHONE, WIDE_WINDOW]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/fr/');
+    await cardsOnceLoaded(page);
+    const section = projectsSection(page);
+    const where = `${viewport.width}px wide`;
+    const links: Record<string, Locator> = {
+      '"Tous les projets" link': section.getByRole('link', { name: 'Tous les projets', exact: true }),
+    };
+    FEATURED_PROJECTS.forEach((project, index) => {
+      links[`"Voir le détail" link of ${cardName(index)}`] = cardTitled(section, project.title).getByRole('link', { name: 'Voir le détail' });
+    });
+    for (const [name, link] of Object.entries(links)) {
+      await expect(link, `${where}: ${name}`).toBeVisible();
+      const box = (await link.boundingBox())!;
+      expect.soft(box.height, `${where}: target height of the ${name}`).toBeGreaterThanOrEqual(24);
     }
   }
 });
@@ -1246,6 +1373,101 @@ test.describe('home page of another site, featuring a project whose section give
   });
 });
 
+test.describe('home page of another site, featuring projects whose page is not published', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('the cards of featured projects whose page declares render = "link" or render = false have no link, while the other card keeps its own', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES, siteDirectory);
+    await page.goto(`${SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES.origin}/fr/`);
+    const section = projectsSection(page);
+    /* In tests/fixtures/projects-without-published-pages/content/projets/, horloge-comtoise.md
+       declares [build] render = 'link' and sablier-de-marine.md [build] render = false: neither
+       has a published page. Their cards are still shown, with no link at all, not even an empty
+       one. */
+    for (const title of ['Horloge comtoise', 'Sablier de marine']) {
+      const card = cardTitled(section, title);
+      await expect(card).toHaveCount(1);
+      await expect(card).toBeVisible();
+      await expect.soft(card.locator('a'), `links in the card of "${title}"`).toHaveCount(0);
+    }
+    /* The project that has a page keeps its link to it. */
+    await expect(cardTitled(section, 'Restauration d’une pendule de cheminée').getByRole('link', { name: 'Voir le détail' })).toHaveCount(1);
+    /* render = 'link' gives the clock an address, but nothing is published there. */
+    const response = await page.goto(`${SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES.origin}/fr/projets/horloge-comtoise/`);
+    expect(response?.status()).toBe(404);
+  });
+});
+
+test.describe('home page of another site, featuring projects whose page declares an unusual render value', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_UNUSUAL_RENDER_VALUES);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('the cards of featured projects whose page declares render = "Always" (capitalised) or a typo such as render = "nevr", which Hugo still publishes, keep their "Voir le détail" link, which opens that page', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_UNUSUAL_RENDER_VALUES, siteDirectory);
+    /* In tests/fixtures/unusual-render-values/content/projets/, horloge-a-poids.md declares
+       [build] render = 'Always' and pendulette-officier.md [build] render = 'nevr': Hugo reads the
+       value case-insensitively and treats a value it does not recognise as 'always', so that both
+       pages are published. */
+    const projects = [
+      { title: 'Horloge à poids', slug: 'horloge-a-poids' },
+      { title: 'Pendulette d’officier', slug: 'pendulette-officier' },
+    ];
+    for (const project of projects) {
+      await page.goto(`${SITE_WITH_UNUSUAL_RENDER_VALUES.origin}/fr/`);
+      const card = cardTitled(projectsSection(page), project.title);
+      await expect(card).toHaveCount(1);
+      const link = card.getByRole('link', { name: 'Voir le détail' });
+      await expect(link, `"Voir le détail" link in the card of "${project.title}"`).toHaveCount(1);
+      await expect(link).toBeVisible();
+      await link.click();
+      await expect(page).toHaveURL(`${SITE_WITH_UNUSUAL_RENDER_VALUES.origin}/fr/projets/${project.slug}/`);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(project.title);
+    }
+  });
+
+  test('the card of a featured project whose page declares render = 0, which Hugo reads as "never" and does not publish, has no "Voir le détail" link', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_UNUSUAL_RENDER_VALUES, siteDirectory);
+    /* tests/fixtures/unusual-render-values/content/projets/montre-gousset.md declares
+       [build] render = 0, an integer: Hugo publishes nothing at that project's address… */
+    const response = await page.goto(`${SITE_WITH_UNUSUAL_RENDER_VALUES.origin}/fr/projets/montre-gousset/`);
+    expect(response?.status()).toBe(404);
+    /* …yet its card is still shown, with no link at all, not even an empty one. */
+    await page.goto(`${SITE_WITH_UNUSUAL_RENDER_VALUES.origin}/fr/`);
+    const card = cardTitled(projectsSection(page), 'Montre de gousset');
+    await expect(card).toHaveCount(1);
+    await expect(card).toBeVisible();
+    await expect(card.locator('a')).toHaveCount(0);
+  });
+
+  test('the card of a featured project whose page declares render = "false" (a quoted string, not the boolean), which Hugo publishes, keeps its "Voir le détail" link, which opens that page', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_UNUSUAL_RENDER_VALUES, siteDirectory);
+    /* tests/fixtures/unusual-render-values/content/projets/carillon-de-bureau.md declares
+       [build] render = 'false', a string: Hugo reads render values case-sensitively and only the
+       boolean false means 'never'; the string 'false' is a value it does not recognise, so it
+       publishes the page as with 'always'. */
+    await page.goto(`${SITE_WITH_UNUSUAL_RENDER_VALUES.origin}/fr/`);
+    const card = cardTitled(projectsSection(page), 'Carillon de bureau');
+    await expect(card).toHaveCount(1);
+    const link = card.getByRole('link', { name: 'Voir le détail' });
+    await expect(link, '"Voir le détail" link in the card of "Carillon de bureau"').toHaveCount(1);
+    await expect(link).toBeVisible();
+    await link.click();
+    await expect(page).toHaveURL(`${SITE_WITH_UNUSUAL_RENDER_VALUES.origin}/fr/projets/carillon-de-bureau/`);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Carillon de bureau');
+  });
+});
+
 test.describe('home pages whose featured projects live in sections of different names', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
@@ -1288,6 +1510,146 @@ test.describe('home pages whose featured projects live in sections of different 
   });
 });
 
+test.describe('home page of another site, featuring a project at the content root', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('the section "Projets sélectionnés" shows the card of a featured project that lives at the content root, outside any section, but no "Tous les projets" link, since no section holds that project', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT, siteDirectory);
+    await page.goto(`${SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT.origin}/fr/`);
+    const section = projectsSection(page);
+    /* tests/fixtures/project-at-the-root/content/_index.md features 'pendule-murale', a page at the
+       root of the content: the section and its card are still shown… */
+    const card = cardTitled(section, 'Pendule murale');
+    await expect(card).toHaveCount(1);
+    await expect(card).toBeVisible();
+    await expect(card.getByRole('link', { name: 'Voir le détail' })).toHaveCount(1);
+    /* …but no link claims to list all the projects: there is no projects section to open, and the
+       home page the visitor is on is not one. */
+    await expect(section.getByRole('link', { name: 'Tous les projets' })).toHaveCount(0);
+    await expect(section.getByText('Tous les projets')).toHaveCount(0);
+  });
+
+  test('on a phone, without the "Tous les projets" link, the first card of the section "Projets sélectionnés" is as far below the heading as it is below the link on a home page that has it', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT, siteDirectory);
+    await page.setViewportSize(PHONE);
+    /* From the bottom of an element's box (the link's ends with its underline) to the top of the
+       first card's. */
+    const spaceAboveFirstCard = async (element: Locator, firstCard: Locator) => {
+      const [above, card] = await Promise.all([elementBox(element), elementBox(firstCard)]);
+      return card.top - above.bottom;
+    };
+    /* The example site's home page has the link, below the heading and above the first card. */
+    await page.goto('http://localhost:1314/fr/');
+    await page.evaluate(() => document.fonts.ready);
+    const sectionWithLink = projectsSection(page);
+    const link = sectionWithLink.getByRole('link', { name: 'Tous les projets', exact: true });
+    await expect(link).toBeVisible();
+    const belowLink = await spaceAboveFirstCard(link, sectionWithLink.getByRole('article').first());
+    /* This site's home page has no link: the first card comes right after the heading. */
+    await page.goto(`${SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT.origin}/fr/`);
+    await page.evaluate(() => document.fonts.ready);
+    const section = projectsSection(page);
+    await expect(section.getByRole('link', { name: 'Tous les projets' })).toHaveCount(0);
+    const firstCard = section.getByRole('article').first();
+    await expect(firstCard).toBeVisible();
+    const belowHeading = await spaceAboveFirstCard(section.getByRole('heading', { level: 2 }), firstCard);
+    expect(
+      Math.abs(belowHeading - belowLink),
+      `space from the heading to the first card without the link (${belowHeading.toFixed(1)} px) against the space from the link to the first card with it (${belowLink.toFixed(1)} px)`,
+    ).toBeLessThanOrEqual(2);
+  });
+});
+
+test.describe('home pages of other sites, featuring a project whose section has no published page', () => {
+  /* Two ways for a section to have no published page: its _index.md declares render = 'never' in
+     its cascade, so that its projects have no page either, or under a plain [build], so that its
+     projects keep theirs. */
+  const sites = [
+    {
+      site: SITE_WITH_AN_UNPUBLISHED_PROJECTS_SECTION,
+      sectionPath: '/fr/carnets/',
+      projectTitle: 'Pendule œil-de-bœuf',
+      projectHasDetailLink: false,
+    },
+    {
+      site: SITE_WITH_AN_UNPUBLISHED_SECTION_PAGE,
+      sectionPath: '/fr/ebauches/',
+      projectTitle: 'Horloge de gare',
+      projectHasDetailLink: true,
+    },
+  ];
+  const siteDirectories: string[] = [];
+  test.beforeAll(() => {
+    for (const { site } of sites) siteDirectories.push(buildSite(site));
+  });
+  test.afterAll(() => {
+    for (const directory of siteDirectories) removeDirectory(directory);
+  });
+
+  test('the section "Projets sélectionnés" shows the card of a featured project whose section declares render = "never", in its cascade or in a plain [build], but no "Tous les projets" link, since that section has no published page', async ({ page, context }) => {
+    for (const [index, { site }] of sites.entries()) {
+      await serveSite(context, site, siteDirectories[index]);
+    }
+    for (const { site, sectionPath, projectTitle, projectHasDetailLink } of sites) {
+      /* tests/fixtures/unpublished-projects-section/content/carnets/_index.md declares
+         [cascade.build] render = 'never', tests/fixtures/unpublished-section-page/content/ebauches/_index.md
+         [build] render = 'never': nothing is published at the section's address… */
+      const sectionResponse = await page.goto(`${site.origin}${sectionPath}`);
+      expect(sectionResponse?.status(), `status of ${site.origin}${sectionPath}`).toBe(404);
+      await page.goto(`${site.origin}/fr/`);
+      const section = projectsSection(page);
+      /* …yet the home page still shows the section and the card of the project it features, with
+         its "Voir le détail" link when the project's own page is published… */
+      const card = cardTitled(section, projectTitle);
+      await expect(card).toHaveCount(1);
+      await expect(card).toBeVisible();
+      await expect(card.getByRole('link', { name: 'Voir le détail' })).toHaveCount(projectHasDetailLink ? 1 : 0);
+      /* …but no link claims to list all the projects, not even an empty one: it would lead nowhere. */
+      await expect.soft(section.getByRole('link', { name: 'Tous les projets' }), `"Tous les projets" links on ${site.origin}/fr/`).toHaveCount(0);
+      await expect.soft(section.getByText('Tous les projets'), `"Tous les projets" texts on ${site.origin}/fr/`).toHaveCount(0);
+    }
+  });
+});
+
+test.describe('home page of another site, featuring projects from two published sections', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_PROJECTS_IN_TWO_SECTIONS);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('the section "Projets sélectionnés" shows the cards of featured projects from two different published sections, but no "Tous les projets" link, since no single section holds them all', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_PROJECTS_IN_TWO_SECTIONS, siteDirectory);
+    const origin = SITE_WITH_PROJECTS_IN_TWO_SECTIONS.origin;
+    /* tests/fixtures/projects-in-two-sections/content/_index.md features a project of projets/,
+       then one of realisations/: both sections are published… */
+    for (const sectionPath of ['/fr/projets/', '/fr/realisations/']) {
+      const sectionResponse = await page.goto(`${origin}${sectionPath}`);
+      expect(sectionResponse?.status(), `status of ${origin}${sectionPath}`).toBe(200);
+    }
+    await page.goto(`${origin}/fr/`);
+    const section = projectsSection(page);
+    /* …and the home page shows the card of each featured project… */
+    for (const title of ['Restauration d’une pendule de cheminée', 'Coucou de chalet']) {
+      const card = cardTitled(section, title);
+      await expect(card).toHaveCount(1);
+      await expect(card).toBeVisible();
+    }
+    /* …but no link claims to list all the projects, not even an empty one: either section would
+       list only some of them. */
+    await expect.soft(section.getByRole('link', { name: 'Tous les projets' }), `"Tous les projets" links on ${origin}/fr/`).toHaveCount(0);
+    await expect.soft(section.getByText('Tous les projets'), `"Tous les projets" texts on ${origin}/fr/`).toHaveCount(0);
+  });
+});
+
 test.describe('home page of another site, featuring no projects', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
@@ -1316,6 +1678,118 @@ test.describe('home page of another site, featuring no projects', () => {
   });
 });
 
+/* The horizontal edges of one line of a text, with the text it belongs to. */
+type TextLine = { text: string; left: number; right: number };
+
+/* A card's horizontal edges, and the horizontal edges of every line of every text it displays,
+   each with the text it belongs to. */
+async function cardAndTextLines(card: Locator): Promise<{ cardBox: { left: number; right: number }; lines: TextLine[] }> {
+  return card.evaluate((article) => {
+    const { left, right } = article.getBoundingClientRect();
+    const found: TextLine[] = [];
+    const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const text = (node.textContent ?? '').replace(/\s+/g, ' ').trim();
+      if (!text) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      for (const rect of range.getClientRects()) {
+        if (rect.width > 0 && rect.height > 0) found.push({ text, left: rect.left, right: rect.right });
+      }
+    }
+    return { cardBox: { left, right }, lines: found };
+  });
+}
+
+test.describe('home page of another site, featuring a project with long words', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_LONG_PROJECT_WORDS);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a phone, the card of a featured project whose role, description and stack each hold a word wider than the card keeps them inside the card: no text of the card leaves it, and the page does not scroll horizontally', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_LONG_PROJECT_WORDS, siteDirectory);
+    await page.setViewportSize(PHONE);
+    await page.goto(`${SITE_WITH_LONG_PROJECT_WORDS.origin}/fr/`);
+    await page.evaluate(() => document.fonts.ready);
+    /* tests/fixtures/long-project-words/content/projets/pendule-aux-mots-longs.md declares a role,
+       a description and a stack that each hold a single word, without a hyphen nor a space,
+       wider than the card. */
+    const longWords = {
+      role: 'Restauratricedemouvementscompliquésetdecadransémaillésanciens',
+      description: 'Penduleastronomiqueàquantièmeperpétueléquationdutempsetphasesdelalune',
+      stack: 'Laitonrecuitdoréàlamercurepuisrecouvertdunvernisàlagommelaque',
+    };
+    const card = cardTitled(projectsSection(page), 'Pendule aux mots longs');
+    await expect(card).toHaveCount(1);
+    for (const [part, word] of Object.entries(longWords)) {
+      await expect(card.getByText(word), `the ${part} holding "${word}"`).toBeVisible();
+    }
+    /* No text leaves the card: every line of every text it displays stays within its box. */
+    const { cardBox, lines } = await cardAndTextLines(card);
+    expect(lines.length, 'lines of text the card displays').toBeGreaterThan(0);
+    for (const line of lines) {
+      expect.soft(line.left, `left edge of a line of "${line.text}" against the card's left edge (${cardBox.left.toFixed(1)} px)`).toBeGreaterThanOrEqual(cardBox.left - 1);
+      expect.soft(line.right, `right edge of a line of "${line.text}" against the card's right edge (${cardBox.right.toFixed(1)} px)`).toBeLessThanOrEqual(cardBox.right + 1);
+    }
+    const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect.soft(pageWidth, 'width of the page content').toBeLessThanOrEqual(PHONE.width);
+  });
+});
+
+test.describe('home page of another site, featuring a project with a long title and no years', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a phone, the card of a featured project without years lets its long title use the whole width of the card’s text: the wrapped title reaches the right end of the card’s text, where the description’s lines end, rather than stopping short where years would be', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS, siteDirectory);
+    await page.setViewportSize(PHONE);
+    await page.goto(`${SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS.origin}/fr/`);
+    await page.evaluate(() => document.fonts.ready);
+    /* tests/fixtures/long-project-title-without-years/content/projets/pendule-sans-annees.md
+       declares no years, and a title and a description that each hold a single word wider than
+       the card. A word that wraps anywhere fills each of its lines but the last to less than one
+       character short of the width it is given, whatever that width: how far right the title
+       reaches shows the width it gets. */
+    const title = 'Penduleàrépétitiondesquartsetàsonneriegrandeetpetitesansannées';
+    const description = 'Remise en marche d’une Penduleastronomiqueàquantièmeperpétueléquationdutempsetphasesdelalune de l’atelier.';
+    const card = cardTitled(projectsSection(page), title);
+    await expect(card).toHaveCount(1);
+    const heading = card.getByRole('heading', { level: 3, name: title, exact: true });
+    const descriptionText = card.getByText(description, { exact: true });
+    await expect(descriptionText).toBeVisible();
+    /* Wrapped: the title is laid out on more than one line. */
+    const titleLines = await textLineBoxes(heading);
+    expect(titleLines.length, `lines the title "${title}" is laid out on`).toBeGreaterThan(1);
+    /* The right end of the card's text: where the description's paragraph, across the card,
+       ends its lines. */
+    const descriptionBox = await descriptionText.boundingBox();
+    expect(descriptionBox, 'box of the description').not.toBeNull();
+    const textRight = descriptionBox!.x + descriptionBox!.width;
+    /* One character of the title, in its monospace font. */
+    const titleCharacterWidth = await heading.evaluate((element) => {
+      const range = document.createRange();
+      const text = element.firstChild as Text;
+      range.setStart(text, 0);
+      range.setEnd(text, 1);
+      return range.getBoundingClientRect().width;
+    });
+    const titleRight = boxAround(titleLines)?.right ?? Number.NaN;
+    expect(
+      titleRight,
+      `right edge of the title's widest line, against the right end of the card's text (${textRight.toFixed(1)} px), less one character of the title (${titleCharacterWidth.toFixed(1)} px)`,
+    ).toBeGreaterThan(textRight - titleCharacterWidth);
+  });
+});
+
 test.describe('featured project content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
@@ -1335,6 +1809,355 @@ test.describe('featured project content errors: build failure', () => {
     expect(build.errors, 'the French message should name the missing page reference').toContain(
       'projets/sablier-introuvable',
     );
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose projects parameter is a text instead of a list makes the site build fail, with a French error message that names the projects parameter, without a template execution error after it', () => {
+    /* tests/fixtures/single-ref-instead-of-list/content/_index.md declares
+       projects = 'projets/restauration-pendule', a text rather than a list of page references,
+       although that page exists. Rather than a section built from that text, or a build that
+       quietly treats it as a list of one, the person building the site must get a failure whose
+       French message names the projects parameter, in the style of the clients messages ("le
+       paramètre clients…"), whatever the rest of the wording, and no Go template execution error,
+       about a range over a text, that would follow it and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_PROJECTS_AS_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
+    );
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose projects parameter is an empty text instead of a list makes the site build fail, with a French error message that names the projects parameter, without a template execution error after it', () => {
+    /* tests/fixtures/empty-text-instead-of-list/content/_index.md declares projects = '', an
+       empty text rather than a list of page references. Rather than a home page that quietly
+       leaves out the projects section, as if the parameter were absent, the person building the
+       site must get a failure whose French message names the projects parameter, in the style of
+       the clients messages ("le paramètre clients…"), whatever the rest of the wording, and no Go
+       template execution error that would follow it and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
+    );
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose projects parameter is false instead of a list makes the site build fail, with a French error message that names the projects parameter, without a template execution error after it', () => {
+    /* tests/fixtures/false-instead-of-list/content/_index.md declares projects = false, a
+       boolean rather than a list of page references. Rather than a home page that quietly
+       leaves out the projects section, as if the parameter were absent, the person building the
+       site must get a failure whose French message names the projects parameter, in the style of
+       the clients messages ("le paramètre clients…"), whatever the rest of the wording, and no Go
+       template execution error that would follow it and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_PROJECTS_AS_FALSE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
+    );
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose projects list holds a table instead of a page reference makes the site build fail, with a French error message that names the projects parameter, without a template execution error after it', () => {
+    /* tests/fixtures/table-instead-of-ref/content/_index.md declares projects as a list (so the
+       check that projects is a list lets it through) whose second entry is a table,
+       { path = 'projets/restauration-pendule' }, rather than a page reference, although that page
+       exists. Rather than a section that looks that table up as a page, the person building the
+       site must get a failure whose French message names the projects parameter, in the style of
+       the clients messages ("le paramètre clients…"), whatever the rest of the wording, and no Go
+       template execution error, about a function called with a table, that would follow it and
+       bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_A_FEATURED_PROJECT_AS_MAP);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
+    );
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose projects list holds an empty or whitespace-only page reference makes the site build fail, with a French error message that names the projects parameter, without a template execution error after it', () => {
+    /* tests/fixtures/empty-ref and tests/fixtures/whitespace-only-ref declare projects as a list
+       of texts, so the checks on the list and on its entries let them through, but their second
+       entry is '' in one and '   ' in the other: a reference that names no page. Rather than a
+       section with a card of whatever page such a reference happens to resolve to (the home page
+       itself, for ''), the person building the site must get, in both cases, a failure whose
+       French message names the projects parameter of the front matter, in the style of the
+       clients messages ("le paramètre clients…"), whatever the rest of the wording, and no Go
+       template execution error, such as the one today's template raises when it looks up the
+       parent of the page '' resolves to, that would follow it and bury it in technical jargon.
+       Two fixtures, so that rejecting only the empty reference does not pass. */
+    const cases = [
+      { name: 'an empty reference', site: SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF },
+      { name: 'a whitespace-only reference', site: SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(build.errors, `with ${name}, the French message should name the projects parameter`).toMatch(
+        /\bparamètre\s+projects\b/,
+      );
+      expect(build.errors, `with ${name}, no template execution error should follow the French message`).not.toMatch(
+        /execute of template failed|error calling/i,
+      );
+    }
+  });
+
+  test('a home page whose projects list references the home page itself, as "/", makes the site build fail, with a French error message that names the projects parameter and that entry, without a template execution error after it', () => {
+    /* tests/fixtures/self-ref/content/_index.md features 'projets/restauration-pendule', then '/':
+       a reference to the home page itself, which exists, so that the check for a page not found
+       lets it through, but is no project. Rather than a section with a card of the home page, or
+       the Go template execution error today's template raises when it looks up the parent of the
+       home page, which has none, the person building the site must get a failure whose French
+       message names the projects parameter, in the style of the clients messages ("le paramètre
+       clients…"), and the entry as written in the front matter, whatever the rest of the wording.
+       The entry, a lone '/', is looked for on the message's line as a token of its own, between
+       spaces, quotes or punctuation, so that the slashes of a file path do not pass for it. */
+    const build = tryToBuildSite(SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
+    );
+    expect(build.errors, 'the French message should name the entry "/" as written in the front matter').toMatch(
+      /\bparamètre\s+projects\b.*(?:^|[\s:«"'‘“(])\/(?=$|[\s»"'’”),.;])/m,
+    );
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose projects list references the home page itself, as ".", makes the site build fail, with a French error message that names the projects parameter and that entry, without a template execution error after it', () => {
+    /* tests/fixtures/dot-self-ref/content/_index.md features 'projets/restauration-pendule', then
+       '.': the current page, that is the home page itself, written another way than '/'. It is no
+       project either: the person building the site must get the same failure as for '/', whose
+       French message names the projects parameter, in the style of the clients messages ("le
+       paramètre clients…"), and the entry as written in the front matter, whatever the rest of the
+       wording, rather than a message that calls that page not found or a section with a card of
+       the home page. The entry, a lone '.', is looked for on the message's line as a token of its
+       own, between spaces, quotes or punctuation other than a dot, so that neither the dots of a
+       file name nor a sentence's full stop pass for it, nor a full stop right after the entry
+       for the entry followed by a full stop. */
+    const build = tryToBuildSite(SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT_WRITTEN_AS_A_DOT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
+    );
+    expect(build.errors, 'the French message should name the entry "." as written in the front matter').toMatch(
+      /\bparamètre\s+projects\b.*(?:^|[\s:«"'‘“(])\.(?=$|[\s»"'’”),;])/m,
+    );
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose projects list references a section page, such as "projets", the projects section itself, makes the site build fail, with a French error message that names the projects parameter and that entry and says it is not a project, without a template execution error after it', () => {
+    /* tests/fixtures/section-ref/content/_index.md features 'projets/restauration-pendule', then
+       'projets': the example site's projects section, which exists, so that the check for a page
+       not found lets it through, and is not the home page, so that the check for the home page
+       lets it through too, but is a section page, no project. Rather than a section with a card
+       of the projects section, the person building the site must get a failure whose French
+       message names the projects parameter, in the style of the clients messages ("le paramètre
+       clients…"), the entry as written in the front matter, and says that it is not a project
+       ("pas un projet"), whatever the rest of the wording. The entry, 'projets', is looked for on
+       the message's line as a token of its own, between spaces, quotes or punctuation other than
+       a slash, so that a file path or another page reference under projets/ does not pass for it;
+       "pas un projet" is looked for on that same line. */
+    const build = tryToBuildSite(SITE_WITH_A_SECTION_AS_FEATURED_PROJECT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
+    );
+    expect(build.errors, 'the French message should name the entry "projets" as written in the front matter').toMatch(
+      /\bparamètre\s+projects\b.*(?:^|[\s:«"'‘“(])projets(?=$|[\s»"'’”),.;])/m,
+    );
+    expect(build.errors, 'the French message should say that entry is not a project').toMatch(
+      /\bparamètre\s+projects\b.*\bpas\s+un\s+projet\b/im,
+    );
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose projects list references a taxonomy term page, such as "tags/horlogerie", the page of a tag a project carries, makes the site build fail, with a French error message that names the projects parameter and that entry and says it is not a project, without a template execution error after it', () => {
+    /* tests/fixtures/term-ref enables the tags taxonomy, which the example site disables, adds a
+       project that carries the tag 'horlogerie', and its content/_index.md features
+       'projets/restauration-pendule', then 'tags/horlogerie': the page of that tag, which exists,
+       so that the check for a page not found lets it through, and is neither the home page nor a
+       section page, so that those checks let it through too, but is a taxonomy term page, no
+       project. Rather than a section with a card of that tag's page, the person building the site
+       must get a failure whose French message names the projects parameter, in the style of the
+       clients messages ("le paramètre clients…"), the entry as written in the front matter, and
+       says that it is not a project ("pas un projet"), whatever the rest of the wording. The
+       entry, 'tags/horlogerie', is looked for on the message's line as a token of its own,
+       between spaces, quotes or punctuation other than a slash, so that a longer path ending or
+       starting with it does not pass for it; "pas un projet" is looked for on that same line. */
+    const build = tryToBuildSite(SITE_WITH_A_TERM_AS_FEATURED_PROJECT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
+    );
+    expect(build.errors, 'the French message should name the entry "tags/horlogerie" as written in the front matter').toMatch(
+      /\bparamètre\s+projects\b.*(?:^|[\s:«"'‘“(])tags\/horlogerie(?=$|[\s»"'’”),.;])/m,
+    );
+    expect(build.errors, 'the French message should say that entry is not a project').toMatch(
+      /\bparamètre\s+projects\b.*\bpas\s+un\s+projet\b/im,
+    );
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose projects list references a taxonomy page, such as "tags", the page listing every tag, makes the site build fail, with a French error message that names the projects parameter and that entry and says it is not a project, without a template execution error after it', () => {
+    /* tests/fixtures/taxonomy-ref enables the tags taxonomy, which the example site disables,
+       adds a project that carries the tag 'horlogerie', and its content/_index.md features
+       'projets/restauration-pendule', then 'tags': the page listing every tag, which exists, so
+       that the check for a page not found lets it through, and is neither the home page, nor a
+       section page, nor a tag's own page, so that those checks let it through too, but is a
+       taxonomy page, no project. Rather than a section with a card of that page, the person
+       building the site must get a failure whose French message names the projects parameter, in
+       the style of the clients messages ("le paramètre clients…"), the entry as written in the
+       front matter, and says that it is not a project ("pas un projet"), whatever the rest of the
+       wording. The entry, 'tags', is looked for on the message's line as a token of its own,
+       between spaces, quotes or punctuation other than a slash, so that a path such as
+       'tags/horlogerie' does not pass for it; "pas un projet" is looked for on that same line. */
+    const build = tryToBuildSite(SITE_WITH_A_TAXONOMY_AS_FEATURED_PROJECT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
+    );
+    expect(build.errors, 'the French message should name the entry "tags" as written in the front matter').toMatch(
+      /\bparamètre\s+projects\b.*(?:^|[\s:«"'‘“(])tags(?=$|[\s»"'’”),.;])/m,
+    );
+    expect(build.errors, 'the French message should say that entry is not a project').toMatch(
+      /\bparamètre\s+projects\b.*\bpas\s+un\s+projet\b/im,
+    );
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose projects list references the 404 page, as "/404", makes the site build fail, with a French error message that names the projects parameter and that entry and says it is not a project, without a template execution error after it', () => {
+    /* tests/fixtures/error-page-ref/content/_index.md features 'projets/restauration-pendule', then
+       '/404': the site's 404 page, which Hugo creates even without a 404 template, so that the
+       check for a page not found lets it through, and is neither the home page, nor a section
+       page, nor a taxonomy or term page, so that those checks let it through too, but is no
+       project. Rather than a section with a card of the 404 page, the person building the site
+       must get a failure whose French message names the projects parameter, in the style of the
+       clients messages ("le paramètre clients…"), the entry as written in the front matter, and
+       says that it is not a project ("pas un projet"), whatever the rest of the wording. The
+       entry, '/404', is looked for on the message's line as a token of its own, between spaces,
+       quotes or punctuation other than a slash, so that a longer path ending or starting with it
+       does not pass for it; "pas un projet" is looked for on that same line. */
+    const build = tryToBuildSite(SITE_WITH_THE_404_PAGE_AS_FEATURED_PROJECT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
+    );
+    expect(build.errors, 'the French message should name the entry "/404" as written in the front matter').toMatch(
+      /\bparamètre\s+projects\b.*(?:^|[\s:«"'‘“(])\/404(?=$|[\s»"'’”),.;])/m,
+    );
+    expect(build.errors, 'the French message should say that entry is not a project').toMatch(
+      /\bparamètre\s+projects\b.*\bpas\s+un\s+projet\b/im,
+    );
+    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  /* Both directions, each with the code of the home page's language: a French home page featuring
+     a project that only has an English page, and the other way round. */
+  const HOME_PAGES_FEATURING_AN_UNTRANSLATED_PROJECT = [
+    {
+      name: 'a French home page featuring an English-only project',
+      site: SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT,
+      language: 'fr',
+    },
+    {
+      name: 'an English home page featuring a French-only project',
+      site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT,
+      language: 'en',
+    },
+  ];
+
+  test('a home page that features a project without a translation in its language makes the site build fail, with a French error message that names the projects parameter and that language, without a template execution error after it', () => {
+    /* tests/fixtures/english-only-project features, on the French home page, a project that only
+       has an English page; tests/fixtures/french-only-project features, on the English home page,
+       a project that only has a French page. Rather than a section that drops that card, or one
+       that shows the project in the other language, the person building the site must get, in
+       both cases, a failure whose French message names the projects parameter, in the style of the
+       clients messages ("le paramètre clients…"), and the home page's language by its code, as
+       written in the site's configuration and in the content file names (fr, en), whatever the
+       rest of the wording, and no Go template execution error that would follow it and bury it in
+       technical jargon. The code is looked for as a word that no other word follows, so that the
+       French preposition "en" ("n’existe qu’en anglais") does not pass for the English code. Both
+       directions, so that a message naming a language written in the template does not pass. */
+    for (const { name, site, language } of HOME_PAGES_FEATURING_AN_UNTRANSLATED_PROJECT) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(build.errors, `with ${name}, the French message should name the projects parameter`).toMatch(
+        /\bparamètre\s+projects\b/,
+      );
+      expect(build.errors, `with ${name}, the French message should name the home page's language`).toMatch(
+        new RegExp(`\\b${language}\\b(?!\\s+\\p{L})`, 'u'),
+      );
+      expect(build.errors, `with ${name}, no template execution error should follow the French message`).not.toMatch(
+        /execute of template failed|error calling/i,
+      );
+    }
+  });
+
+  test('a home page that features a project without a translation in its language makes the site build fail, with a French error message that gives a missing translation in that language as a possible cause', () => {
+    /* Same fixtures as the test above. A message that only says the page cannot be found, or only
+       blames an unpublished page (a draft, a future date, an expired page), would send the person
+       building the site looking for a missing or unpublished file, while the project's file is
+       right there, in the other language: the French message must also name a missing translation
+       (traduction, traduite…) as a possible cause, on the same line as the home page's language
+       code (fr, en), whatever the rest of the wording. The code is looked for as in the test
+       above, as a word that no other word follows. Both directions, so that a message naming a
+       language written in the template does not pass. */
+    for (const { name, site, language } of HOME_PAGES_FEATURING_AN_UNTRANSLATED_PROJECT) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(
+        build.errors,
+        `with ${name}, the French message should give a missing translation in ${language} as a possible cause`,
+      ).toMatch(new RegExp(`^(?=.*tradu)(?=.*\\b${language}\\b(?!\\s+\\p{L})).*$`, 'imu'));
+    }
+  });
+
+  test('a home page that features a project whose page is a draft makes the production build fail, with a French error message that names the projects parameter and that page reference and says the page may be unpublished: a draft, a future date or an expired page, without a template execution error after it', () => {
+    /* tests/fixtures/draft-ref/content/_index.md features 'projets/restauration-pendule', then
+       'projets/pendule-portique', whose page exists but declares draft = true, so that the
+       production build leaves it out. A message that only says the page cannot be found would send
+       the person building the site looking for a missing file, while the file is right there: the
+       French message must name the projects parameter and the reference as written in the front
+       matter, say that the page may be unpublished, and name the three reasons a production build
+       leaves a page out — a draft (brouillon), a date in the future (future, à venir) and an
+       expiry date passed (expirée) — whatever the rest of the wording, and no Go template
+       execution error must follow it and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_A_DRAFT_FEATURED_PROJECT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the French message should name the projects parameter').toMatch(
+      /\bparamètre\s+projects\b/,
+    );
+    expect(build.errors, 'the French message should name the unpublished page reference').toContain(
+      'projets/pendule-portique',
+    );
+    expect(build.errors, 'the French message should say the page may be unpublished').toMatch(/publi/i);
+    expect(build.errors, 'the French message should name a draft as a possible reason').toMatch(/brouillon/i);
+    expect(build.errors, 'the French message should name a future date as a possible reason').toMatch(
+      /futur|à venir/i,
+    );
+    expect(build.errors, 'the French message should name an expired page as a possible reason').toMatch(/expir/i);
     expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
       /execute of template failed|error calling/i,
     );

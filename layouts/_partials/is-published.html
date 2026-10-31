@@ -1,0 +1,3 @@
+{{- /* Whether Hugo publishes the page. Rather than decode [build] render (set on the page or through a cascade), rely on Hugo: it leaves .RelPermalink empty for every value it does not publish, except "link" (lowercase only), which keeps the address but writes no page. */}}
+{{- $render := printf "%v" (.Params.build | default dict).render }}
+{{- return and (ne .RelPermalink "") (ne $render "link") }}
