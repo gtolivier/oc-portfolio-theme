@@ -1485,6 +1485,23 @@ test.describe('home page of another site, featuring projects whose page declares
     await expect(card).toBeVisible();
     await expect(card.locator('a')).toHaveCount(0);
   });
+
+  test('the card of a featured project whose page declares render = "false" (a quoted string, not the boolean), which Hugo publishes, keeps its "Voir le détail" link, which opens that page', async ({ page, context }) => {
+    await serveSite(context, SITE_WITH_UNUSUAL_RENDER_VALUES, siteDirectory);
+    /* tests/fixtures/unusual-render-values/content/projets/carillon-de-bureau.md declares
+       [build] render = 'false', a string: Hugo reads render values case-sensitively and only the
+       boolean false means 'never'; the string 'false' is a value it does not recognise, so it
+       publishes the page as with 'always'. */
+    await page.goto(`${SITE_WITH_UNUSUAL_RENDER_VALUES.origin}/fr/`);
+    const card = cardTitled(projectsSection(page), 'Carillon de bureau');
+    await expect(card).toHaveCount(1);
+    const link = card.getByRole('link', { name: 'Voir le détail' });
+    await expect(link, '"Voir le détail" link in the card of "Carillon de bureau"').toHaveCount(1);
+    await expect(link).toBeVisible();
+    await link.click();
+    await expect(page).toHaveURL(`${SITE_WITH_UNUSUAL_RENDER_VALUES.origin}/fr/projets/carillon-de-bureau/`);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Carillon de bureau');
+  });
 });
 
 test.describe('home pages whose featured projects live in sections of different names', () => {

@@ -6,6 +6,7 @@ projects = [
   'projets/horloge-a-poids',
   'projets/pendulette-officier',
   'projets/montre-gousset',
+  'projets/carillon-de-bureau',
 ]
 +++
 
