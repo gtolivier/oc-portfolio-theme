@@ -8,7 +8,7 @@
 {{- if ne (printf "%T" $entry) "string" }}{{ errorf "projects: each entry of the home page's projects parameter must be a page reference" }}{{ continue }}{{ end }}
 {{- if eq (strings.TrimSpace $entry) "" }}{{ errorf "projects: each entry of the home page's projects parameter must be a non-empty page reference" }}{{ continue }}{{ end }}
 {{- $page := $.GetPage $entry }}
-{{- if not $page }}{{ errorf "projects : le paramètre projects de la page d’accueil référence une page introuvable (langue : %s) : %s. Cette page n’est peut-être pas traduite dans cette langue, ou pas publiée : brouillon, date dans le futur (à venir) ou page expirée" $.Language.Lang $entry }}{{ continue }}{{ end }}
+{{- if not $page }}{{ errorf "projects: the home page's projects parameter references a page that cannot be found (language: %s): %s. The page may not be translated into this language, or not published: a draft, a future date (scheduled) or an expired page" $.Language.Lang $entry }}{{ continue }}{{ end }}
 {{- if not $page.IsPage }}{{ errorf "projects : le paramètre projects de la page d’accueil référence %s, qui n’est pas un projet : « %s »" (index $nonProjectKindWords $page.Kind | default "une page d’un autre type") $entry }}{{ continue }}{{ end }}
 {{- if and (isset $page.Params "build") (not (reflect.IsMap $page.Params.build)) }}{{ errorf "projects : le projet %s déclare un paramètre personnalisé build, que Hugo réserve à ses options de build : renommez ce paramètre" $entry }}{{ continue }}{{ end }}
 {{- $projects = $projects | append $page }}
