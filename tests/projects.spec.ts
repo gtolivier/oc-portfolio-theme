@@ -2095,35 +2095,35 @@ test.describe('featured project content errors: build failure', () => {
     }
   });
 
-  test('a home page whose projects list references the home page itself, as "/", makes the site build fail, with a French error message that names the projects parameter and that entry, without a template execution error after it', () => {
+  test('a home page whose projects list references the home page itself, as "/", makes the site build fail, with an error message that names the projects parameter and that entry, without a template execution error after it', () => {
     /* tests/fixtures/self-ref/content/_index.md features 'projets/restauration-pendule', then '/':
        a reference to the home page itself, which exists, so that the check for a page not found
        lets it through, but is no project. Rather than a section with a card of the home page, or
        the Go template execution error today's template raises when it looks up the parent of the
-       home page, which has none, the person building the site must get a failure whose French
-       message names the projects parameter, in the style of the clients messages ("le paramètre
-       clients…"), and the entry as written in the front matter, whatever the rest of the wording.
+       home page, which has none, the person building the site must get a failure whose message
+       names the projects parameter, in the style of the clients messages, which name the clients
+       parameter, and the entry as written in the front matter, whatever the rest of the wording.
        The entry, a lone '/', is looked for on the message's line as a token of its own, between
        spaces, quotes or punctuation, so that the slashes of a file path do not pass for it. */
     const build = tryToBuildSite(SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT);
     expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the French message should name the projects parameter').toMatch(
-      /\bparamètre\s+projects\b/,
+    expect(build.errors, 'the error message should name the projects parameter').toMatch(
+      /\bprojects\s+parameter\b/,
     );
-    expect(build.errors, 'the French message should name the entry "/" as written in the front matter').toMatch(
-      /\bparamètre\s+projects\b.*(?:^|[\s:«"'‘“(])\/(?=$|[\s»"'’”),.;])/m,
+    expect(build.errors, 'the error message should name the entry "/" as written in the front matter').toMatch(
+      /\bprojects\s+parameter\b.*(?:^|[\s:«"'‘“(])\/(?=$|[\s»"'’”),.;])/m,
     );
-    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       /execute of template failed|error calling/i,
     );
   });
 
-  test('a home page whose projects list references the home page itself, as ".", makes the site build fail, with a French error message that names the projects parameter and that entry, without a template execution error after it', () => {
+  test('a home page whose projects list references the home page itself, as ".", makes the site build fail, with an error message that names the projects parameter and that entry, without a template execution error after it', () => {
     /* tests/fixtures/dot-self-ref/content/_index.md features 'projets/restauration-pendule', then
        '.': the current page, that is the home page itself, written another way than '/'. It is no
        project either: the person building the site must get the same failure as for '/', whose
-       French message names the projects parameter, in the style of the clients messages ("le
-       paramètre clients…"), and the entry as written in the front matter, whatever the rest of the
+       message names the projects parameter, in the style of the clients messages, which name the
+       clients parameter, and the entry as written in the front matter, whatever the rest of the
        wording, rather than a message that calls that page not found or a section with a card of
        the home page. The entry, a lone '.', is looked for on the message's line as a token of its
        own, between spaces, quotes or punctuation other than a dot, so that neither the dots of a
@@ -2131,127 +2131,127 @@ test.describe('featured project content errors: build failure', () => {
        for the entry followed by a full stop. */
     const build = tryToBuildSite(SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT_WRITTEN_AS_A_DOT);
     expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the French message should name the projects parameter').toMatch(
-      /\bparamètre\s+projects\b/,
+    expect(build.errors, 'the error message should name the projects parameter').toMatch(
+      /\bprojects\s+parameter\b/,
     );
-    expect(build.errors, 'the French message should name the entry "." as written in the front matter').toMatch(
-      /\bparamètre\s+projects\b.*(?:^|[\s:«"'‘“(])\.(?=$|[\s»"'’”),;])/m,
+    expect(build.errors, 'the error message should name the entry "." as written in the front matter').toMatch(
+      /\bprojects\s+parameter\b.*(?:^|[\s:«"'‘“(])\.(?=$|[\s»"'’”),;])/m,
     );
-    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       /execute of template failed|error calling/i,
     );
   });
 
-  test('a home page whose projects list references a section page, such as "projets", the projects section itself, makes the site build fail, with a French error message that names the projects parameter and that entry and says it is not a project, without a template execution error after it', () => {
+  test('a home page whose projects list references a section page, such as "projets", the projects section itself, makes the site build fail, with an error message that names the projects parameter and that entry and says it is not a project, without a template execution error after it', () => {
     /* tests/fixtures/section-ref/content/_index.md features 'projets/restauration-pendule', then
        'projets': the example site's projects section, which exists, so that the check for a page
        not found lets it through, and is not the home page, so that the check for the home page
        lets it through too, but is a section page, no project. Rather than a section with a card
-       of the projects section, the person building the site must get a failure whose French
-       message names the projects parameter, in the style of the clients messages ("le paramètre
-       clients…"), the entry as written in the front matter, and says that it is not a project
-       ("pas un projet"), whatever the rest of the wording. The entry, 'projets', is looked for on
-       the message's line as a token of its own, between spaces, quotes or punctuation other than
-       a slash, so that a file path or another page reference under projets/ does not pass for it;
-       "pas un projet" is looked for on that same line. */
+       of the projects section, the person building the site must get a failure whose message
+       names the projects parameter, in the style of the clients messages, which name the clients
+       parameter, the entry as written in the front matter, and says that it is "not a project",
+       whatever the rest of the wording. The entry, 'projets', is looked for on the message's line
+       as a token of its own, between spaces, quotes or punctuation other than a slash, so that a
+       file path or another page reference under projets/ does not pass for it; "not a project"
+       is looked for on that same line. */
     const build = tryToBuildSite(SITE_WITH_A_SECTION_AS_FEATURED_PROJECT);
     expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the French message should name the projects parameter').toMatch(
-      /\bparamètre\s+projects\b/,
+    expect(build.errors, 'the error message should name the projects parameter').toMatch(
+      /\bprojects\s+parameter\b/,
     );
-    expect(build.errors, 'the French message should name the entry "projets" as written in the front matter').toMatch(
-      /\bparamètre\s+projects\b.*(?:^|[\s:«"'‘“(])projets(?=$|[\s»"'’”),.;])/m,
+    expect(build.errors, 'the error message should name the entry "projets" as written in the front matter').toMatch(
+      /\bprojects\s+parameter\b.*(?:^|[\s:«"'‘“(])projets(?=$|[\s»"'’”),.;])/m,
     );
-    expect(build.errors, 'the French message should say that entry is not a project').toMatch(
-      /\bparamètre\s+projects\b.*\bpas\s+un\s+projet\b/im,
+    expect(build.errors, 'the error message should say that entry is not a project').toMatch(
+      /\bprojects\s+parameter\b.*\bnot\s+a\s+project\b/im,
     );
-    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       /execute of template failed|error calling/i,
     );
   });
 
-  test('a home page whose projects list references a taxonomy term page, such as "tags/horlogerie", the page of a tag a project carries, makes the site build fail, with a French error message that names the projects parameter and that entry and says it is not a project, without a template execution error after it', () => {
+  test('a home page whose projects list references a taxonomy term page, such as "tags/horlogerie", the page of a tag a project carries, makes the site build fail, with an error message that names the projects parameter and that entry and says it is not a project, without a template execution error after it', () => {
     /* tests/fixtures/term-ref enables the tags taxonomy, which the example site disables, adds a
        project that carries the tag 'horlogerie', and its content/_index.md features
        'projets/restauration-pendule', then 'tags/horlogerie': the page of that tag, which exists,
        so that the check for a page not found lets it through, and is neither the home page nor a
        section page, so that those checks let it through too, but is a taxonomy term page, no
        project. Rather than a section with a card of that tag's page, the person building the site
-       must get a failure whose French message names the projects parameter, in the style of the
-       clients messages ("le paramètre clients…"), the entry as written in the front matter, and
-       says that it is not a project ("pas un projet"), whatever the rest of the wording. The
-       entry, 'tags/horlogerie', is looked for on the message's line as a token of its own,
-       between spaces, quotes or punctuation other than a slash, so that a longer path ending or
-       starting with it does not pass for it; "pas un projet" is looked for on that same line. */
+       must get a failure whose message names the projects parameter, in the style of the clients
+       messages, which name the clients parameter, the entry as written in the front matter, and
+       says that it is "not a project", whatever the rest of the wording. The entry,
+       'tags/horlogerie', is looked for on the message's line as a token of its own, between
+       spaces, quotes or punctuation other than a slash, so that a longer path ending or starting
+       with it does not pass for it; "not a project" is looked for on that same line. */
     const build = tryToBuildSite(SITE_WITH_A_TERM_AS_FEATURED_PROJECT);
     expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the French message should name the projects parameter').toMatch(
-      /\bparamètre\s+projects\b/,
+    expect(build.errors, 'the error message should name the projects parameter').toMatch(
+      /\bprojects\s+parameter\b/,
     );
-    expect(build.errors, 'the French message should name the entry "tags/horlogerie" as written in the front matter').toMatch(
-      /\bparamètre\s+projects\b.*(?:^|[\s:«"'‘“(])tags\/horlogerie(?=$|[\s»"'’”),.;])/m,
+    expect(build.errors, 'the error message should name the entry "tags/horlogerie" as written in the front matter').toMatch(
+      /\bprojects\s+parameter\b.*(?:^|[\s:«"'‘“(])tags\/horlogerie(?=$|[\s»"'’”),.;])/m,
     );
-    expect(build.errors, 'the French message should say that entry is not a project').toMatch(
-      /\bparamètre\s+projects\b.*\bpas\s+un\s+projet\b/im,
+    expect(build.errors, 'the error message should say that entry is not a project').toMatch(
+      /\bprojects\s+parameter\b.*\bnot\s+a\s+project\b/im,
     );
-    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       /execute of template failed|error calling/i,
     );
   });
 
-  test('a home page whose projects list references a taxonomy page, such as "tags", the page listing every tag, makes the site build fail, with a French error message that names the projects parameter and that entry and says it is not a project, without a template execution error after it', () => {
+  test('a home page whose projects list references a taxonomy page, such as "tags", the page listing every tag, makes the site build fail, with an error message that names the projects parameter and that entry and says it is not a project, without a template execution error after it', () => {
     /* tests/fixtures/taxonomy-ref enables the tags taxonomy, which the example site disables,
        adds a project that carries the tag 'horlogerie', and its content/_index.md features
        'projets/restauration-pendule', then 'tags': the page listing every tag, which exists, so
        that the check for a page not found lets it through, and is neither the home page, nor a
        section page, nor a tag's own page, so that those checks let it through too, but is a
        taxonomy page, no project. Rather than a section with a card of that page, the person
-       building the site must get a failure whose French message names the projects parameter, in
-       the style of the clients messages ("le paramètre clients…"), the entry as written in the
-       front matter, and says that it is not a project ("pas un projet"), whatever the rest of the
-       wording. The entry, 'tags', is looked for on the message's line as a token of its own,
-       between spaces, quotes or punctuation other than a slash, so that a path such as
-       'tags/horlogerie' does not pass for it; "pas un projet" is looked for on that same line. */
+       building the site must get a failure whose message names the projects parameter, in the
+       style of the clients messages, which name the clients parameter, the entry as written in
+       the front matter, and says that it is "not a project", whatever the rest of the wording.
+       The entry, 'tags', is looked for on the message's line as a token of its own, between
+       spaces, quotes or punctuation other than a slash, so that a path such as 'tags/horlogerie'
+       does not pass for it; "not a project" is looked for on that same line. */
     const build = tryToBuildSite(SITE_WITH_A_TAXONOMY_AS_FEATURED_PROJECT);
     expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the French message should name the projects parameter').toMatch(
-      /\bparamètre\s+projects\b/,
+    expect(build.errors, 'the error message should name the projects parameter').toMatch(
+      /\bprojects\s+parameter\b/,
     );
-    expect(build.errors, 'the French message should name the entry "tags" as written in the front matter').toMatch(
-      /\bparamètre\s+projects\b.*(?:^|[\s:«"'‘“(])tags(?=$|[\s»"'’”),.;])/m,
+    expect(build.errors, 'the error message should name the entry "tags" as written in the front matter').toMatch(
+      /\bprojects\s+parameter\b.*(?:^|[\s:«"'‘“(])tags(?=$|[\s»"'’”),.;])/m,
     );
-    expect(build.errors, 'the French message should say that entry is not a project').toMatch(
-      /\bparamètre\s+projects\b.*\bpas\s+un\s+projet\b/im,
+    expect(build.errors, 'the error message should say that entry is not a project').toMatch(
+      /\bprojects\s+parameter\b.*\bnot\s+a\s+project\b/im,
     );
-    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       /execute of template failed|error calling/i,
     );
   });
 
-  test('a home page whose projects list references the 404 page, as "/404", makes the site build fail, with a French error message that names the projects parameter and that entry and says it is not a project, without a template execution error after it', () => {
+  test('a home page whose projects list references the 404 page, as "/404", makes the site build fail, with an error message that names the projects parameter and that entry and says it is not a project, without a template execution error after it', () => {
     /* tests/fixtures/error-page-ref/content/_index.md features 'projets/restauration-pendule', then
        '/404': the site's 404 page, which Hugo creates even without a 404 template, so that the
        check for a page not found lets it through, and is neither the home page, nor a section
        page, nor a taxonomy or term page, so that those checks let it through too, but is no
        project. Rather than a section with a card of the 404 page, the person building the site
-       must get a failure whose French message names the projects parameter, in the style of the
-       clients messages ("le paramètre clients…"), the entry as written in the front matter, and
-       says that it is not a project ("pas un projet"), whatever the rest of the wording. The
-       entry, '/404', is looked for on the message's line as a token of its own, between spaces,
-       quotes or punctuation other than a slash, so that a longer path ending or starting with it
-       does not pass for it; "pas un projet" is looked for on that same line. */
+       must get a failure whose message names the projects parameter, in the style of the clients
+       messages, which name the clients parameter, the entry as written in the front matter, and
+       says that it is "not a project", whatever the rest of the wording. The entry, '/404', is
+       looked for on the message's line as a token of its own, between spaces, quotes or
+       punctuation other than a slash, so that a longer path ending or starting with it does not
+       pass for it; "not a project" is looked for on that same line. */
     const build = tryToBuildSite(SITE_WITH_THE_404_PAGE_AS_FEATURED_PROJECT);
     expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the French message should name the projects parameter').toMatch(
-      /\bparamètre\s+projects\b/,
+    expect(build.errors, 'the error message should name the projects parameter').toMatch(
+      /\bprojects\s+parameter\b/,
     );
-    expect(build.errors, 'the French message should name the entry "/404" as written in the front matter').toMatch(
-      /\bparamètre\s+projects\b.*(?:^|[\s:«"'‘“(])\/404(?=$|[\s»"'’”),.;])/m,
+    expect(build.errors, 'the error message should name the entry "/404" as written in the front matter').toMatch(
+      /\bprojects\s+parameter\b.*(?:^|[\s:«"'‘“(])\/404(?=$|[\s»"'’”),.;])/m,
     );
-    expect(build.errors, 'the French message should say that entry is not a project').toMatch(
-      /\bparamètre\s+projects\b.*\bpas\s+un\s+projet\b/im,
+    expect(build.errors, 'the error message should say that entry is not a project').toMatch(
+      /\bprojects\s+parameter\b.*\bnot\s+a\s+project\b/im,
     );
-    expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       /execute of template failed|error calling/i,
     );
   });
