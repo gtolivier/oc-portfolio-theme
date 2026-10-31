@@ -995,8 +995,9 @@ tick-field > canvas {
     padding-block: 96px;
   }
 
-  /* The heading takes at least half the line, and the link the rest: it
-     stays on the heading's line, at its right end. */
+  /* The heading starts at half the line, so the link fits beside it, and
+     grows to fill what the link leaves: the link stays on the heading's
+     line, pushed to its right end, as wide as its text. */
   .projects h2 {
     flex-basis: 50%;
   }
