@@ -12,6 +12,8 @@ import {
   SITE_WITH_PROJECTS_IN_TWO_SECTIONS,
   SITE_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_A_FEATURED_PROJECT_AS_MAP,
+  SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF,
+  SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1558,5 +1560,32 @@ test.describe('featured project content errors: build failure', () => {
     expect(build.errors, 'no template execution error should follow the French message').not.toMatch(
       /execute of template failed|error calling/i,
     );
+  });
+
+  test('a home page whose projects list holds an empty or whitespace-only page reference makes the site build fail, with a French error message that names the projects parameter, without a template execution error after it', () => {
+    /* tests/fixtures/empty-ref and tests/fixtures/whitespace-only-ref declare projects as a list
+       of texts, so the checks on the list and on its entries let them through, but their second
+       entry is '' in one and '   ' in the other: a reference that names no page. Rather than a
+       section with a card of whatever page such a reference happens to resolve to (the home page
+       itself, for ''), the person building the site must get, in both cases, a failure whose
+       French message names the projects parameter of the front matter, in the style of the
+       clients messages ("le paramètre clients…"), whatever the rest of the wording, and no Go
+       template execution error, such as the one today's template raises when it looks up the
+       parent of the page '' resolves to, that would follow it and bury it in technical jargon.
+       Two fixtures, so that rejecting only the empty reference does not pass. */
+    const cases = [
+      { name: 'an empty reference', site: SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF },
+      { name: 'a whitespace-only reference', site: SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(build.errors, `with ${name}, the French message should name the projects parameter`).toMatch(
+        /\bparamètre\s+projects\b/,
+      );
+      expect(build.errors, `with ${name}, no template execution error should follow the French message`).not.toMatch(
+        /execute of template failed|error calling/i,
+      );
+    }
   });
 });

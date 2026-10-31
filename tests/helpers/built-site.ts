@@ -311,6 +311,18 @@ export const SITE_WITH_PROJECTS_AS_TEXT = testSite('single-ref-instead-of-list')
    the word projects, which the error-message assertion looks for. */
 export const SITE_WITH_A_FEATURED_PROJECT_AS_MAP = testSite('table-instead-of-ref');
 
+/* The example site's French home page features its projects as a list of page references: this
+   site replaces that home page with the one of tests/fixtures/empty-ref/content, without a hero
+   nor clients, whose params.projects is a list of texts, as expected, of
+   'projets/restauration-pendule', then an empty text, '', instead of a page reference. Its folder
+   name avoids the word projects, which the error-message assertion looks for. */
+export const SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF = testSite('empty-ref');
+
+/* Same as SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF, with the home page of
+   tests/fixtures/whitespace-only-ref/content, whose second entry is a text made of three spaces
+   only, '   ', instead of a page reference. */
+export const SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF = testSite('whitespace-only-ref');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
