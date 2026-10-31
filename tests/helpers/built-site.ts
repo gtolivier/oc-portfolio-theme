@@ -385,6 +385,14 @@ export const SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS = testSite('long-proje
    /fr/projets/carillon-de-bureau/. */
 export const SITE_WITH_UNUSUAL_RENDER_VALUES = testSite('unusual-render-values');
 
+/* The example site's featured projects declare no custom param named build: this site replaces
+   the French home page with the one of tests/fixtures/build-param-as-text/content, without a hero
+   nor clients, which features the example site's 'projets/restauration-pendule', then "Pendule
+   squelette", a fictional project added under projets/ in French only, whose page sets no [build]
+   options but declares, under [params], a custom param build = '2020', a text. Hugo publishes that
+   page as any other, at /fr/projets/pendule-squelette/. */
+export const SITE_WITH_A_BUILD_PARAM_AS_TEXT = testSite('build-param-as-text');
+
 /* The example site's French home page features only project pages: this site replaces that home
    page with the one of tests/fixtures/self-ref/content, without a hero nor clients, whose
    params.projects is a list of texts, as expected, of 'projets/restauration-pendule', then '/', a

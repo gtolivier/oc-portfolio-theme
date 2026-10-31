@@ -28,6 +28,7 @@ import {
   SITE_WITH_LONG_PROJECT_WORDS,
   SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS,
   SITE_WITH_UNUSUAL_RENDER_VALUES,
+  SITE_WITH_A_BUILD_PARAM_AS_TEXT,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1465,6 +1466,32 @@ test.describe('home page of another site, featuring projects whose page declares
     await link.click();
     await expect(page).toHaveURL(`${SITE_WITH_UNUSUAL_RENDER_VALUES.origin}/fr/projets/carillon-de-bureau/`);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Carillon de bureau');
+  });
+});
+
+test.describe('home page of another site, featuring a project whose page declares a custom param named build', () => {
+  test('a featured project whose page declares a custom param build = "2020", a text, does not break the build, and its card keeps its "Voir le détail" link, which opens that page', async ({ page, context }) => {
+    /* tests/fixtures/build-param-as-text/content/projets/pendule-squelette.md sets no [build]
+       options, but declares under [params] a custom param build = '2020'. The site is built in the
+       test itself: the build not failing is part of the behavior, and a failure must show Hugo's
+       error messages. */
+    const build = tryToBuildSite(SITE_WITH_A_BUILD_PARAM_AS_TEXT);
+    expect(build.succeeded, `the site build should succeed, Hugo reported:\n${build.errors}`).toBe(true);
+    const siteDirectory = buildSite(SITE_WITH_A_BUILD_PARAM_AS_TEXT);
+    try {
+      await serveSite(context, SITE_WITH_A_BUILD_PARAM_AS_TEXT, siteDirectory);
+      await page.goto(`${SITE_WITH_A_BUILD_PARAM_AS_TEXT.origin}/fr/`);
+      const card = cardTitled(projectsSection(page), 'Pendule squelette');
+      await expect(card).toHaveCount(1);
+      const link = card.getByRole('link', { name: 'Voir le détail' });
+      await expect(link, '"Voir le détail" link in the card of "Pendule squelette"').toHaveCount(1);
+      await expect(link).toBeVisible();
+      await link.click();
+      await expect(page).toHaveURL(`${SITE_WITH_A_BUILD_PARAM_AS_TEXT.origin}/fr/projets/pendule-squelette/`);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Pendule squelette');
+    } finally {
+      removeDirectory(siteDirectory);
+    }
   });
 });
 
