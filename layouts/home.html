@@ -35,7 +35,12 @@
     {{- $clients := . }}
     {{- /* errorf does not stop the template: after an error, the checks below and the band get an empty list, so that no template execution error buries the message. */}}
     {{- if not (reflect.IsSlice $clients) }}{{ errorf "clients: the home page's clients parameter must be a list of names" }}{{ $clients = slice }}{{ end }}
-    {{- range $index, $client := $clients }}{{ if not (eq (printf "%T" $client) "string") }}{{ errorf "clients: entry %d of the home page's clients parameter must be a name" (add $index 1) }}{{ $clients = slice }}{{ else if eq (strings.TrimSpace $client) "" }}{{ errorf "clients: entry %d of the home page's clients parameter must be a non-empty name" (add $index 1) }}{{ $clients = slice }}{{ end }}{{ end }}
+    {{- range $index, $client := $clients }}
+    {{- $entryNumber := add $index 1 }}
+    {{- if not (eq (printf "%T" $client) "string") }}{{ errorf "clients: entry %d of the home page's clients parameter must be a name" $entryNumber }}{{ $clients = slice }}
+    {{- else if eq (strings.TrimSpace $client) "" }}{{ errorf "clients: entry %d of the home page's clients parameter must be a non-empty name" $entryNumber }}{{ $clients = slice }}
+    {{- end }}
+    {{- end }}
     {{- $label := i18n "clients" }}
     <div class="clients" data-label="{{ $label }}">
       <div class="clients-window">
