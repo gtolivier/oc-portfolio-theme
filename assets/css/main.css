@@ -818,17 +818,13 @@ tick-field > canvas {
   color: var(--color-accent-dark);
 }
 
-/* Light section: dark cards on the paper background. Its items wrap like
-   words: the heading and the link share a line when there is room, then
-   the cards fill one line each, two from 1024 px. */
+/* Light section: dark cards on the paper background. The header takes a
+   line of its own, then the cards fill one line each, two from 1024 px. */
 .projects {
   /* Between two cards, and between two lines of the section. */
   --projects-gap: 24px;
-  /* From the heading to the first card. */
+  /* From the header to the first card. */
   --projects-header-space: 40px;
-  /* What the item just above the first card adds to the gap to make that
-     space. */
-  --projects-header-margin: calc(var(--projects-header-space) - var(--projects-gap));
   --projects-max-width: 1280px;
   display: flex;
   flex-wrap: wrap;
@@ -837,6 +833,16 @@ tick-field > canvas {
   color: var(--color-ink);
   /* The page gutter, wider on a screen wide enough to centre the content. */
   padding: 56px max(var(--page-gutter), (100% - var(--projects-max-width)) / 2);
+}
+
+/* The heading and the link wrap like words: they share a line when there is
+   room. The margin adds to the gap below to make the header space. */
+.projects-header {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--projects-gap);
+  margin-bottom: calc(var(--projects-header-space) - var(--projects-gap));
 }
 
 .projects h2 {
@@ -850,12 +856,6 @@ tick-field > canvas {
   letter-spacing: -0.01em;
 }
 
-/* Without the link, the first card follows the heading directly: it gets the
-   space the link's margin gives otherwise. */
-.projects h2 + .project-card {
-  margin-top: var(--projects-header-margin);
-}
-
 /* Underlined links, each a flex or grid item, so min-height applies:
    minimum target size (WCAG 2.5.8). The text sits at the bottom of that
    height, so the underline stays 2px below it. */
@@ -867,7 +867,6 @@ tick-field > canvas {
 
 .all-projects-link {
   align-self: baseline;
-  margin-bottom: var(--projects-header-margin);
   border-bottom: 1px solid var(--color-accent-dark);
   font-family: var(--font-mono);
   font-size: 15px;
@@ -996,20 +995,10 @@ tick-field > canvas {
     padding-block: 96px;
   }
 
-  /* The heading takes at least half the line, so no card fits after the
-     link: the link stays on the heading's line, at its right end. */
+  /* The heading takes at least half the line, and the link the rest: it
+     stays on the heading's line, at its right end. */
   .projects h2 {
     flex-basis: 50%;
-    margin-bottom: var(--projects-header-margin);
-  }
-
-  .all-projects-link {
-    margin-bottom: 0;
-  }
-
-  /* The heading's own margin already makes that space. */
-  .projects h2 + .project-card {
-    margin-top: 0;
   }
 
   .project-card {

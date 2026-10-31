@@ -57,7 +57,7 @@
   </div>
   {{- end }}
   {{- $featured := .Params.projects }}
-  {{- /* As for the clients: after an error, the section skips the entry, and is left out when no featured page is left, so that no template execution error buries the French message. */}}
+  {{- /* errorf does not stop the template: after an error, only the bad entry is skipped (a list that is not one counts as empty), and the section is left out when no featured page is left, so that no template execution error buries the French message. */}}
   {{- if and (isset .Params "projects") (not (reflect.IsSlice $featured)) }}{{ errorf "projects : le paramètre projects de la page d’accueil doit être une liste de pages" }}{{ $featured = slice }}{{ end }}
   {{- /* The featured pages are looked up once, for both the all-projects link and the cards. */}}
   {{- $projects := slice }}
@@ -71,15 +71,17 @@
   {{- end }}
   {{- if $projects }}
   <section class="projects" aria-labelledby="projects-heading">
-    <h2 id="projects-heading">{{ i18n "selectedProjects" }}</h2>
-    {{- /* The all-projects link goes to the section holding every featured project: with projects in several sections, no section lists them all. */}}
-    {{- $firstSection := (index $projects 0).Parent }}
-    {{- $isInOneSection := true }}
-    {{- range $projects }}{{ if not (.Parent.Eq $firstSection) }}{{ $isInOneSection = false }}{{ end }}{{ end }}
-    {{- /* No section to open when the projects sit at the content root (their parent is the home page) or in an unpublished section (it has no address). */}}
-    {{- if and $isInOneSection (not $firstSection.IsHome) (partial "is-published.html" $firstSection) }}
-    <a class="all-projects-link" href="{{ $firstSection.RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
-    {{- end }}
+    <div class="projects-header">
+      <h2 id="projects-heading">{{ i18n "selectedProjects" }}</h2>
+      {{- /* The all-projects link goes to the section holding every featured project: with projects in several sections, no section lists them all. */}}
+      {{- $firstSection := (index $projects 0).Parent }}
+      {{- $isInOneSection := true }}
+      {{- range $projects }}{{ if not (.Parent.Eq $firstSection) }}{{ $isInOneSection = false }}{{ end }}{{ end }}
+      {{- /* No section to open when the projects sit at the content root (their parent is the home page) or in an unpublished section (it has no address). */}}
+      {{- if and $isInOneSection (not $firstSection.IsHome) (partial "is-published.html" $firstSection) }}
+      <a class="all-projects-link" href="{{ $firstSection.RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
+      {{- end }}
+    </div>
     {{- range $projects }}
     <article class="project-card">
       <tick-pattern class="project-pattern" aria-hidden="true"></tick-pattern>
