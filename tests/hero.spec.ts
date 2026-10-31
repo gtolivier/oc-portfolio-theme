@@ -1724,6 +1724,27 @@ test.describe('hero content errors: build failure', () => {
     expect(build.errors).not.toMatch(/\bneither\b/i);
   });
 
+  test('a home page where a hero button declares a pageRef that matches no page makes the site build fail, with an error message that cites this pageRef and gives the possible causes: a missing translation, a draft, a future date or an expired page', () => {
+    /* Same fixture as the test above: the first button declares
+       pageRef = '/page-fictive-introuvable'. A message that only says the pageRef matches no page
+       would send the person building the site looking for a missing file, while the page may be
+       right there, in another language or left out of the build: as the projects error does for a
+       page that cannot be found, the message must name the pageRef and give as possible causes a
+       missing translation (translation, translated…), a draft, a date in the future (future,
+       scheduled) and an expiry date passed (expired), whatever the rest of the wording. */
+    const build = tryToBuildSite(SITE_WITH_A_PAGE_REF_NOT_FOUND);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the error message should name the pageRef').toContain('/page-fictive-introuvable');
+    expect(build.errors, 'the error message should name a missing translation as a possible cause').toMatch(
+      /translat/i,
+    );
+    expect(build.errors, 'the error message should name a draft as a possible cause').toMatch(/\bdraft\b/i);
+    expect(build.errors, 'the error message should name a future date as a possible cause').toMatch(
+      /future|scheduled/i,
+    );
+    expect(build.errors, 'the error message should name an expired page as a possible cause').toMatch(/expir/i);
+  });
+
   test('a home page where a hero button declares a pageRef to a page with [build] render = "never" makes the site build fail, with an error message that cites this pageRef and says the page is not published', () => {
     /* The first button of tests/fixtures/never-rendered-ref/content/_index.md declares
        pageRef = '/atelier-ferme', a page of the same fixture that exists but declares
