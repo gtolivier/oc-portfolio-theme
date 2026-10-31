@@ -8,7 +8,7 @@
   {{- $ref := . }}
   {{- with site.GetPage $ref }}
     {{- $href = .RelPermalink }}
-    {{- if not $href }}
+    {{- if not (partial "is-published.html" .) }}
       {{- errorf "hero : le pageRef %q désigne une page qui n’est pas publiée" $ref }}
     {{- end }}
   {{- else }}
