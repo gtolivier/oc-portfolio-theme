@@ -861,6 +861,8 @@ tick-field > canvas {
    height, so the underline stays 2px below it. */
 .all-projects-link,
 .project-card > .project-link {
+  /* On hover and keyboard focus, the underline thickens to this width. */
+  --link-underline-active-width: 2px;
   min-height: var(--min-target-size);
   align-content: end;
   padding-bottom: 2px;
@@ -881,14 +883,14 @@ tick-field > canvas {
   .all-projects-link:hover {
     color: var(--color-ink);
     border-color: var(--color-accent);
-    border-bottom-width: 2px;
+    border-bottom-width: var(--link-underline-active-width);
   }
 }
 
 .all-projects-link:focus-visible {
   color: var(--color-ink);
   border-color: var(--color-accent);
-  border-bottom-width: 2px;
+  border-bottom-width: var(--link-underline-active-width);
 }
 
 .project-card {
@@ -983,13 +985,13 @@ tick-field > canvas {
 @media (hover: hover) {
   .project-card > .project-link:hover {
     border-color: var(--color-accent);
-    border-bottom-width: 2px;
+    border-bottom-width: var(--link-underline-active-width);
   }
 }
 
 .project-card > .project-link:focus-visible {
   border-color: var(--color-accent);
-  border-bottom-width: 2px;
+  border-bottom-width: var(--link-underline-active-width);
 }
 
 @media (min-width: 768px) {
