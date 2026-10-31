@@ -216,8 +216,9 @@ export const SITE_WITH_A_CLIENT_AS_MAP = testSite('map-instead-of-name');
 export const SITE_WITH_AN_EMPTY_CLIENT_NAME = testSite('empty-name');
 
 /* Same as SITE_WITH_AN_EMPTY_CLIENT_NAME, with the home page of
-   tests/fixtures/whitespace-only-name/content, whose second entry is a
-   text made of three spaces only, '   ', instead of a name. */
+   tests/fixtures/whitespace-only-name/content, whose third entry, after
+   two names, is a text made of three spaces only, '   ', instead of a
+   name. */
 export const SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME = testSite('whitespace-only-name');
 
 /* The example site's French home page features four projects: this site
