@@ -15,7 +15,7 @@
       </h1>
       {{- with .tagline }}
       <p class="hero-tagline">
-        {{- range $index, $line := . }}{{ if $index }}<br>{{ end }}{{ $line }}{{ end -}}
+        {{- partial "lines.html" . -}}
       </p>
       {{- end }}
       {{- with .stack }}
@@ -99,6 +99,62 @@
       <a class="project-link" href="{{ .RelPermalink }}" aria-label="{{ $seeDetail }} – {{ .Title }}">{{ $seeDetail }} <span aria-hidden="true">→</span></a>
       {{- end }}
     </article>
+    {{- end }}
+  </section>
+  {{- end }}
+  {{- if .Params.background }}
+  <section class="background" aria-labelledby="background-heading">
+    <h2 id="background-heading">{{ i18n "background" }}</h2>
+    {{- /* errorf does not stop the template: after an error, the part at fault (key figures, intro, education or skill groups) is empty, so that no template execution error buries the message. */}}
+    {{- $stats := .Params.background.stats }}
+    {{- if and $stats (not (reflect.IsSlice $stats)) }}{{ errorf "background: the key figures must be written as a list of tables, [[params.background.stats]], with double brackets" }}{{ $stats = slice }}{{ end }}
+    {{- range $index, $stat := $stats }}
+    {{- if not (findRE `^\s*\d` (printf "%v" $stat.value)) }}{{ errorf "background: key figure %d must start with a whole number" (add $index 1) }}{{ $stats = slice }}{{ end }}
+    {{- end }}
+    {{- with $stats }}
+    <dl class="background-stats">
+      {{- range . }}
+      <div>
+        <dt>{{ .value }}</dt>
+        <dd>{{ .label }}</dd>
+      </div>
+      {{- end }}
+    </dl>
+    {{- end }}
+    {{- $intro := .Params.background.intro }}
+    {{- if and $intro (not (reflect.IsSlice $intro)) }}{{ errorf "background: the intro must be a list" }}{{ $intro = slice }}{{ end }}
+    {{- with $intro }}
+    <p class="background-intro">
+      {{- partial "lines.html" . -}}
+    </p>
+    {{- end }}
+    {{- $education := .Params.background.education }}
+    {{- if and $education (not (reflect.IsSlice $education)) }}{{ errorf "background: the education must be a list" }}{{ $education = slice }}{{ end }}
+    {{- with $education }}
+    <ul class="background-education">
+      {{- range . }}
+      <li>{{ . }}</li>
+      {{- end }}
+    </ul>
+    {{- end }}
+    {{- $skills := .Params.background.skills }}
+    {{- if and $skills (not (reflect.IsSlice $skills)) }}{{ errorf "background: the skill groups must be written as a list of tables, [[params.background.skills]], with double brackets" }}{{ $skills = slice }}{{ end }}
+    {{- range $index, $group := $skills }}
+    {{- if and $group.items (not (reflect.IsSlice $group.items)) }}{{ errorf "background: the items of skill group %d must be a list" (add $index 1) }}{{ $skills = slice }}{{ end }}
+    {{- end }}
+    {{- with $skills }}
+    <div class="background-skill-groups">
+      {{- range . }}
+      <div class="background-skills">
+        <h3>{{ .title }}</h3>
+        <ul>
+          {{- range .items }}
+          <li>{{ . }}</li>
+          {{- end }}
+        </ul>
+      </div>
+      {{- end }}
+    </div>
     {{- end }}
   </section>
   {{- end }}
