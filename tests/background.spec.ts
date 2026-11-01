@@ -110,6 +110,28 @@ test('with JavaScript, on the French home page, while the section "Parcours" has
   expect(await textOnScreen(section), 'text the background section shows on screen').toMatch(inOrder);
 });
 
+test('with JavaScript, on the French home page, once the section "Parcours" comes into view, each key figure shows its full value next to its label within 2 s', async ({
+  page,
+}) => {
+  await page.goto('/fr/');
+  const section = backgroundSection(page);
+  /* Below the first screen on load, so that the figures start from 0. */
+  await expect(section).toHaveCount(1);
+  await expect(section).not.toBeInViewport();
+  await section.scrollIntoViewIfNeeded();
+  await expect(section, 'the section has come into view').toBeInViewport();
+  /* On screen, in reading order, whitespace excluded: each label comes right after its full value,
+     whole (no digit before it, so that neither a count still running nor a 0 left over can pass).
+     Text that only assistive technologies get does not count: it is not what a visitor sees. */
+  const figures = KEY_FIGURES.map(
+    ({ value, label }) => `(?<!\\d)${literally(value)}${literally(label.replace(/\s+/g, ''))}`,
+  );
+  const inOrder = new RegExp(figures.join('.*'), 'u');
+  await expect
+    .poll(() => textOnScreen(section), { message: 'text the background section shows on screen', timeout: 2000 })
+    .toMatch(inOrder);
+});
+
 /* The intro lines the example site's French home page declares (exampleSite/content/_index.md,
    [params.background] block, intro key: a list of strings, one per line), in the order its front
    matter lists them. */
