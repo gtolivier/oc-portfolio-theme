@@ -144,6 +144,17 @@ export const SITE_WITH_A_HERO_WITHOUT_AUTHOR = testSite('authorless-hero');
    two valid destinations. */
 export const SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF = testSite('button-with-two-destinations');
 
+/* The example site's French home page has a hero whose every button has a single
+   destination: these sites replace that home page with the one of
+   tests/fixtures/address-and-unfilled-target/content, whose second button has a label and
+   declares both url = '#contact' and pageRef = '', an empty text, and with the one of
+   tests/fixtures/address-and-false-target/content, whose second button declares both
+   url = '#contact' and pageRef = false: two pageRef values that Hugo reads as false. Their
+   folder names avoid the words url, pageRef, both and one, which the error-message assertion
+   looks for. */
+export const SITE_WITH_A_BUTTON_WITH_URL_AND_EMPTY_PAGE_REF = testSite('address-and-unfilled-target');
+export const SITE_WITH_A_BUTTON_WITH_URL_AND_FALSE_PAGE_REF = testSite('address-and-false-target');
+
 /* The example site's French home page has a hero whose every pageRef is a
    text, a page reference: these sites replace that home page with the one of
    tests/fixtures/table-as-button-target/content, whose first button declares

@@ -8,6 +8,8 @@ import {
   SITE_WITH_A_BUTTON_WITHOUT_DESTINATION,
   SITE_WITH_A_BUTTON_WITHOUT_LABEL,
   SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF,
+  SITE_WITH_A_BUTTON_WITH_URL_AND_EMPTY_PAGE_REF,
+  SITE_WITH_A_BUTTON_WITH_URL_AND_FALSE_PAGE_REF,
   SITE_WITH_A_HERO_WITHOUT_AUTHOR,
   SITE_WITH_A_HERO_WITH_LONG_WORDS,
   SITE_WITH_A_HERO_WITHOUT_TITLE,
@@ -2188,6 +2190,30 @@ test.describe('hero content errors: build failure', () => {
       `error messages that name the url and pageRef fields and say both are declared, in:\n${build.errors}`,
     ).not.toEqual([]);
     expect(build.errors, 'the error message should not say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
+  });
+
+  test('a home page where a hero button declares a url and a pageRef that Hugo reads as false (an empty text, and false) makes the site build fail with the hero error message that cites both fields and, on that same line, says both are declared', () => {
+    /* The second button of tests/fixtures/address-and-unfilled-target/content/_index.md has
+       a label and declares url = '#contact' and pageRef = '', an empty text, and that of
+       tests/fixtures/address-and-false-target/content/_index.md url = '#contact' and
+       pageRef = false. Hugo reads both pageRef values as false, but the button does declare
+       a pageRef next to its url: the person building the site must get the message that
+       names the url and pageRef fields of the front matter and, on that same line, says
+       that both are declared, whatever wording is chosen, so that they remove one of the
+       two rather than only fill in the pageRef. An empty text and false, so that a check
+       made for a single value Hugo reads as false does not pass. */
+    const cases: { name: string; site: BuiltSite }[] = [
+      { name: 'an empty text as pageRef', site: SITE_WITH_A_BUTTON_WITH_URL_AND_EMPTY_PAGE_REF },
+      { name: 'false as pageRef', site: SITE_WITH_A_BUTTON_WITH_URL_AND_FALSE_PAGE_REF },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(
+        destinationFieldMessages(build.errors, BOTH_FIELDS_DECLARED),
+        `with ${name}, error messages that name the url and pageRef fields and say both are declared, in:\n${build.errors}`,
+      ).not.toEqual([]);
+    }
   });
 
   test('a home page where a hero button declares a pageRef that is not a text but a table or a number makes the site build fail with a single hero error message that says the pageRef must be a page reference, without a template execution error after it', () => {
