@@ -447,6 +447,60 @@ test('with JavaScript, under prefers-reduced-motion: reduce, on the French home 
   expect(notFull, 'texts the background section showed on screen without every full value').toEqual([]);
 });
 
+test('with JavaScript, on the French home page, when the visitor turns on prefers-reduced-motion: reduce while the key figures of the section "Parcours" climb, each one shows its full value next to its label at once, rather than climbing on', async ({
+  page,
+}) => {
+  /* Time stands still from before the page loads, until the test advances it, step by step, to
+     stop the figures midway through their climb. */
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  const section = backgroundSection(page);
+  /* Below the first screen on load, so that the figures start from 0. */
+  await expect(section).toHaveCount(1);
+  await expect(section).not.toBeInViewport();
+  /* Each figure: a whole number (no digit before it) right before its label, with or without the
+     rest of its value in between, and its full value right before its label, as the screen shows
+     them, whitespace excluded. Text that only assistive technologies get does not count. */
+  const figures = KEY_FIGURES.map(({ value, label }) => {
+    const target = parseInt(value, 10);
+    const rest = value.slice(String(target).length);
+    const shownLabel = literally(label.replace(/\s+/g, ''));
+    return {
+      target,
+      shown: new RegExp(`(?<!\\d)(\\d+)(?:${literally(rest)})?${shownLabel}`, 'u'),
+      full: `(?<!\\d)${literally(value)}${shownLabel}`,
+    };
+  });
+  const climbing = (text: string) =>
+    figures.every(({ target, shown }) => {
+      const match = shown.exec(text);
+      const number = match ? parseInt(match[1], 10) : NaN;
+      return number > 0 && number < target;
+    });
+  await section.scrollIntoViewIfNeeded();
+  await expect(section, 'the section has come into view').toBeInViewport();
+  /* Every 25 ms, for at most 5 s, until every figure shows a number between 0 and its own. */
+  let shown = '';
+  for (let elapsed = 0; elapsed <= 5000; elapsed += 25) {
+    if (elapsed > 0) await page.clock.runFor(25);
+    shown = await textOnScreen(section);
+    if (climbing(shown)) break;
+  }
+  expect(climbing(shown), `every figure shows a number between 0 and its own, midway (${shown})`).toBe(true);
+  /* The visitor asks for reduced motion, midway through the climb. */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  /* At most one animation frame later on the page's clock, which then stands still: the climb
+     cannot reach its end on its own. On screen, in reading order, each label comes right after its
+     full value, whole. */
+  await page.clock.runFor(16);
+  const inOrder = new RegExp(figures.map(({ full }) => full).join('.*'), 'u');
+  await expect
+    .poll(() => textOnScreen(section), {
+      message: 'text the background section shows on screen once motion is reduced',
+    })
+    .toMatch(inOrder);
+});
+
 /* The intro lines the example site's French home page declares (exampleSite/content/_index.md,
    [params.background] block, intro key: a list of strings, one per line), in the order its front
    matter lists them. */
