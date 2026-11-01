@@ -2,9 +2,10 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 import { SITE_WITHOUT_HERO, buildSite, removeDirectory, serveSite } from './helpers/built-site';
 import { displayedText } from './helpers/text-on-screen';
 
-/* The background section of a home page, in its main content: a region named by its title. */
-function backgroundSection(page: Page): Locator {
-  return page.getByRole('main').getByRole('region', { name: 'Parcours', exact: true });
+/* The background section of a home page, in its main content: a region named by its title, the
+   French one unless another is given. */
+function backgroundSection(page: Page, title = 'Parcours'): Locator {
+  return page.getByRole('main').getByRole('region', { name: title, exact: true });
 }
 
 test('on the French home page, a section "Parcours" comes right after the section "Projets sélectionnés", its heading showing the section number "02 //" before its title, while assistive technologies get the title alone', async ({
@@ -55,6 +56,15 @@ function literally(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/* The section shows each key figure given, its full value as written then its label, in order. */
+async function expectKeyFigures(section: Locator, keyFigures: { value: string; label: string }[]): Promise<void> {
+  /* On screen, in reading order: each value, whole (no digit glued before it, so "20+" does
+     not pass inside "120+"), right before its label; the figures one after the other. */
+  const figures = keyFigures.map(({ value, label }) => `${literally(value)} ?${literally(label)}`);
+  const inOrder = new RegExp(`(?<!\\d)${figures.join('.*(?<!\\d)')}(?!\\p{L})`, 'u');
+  await expect.poll(() => displayedText(section), 'text displayed by the background section').toMatch(inOrder);
+}
+
 test.describe('without JavaScript', () => {
   test.use({ javaScriptEnabled: false });
 
@@ -64,11 +74,7 @@ test.describe('without JavaScript', () => {
     await page.goto('/fr/');
     const section = backgroundSection(page);
     await expect(section).toBeVisible();
-    /* On screen, in reading order: each value, whole (no digit glued before it, so "20+" does
-       not pass inside "120+"), right before its label; the figures one after the other. */
-    const figures = KEY_FIGURES.map(({ value, label }) => `${literally(value)} ?${literally(label)}`);
-    const inOrder = new RegExp(`(?<!\\d)${figures.join('.*(?<!\\d)')}(?!\\p{L})`, 'u');
-    await expect.poll(() => displayedText(section), 'text displayed by the section "Parcours"').toMatch(inOrder);
+    await expectKeyFigures(section, KEY_FIGURES);
   });
 });
 
@@ -81,16 +87,13 @@ const INTRO_LINES = [
   'Pendules, régulateurs et montres de poche.',
 ];
 
-test('on the French home page, the section "Parcours" shows the intro lines the home page declares as one paragraph, in order, each starting on a new line', async ({
-  page,
-}) => {
-  await page.goto('/fr/');
-  const section = backgroundSection(page);
-  await expect(section).toBeVisible();
+/* The section shows the intro lines given as one paragraph, in order, each starting on a new
+   line. */
+async function expectIntroLines(section: Locator, lines: string[]): Promise<void> {
   /* One paragraph of the section holds every line. */
-  const paragraph = section.getByRole('paragraph').filter({ hasText: INTRO_LINES[0] });
+  const paragraph = section.getByRole('paragraph').filter({ hasText: lines[0] });
   await expect(paragraph).toHaveCount(1);
-  for (const line of INTRO_LINES) {
+  for (const line of lines) {
     await expect(paragraph, `the intro paragraph holds "${line}"`).toContainText(line);
   }
   await expect(paragraph).toBeVisible();
@@ -113,17 +116,25 @@ test('on the French home page, the section "Parcours" shows the intro lines the 
       }
       return null;
     });
-  }, INTRO_LINES);
-  for (let i = 1; i < INTRO_LINES.length; i++) {
+  }, lines);
+  for (let i = 1; i < lines.length; i++) {
     const previous = positions[i - 1];
     const current = positions[i];
-    expect(previous, `line not found: ${INTRO_LINES[i - 1]}`).not.toBeNull();
-    expect(current, `line not found: ${INTRO_LINES[i]}`).not.toBeNull();
-    expect(
-      current!.top - previous!.lastTop,
-      `"${INTRO_LINES[i]}" starts below "${INTRO_LINES[i - 1]}"`,
-    ).toBeGreaterThanOrEqual(previous!.lastHeight / 2);
+    expect(previous, `line not found: ${lines[i - 1]}`).not.toBeNull();
+    expect(current, `line not found: ${lines[i]}`).not.toBeNull();
+    expect(current!.top - previous!.lastTop, `"${lines[i]}" starts below "${lines[i - 1]}"`).toBeGreaterThanOrEqual(
+      previous!.lastHeight / 2,
+    );
   }
+}
+
+test('on the French home page, the section "Parcours" shows the intro lines the home page declares as one paragraph, in order, each starting on a new line', async ({
+  page,
+}) => {
+  await page.goto('/fr/');
+  const section = backgroundSection(page);
+  await expect(section).toBeVisible();
+  await expectIntroLines(section, INTRO_LINES);
 });
 
 /* The education entries the example site's French home page declares (exampleSite/content/_index.md,
@@ -134,20 +145,25 @@ const EDUCATION_ENTRIES = [
   'Brevet de restaurateur de pendules — Lycée Victor-Bérard, Morez, 2003',
 ];
 
+/* The section lists the education entries given, in order. */
+async function expectEducationEntries(section: Locator, entries: string[]): Promise<void> {
+  /* A list of the section, found by the first entry it holds, has one item per entry, in the
+     order declared, and nothing else. */
+  const list = section
+    .getByRole('list')
+    .filter({ has: section.page().getByRole('listitem').filter({ hasText: entries[0] }) });
+  await expect(list).toHaveCount(1);
+  await expect(list).toBeVisible();
+  await expect(list.getByRole('listitem')).toHaveText(entries);
+}
+
 test('on the French home page, the section "Parcours" lists the education entries the home page declares, in order', async ({
   page,
 }) => {
   await page.goto('/fr/');
   const section = backgroundSection(page);
   await expect(section).toBeVisible();
-  /* A list of the section, found by the first entry it holds, has one item per entry, in the
-     order declared, and nothing else. */
-  const list = section
-    .getByRole('list')
-    .filter({ has: page.getByRole('listitem').filter({ hasText: EDUCATION_ENTRIES[0] }) });
-  await expect(list).toHaveCount(1);
-  await expect(list).toBeVisible();
-  await expect(list.getByRole('listitem')).toHaveText(EDUCATION_ENTRIES);
+  await expectEducationEntries(section, EDUCATION_ENTRIES);
 });
 
 /* The skill groups the example site's French home page declares (exampleSite/content/_index.md,
@@ -159,16 +175,14 @@ const SKILL_GROUPS = [
   { title: 'Finitions', items: ['Anglage', 'Perlage', 'Dorure à la feuille'] },
 ];
 
-test('on the French home page, the section "Parcours" shows one block per skill group the home page declares, in order, each headed by its title and listing its items in order', async ({
-  page,
-}) => {
-  await page.goto('/fr/');
-  const section = backgroundSection(page);
-  await expect(section).toBeVisible();
+/* The section shows one block per skill group given, in order, each headed by its title and
+   listing its items in order. */
+async function expectSkillGroups(section: Locator, groups: { title: string; items: string[] }[]): Promise<void> {
+  const page = section.page();
   /* Each group: a level-3 heading of the section named by its title, and a list of the section,
      found by its first item, that has one item per entry, in the order declared, and nothing else. */
   const handles = [];
-  for (const { title, items } of SKILL_GROUPS) {
+  for (const { title, items } of groups) {
     const heading = section.getByRole('heading', { level: 3, name: title, exact: true });
     await expect(heading, `the heading of the group "${title}"`).toHaveCount(1);
     await expect(heading).toBeVisible();
@@ -189,6 +203,56 @@ test('on the French home page, the section "Parcours" shows one block per skill 
     handles,
   );
   expect(inOrder, 'headings and lists alternate, each group in the order declared').toBe(true);
+}
+
+test('on the French home page, the section "Parcours" shows one block per skill group the home page declares, in order, each headed by its title and listing its items in order', async ({
+  page,
+}) => {
+  await page.goto('/fr/');
+  const section = backgroundSection(page);
+  await expect(section).toBeVisible();
+  await expectSkillGroups(section, SKILL_GROUPS);
+});
+
+/* What the example site's English home page declares for its background
+   (exampleSite/content/_index.en.md, same shape as the French one): the English counterpart of
+   each French constant above, with words of its own in every part, so that a part taken from
+   the French home page cannot pass. */
+const ENGLISH_BACKGROUND = {
+  keyFigures: [
+    { value: '20+', label: 'Years in the trade' },
+    { value: '350', label: 'Clocks restored' },
+  ],
+  intro: [
+    'Trained in antique clockmaking in the Jura.',
+    'Independent workshop since 2004.',
+    'Clocks, regulators and pocket watches.',
+  ],
+  education: [
+    'Federal certificate in watch repair — Porrentruy School of Watchmaking, 2001',
+    'Clock restoration diploma — Lycée Victor-Bérard, Morez, 2003',
+  ],
+  skills: [
+    { title: 'Mechanics', items: ['Movement restoration', 'Gear cutting'] },
+    { title: 'Finishing', items: ['Bevelling', 'Circular graining', 'Gold leaf gilding'] },
+  ],
+};
+
+test.describe('English home page, without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('without JavaScript, on the English home page, the section is headed "Background" and shows the key figures, intro lines, education entries and skill groups the English home page declares', async ({
+    page,
+  }) => {
+    await page.goto('/en/');
+    const section = backgroundSection(page, 'Background');
+    await expect(section).toBeVisible();
+    await expect(section.getByRole('heading', { level: 2 })).toHaveAccessibleName('Background');
+    await expectKeyFigures(section, ENGLISH_BACKGROUND.keyFigures);
+    await expectIntroLines(section, ENGLISH_BACKGROUND.intro);
+    await expectEducationEntries(section, ENGLISH_BACKGROUND.education);
+    await expectSkillGroups(section, ENGLISH_BACKGROUND.skills);
+  });
 });
 
 test.describe('home page of another site, without background', () => {
