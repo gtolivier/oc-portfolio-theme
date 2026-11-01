@@ -13,8 +13,12 @@ import {
   SITE_WITH_A_HERO_WITHOUT_TITLE,
   SITE_WITH_A_HERO_WITHOUT_CLIENTS,
   SITE_WITH_A_LONG_MENU,
+  SITE_WITH_A_PAGE_REF_AS_AN_EMPTY_LIST,
+  SITE_WITH_A_PAGE_REF_AS_AN_EMPTY_TABLE,
+  SITE_WITH_A_PAGE_REF_AS_FALSE,
   SITE_WITH_A_PAGE_REF_AS_NUMBER,
   SITE_WITH_A_PAGE_REF_AS_TABLE,
+  SITE_WITH_A_PAGE_REF_AS_ZERO,
   SITE_WITH_A_PAGE_REF_NOT_FOUND,
   SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE,
   SITE_WITH_A_PAGE_REF_TO_A_LINK_ONLY_PAGE,
@@ -2185,6 +2189,38 @@ test.describe('hero content errors: build failure', () => {
     const cases: { name: string; site: BuiltSite }[] = [
       { name: 'a table as pageRef', site: SITE_WITH_A_PAGE_REF_AS_TABLE },
       { name: 'a number as pageRef', site: SITE_WITH_A_PAGE_REF_AS_NUMBER },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(heroErrorCount(build.errors), `with ${name}, number of hero error messages`).toBe(1);
+      expect(build.errors, `with ${name}, the error message should say the pageRef must be a page reference`).toMatch(
+        /\bhero:.*\bpageRef\b.*\b(?:must|should)\s+be\b.*\bpage\s+reference\b/i,
+      );
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
+        /execute of template failed|error calling/i,
+      );
+    }
+  });
+
+  test('a home page where a hero button declares a pageRef that is not a text and that Hugo reads as false (an empty table, an empty list, the number 0 or false) makes the site build fail with a single hero error message that says the pageRef must be a page reference, without a template execution error after it', () => {
+    /* The first button of tests/fixtures/empty-table-as-button-target/content/_index.md
+       declares pageRef = {}, an empty table, that of
+       tests/fixtures/empty-list-as-button-target/content/_index.md pageRef = [], an empty list,
+       that of tests/fixtures/zero-as-button-target/content/_index.md pageRef = 0, and that of
+       tests/fixtures/false-as-button-target/content/_index.md pageRef = false. None is a page
+       reference, a text, and Hugo reads all four as false: rather than a Go template execution
+       error, or a message saying the button has neither a url nor a pageRef when it does
+       declare one, the person building the site must get a single hero error message that
+       names the pageRef field and says, on that same line, that it must be a page reference,
+       whatever the rest of the wording, and no Go template execution error that would follow it
+       and bury it in technical jargon. Four fixtures, so that a check made for a single empty
+       or false value does not pass. */
+    const cases: { name: string; site: BuiltSite }[] = [
+      { name: 'an empty table as pageRef', site: SITE_WITH_A_PAGE_REF_AS_AN_EMPTY_TABLE },
+      { name: 'an empty list as pageRef', site: SITE_WITH_A_PAGE_REF_AS_AN_EMPTY_LIST },
+      { name: 'the number 0 as pageRef', site: SITE_WITH_A_PAGE_REF_AS_ZERO },
+      { name: 'false as pageRef', site: SITE_WITH_A_PAGE_REF_AS_FALSE },
     ];
     for (const { name, site } of cases) {
       const build = tryToBuildSite(site);

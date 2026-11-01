@@ -155,6 +155,20 @@ export const SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF = testSite('button-with-tw
 export const SITE_WITH_A_PAGE_REF_AS_TABLE = testSite('table-as-button-target');
 export const SITE_WITH_A_PAGE_REF_AS_NUMBER = testSite('number-as-button-target');
 
+/* The example site's French home page has a hero whose every pageRef is a text, a page
+   reference: these sites replace that home page with the one of
+   tests/fixtures/empty-table-as-button-target/content, whose first button declares an empty
+   table, pageRef = {}, of tests/fixtures/empty-list-as-button-target/content, an empty list,
+   pageRef = [], of tests/fixtures/zero-as-button-target/content, the number zero, pageRef = 0,
+   and of tests/fixtures/false-as-button-target/content, the boolean false, pageRef = false:
+   four values that are not texts and that Hugo reads as false. Their folder names also avoid
+   the words pageRef and page reference, which the error-message assertion looks for, and
+   hero, whose error messages are counted. */
+export const SITE_WITH_A_PAGE_REF_AS_AN_EMPTY_TABLE = testSite('empty-table-as-button-target');
+export const SITE_WITH_A_PAGE_REF_AS_AN_EMPTY_LIST = testSite('empty-list-as-button-target');
+export const SITE_WITH_A_PAGE_REF_AS_ZERO = testSite('zero-as-button-target');
+export const SITE_WITH_A_PAGE_REF_AS_FALSE = testSite('false-as-button-target');
+
 /* The example site's French home page has a hero whose every pageRef is written without
    whitespace around it: these sites replace that home page with the one of
    tests/fixtures/button-target-with-trailing-space/content, whose first button declares
