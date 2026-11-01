@@ -31,6 +31,8 @@ import {
   SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS,
   SITE_WITH_UNUSUAL_RENDER_VALUES,
   SITE_WITH_A_BUILD_PARAM_AS_TEXT,
+  SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
+  type BuiltSite,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -2507,6 +2509,96 @@ test.describe('featured project content errors: build failure', () => {
         build.errors,
         `with ${name}, the error message should give a missing translation in ${language} as a possible cause`,
       ).toMatch(new RegExp(`^(?=.*translat)(?=.*\\b${language}\\b(?!\\s+\\p{L})).*$`, 'imu'));
+    }
+  });
+
+  /* Each bad entry the projects checks reject before looking its page up, or after finding a page
+     that is no project, with the pattern of the line of its own error message, as the tests above
+     find it: the position of the entry for a table, a blank or a padded reference, "not a project"
+     for a page that is no project. The French home pages come from the fixtures of the tests above;
+     the English one holds an entry of each kind, at positions 1 to 4. */
+  const HOME_PAGES_WITH_BAD_PROJECT_ENTRIES = [
+    {
+      language: 'fr',
+      sites: [
+        {
+          name: 'a French home page with a table',
+          site: SITE_WITH_A_FEATURED_PROJECT_AS_MAP,
+          line: '\\bentry\\s+2\\b',
+        },
+        {
+          name: 'a French home page with an empty reference',
+          site: SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF,
+          line: '\\bentry\\s+2\\b',
+        },
+        {
+          name: 'a French home page with a whitespace-only reference',
+          site: SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF,
+          line: '\\bentry\\s+3\\b',
+        },
+        {
+          name: 'a French home page with a padded reference',
+          site: SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_WHITESPACE,
+          line: '\\bentry\\s+1\\b',
+        },
+        {
+          name: 'a French home page with a section page',
+          site: SITE_WITH_A_SECTION_AS_FEATURED_PROJECT,
+          line: '\\bnot\\s+a\\s+project\\b',
+        },
+      ],
+    },
+    {
+      language: 'en',
+      sites: [
+        {
+          name: 'an English home page with a table',
+          site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
+          line: '\\bentry\\s+1\\b',
+        },
+        {
+          name: 'an English home page with an empty reference',
+          site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
+          line: '\\bentry\\s+2\\b',
+        },
+        {
+          name: 'an English home page with a padded reference',
+          site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
+          line: '\\bentry\\s+3\\b',
+        },
+        {
+          name: 'an English home page with a section page',
+          site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
+          line: '\\bnot\\s+a\\s+project\\b',
+        },
+      ],
+    },
+  ];
+
+  test("a home page whose projects list holds an entry that is not a reference, a blank one, a padded one, or one that references a page that is not a project makes the site build fail, with an error message that names the home page's language, for French home pages and for an English one", () => {
+    /* A bilingual site has a home page per language, each with its own projects list: an error
+       message that does not say which language's home page holds the bad entry leaves the person
+       building the site to look for it in every content/_index.<language>.md file. The message
+       for a page that cannot be found already names the home page's language by its code (fr,
+       en); the messages for a table instead of a reference, a blank reference, a reference with
+       whitespace at its start or end, and a reference to a page that is no project must name it
+       too, each on its own line, whatever the rest of the wording. The code is looked for, as in
+       the test above, as a word that no other word follows, on the line of each error message,
+       found by the pattern of its kind, so that every one of these messages must name it. A
+       French home page and an English one, so that a language written in the template does not
+       pass; the English site holds the four kinds at once, at positions that tell their lines
+       apart. */
+    const builds = new Map<BuiltSite, BuildAttempt>();
+    for (const { language, sites } of HOME_PAGES_WITH_BAD_PROJECT_ENTRIES) {
+      for (const { name, site, line } of sites) {
+        if (!builds.has(site)) builds.set(site, tryToBuildSite(site));
+        const build = builds.get(site)!;
+        expectProjectsBuildError(build, `with ${name}`);
+        expect(
+          build.errors,
+          `with ${name}, the error message on that entry should name the home page's language, ${language}`,
+        ).toMatch(new RegExp(`^(?=.*${line})(?=.*\\b${language}\\b(?!\\s+\\p{L})).*$`, 'imu'));
+      }
     }
   });
 

@@ -503,6 +503,18 @@ export const SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE = testSite('never-rende
    looks for. */
 export const SITE_WITH_A_PAGE_REF_TO_A_LINK_ONLY_PAGE = testSite('link-rendered-ref');
 
+/* The example site's English home page features only project pages, each as a page reference:
+   this site replaces that home page with the one of tests/fixtures/english-home-bad-entries/content,
+   without a hero nor clients, whose params.projects is a list (so the check that projects is a list
+   lets it through) of four bad entries, one of each kind: a table,
+   { path = 'projets/restauration-pendule' }, instead of a page reference, as entry 1; an empty
+   text, '', as entry 2; 'projets/montre-grande-complication ', an existing page with a trailing
+   space Hugo does not trim, as entry 3; and 'projets', the projects section itself, which exists
+   but is no project, as entry 4. The example site's French home page is unchanged. Its folder name
+   avoids the words projects and whitespace and the language codes, which the error-message
+   assertions look for. */
+export const SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES = testSite('english-home-bad-entries');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
