@@ -37,8 +37,10 @@
     {{- if not (reflect.IsSlice $clients) }}{{ errorf "clients: the home page's clients parameter must be a list of names" }}{{ $clients = slice }}{{ end }}
     {{- range $index, $client := $clients }}
     {{- $entryNumber := add $index 1 }}
-    {{- if ne (printf "%T" $client) "string" }}{{ errorf "clients: entry %d of the home page's clients parameter must be a name" $entryNumber }}{{ $clients = slice }}
-    {{- else if eq (strings.TrimSpace $client) "" }}{{ errorf "clients: entry %d of the home page's clients parameter must be a non-empty name" $entryNumber }}{{ $clients = slice }}
+    {{- /* A name with whitespace at its start or end ("padded") is shown as it is: only a page reference needs trimming. */}}
+    {{- $clientProblem := partial "text-problem.html" $client }}
+    {{- if eq $clientProblem "not-text" }}{{ errorf "clients: entry %d of the home page's clients parameter must be a name" $entryNumber }}{{ $clients = slice }}
+    {{- else if eq $clientProblem "empty" }}{{ errorf "clients: entry %d of the home page's clients parameter must be a non-empty name" $entryNumber }}{{ $clients = slice }}
     {{- end }}
     {{- end }}
     {{- $label := i18n "clients" }}

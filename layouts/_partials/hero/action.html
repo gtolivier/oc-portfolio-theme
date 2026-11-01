@@ -12,7 +12,7 @@
      wrong with it, not the missing-field one. */}}
 {{- $hasPageRef := isset $button "pageRef" }}
 {{- if $hasPageRef }}
-  {{- $pageRefProblem := partial "page-ref-problem.html" $pageRef }}
+  {{- $pageRefProblem := partial "text-problem.html" $pageRef }}
   {{- if eq $pageRefProblem "not-text" }}
     {{- errorf "hero: button %d: the pageRef field must be a page reference, a text (language: %s)" $position site.Language.Lang }}
   {{- else if eq $pageRefProblem "empty" }}

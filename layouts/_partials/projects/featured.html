@@ -6,7 +6,7 @@
 {{- $projects := slice }}
 {{- range $index, $entry := $featured }}
 {{- $entryNumber := add $index 1 }}
-{{- $entryProblem := partial "page-ref-problem.html" $entry }}
+{{- $entryProblem := partial "text-problem.html" $entry }}
 {{- if eq $entryProblem "not-text" }}{{ errorf "projects: entry %d of the home page's projects parameter must be a page reference (language: %s)" $entryNumber $.Language.Lang }}{{ continue }}{{ end }}
 {{- if eq $entryProblem "empty" }}{{ errorf "projects: entry %d of the home page's projects parameter must be a non-empty page reference (language: %s)" $entryNumber $.Language.Lang }}{{ continue }}{{ end }}
 {{- if eq $entryProblem "padded" }}{{ errorf "projects: entry %d of the home page's projects parameter has a page reference with whitespace at its start or end, which Hugo does not trim (language: %s): %q" $entryNumber $.Language.Lang $entry }}{{ continue }}{{ end }}
