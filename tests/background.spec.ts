@@ -1,5 +1,11 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import { SITE_WITHOUT_HERO, buildSite, removeDirectory, serveSite } from './helpers/built-site';
+import {
+  SITE_WITHOUT_HERO,
+  SITE_WITH_ANOTHER_BACKGROUND,
+  buildSite,
+  removeDirectory,
+  serveSite,
+} from './helpers/built-site';
 import { displayedText } from './helpers/text-on-screen';
 
 /* The background section of a home page, in its main content: a region named by its title, the
@@ -280,5 +286,59 @@ test.describe('home page of another site, without background', () => {
     await expect(page.getByText('Parcours', { exact: true })).toHaveCount(0);
     await expect(main.getByRole('region')).toHaveCount(0);
     await expect(main.getByRole('heading')).toHaveCount(0);
+  });
+});
+
+/* What tests/fixtures/other-background/content/_index.md declares for its background: a luthier's,
+   with other words than the example site's in every part and other numbers of entries (three key
+   figures, two intro lines, one education entry, three skill groups), so that the example site's
+   content, or any fixed content, cannot pass. */
+const OTHER_BACKGROUND = {
+  keyFigures: [
+    { value: '15', label: 'Ans d’établi' },
+    { value: '120+', label: 'Violons montés' },
+    { value: '8', label: 'Apprentis formés' },
+  ],
+  intro: ['Formée à la lutherie dans les Vosges.', 'Atelier de quartier depuis 2010.'],
+  education: ['Diplôme des métiers d’art en lutherie — École de lutherie fictive de Mirecourt, 2009'],
+  skills: [
+    { title: 'Facture', items: ['Montage de violons', 'Sculpture de volutes'] },
+    { title: 'Vernis', items: ['Vernis à l’huile'] },
+    { title: 'Réglages', items: ['Taille de chevalets', 'Pose d’âmes', 'Ajustage de touches'] },
+  ],
+};
+
+test.describe('home page of another site, with another background', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_ANOTHER_BACKGROUND);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on the French home page of another site, the section "Parcours" shows the key figures, intro lines, education entries and skill groups that site declares, and none of the example site’s', async ({
+    page,
+    context,
+  }) => {
+    await serveSite(context, SITE_WITH_ANOTHER_BACKGROUND, siteDirectory);
+    await page.goto(`${SITE_WITH_ANOTHER_BACKGROUND.origin}/fr/`);
+    const section = backgroundSection(page);
+    await expect(section).toBeVisible();
+    await expectKeyFigures(section, OTHER_BACKGROUND.keyFigures);
+    await expectIntroLines(section, OTHER_BACKGROUND.intro);
+    await expectEducationEntries(section, OTHER_BACKGROUND.education);
+    await expectSkillGroups(section, OTHER_BACKGROUND.skills);
+    /* Nothing of the example site's background: no figure label, intro line, education entry,
+       group title or item of its French home page. */
+    const exampleTexts = [
+      ...KEY_FIGURES.map(({ label }) => label),
+      ...INTRO_LINES,
+      ...EDUCATION_ENTRIES,
+      ...SKILL_GROUPS.flatMap(({ title, items }) => [title, ...items]),
+    ];
+    for (const text of exampleTexts) {
+      await expect(section.getByText(text), `the example site's "${text}"`).toHaveCount(0);
+    }
   });
 });

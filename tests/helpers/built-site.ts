@@ -595,6 +595,14 @@ export const SITE_WITH_A_FIRST_BUTTON_WITHOUT_LABEL = testSite('first-button-unn
 export const SITE_WITH_HERO_BUTTONS_AS_NAMED_TABLES = testSite('named-button-tables');
 export const SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE = testSite('lone-button-table');
 
+/* The example site's French home page declares a clockmaker's background: this site replaces that
+   home page with the one of tests/fixtures/other-background/content, without a hero, clients nor
+   projects, which declares a fictional luthier's background, with other numbers of entries than
+   the example site's: three key figures ("15" "Ans d’établi", "120+" "Violons montés", "8"
+   "Apprentis formés"), two intro lines, a single education entry and three skill groups
+   ("Facture", "Vernis", "Réglages") of two, one and three items. */
+export const SITE_WITH_ANOTHER_BACKGROUND = testSite('other-background');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
