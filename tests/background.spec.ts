@@ -193,6 +193,106 @@ test('with JavaScript, on the French home page, once the section "Parcours" come
   }
 });
 
+/* Where something starts on the page (its left edge and its top), in page coordinates, so that
+   scrolling does not move it. */
+type PagePosition = { left: number; top: number };
+
+/* The number a key figure shows on screen (its first run of digits among the text that shows, so
+   not the text that only assistive technologies get) and where it starts on the page; null when
+   it shows no number. */
+async function shownNumber(figure: Locator): Promise<{ digits: string; position: PagePosition } | null> {
+  return figure.evaluate((root) => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const parent = node.parentElement;
+      if (!parent || !parent.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+      const match = /\d+/.exec(node.textContent ?? '');
+      if (!match) continue;
+      const range = document.createRange();
+      range.setStart(node, match.index);
+      range.setEnd(node, match.index + match[0].length);
+      const box = range.getBoundingClientRect();
+      if (box.width === 0 || box.height === 0) continue;
+      return { digits: match[0], position: { left: box.left + window.scrollX, top: box.top + window.scrollY } };
+    }
+    return null;
+  });
+}
+
+/* Where an element starts on the page. */
+async function pagePosition(element: Locator): Promise<PagePosition> {
+  return element.evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    return { left: box.left + window.scrollX, top: box.top + window.scrollY };
+  });
+}
+
+test('with JavaScript, on the French home page, while the key figures of the section "Parcours" climb to their value, neither their labels nor the numbers they show move: each starts where it started before the climb', async ({
+  page,
+}) => {
+  /* Time stands still from before the page loads, until the test advances it, step by step, to
+     watch the figures as they climb. */
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  await page.evaluate(() => document.fonts.ready);
+  const section = backgroundSection(page);
+  /* Below the first screen on load, so that the figures start from 0. */
+  await expect(section).toHaveCount(1);
+  await expect(section).not.toBeInViewport();
+  const figures = KEY_FIGURES.map(({ value, label }) => ({
+    value,
+    label,
+    target: String(parseInt(value, 10)),
+    figure: section.getByRole('term').filter({ hasText: value }),
+    labelElement: section.getByText(label, { exact: true }),
+  }));
+  /* Before the climb: each figure shows 0; where its 0 and its label start. */
+  const before: { number: PagePosition; label: PagePosition }[] = [];
+  for (const { value, label, figure, labelElement } of figures) {
+    await expect(figure, `the figure "${value}"`).toHaveCount(1);
+    await expect(labelElement, `the label "${label}"`).toBeVisible();
+    await expect
+      .poll(async () => (await shownNumber(figure))?.digits, { message: `number the figure "${value}" shows` })
+      .toBe('0');
+    before.push({ number: (await shownNumber(figure))!.position, label: await pagePosition(labelElement) });
+  }
+  await section.scrollIntoViewIfNeeded();
+  await expect(section, 'the section has come into view').toBeInViewport();
+  /* Every 25 ms, for at most 5 s, until every figure shows its full number: where each shown
+     number and each label start, kept each time one has moved by more than a pixel (subpixel
+     rounding aside) from where it started before the climb. */
+  const moves: string[] = [];
+  const moved = (now: PagePosition, then: PagePosition) =>
+    Math.abs(now.left - then.left) > 1 || Math.abs(now.top - then.top) > 1;
+  let allFull = false;
+  for (let elapsed = 0; elapsed <= 5000 && !allFull; elapsed += 25) {
+    if (elapsed > 0) await page.clock.runFor(25);
+    allFull = true;
+    for (const [index, { value, label, target, figure, labelElement }] of figures.entries()) {
+      const shown = await shownNumber(figure);
+      const labelNow = await pagePosition(labelElement);
+      if (moved(labelNow, before[index].label)) {
+        moves.push(
+          `at ${elapsed} ms, the label "${label}" at ${JSON.stringify(labelNow)}, against ${JSON.stringify(before[index].label)}`,
+        );
+      }
+      if (!shown) {
+        moves.push(`at ${elapsed} ms, the figure "${value}" shows no number`);
+        allFull = false;
+        continue;
+      }
+      if (moved(shown.position, before[index].number)) {
+        moves.push(
+          `at ${elapsed} ms, the number ${shown.digits} of the figure "${value}" at ${JSON.stringify(shown.position)}, against ${JSON.stringify(before[index].number)}`,
+        );
+      }
+      if (shown.digits !== target) allFull = false;
+    }
+  }
+  expect(allFull, 'every figure has come to show its full number').toBe(true);
+  expect(moves, 'labels and shown numbers that moved during the climb').toEqual([]);
+});
+
 test('with JavaScript, on the French home page, once the key figures of the section "Parcours" have shown their full value, scrolling the section out of view and back does not count them again: each one keeps showing its full value next to its label', async ({
   page,
 }) => {
