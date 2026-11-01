@@ -35,6 +35,10 @@ const countUp = (figures: KeyFigure[]): void => {
   }
   const start = performance.now();
   const step = (now: number): void => {
+    if (reducedMotionQuery().matches) {
+      figures.forEach(finish);
+      return;
+    }
     const progress = Math.min((now - start) / COUNT_MS, 1);
     for (const figure of figures) {
       figure.zero.textContent = String(Math.round(figure.target * progress));
