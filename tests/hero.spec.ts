@@ -22,6 +22,7 @@ import {
   SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE,
   SITE_WITH_A_SINGLE_LANGUAGE,
   SITE_WITH_A_WHITESPACE_ONLY_PAGE_REF,
+  SITE_WITH_AN_ENGLISH_HOME_PAGE_REF_NOT_FOUND,
   SITE_WITH_OTHER_CLIENTS,
   type BuiltSite,
   buildSite,
@@ -2034,6 +2035,45 @@ test.describe('hero content errors: build failure', () => {
       /future|scheduled/i,
     );
     expect(build.errors, 'the error message should name an expired page as a possible cause').toMatch(/expir/i);
+  });
+
+  test("a home page where a hero button's pageRef matches no page makes the site build fail with an error message that names the home page's language, for a French and for an English home page", () => {
+    /* The first button of tests/fixtures/page-ref-not-found/content/_index.md, a French home
+       page, declares pageRef = '/page-fictive-introuvable', and that of
+       tests/fixtures/english-home-page-ref-not-found/content/_index.en.md, an English home
+       page, pageRef = '/imaginary-missing-page': neither page exists. The page may exist in
+       the other language only, so that the person building the site must know in which
+       language the pageRef was looked for: as the projects error does, the hero message that
+       names this pageRef must name, on that same line, the home page's language by its code,
+       as written in the site's configuration and in the content file names (fr, en), whatever
+       the rest of the wording. The code is looked for as a word that no other word follows, so
+       that the letters "en" or "fr" met as a word inside the message's prose do not pass for
+       it. Both languages, so that a message naming a language written in the template does
+       not pass. */
+    const cases: { name: string; site: BuiltSite; pageRef: string; language: string }[] = [
+      {
+        name: 'a French home page',
+        site: SITE_WITH_A_PAGE_REF_NOT_FOUND,
+        pageRef: '/page-fictive-introuvable',
+        language: 'fr',
+      },
+      {
+        name: 'an English home page',
+        site: SITE_WITH_AN_ENGLISH_HOME_PAGE_REF_NOT_FOUND,
+        pageRef: '/imaginary-missing-page',
+        language: 'en',
+      },
+    ];
+    for (const { name, site, pageRef, language } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const messages = build.errors.split('\n').filter((line) => /\bhero:/.test(line) && line.includes(pageRef));
+      expect(messages, `with ${name}, hero error messages that name the pageRef, in:\n${build.errors}`).not.toEqual([]);
+      expect(
+        messages.filter((line) => new RegExp(`\\b${language}\\b(?!\\s+\\p{L})`, 'u').test(line)),
+        `with ${name}, hero error messages that name the pageRef and the home page's language, ${language}`,
+      ).not.toEqual([]);
+    }
   });
 
   test('a home page where a hero button declares a pageRef to a page with [build] render = "never" makes the site build fail, with an error message that cites this pageRef and says the page is not published', () => {

@@ -79,6 +79,13 @@ export const SITE_WITH_ANOTHER_HERO = testSite('other-hero');
    exist. */
 export const SITE_WITH_A_PAGE_REF_NOT_FOUND = testSite('page-ref-not-found');
 
+/* The example site's English home page has a hero whose every button leads
+   to an existing page or to an address: this site replaces that home page
+   with the one of tests/fixtures/english-home-page-ref-not-found/content,
+   where a button declares pageRef = '/imaginary-missing-page', a page that
+   does not exist. */
+export const SITE_WITH_AN_ENGLISH_HOME_PAGE_REF_NOT_FOUND = testSite('english-home-page-ref-not-found');
+
 /* The fixture folders of the build-failure sites below avoid the words
    label, author and url: a folder name shows up in temporary paths, hence
    possibly in Hugo's error output, which the error-message assertions must
