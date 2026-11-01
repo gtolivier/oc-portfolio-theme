@@ -1776,19 +1776,22 @@ test.describe('home page of another site, featuring projects whose page declares
 test.describe('featured project whose page declares a custom param named build: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
-  test('a featured project whose page declares a custom param build = "2020", a text rather than a table, makes the site build fail, with an error message that says Hugo reserves build for its build options and names that project, without a template execution error after it', () => {
+  test('a featured project whose page declares a custom param build = "2020", a text rather than a table, makes the site build fail, with an error message that says the theme reads the page’s build param as Hugo’s build options (the [build] front matter) and names that project, without a template execution error after it', () => {
     /* tests/fixtures/build-param-as-text/content/projets/pendule-squelette.md sets no [build]
-       options, but declares under [params] a custom param build = '2020'. Hugo reserves build for
-       the page's build options: .Params.build holds the real [build] table, and a custom build param
-       replaces it, so the theme cannot tell whether that page is published. Rather than a card
-       guessed from that text, the person building the site must get a failure whose message
-       names the build param, says Hugo reserves it, and names that project by its reference or
-       path, whatever the rest of the wording, and no Go template execution error that would follow
-       it and bury it in technical jargon. */
+       options, but declares under [params] a custom param build = '2020'. The theme reads the
+       page's build param as Hugo's build options, the [build] front matter: .Params.build holds the
+       real [build] table, and a custom build param replaces it, so the theme cannot tell whether
+       that page is published. Rather than a card guessed from that text, the person building the
+       site must get a failure whose message names the build param, says the theme reads it as
+       Hugo's build options, and names that project by its reference or path, whatever the rest of
+       the wording, and no Go template execution error that would follow it and bury it in
+       technical jargon. */
     const build = tryToBuildSite(SITE_WITH_A_BUILD_PARAM_AS_TEXT);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors, 'the error message should name the build param').toMatch(/\bbuild\b/);
-    expect(build.errors, 'the error message should say the build param is reserved').toMatch(/\breserve/i);
+    expect(build.errors, 'the error message should say the theme reads build as Hugo’s build options').toMatch(
+      /\btheme\b/,
+    );
     expect(build.errors, 'the error message should name Hugo').toMatch(/\bHugo\b/);
     expect(build.errors, 'the error message should name the project').toContain('projets/pendule-squelette');
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
