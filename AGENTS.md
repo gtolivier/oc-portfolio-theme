@@ -29,8 +29,9 @@ The roadmap (one conversation per feature) lives in the private repository
   with `js.Build`.
 - `npm run format`: formats the repository with Prettier (`.prettierrc.json`);
   `npm run format:check` only checks, as the CI does. `.prettierignore`
-  leaves out the Go templates of `layouts/`, which Prettier would break, and
-  the fictional Markdown content of `exampleSite/` and of the test fixtures.
+  leaves out the Go templates of `layouts/`, which Prettier would break, the
+  fictional content of `exampleSite/content/` and the Markdown of the test
+  fixtures.
 
 ## Rules
 
@@ -97,9 +98,10 @@ The roadmap (one conversation per feature) lives in the private repository
   are an enhancement and respect `prefers-reduced-motion`.
 - **Deterministic tools**: go through the CLIs (`hugo`, `npm`, `npx`, `git`,
   `gh`) rather than a manual edit whenever they cover the operation.
-- **Formatting**: run `npm run format` before every commit; never format by
-  hand what Prettier formats. A commit that only reformats goes in
-  `.git-blame-ignore-revs`.
+- **Formatting**: run `npm run format` before every commit; in a TDD cycle,
+  the orchestrator runs it after each step's report, before committing the
+  step. Never format by hand what Prettier formats. A commit that only
+  reformats goes in `.git-blame-ignore-revs`.
 - **Pull requests**: every change goes through a branch and a PR, even a
   simple documentation fix; never a direct commit on `main` (a GitHub rule
   enforces it too). Merge only with the user's explicit agreement.
