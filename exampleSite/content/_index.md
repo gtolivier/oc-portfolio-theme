@@ -35,6 +35,14 @@ label = 'Ans de métier'
 value = '350'
 label = 'Pendules restaurées'
 
+[[params.background.skills]]
+title = 'Mécanique'
+items = ['Restauration de mouvements', 'Taillage d’engrenages']
+
+[[params.background.skills]]
+title = 'Finitions'
+items = ['Anglage', 'Perlage', 'Dorure à la feuille']
+
 [params.hero]
 title = 'Horloger indépendant'
 tagline = [

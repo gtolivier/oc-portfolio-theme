@@ -127,6 +127,16 @@
       {{- end }}
     </ul>
     {{- end }}
+    {{- range .Params.background.skills }}
+    <div class="background-skills">
+      <h3>{{ .title }}</h3>
+      <ul>
+        {{- range .items }}
+        <li>{{ . }}</li>
+        {{- end }}
+      </ul>
+    </div>
+    {{- end }}
   </section>
   {{- end }}
   {{ .Content }}
