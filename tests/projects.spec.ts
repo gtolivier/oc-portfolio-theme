@@ -1717,6 +1717,16 @@ test.describe('home page of another site, featuring a project with a long title 
       titleRight,
       `right edge of the title's widest line, against the right end of the card's text (${textRight.toFixed(1)} px), less one character of the title (${titleCharacterWidth.toFixed(1)} px)`,
     ).toBeGreaterThan(textRight - titleCharacterWidth);
+    /* The right end of the card's content, inside its padding and border: the description
+       could stop short of it along with the title, if both lost the same width. */
+    const cardContentRight = await card.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return element.getBoundingClientRect().right - Number.parseFloat(style.paddingRight) - Number.parseFloat(style.borderRightWidth);
+    });
+    expect(
+      titleRight,
+      `right edge of the title's widest line, against the right end of the card's content (${cardContentRight.toFixed(1)} px), less one character of the title (${titleCharacterWidth.toFixed(1)} px)`,
+    ).toBeGreaterThan(cardContentRight - titleCharacterWidth);
   });
 });
 
