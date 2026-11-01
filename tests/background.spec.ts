@@ -41,6 +41,37 @@ test('on the French home page, a section "Parcours" comes right after the sectio
   await expect(section).toHaveAccessibleName('Parcours');
 });
 
+/* The key figures the example site's French home page declares (exampleSite/content/_index.md,
+   [[params.background.stats]]), in the order its front matter lists them: each one a value that
+   starts with a whole number, then a label. The numbers differ from one figure to the next, so
+   that a figure showing another one's value cannot pass. */
+const KEY_FIGURES = [
+  { value: '20+', label: 'Ans de métier' },
+  { value: '350', label: 'Pendules restaurées' },
+];
+
+/* Text written as it is, inside a regular expression. */
+function literally(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+test.describe('without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('without JavaScript, on the French home page, the section "Parcours" shows each key figure the home page declares, its full value as written then its label, in the order declared', async ({
+    page,
+  }) => {
+    await page.goto('/fr/');
+    const section = backgroundSection(page);
+    await expect(section).toBeVisible();
+    /* On screen, in reading order: each value, whole (no digit glued before it, so "20+" does
+       not pass inside "120+"), right before its label; the figures one after the other. */
+    const figures = KEY_FIGURES.map(({ value, label }) => `${literally(value)} ?${literally(label)}`);
+    const inOrder = new RegExp(`(?<!\\d)${figures.join('.*(?<!\\d)')}(?!\\p{L})`, 'u');
+    await expect.poll(() => displayedText(section), 'text displayed by the section "Parcours"').toMatch(inOrder);
+  });
+});
+
 test.describe('home page of another site, without background', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
