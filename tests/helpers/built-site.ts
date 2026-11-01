@@ -24,16 +24,18 @@ export interface BuiltSite {
 
 const themeRoot = path.resolve(__dirname, '..', '..');
 
-/* The port and address of the example site served under a subdirectory,
-   /portfolio/, by the second Hugo server of playwright.config.ts, which
-   starts it from these. The first one serves it at the baseURL, where the
-   tests open its pages by their path alone ('/fr/'). */
-export const EXAMPLE_SITE_UNDER_PORTFOLIO_PORT = 1315;
+/* The ports and addresses of the two Hugo servers of playwright.config.ts,
+   which starts them from these. The first serves the example site at the
+   baseURL, where the tests open its pages by their path alone ('/fr/'); the
+   second serves it under a subdirectory, /portfolio/. */
+export const EXAMPLE_SITE_PORT = 1314;
+export const EXAMPLE_SITE = `http://localhost:${EXAMPLE_SITE_PORT}`;
+export const EXAMPLE_SITE_UNDER_PORTFOLIO_PORT = EXAMPLE_SITE_PORT + 1;
 export const EXAMPLE_SITE_UNDER_PORTFOLIO = `http://localhost:${EXAMPLE_SITE_UNDER_PORTFOLIO_PORT}/portfolio/`;
 
 /* Each test site has its own origin, hence its own port: ports are assigned
    in the order the sites are declared below, after those of the Hugo
-   servers of playwright.config.ts (1314 and EXAMPLE_SITE_UNDER_PORTFOLIO_PORT). */
+   servers of playwright.config.ts. */
 const FIRST_TEST_SITE_PORT = EXAMPLE_SITE_UNDER_PORTFOLIO_PORT + 1;
 let testSiteCount = 0;
 

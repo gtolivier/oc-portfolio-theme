@@ -1,5 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
-import { EXAMPLE_SITE_UNDER_PORTFOLIO, EXAMPLE_SITE_UNDER_PORTFOLIO_PORT } from './tests/helpers/built-site';
+import {
+  EXAMPLE_SITE,
+  EXAMPLE_SITE_PORT,
+  EXAMPLE_SITE_UNDER_PORTFOLIO,
+  EXAMPLE_SITE_UNDER_PORTFOLIO_PORT,
+} from './tests/helpers/built-site';
 
 /**
  * Read environment variables from file.
@@ -32,7 +37,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
-    baseURL: 'http://localhost:1314',
+    baseURL: EXAMPLE_SITE,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -85,8 +90,8 @@ export default defineConfig({
      Hugo server running on the same site, such as the development one. */
   webServer: [
     {
-      command: 'hugo server --source exampleSite --environment production --port 1314 --disableLiveReload --renderToMemory',
-      url: 'http://localhost:1314',
+      command: `hugo server --source exampleSite --environment production --port ${EXAMPLE_SITE_PORT} --disableLiveReload --renderToMemory`,
+      url: EXAMPLE_SITE,
       reuseExistingServer: !process.env.CI,
     },
     /* The same site served under a subpath, like a deployment in a
