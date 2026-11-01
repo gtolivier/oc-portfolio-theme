@@ -9,26 +9,22 @@
 {{- $hasPageRef := .pageRef }}
 {{- if and (isset . "pageRef") (ne (printf "%T" $pageRef) "string") }}
   {{- errorf "hero: the pageRef field must be a page reference, a text" }}
-  {{- $pageRef = "" }}
   {{- $hasPageRef = true }}
-{{- end }}
-{{- $trimmedPageRef := strings.TrimSpace $pageRef }}
-{{- if and $pageRef (eq $trimmedPageRef "") }}
-  {{- errorf "hero: the pageRef field is empty: it must be a page reference" }}
-  {{- $pageRef = "" }}
-{{- end }}
-{{- if and $pageRef (ne $pageRef $trimmedPageRef) }}
-  {{- errorf "hero: the pageRef %q has whitespace at its start or end, which Hugo does not trim" $pageRef }}
-  {{- $pageRef = "" }}
-{{- end }}
-{{- with $pageRef }}
-  {{- with site.GetPage $pageRef }}
-    {{- $href = .RelPermalink }}
-    {{- if not (partial "is-published.html" .) }}
-      {{- errorf "hero: the pageRef %q points to a page that is not published" $pageRef }}
-    {{- end }}
+{{- else if $pageRef }}
+  {{- $trimmedPageRef := strings.TrimSpace $pageRef }}
+  {{- if eq $trimmedPageRef "" }}
+    {{- errorf "hero: the pageRef field is empty: it must be a page reference" }}
+  {{- else if ne $pageRef $trimmedPageRef }}
+    {{- errorf "hero: the pageRef %q has whitespace at its start or end, which Hugo does not trim" $pageRef }}
   {{- else }}
-    {{- errorf "hero: the pageRef %q matches no page (language: %s): check for a page that does not exist, a typo in the reference, a missing translation, a draft, a future (scheduled) date or an expired page" $pageRef site.Language.Lang }}
+    {{- with site.GetPage $pageRef }}
+      {{- $href = .RelPermalink }}
+      {{- if not (partial "is-published.html" .) }}
+        {{- errorf "hero: the pageRef %q points to a page that is not published" $pageRef }}
+      {{- end }}
+    {{- else }}
+      {{- errorf "hero: the pageRef %q matches no page (language: %s): check for a page that does not exist, a typo in the reference, a missing translation, a draft, a future (scheduled) date or an expired page" $pageRef site.Language.Lang }}
+    {{- end }}
   {{- end }}
 {{- end }}
 {{- if and .url .pageRef }}{{ errorf "hero: a button declares both a url field and a pageRef field; it needs only one" }}{{ end }}
