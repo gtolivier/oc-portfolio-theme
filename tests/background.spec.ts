@@ -2,6 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 import {
   SITE_WITHOUT_HERO,
   SITE_WITH_ANOTHER_BACKGROUND,
+  SITE_WITH_A_SKILLS_ONLY_BACKGROUND,
   buildSite,
   removeDirectory,
   serveSite,
@@ -340,5 +341,59 @@ test.describe('home page of another site, with another background', () => {
     for (const text of exampleTexts) {
       await expect(section.getByText(text), `the example site's "${text}"`).toHaveCount(0);
     }
+  });
+});
+
+/* What tests/fixtures/skills-only-background/content/_index.md declares for its background: a
+   potter's skill groups, of three and one items, and nothing else. */
+const SKILLS_ONLY_GROUPS = [
+  { title: 'Tournage', items: ['Centrage de la motte', 'Tournage de bols', 'Tournassage'] },
+  { title: 'Émaillage', items: ['Émaux de cendre'] },
+];
+
+test.describe('home page of another site, with a background of skill groups only', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_SKILLS_ONLY_BACKGROUND);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on the French home page of another site whose background declares only skill groups, the section "Parcours" shows them, with no empty slot for key figures, intro lines or education entries', async ({
+    page,
+    context,
+  }) => {
+    await serveSite(context, SITE_WITH_A_SKILLS_ONLY_BACKGROUND, siteDirectory);
+    await page.goto(`${SITE_WITH_A_SKILLS_ONLY_BACKGROUND.origin}/fr/`);
+    const section = backgroundSection(page);
+    await expect(section).toBeVisible();
+    await expectSkillGroups(section, SKILLS_ONLY_GROUPS);
+    /* No empty slot an assistive technology would announce: no paragraph, no term or definition of
+       a key figure, and no list but the groups' own, each holding its items. */
+    await expect(section.getByRole('paragraph'), 'paragraphs of the section').toHaveCount(0);
+    await expect(section.getByRole('term'), 'terms of the section').toHaveCount(0);
+    await expect(section.getByRole('definition'), 'definitions of the section').toHaveCount(0);
+    await expect(section.getByRole('list'), 'lists of the section').toHaveCount(SKILLS_ONLY_GROUPS.length);
+    /* No empty slot a visitor would see: every element of the section that takes room on screen
+       is the section heading, a group heading or a group list, holds one of them or sits inside
+       one of them. */
+    const filled = [
+      ...(await section.getByRole('heading', { level: 2 }).elementHandles()),
+      ...(await section.getByRole('heading', { level: 3 }).elementHandles()),
+      ...(await section.getByRole('list').elementHandles()),
+    ];
+    const strayElements = await section.evaluate(
+      (root, parts) =>
+        Array.from(root.querySelectorAll('*'))
+          .filter((element) => {
+            const box = element.getBoundingClientRect();
+            return box.width > 0 && box.height > 0;
+          })
+          .filter((element) => !parts.some((part) => part.contains(element) || element.contains(part)))
+          .map((element) => element.outerHTML),
+      filled,
+    );
+    expect(strayElements, 'elements of the section taking room on screen outside its headings and groups').toEqual([]);
   });
 });

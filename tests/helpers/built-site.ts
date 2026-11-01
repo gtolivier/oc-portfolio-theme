@@ -603,6 +603,13 @@ export const SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE = testSite('lone-button-t
    ("Facture", "Vernis", "Réglages") of two, one and three items. */
 export const SITE_WITH_ANOTHER_BACKGROUND = testSite('other-background');
 
+/* The example site's French home page declares every part of its background: this site replaces
+   that home page with the one of tests/fixtures/skills-only-background/content, without a hero,
+   clients nor projects, whose [params.background] declares only skill groups, a fictional
+   potter's: "Tournage" of three items and "Émaillage" of one; no key figures, intro lines nor
+   education entries. */
+export const SITE_WITH_A_SKILLS_ONLY_BACKGROUND = testSite('skills-only-background');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
