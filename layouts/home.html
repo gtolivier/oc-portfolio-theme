@@ -133,7 +133,10 @@
       {{- end }}
     </ul>
     {{- end }}
-    {{- with .Params.background.skills }}
+    {{- $skills := .Params.background.skills }}
+    {{- /* errorf does not stop the template: after an error, the skill groups are empty, so that no template execution error buries the message. */}}
+    {{- if and $skills (not (reflect.IsSlice $skills)) }}{{ errorf "background: the skill groups must be written as a list of tables, [[params.background.skills]], with double brackets" }}{{ $skills = slice }}{{ end }}
+    {{- with $skills }}
     <div class="background-skill-groups">
       {{- range . }}
       <div class="background-skills">
