@@ -22,6 +22,10 @@ intro = [
   'Atelier indépendant depuis 2004.',
   'Pendules, régulateurs et montres de poche.',
 ]
+education = [
+  'CFC d’horloger rhabilleur — École d’horlogerie de Porrentruy, 2001',
+  'Brevet de restaurateur de pendules — Lycée Victor-Bérard, Morez, 2003',
+]
 
 [[params.background.stats]]
 value = '20+'

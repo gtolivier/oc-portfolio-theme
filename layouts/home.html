@@ -120,6 +120,13 @@
       {{- end }}
     </dl>
     {{- end }}
+    {{- with .Params.background.education }}
+    <ul class="background-education">
+      {{- range . }}
+      <li>{{ . }}</li>
+      {{- end }}
+    </ul>
+    {{- end }}
   </section>
   {{- end }}
   {{ .Content }}
