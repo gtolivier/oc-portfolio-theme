@@ -20,7 +20,12 @@ async function columnsOverBackground(
   screenshot: Buffer,
   rectangle?: Rectangle,
   background?: string,
-): Promise<{ notOfBackground: number[]; notOfBackgroundPerRow: number[]; luminanceAboveBackground: number[]; scale: number }> {
+): Promise<{
+  notOfBackground: number[];
+  notOfBackgroundPerRow: number[];
+  luminanceAboveBackground: number[];
+  scale: number;
+}> {
   return element.evaluate(
     async (el, [base64, zone, backgroundColour]) => {
       const TOLERANCE = 2;
@@ -212,7 +217,10 @@ export async function canvasOpacityOverBackgroundAt(
         const [red, green, blue] = drawn.getImageData(canvasColumn, canvasRow, 1, 1).data;
         const way = [red - background[0], green - background[1], blue - background[2]];
         const length = way.reduce((sum, value) => sum + value * value, 0);
-        const along = [0, 1, 2].reduce((sum, channel) => sum + (pixels[i + channel] - background[channel]) * way[channel], 0);
+        const along = [0, 1, 2].reduce(
+          (sum, channel) => sum + (pixels[i + channel] - background[channel]) * way[channel],
+          0,
+        );
         return { opacity: length === 0 ? NaN : along / length, colour: { red, green, blue } };
       });
     },
@@ -243,7 +251,11 @@ export async function pixelsChangedPerColumnInRectangle(
         canvas.height = image.height;
         const context = canvas.getContext('2d', { willReadFrequently: true })!;
         context.drawImage(image, 0, 0);
-        return { pixels: context.getImageData(0, 0, image.width, image.height).data, width: image.width, height: image.height };
+        return {
+          pixels: context.getImageData(0, 0, image.width, image.height).data,
+          width: image.width,
+          height: image.height,
+        };
       };
       const first = await decode(beforeBase64);
       const second = await decode(afterBase64);
@@ -259,7 +271,9 @@ export async function pixelsChangedPerColumnInRectangle(
         for (let column = fromColumn; column < toColumn; column++) {
           const i = 4 * (row * first.width + column);
           const j = 4 * (row * second.width + column);
-          if ([0, 1, 2].some((channel) => Math.abs(first.pixels[i + channel] - second.pixels[j + channel]) > TOLERANCE)) {
+          if (
+            [0, 1, 2].some((channel) => Math.abs(first.pixels[i + channel] - second.pixels[j + channel]) > TOLERANCE)
+          ) {
             columns[column] += 1;
           }
         }
@@ -293,7 +307,11 @@ export async function meanLuminanceGainedInRectangle(
         canvas.height = image.height;
         const context = canvas.getContext('2d', { willReadFrequently: true })!;
         context.drawImage(image, 0, 0);
-        return { pixels: context.getImageData(0, 0, image.width, image.height).data, width: image.width, height: image.height };
+        return {
+          pixels: context.getImageData(0, 0, image.width, image.height).data,
+          width: image.width,
+          height: image.height,
+        };
       };
       const first = await decode(beforeBase64);
       const second = await decode(afterBase64);
@@ -349,7 +367,11 @@ export async function brightnessKeptUnderLayerInRectangle(
         canvas.height = image.height;
         const context = canvas.getContext('2d', { willReadFrequently: true })!;
         context.drawImage(image, 0, 0);
-        return { pixels: context.getImageData(0, 0, image.width, image.height).data, width: image.width, height: image.height };
+        return {
+          pixels: context.getImageData(0, 0, image.width, image.height).data,
+          width: image.width,
+          height: image.height,
+        };
       };
       const without = await decode(bareBase64);
       const withLayer = await decode(coveredBase64);
@@ -374,7 +396,9 @@ export async function brightnessKeptUnderLayerInRectangle(
         for (let column = fromColumn; column < toColumn; column++) {
           const i = 4 * (row * without.width + column);
           const j = 4 * (row * withLayer.width + column);
-          const isDrawn = [0, 1, 2].some((channel) => Math.abs(without.pixels[i + channel] - backgroundPixel[channel]) > TOLERANCE);
+          const isDrawn = [0, 1, 2].some(
+            (channel) => Math.abs(without.pixels[i + channel] - backgroundPixel[channel]) > TOLERANCE,
+          );
           if (isDrawn) {
             drawn += luma(without.pixels, i) - backgroundLuma;
             drawnUnderLayer += luma(withLayer.pixels, j);
@@ -520,7 +544,10 @@ export async function strongestShareOfColourInRectangle(
       for (let row = fromRow; row < toRow; row++) {
         for (let column = fromColumn; column < toColumn; column++) {
           const i = 4 * (row * image.width + column);
-          const along = [0, 1, 2].reduce((sum, channel) => sum + (pixels[i + channel] - background[channel]) * way[channel], 0);
+          const along = [0, 1, 2].reduce(
+            (sum, channel) => sum + (pixels[i + channel] - background[channel]) * way[channel],
+            0,
+          );
           strongest = Math.max(strongest, along / length);
         }
       }
@@ -630,76 +657,73 @@ export async function extentOfDrawnTicks(
   element: Locator,
   screenshot: Buffer,
 ): Promise<{ left: number; right: number; top: number; bottom: number }> {
-  return element.evaluate(
-    async (el, base64) => {
-      const TOLERANCE = 2;
-      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
-      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
-      const scale = image.width / el.getBoundingClientRect().width;
-      const canvas = document.createElement('canvas');
-      canvas.width = image.width;
-      canvas.height = image.height;
-      const context = canvas.getContext('2d', { willReadFrequently: true })!;
-      context.fillStyle = getComputedStyle(el).backgroundColor;
-      context.fillRect(0, 0, 1, 1);
-      const background = context.getImageData(0, 0, 1, 1).data;
-      context.clearRect(0, 0, canvas.width, canvas.height);
-      context.drawImage(image, 0, 0);
-      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
-      const strength = (column: number, row: number): number => {
-        const i = 4 * (row * image.width + column);
-        const distances = [0, 1, 2].map((channel) => Math.abs(pixels[i + channel] - background[channel]));
-        return distances.some((distance) => distance > TOLERANCE) ? distances.reduce((sum, value) => sum + value, 0) : 0;
-      };
-      /* Runs of adjacent lines (columns or rows) with some strength, as [first, last]. */
-      const runs = (lines: number[]): [number, number][] => {
-        const found: [number, number][] = [];
-        lines.forEach((value, index) => {
-          if (value <= 0) return;
-          const last = found[found.length - 1];
-          if (last && last[1] === index - 1) last[1] = index;
-          else found.push([index, index]);
-        });
-        return found;
-      };
-      /* The edges of a stroke across the lines first…last, in screenshot pixels. */
-      const edges = (lines: number[], [first, last]: [number, number]): [number, number] => {
-        const across = lines.slice(first, last + 1);
-        const total = across.reduce((sum, value) => sum + value, 0);
-        const middle = first + across.reduce((sum, value, index) => sum + (index + 0.5) * value, 0) / total;
-        const strongest = Math.max(...across);
-        const full = across.filter((value) => value >= strongest / 2).sort((a, b) => a - b);
-        const half = Math.floor(full.length / 2);
-        const typical = full.length % 2 === 1 ? full[half] : (full[half - 1] + full[half]) / 2;
-        const size = total / typical;
-        return [middle - size / 2, middle + size / 2];
-      };
-      const columns = new Array<number>(image.width).fill(0);
+  return element.evaluate(async (el, base64) => {
+    const TOLERANCE = 2;
+    const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+    const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+    const scale = image.width / el.getBoundingClientRect().width;
+    const canvas = document.createElement('canvas');
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext('2d', { willReadFrequently: true })!;
+    context.fillStyle = getComputedStyle(el).backgroundColor;
+    context.fillRect(0, 0, 1, 1);
+    const background = context.getImageData(0, 0, 1, 1).data;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0);
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    const strength = (column: number, row: number): number => {
+      const i = 4 * (row * image.width + column);
+      const distances = [0, 1, 2].map((channel) => Math.abs(pixels[i + channel] - background[channel]));
+      return distances.some((distance) => distance > TOLERANCE) ? distances.reduce((sum, value) => sum + value, 0) : 0;
+    };
+    /* Runs of adjacent lines (columns or rows) with some strength, as [first, last]. */
+    const runs = (lines: number[]): [number, number][] => {
+      const found: [number, number][] = [];
+      lines.forEach((value, index) => {
+        if (value <= 0) return;
+        const last = found[found.length - 1];
+        if (last && last[1] === index - 1) last[1] = index;
+        else found.push([index, index]);
+      });
+      return found;
+    };
+    /* The edges of a stroke across the lines first…last, in screenshot pixels. */
+    const edges = (lines: number[], [first, last]: [number, number]): [number, number] => {
+      const across = lines.slice(first, last + 1);
+      const total = across.reduce((sum, value) => sum + value, 0);
+      const middle = first + across.reduce((sum, value, index) => sum + (index + 0.5) * value, 0) / total;
+      const strongest = Math.max(...across);
+      const full = across.filter((value) => value >= strongest / 2).sort((a, b) => a - b);
+      const half = Math.floor(full.length / 2);
+      const typical = full.length % 2 === 1 ? full[half] : (full[half - 1] + full[half]) / 2;
+      const size = total / typical;
+      return [middle - size / 2, middle + size / 2];
+    };
+    const columns = new Array<number>(image.width).fill(0);
+    for (let row = 0; row < image.height; row++) {
+      for (let column = 0; column < image.width; column++) columns[column] += strength(column, row);
+    }
+    const tickColumns = runs(columns);
+    if (tickColumns.length === 0) return { left: NaN, right: NaN, top: NaN, bottom: NaN };
+    let top = Infinity;
+    let bottom = -Infinity;
+    for (const [first, last] of tickColumns) {
+      const rows = new Array<number>(image.height).fill(0);
       for (let row = 0; row < image.height; row++) {
-        for (let column = 0; column < image.width; column++) columns[column] += strength(column, row);
+        for (let column = first; column <= last; column++) rows[row] += strength(column, row);
       }
-      const tickColumns = runs(columns);
-      if (tickColumns.length === 0) return { left: NaN, right: NaN, top: NaN, bottom: NaN };
-      let top = Infinity;
-      let bottom = -Infinity;
-      for (const [first, last] of tickColumns) {
-        const rows = new Array<number>(image.height).fill(0);
-        for (let row = 0; row < image.height; row++) {
-          for (let column = first; column <= last; column++) rows[row] += strength(column, row);
-        }
-        const ticks = runs(rows);
-        top = Math.min(top, edges(rows, ticks[0])[0]);
-        bottom = Math.max(bottom, edges(rows, ticks[ticks.length - 1])[1]);
-      }
-      return {
-        left: edges(columns, tickColumns[0])[0] / scale,
-        right: edges(columns, tickColumns[tickColumns.length - 1])[1] / scale,
-        top: top / scale,
-        bottom: bottom / scale,
-      };
-    },
-    screenshot.toString('base64'),
-  );
+      const ticks = runs(rows);
+      top = Math.min(top, edges(rows, ticks[0])[0]);
+      bottom = Math.max(bottom, edges(rows, ticks[ticks.length - 1])[1]);
+    }
+    return {
+      left: edges(columns, tickColumns[0])[0] / scale,
+      right: edges(columns, tickColumns[tickColumns.length - 1])[1] / scale,
+      top: top / scale,
+      bottom: bottom / scale,
+    };
+  }, screenshot.toString('base64'));
 }
 
 /* Number of pixels of the screenshot of an element that differ from the element's background

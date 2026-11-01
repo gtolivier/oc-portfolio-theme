@@ -7,12 +7,18 @@ export type Rgb = { red: number; green: number; blue: number };
 export function colorComponents(color: string): Rgb & { alpha: number } {
   const number = '([\\d.]+%?)';
   const toUnit = (value: string) => (value.endsWith('%') ? parseFloat(value) / 100 : parseFloat(value));
-  const rgb = color.match(new RegExp(`^rgba?\\(\\s*${number}[\\s,]+${number}[\\s,]+${number}(?:\\s*[,/]\\s*${number})?\\s*\\)$`));
-  const srgb = color.match(new RegExp(`^color\\(srgb\\s+${number}\\s+${number}\\s+${number}(?:\\s*/\\s*${number})?\\s*\\)$`));
+  const rgb = color.match(
+    new RegExp(`^rgba?\\(\\s*${number}[\\s,]+${number}[\\s,]+${number}(?:\\s*[,/]\\s*${number})?\\s*\\)$`),
+  );
+  const srgb = color.match(
+    new RegExp(`^color\\(srgb\\s+${number}\\s+${number}\\s+${number}(?:\\s*/\\s*${number})?\\s*\\)$`),
+  );
   const match = rgb ?? srgb;
   if (!match) throw new Error(`unrecognized color: ${color}`);
   const scale = rgb ? 1 : 255;
-  const [red, green, blue] = match.slice(1, 4).map((value) => (value.endsWith('%') ? toUnit(value) * 255 : parseFloat(value) * scale));
+  const [red, green, blue] = match
+    .slice(1, 4)
+    .map((value) => (value.endsWith('%') ? toUnit(value) * 255 : parseFloat(value) * scale));
   const alpha = match[4] === undefined ? 1 : toUnit(match[4]);
   return { red, green, blue, alpha };
 }

@@ -341,16 +341,13 @@ class TickField extends HTMLElement {
   /* The grid of ticks, centred in the box: as many columns and rows as leave the minimum margins. */
   private layout(width: number, height: number, variant: FieldVariant): FieldLayout {
     const sideMargin = variant.minSideMargin;
-    const columns = Math.max(
-      1,
-      Math.floor((width - 2 * sideMargin - FIELD_TICK_WIDTH_PX) / FIELD_TICK_SPACING_PX) + 1,
-    );
+    const columns = Math.max(1, Math.floor((width - 2 * sideMargin - FIELD_TICK_WIDTH_PX) / FIELD_TICK_SPACING_PX) + 1);
     const span = (columns - 1) * FIELD_TICK_SPACING_PX + FIELD_TICK_WIDTH_PX;
     /* On whole pixels, so the strokes stay crisp. */
     const left = Math.round((width - span) / 2);
     const verticalMargin = variant.minVerticalMargin;
     let rows = Math.max(1, Math.floor((height - 2 * verticalMargin) / FIELD_ROW_SPACING_PX) + 1);
-    for (;; rows -= 1) {
+    for (; ; rows -= 1) {
       /* The tallest tick of the last row is the one in the last column. */
       const bottom = (rows - 1) * FIELD_ROW_SPACING_PX + this.tickHeight(1, 1);
       const top = Math.round((height - bottom) / 2);

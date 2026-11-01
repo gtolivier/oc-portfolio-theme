@@ -25,7 +25,10 @@ async function loadedMonoWeights(page: Page): Promise<string[]> {
   });
 }
 
-test('body text is in IBM Plex Sans and the header text (logo and navigation) in IBM Plex Mono, fonts actually loaded from the site itself and never from another domain', async ({ page, baseURL }) => {
+test('body text is in IBM Plex Sans and the header text (logo and navigation) in IBM Plex Mono, fonts actually loaded from the site itself and never from another domain', async ({
+  page,
+  baseURL,
+}) => {
   const requestedFonts: string[] = [];
   const receivedFonts: string[] = [];
   page.on('request', (request) => {
@@ -67,7 +70,9 @@ test('body text is in IBM Plex Sans and the header text (logo and navigation) in
   expect(requestedFonts.filter((url) => new URL(url).origin !== origin)).toEqual([]);
 });
 
-test('served under a subpath (baseURL /portfolio/), the site still loads its IBM Plex Sans and IBM Plex Mono fonts, with no font file not found', async ({ page }) => {
+test('served under a subpath (baseURL /portfolio/), the site still loads its IBM Plex Sans and IBM Plex Mono fonts, with no font file not found', async ({
+  page,
+}) => {
   const failedFonts: string[] = [];
   page.on('response', (response) => {
     const request = response.request();
@@ -83,7 +88,9 @@ test('served under a subpath (baseURL /portfolio/), the site still loads its IBM
   expect(loadedFonts).toEqual(expect.arrayContaining(['IBM Plex Sans', 'IBM Plex Mono']));
 });
 
-test('the page title (IBM Plex Mono bold, 700) and the header language switcher (IBM Plex Mono semibold, 600) use weights actually loaded from the site, not synthesized or replaced by the browser', async ({ page }) => {
+test('the page title (IBM Plex Mono bold, 700) and the header language switcher (IBM Plex Mono semibold, 600) use weights actually loaded from the site, not synthesized or replaced by the browser', async ({
+  page,
+}) => {
   await page.goto('/fr/projets/');
 
   const title = page.locator('h1');

@@ -112,10 +112,9 @@ export const SITE_UNDER_PORTFOLIO_WITH_A_URL_FROM_THE_ROOT = testSite('url-from-
    with the same word as the subpath, url = '/portfolio/galerie/', and the
    page it points to, published at that address from the site root
    (url = '/portfolio/galerie/' in its front matter). */
-export const SITE_UNDER_PORTFOLIO_WITH_A_URL_STARTING_WITH_THE_SUBPATH = testSite(
-  'url-starting-with-the-subpath',
-  { subpath: '/portfolio/' },
-);
+export const SITE_UNDER_PORTFOLIO_WITH_A_URL_STARTING_WITH_THE_SUBPATH = testSite('url-starting-with-the-subpath', {
+  subpath: '/portfolio/',
+});
 
 /* The example site's author name and hero title are made of short words:
    this site changes author, whose compound last name has more than 12
@@ -503,15 +502,20 @@ function fixtureConfiguration(site: BuiltSite): string[] {
    `destination`, without the lock that would keep two builds from running at
    once. */
 function baseBuildArguments(destination: string): string[] {
-  return ['build', '--source', 'exampleSite', '--environment', 'production', '--destination', destination, '--noBuildLock'];
+  return [
+    'build',
+    '--source',
+    'exampleSite',
+    '--environment',
+    'production',
+    '--destination',
+    destination,
+    '--noBuildLock',
+  ];
 }
 
 function buildArguments(site: BuiltSite, configuration: string, destination: string): string[] {
-  return [
-    ...baseBuildArguments(destination),
-    '--config', configuration,
-    '--baseURL', `${site.origin}${site.subpath}`,
-  ];
+  return [...baseBuildArguments(destination), '--config', configuration, '--baseURL', `${site.origin}${site.subpath}`];
 }
 
 function createBuildDirectory(site: BuiltSite): string {

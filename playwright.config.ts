@@ -97,8 +97,7 @@ export default defineConfig({
     /* The same site served under a subpath, like a deployment in a
        subfolder (baseURL /portfolio/). */
     {
-      command:
-        `hugo server --source exampleSite --environment production --port ${EXAMPLE_SITE_UNDER_PORTFOLIO_PORT} --baseURL ${EXAMPLE_SITE_UNDER_PORTFOLIO} --disableLiveReload --renderToMemory`,
+      command: `hugo server --source exampleSite --environment production --port ${EXAMPLE_SITE_UNDER_PORTFOLIO_PORT} --baseURL ${EXAMPLE_SITE_UNDER_PORTFOLIO} --disableLiveReload --renderToMemory`,
       url: EXAMPLE_SITE_UNDER_PORTFOLIO,
       reuseExistingServer: !process.env.CI,
     },
