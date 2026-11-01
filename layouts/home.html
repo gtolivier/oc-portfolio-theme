@@ -110,7 +110,10 @@
       {{- partial "lines.html" . -}}
     </p>
     {{- end }}
-    {{- with .Params.background.stats }}
+    {{- $stats := .Params.background.stats }}
+    {{- /* errorf does not stop the template: after an error, the key figures are empty, so that no template execution error buries the message. */}}
+    {{- if and $stats (not (reflect.IsSlice $stats)) }}{{ errorf "background: the key figures must be written as a list of tables, [[params.background.stats]], with double brackets" }}{{ $stats = slice }}{{ end }}
+    {{- with $stats }}
     <dl class="background-stats">
       {{- range . }}
       <div>
