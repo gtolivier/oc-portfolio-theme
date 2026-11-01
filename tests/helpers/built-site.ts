@@ -618,6 +618,15 @@ export const SITE_WITH_A_SKILLS_ONLY_BACKGROUND = testSite('skills-only-backgrou
    and stats, which the error-message assertion looks for. */
 export const SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE = testSite('lone-figure-table');
 
+/* The example site's French home page writes each key figure's value starting with a whole number:
+   this site replaces that home page with the one of tests/fixtures/number-in-words/content,
+   without a hero, clients nor projects, which declares a fictional glassblower's three key
+   figures as a list of tables, [[params.background.stats]], the second of which has the value
+   'quinze', written in words, between '9' and '300+'. Its folder name avoids the words
+   background and figure, and the words "whole number", which the error-message assertion looks
+   for. */
+export const SITE_WITH_A_KEY_FIGURE_NOT_STARTING_WITH_A_NUMBER = testSite('number-in-words');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

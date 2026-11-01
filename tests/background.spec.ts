@@ -4,6 +4,7 @@ import {
   SITE_WITH_ANOTHER_BACKGROUND,
   SITE_WITH_A_SKILLS_ONLY_BACKGROUND,
   SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE,
+  SITE_WITH_A_KEY_FIGURE_NOT_STARTING_WITH_A_NUMBER,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1100,6 +1101,29 @@ test.describe('background content errors: build failure', () => {
       build.errors,
       'the error message should say to write the key figures as [[params.background.stats]]',
     ).toMatch(/\bbackground:.*\[\[params\.background\.stats\]\]/);
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page with a key figure whose value does not start with a whole number makes the site build fail, with an error message that gives the position of that key figure, without a template execution error after it', () => {
+    /* tests/fixtures/number-in-words/content/_index.md writes its three key figures as a list of
+       tables, but the value of the second is 'quinze', in words: the count-up reads each value's
+       leading whole number and would have none to count up to. Rather than a figure that counts to
+       nothing, the person building the site must get an error message that says, on its own line,
+       that key figure 2 must start with a whole number, the position counted from 1 as the clients
+       and hero messages give an entry's position, whatever the rest of the wording, and no Go
+       template execution error that would follow it and bury it in technical jargon. The bad
+       figure is the second, so that a position written in the template, or the first figure's,
+       does not pass. */
+    const build = tryToBuildSite(SITE_WITH_A_KEY_FIGURE_NOT_STARTING_WITH_A_NUMBER);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the error message should give the position of the key figure').toMatch(
+      /\bbackground:.*\bkey\s+figure\s+2\b/,
+    );
+    expect(build.errors, 'the error message should say the key figure must start with a whole number').toMatch(
+      /\bbackground:.*\bwhole\s+number\b/,
+    );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       /execute of template failed|error calling/i,
     );
