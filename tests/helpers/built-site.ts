@@ -627,6 +627,14 @@ export const SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE = testSite('lone-figur
    for. */
 export const SITE_WITH_A_KEY_FIGURE_NOT_STARTING_WITH_A_NUMBER = testSite('number-in-words');
 
+/* The example site's French home page writes its skill groups as a list of tables,
+   [[params.background.skills]]: this site replaces that home page with the one of
+   tests/fixtures/lone-group-table/content, without a hero, clients nor projects, whose only skill
+   group, a fictional bookbinder's ("Reliure", of three items), is written
+   [params.background.skills], with single brackets, a table rather than a list. Its folder name
+   avoids the words background and skills, which the error-message assertion looks for. */
+export const SITE_WITH_BACKGROUND_SKILLS_AS_A_SINGLE_TABLE = testSite('lone-group-table');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

@@ -5,6 +5,7 @@ import {
   SITE_WITH_A_SKILLS_ONLY_BACKGROUND,
   SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE,
   SITE_WITH_A_KEY_FIGURE_NOT_STARTING_WITH_A_NUMBER,
+  SITE_WITH_BACKGROUND_SKILLS_AS_A_SINGLE_TABLE,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1124,6 +1125,25 @@ test.describe('background content errors: build failure', () => {
     expect(build.errors, 'the error message should say the key figure must start with a whole number').toMatch(
       /\bbackground:.*\bwhole\s+number\b/,
     );
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose skill groups are written [params.background.skills], with single brackets, rather than as a list of tables makes the site build fail with an error message that says to write them as [[params.background.skills]], without a template execution error after it', () => {
+    /* tests/fixtures/lone-group-table/content/_index.md writes its only skill group as
+       [params.background.skills], with single brackets: Hugo reads the skill groups as a table
+       rather than a list. Rather than a section whose groups come from reading each of its fields
+       as a skill group, or a Go template execution error, the person building the site must get
+       an error message that says, on its own line, to write the skill groups as
+       [[params.background.skills]], whatever the rest of the wording, and no Go template
+       execution error that would follow it and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_BACKGROUND_SKILLS_AS_A_SINGLE_TABLE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(
+      build.errors,
+      'the error message should say to write the skill groups as [[params.background.skills]]',
+    ).toMatch(/\bbackground:.*\[\[params\.background\.skills\]\]/);
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       /execute of template failed|error calling/i,
     );
