@@ -30,6 +30,7 @@ import {
   SITE_WITH_A_WHITESPACE_ONLY_PAGE_REF,
   SITE_WITH_AN_EMPTY_PAGE_REF,
   SITE_WITH_AN_ENGLISH_HOME_PAGE_REF_NOT_FOUND,
+  SITE_WITH_AN_ENGLISH_HOME_WITH_BAD_BUTTONS,
   SITE_WITH_OTHER_CLIENTS,
   type BuildAttempt,
   type BuiltSite,
@@ -2336,6 +2337,85 @@ test.describe('hero content errors: build failure', () => {
     expect(build.errors, 'the error message should say the pageRef is empty').toMatch(
       /\bhero:.*\bpageRef\b.*\b(?:empty|blank)\b/i,
     );
+  });
+
+  test("a home page where a hero button's pageRef is not a text, is empty, is padded, references an unpublished page, or where a button has both a url and a pageRef, neither, or no label, makes the site build fail with an error message that names the home page's language, for French home pages and for an English one", () => {
+    /* A bilingual site has a home page per language, each with its own hero buttons: an error
+       message that does not say which language's home page holds the bad button leaves the person
+       building the site to look for it in every content/_index.<language>.md file. The message for
+       a pageRef that matches no page already names the home page's language by its code (fr, en);
+       the messages for a pageRef that is not a text, an empty one, one with whitespace at its
+       start or end, one that references a page that is not published, and for a button with both
+       a url and a pageRef, with neither or without a label must name it too, whatever the rest of
+       the wording. Each French home page comes from the fixture of the test of its message above
+       and holds a single bad button; the English one, from
+       tests/fixtures/english-home-bad-buttons/content/_index.en.md, holds a bad button of each
+       kind, seven in all. Every hero error message must be there, one per bad button, and each
+       must name, on its own line, the home page's language, looked for, as in the test on a
+       pageRef that matches no page, as a word that no other word follows. A French home page and
+       an English one, so that a language written in the template does not pass. */
+    const cases: { name: string; site: BuiltSite; language: string; badButtons: number }[] = [
+      {
+        name: 'a French home page with a table as pageRef',
+        site: SITE_WITH_A_PAGE_REF_AS_TABLE,
+        language: 'fr',
+        badButtons: 1,
+      },
+      {
+        name: 'a French home page with an empty pageRef',
+        site: SITE_WITH_AN_EMPTY_PAGE_REF,
+        language: 'fr',
+        badButtons: 1,
+      },
+      {
+        name: 'a French home page with a pageRef with a trailing space',
+        site: SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE,
+        language: 'fr',
+        badButtons: 1,
+      },
+      {
+        name: 'a French home page with a pageRef to an unpublished page',
+        site: SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE,
+        language: 'fr',
+        badButtons: 1,
+      },
+      {
+        name: 'a French home page with a button with both a url and a pageRef',
+        site: SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF,
+        language: 'fr',
+        badButtons: 1,
+      },
+      {
+        name: 'a French home page with a button with neither url nor pageRef',
+        site: SITE_WITH_A_BUTTON_WITHOUT_DESTINATION,
+        language: 'fr',
+        badButtons: 1,
+      },
+      {
+        name: 'a French home page with a button without a label',
+        site: SITE_WITH_A_BUTTON_WITHOUT_LABEL,
+        language: 'fr',
+        badButtons: 1,
+      },
+      {
+        name: 'an English home page with a bad button of each kind',
+        site: SITE_WITH_AN_ENGLISH_HOME_WITH_BAD_BUTTONS,
+        language: 'en',
+        badButtons: 7,
+      },
+    ];
+    for (const { name, site, language, badButtons } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const messages = build.errors.split('\n').filter((line) => /\bhero:/.test(line));
+      expect(messages, `with ${name}, hero error messages, one per bad button, in:\n${build.errors}`).toHaveLength(
+        badButtons,
+      );
+      expect(
+        messages.filter((line) => !new RegExp(languageCodePattern(language), 'u').test(line)),
+        `with ${name}, hero error messages that do not name the home page's language, ${language}`,
+      ).toEqual([]);
+    }
   });
 
   test('a site whose home page declares a hero without params.author being set makes the site build fail, with an error message that cites the author field', () => {
