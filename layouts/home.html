@@ -105,14 +105,7 @@
   {{- if .Params.background }}
   <section class="background" aria-labelledby="background-heading">
     <h2 id="background-heading">{{ i18n "background" }}</h2>
-    {{- /* errorf does not stop the template: after an error, the part at fault (intro, key figures, education or skill groups) is empty, so that no template execution error buries the message. */}}
-    {{- $intro := .Params.background.intro }}
-    {{- if and $intro (not (reflect.IsSlice $intro)) }}{{ errorf "background: the intro must be a list" }}{{ $intro = slice }}{{ end }}
-    {{- with $intro }}
-    <p class="background-intro">
-      {{- partial "lines.html" . -}}
-    </p>
-    {{- end }}
+    {{- /* errorf does not stop the template: after an error, the part at fault (key figures, intro, education or skill groups) is empty, so that no template execution error buries the message. */}}
     {{- $stats := .Params.background.stats }}
     {{- if and $stats (not (reflect.IsSlice $stats)) }}{{ errorf "background: the key figures must be written as a list of tables, [[params.background.stats]], with double brackets" }}{{ $stats = slice }}{{ end }}
     {{- range $index, $stat := $stats }}
@@ -127,6 +120,13 @@
       </div>
       {{- end }}
     </dl>
+    {{- end }}
+    {{- $intro := .Params.background.intro }}
+    {{- if and $intro (not (reflect.IsSlice $intro)) }}{{ errorf "background: the intro must be a list" }}{{ $intro = slice }}{{ end }}
+    {{- with $intro }}
+    <p class="background-intro">
+      {{- partial "lines.html" . -}}
+    </p>
     {{- end }}
     {{- $education := .Params.background.education }}
     {{- if and $education (not (reflect.IsSlice $education)) }}{{ errorf "background: the education must be a list" }}{{ $education = slice }}{{ end }}

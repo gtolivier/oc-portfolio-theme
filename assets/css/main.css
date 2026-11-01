@@ -818,13 +818,72 @@ tick-field > canvas {
   color: var(--color-accent-dark);
 }
 
-.background h2::before {
-  content: '02 // ' / '';
+/* Dark section, below the light projects section. Each part is a direct
+   child, spaced by its top margin, so that a part left out leaves no gap. */
+.background {
+  /* From the heading to the first part. */
+  --background-heading-space: 40px;
+  /* Between the key figures, the intro and the education. */
+  --background-part-gap: 36px;
+  /* Above the skill groups on a phone, and between two groups. */
+  --background-skills-gap: 40px;
+  --background-max-width: 1280px;
+  border-top: 1px solid rgb(var(--color-paper-channels) / 0.12);
+  background: var(--color-ink);
+  color: var(--color-paper);
+  /* The page gutter, wider on a screen wide enough to centre the content. */
+  padding: 56px max(var(--page-gutter), (100% - var(--background-max-width)) / 2);
 }
 
-/* With JavaScript, a key figure shows 0 over its value, which stays in place but invisible. */
+.background > * {
+  margin: 0;
+}
+
+.background > :not(h2) + * {
+  margin-top: var(--background-part-gap);
+}
+
+.background > h2 {
+  margin-bottom: var(--background-heading-space);
+  font-family: var(--font-mono);
+  font-size: clamp(28px, 3vw, 44px);
+  font-weight: 600;
+}
+
+.background h2::before {
+  content: '02 // ' / '';
+  color: var(--color-accent);
+}
+
+.background-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px 40px;
+}
+
+.background-stats dt {
+  font-family: var(--font-mono);
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-accent);
+}
+
+.background-stats dd {
+  margin: 8px 0 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(var(--color-paper-channels) / 0.75);
+}
+
+/* With JavaScript, a key figure shows 0 over its value, which stays in place but invisible. As
+   flex items, the value and the 0 are as tall as the line, rather than overflowing it at a line
+   height of 1. */
 .background-stats dt {
   position: relative;
+  display: flex;
 }
 
 .background-stats dt:not(.is-counted) .figure-value {
@@ -836,14 +895,88 @@ tick-field > canvas {
   inset: 0 auto auto 0;
 }
 
+.background-intro {
+  font-size: 16px;
+  line-height: 1.65;
+  text-wrap: pretty;
+  color: rgb(var(--color-paper-channels) / 0.85);
+}
+
+/* The education entries and the skill items are lists whose marker, "> ",
+   is decorative: its empty alternative text keeps it from assistive
+   technologies. */
+.background-education,
+.background-skills > ul {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  list-style: none;
+}
+
+.background-education > li,
+.background-skills li {
+  display: flex;
+}
+
+.background-education > li::before,
+.background-skills li::before {
+  content: '>' / '';
+  font-family: var(--font-mono);
+  color: rgb(var(--color-paper-channels) / 0.75);
+}
+
+.background-education {
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: rgb(var(--color-paper-channels) / 0.75);
+}
+
+.background-education > li {
+  gap: 12px;
+}
+
+.background > .background-skill-groups {
+  margin-top: var(--background-skills-gap);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--background-skills-gap) 48px;
+}
+
+.background-skills > h3 {
+  margin: 0 0 16px;
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.background-skills > ul {
+  gap: 8px;
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: rgb(var(--color-paper-channels) / 0.8);
+}
+
+.background-skills li {
+  gap: 10px;
+}
+
 /* From 768 px, two columns: the figures, the intro and the education on the
-   left, the skill groups on the right, two per row. */
+   left, the skill groups on the right, two per row. The groups span every
+   row of the left column and the last row, which takes any height they need
+   beyond it: the left column's parts keep their spacing. */
 @media (min-width: 768px) {
   .background {
+    --background-heading-space: 56px;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    grid-template-rows: auto auto auto auto 1fr;
     column-gap: 48px;
     align-items: start;
+    padding-block: 96px;
   }
 
   .background > h2 {
@@ -852,19 +985,21 @@ tick-field > canvas {
 
   .background > :not(h2, .background-skill-groups) {
     grid-column: 1;
-    margin-top: 0;
   }
 
-  .background-skills > h3 {
-    margin-top: 0;
-  }
-
-  .background-skill-groups {
+  .background > .background-skill-groups {
     grid-column: 2;
-    grid-row: 2 / span 3;
-    display: grid;
+    grid-row: 2 / -1;
+    margin-top: 0;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 24px;
+  }
+}
+
+/* The mockup's gap between the columns, once the left one is wide enough
+   for the key figures side by side. */
+@media (min-width: 1024px) {
+  .background {
+    column-gap: 72px;
   }
 }
 

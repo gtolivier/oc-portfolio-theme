@@ -5,7 +5,9 @@
    or during the count, the page shows the full values. */
 import { reducedMotionQuery } from './reduced-motion';
 
-const COUNT_MS = 1000;
+const COUNT_MS = 1500;
+/* Fast at first, slowing down as it nears the value. */
+const easeOut = (progress: number): number => 1 - Math.pow(1 - progress, 3);
 const section = document.querySelector<HTMLElement>('.background');
 const values = Array.from(document.querySelectorAll<HTMLElement>('.background-stats dt'));
 
@@ -37,7 +39,7 @@ const countUp = (figures: KeyFigure[]): void => {
     }
     const progress = Math.min((now - start) / COUNT_MS, 1);
     for (const figure of figures) {
-      figure.zero.textContent = String(Math.round(figure.target * progress));
+      figure.zero.textContent = String(Math.round(figure.target * easeOut(progress)));
     }
     if (progress < 1) {
       requestAnimationFrame(step);
