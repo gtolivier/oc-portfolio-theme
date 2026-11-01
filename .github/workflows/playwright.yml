@@ -23,6 +23,8 @@ jobs:
       run: npm ci
     - name: Check types
       run: npm run typecheck
+    - name: Check formatting
+      run: npm run format:check
     # The browsers are cached per runner image family (`$ImageOS`, the same
     # across that family's updates) and Playwright version; their system
     # dependencies are not, so a cache hit still installs those. The cache is
