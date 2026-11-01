@@ -1706,6 +1706,14 @@ function heroErrorCount(errors: string): number {
 const BOTH_FIELDS_MISSING =
   /\bneither\b.*\bnor\b|\bno\s+url\b.*\b(?:and|or|nor)\s+(?:no\s+)?pageRef\b|\bno\s+pageRef\b.*\b(?:and|or|nor)\s+(?:no\s+)?url\b|\bboth\b.*\b(?:missing|absent)\b|\b(?:missing|lacks|lacking)\b.*\bboth\b/i;
 
+/* The lines of the build's errors that say a button has neither of its two destination fields
+   and name both of them, url and pageRef, on that same line. */
+function bothFieldsMissingMessages(errors: string): string[] {
+  return errors
+    .split('\n')
+    .filter((line) => BOTH_FIELDS_MISSING.test(line) && /\burl\b/.test(line) && /\bpageRef\b/.test(line));
+}
+
 test.describe('hero content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
@@ -1770,17 +1778,18 @@ test.describe('hero content errors: build failure', () => {
     expect(build.errors).toMatch(/\blabel\b/);
   });
 
-  test('a home page where a hero button has neither url nor pageRef makes the site build fail, with an error message that cites both fields and says both are missing', () => {
+  test('a home page where a hero button has neither url nor pageRef makes the site build fail, with an error message that cites both fields and, on that same line, says both are missing', () => {
     /* The second button of tests/fixtures/button-without-destination/content/_index.md has a
        label but neither url nor pageRef. Rather than a link that leads nowhere, the person
        building the site must get a failure whose message names the url and pageRef fields of
-       the front matter and says that both are missing, whatever wording is chosen: "neither …
-       nor …", "no url and no pageRef", "both … missing"… */
+       the front matter and, on that same line, says that both are missing, whatever wording is
+       chosen: "neither … nor …", "no url and no pageRef", "both … missing"… */
     const build = tryToBuildSite(SITE_WITH_A_BUTTON_WITHOUT_DESTINATION);
     expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors).toMatch(/\burl\b/);
-    expect(build.errors).toMatch(/\bpageRef\b/);
-    expect(build.errors, 'the error message should say both fields are missing').toMatch(BOTH_FIELDS_MISSING);
+    expect(
+      bothFieldsMissingMessages(build.errors),
+      `error messages that name the url and pageRef fields and say both are missing, in:\n${build.errors}`,
+    ).not.toEqual([]);
   });
 
   test('a home page where a hero button declares both a url and a pageRef makes the site build fail with a single hero error message, which cites both fields', () => {
@@ -1790,12 +1799,13 @@ test.describe('hero content errors: build failure', () => {
        ignored, the person building the site must get a failure whose message names the url
        and pageRef fields of the front matter, whatever wording is chosen. Any other hero
        message, such as blaming them for having neither, would mislead them: this one must be
-       the only one. */
+       the only one, and must not say that both are missing either. */
     const build = tryToBuildSite(SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(heroErrorCount(build.errors), 'number of hero error messages').toBe(1);
     expect(build.errors).toMatch(/\burl\b/);
     expect(build.errors).toMatch(/\bpageRef\b/);
+    expect(build.errors, 'the error message should not say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
   });
 
   test('a site whose home page declares a hero without params.author being set makes the site build fail, with an error message that cites the author field', () => {
