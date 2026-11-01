@@ -1706,6 +1706,18 @@ function heroErrorCount(errors: string): number {
 const BOTH_FIELDS_MISSING =
   /\bneither\b.*\bnor\b|\bno\s+url\b.*\b(?:and|or|nor)\s+(?:no\s+)?pageRef\b|\bno\s+pageRef\b.*\b(?:and|or|nor)\s+(?:no\s+)?url\b|\bboth\b.*\b(?:missing|absent)\b|\b(?:missing|lacks|lacking)\b.*\bboth\b/i;
 
+/* A message saying a button declares both of its two destination fields, whatever the
+   wording: "declares both a url and a pageRef", "needs only one", "not both"… */
+const BOTH_FIELDS_DECLARED = /\bboth\b|\b(?:only|just|exactly)\s+one\b|\bone or the other\b/i;
+
+/* The lines of the build's errors that say a button declares both of its two destination
+   fields and name both of them, url and pageRef, on that same line. */
+function bothFieldsDeclaredMessages(errors: string): string[] {
+  return errors
+    .split('\n')
+    .filter((line) => BOTH_FIELDS_DECLARED.test(line) && /\burl\b/.test(line) && /\bpageRef\b/.test(line));
+}
+
 /* The lines of the build's errors that say a button has neither of its two destination fields
    and name both of them, url and pageRef, on that same line. */
 function bothFieldsMissingMessages(errors: string): string[] {
@@ -1792,19 +1804,22 @@ test.describe('hero content errors: build failure', () => {
     ).not.toEqual([]);
   });
 
-  test('a home page where a hero button declares both a url and a pageRef makes the site build fail with a single hero error message, which cites both fields', () => {
+  test('a home page where a hero button declares both a url and a pageRef makes the site build fail with a single hero error message, which cites both fields and, on that same line, says both are declared', () => {
     /* The second button of tests/fixtures/button-with-two-destinations/content/_index.md has a
        label and declares both url = '#contact' and pageRef = '/projets', two valid
        destinations. Rather than a link where one of the two destinations would be silently
        ignored, the person building the site must get a failure whose message names the url
-       and pageRef fields of the front matter, whatever wording is chosen. Any other hero
-       message, such as blaming them for having neither, would mislead them: this one must be
-       the only one, and must not say that both are missing either. */
+       and pageRef fields of the front matter and, on that same line, says that both are
+       declared, whatever wording is chosen: "declares both …", "needs only one"… Any other
+       hero message, such as blaming them for having neither, would mislead them: this one
+       must be the only one, and must not say that both are missing either. */
     const build = tryToBuildSite(SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(heroErrorCount(build.errors), 'number of hero error messages').toBe(1);
-    expect(build.errors).toMatch(/\burl\b/);
-    expect(build.errors).toMatch(/\bpageRef\b/);
+    expect(
+      bothFieldsDeclaredMessages(build.errors),
+      `error messages that name the url and pageRef fields and say both are declared, in:\n${build.errors}`,
+    ).not.toEqual([]);
     expect(build.errors, 'the error message should not say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
   });
 
