@@ -9,6 +9,7 @@ import {
 } from './helpers/built-site';
 import { displayedText, textOnScreen } from './helpers/text-on-screen';
 import { type Rgb, colorComponents, contrastRatio } from './helpers/colors';
+import { stopClockBeforeLoad } from './helpers/clock';
 
 /* The background section of a home page, in its main content: a region named by its title, the
    French one unless another is given. */
@@ -130,6 +131,66 @@ test('with JavaScript, on the French home page, once the section "Parcours" come
   await expect
     .poll(() => textOnScreen(section), { message: 'text the background section shows on screen', timeout: 2000 })
     .toMatch(inOrder);
+});
+
+test('with JavaScript, on the French home page, once the section "Parcours" comes into view, each key figure passes through a number between 0 and its own, shown alone without the rest of its value, before it shows its full value', async ({
+  page,
+}) => {
+  /* Time stands still from before the page loads, until the test advances it, step by step, to
+     watch the figures count as they go. */
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  const section = backgroundSection(page);
+  /* Below the first screen on load, so that the figures start from 0. */
+  await expect(section).toHaveCount(1);
+  await expect(section).not.toBeInViewport();
+  await section.scrollIntoViewIfNeeded();
+  await expect(section, 'the section has come into view').toBeInViewport();
+  /* Each figure: its number, the rest of its value ("+" for "20+", nothing for "350") and its
+     label, as the screen shows them, whitespace excluded. */
+  const figures = KEY_FIGURES.map(({ value, label }) => {
+    const target = parseInt(value, 10);
+    const rest = value.slice(String(target).length);
+    const shownLabel = literally(label.replace(/\s+/g, ''));
+    return {
+      value,
+      target,
+      rest,
+      /* A whole number (no digit before it) right before the label, with or without the rest of
+         the value in between. */
+      shown: new RegExp(`(?<!\\d)(\\d+)(${literally(rest)})?${shownLabel}`, 'u'),
+      full: new RegExp(`(?<!\\d)${literally(value)}${shownLabel}`, 'u'),
+      between: [] as number[],
+      partialWithRest: [] as string[],
+    };
+  });
+  /* Every 25 ms, for at most 5 s, until both figures show their full value: what the visitor sees
+     on screen. Text that only assistive technologies get does not count. */
+  let shown = '';
+  for (let elapsed = 0; elapsed <= 5000; elapsed += 25) {
+    if (elapsed > 0) await page.clock.runFor(25);
+    shown = await textOnScreen(section);
+    for (const figure of figures) {
+      const match = figure.shown.exec(shown);
+      if (!match) continue;
+      const number = parseInt(match[1], 10);
+      if (number <= 0 || number >= figure.target) continue;
+      if (match[2]) figure.partialWithRest.push(`${match[1]}${match[2]}`);
+      else figure.between.push(number);
+    }
+    if (figures.every((figure) => figure.full.test(shown))) break;
+  }
+  for (const figure of figures) {
+    expect(
+      figure.between.length,
+      `the figure "${figure.value}" showed, alone, some number between 1 and ${figure.target - 1}`,
+    ).toBeGreaterThan(0);
+    expect(
+      figure.partialWithRest,
+      `the figure "${figure.value}" never showed a number below ${figure.target} with "${figure.rest}"`,
+    ).toEqual([]);
+    expect(shown, `the figure "${figure.value}" then shows its full value next to its label`).toMatch(figure.full);
+  }
 });
 
 /* The intro lines the example site's French home page declares (exampleSite/content/_index.md,
