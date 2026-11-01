@@ -159,6 +159,13 @@ export const SITE_WITH_A_PAGE_REF_AS_NUMBER = testSite('number-as-button-target'
 export const SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE = testSite('button-target-with-trailing-space');
 export const SITE_WITH_A_PAGE_REF_WITH_A_LEADING_TAB = testSite('button-target-with-leading-tab');
 
+/* The example site's French home page has a hero whose every pageRef names a page: this site
+   replaces that home page with the one of tests/fixtures/button-target-of-spaces-only/content,
+   whose first button declares pageRef = " \t ", a space, a tab and a space, and nothing else.
+   Its folder name avoids the words empty and blank, which the error-message assertion looks
+   for, and hero, whose error messages are counted. */
+export const SITE_WITH_A_WHITESPACE_ONLY_PAGE_REF = testSite('button-target-of-spaces-only');
+
 /* The component catalog: the example site, plus the pages of
    tests/fixtures/catalog/content, each of which places one component of the
    theme on its own, as raw HTML (allowed by tests/fixtures/catalog/hugo.toml).

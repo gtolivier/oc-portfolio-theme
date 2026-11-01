@@ -21,6 +21,7 @@ import {
   SITE_WITH_A_PAGE_REF_WITH_A_LEADING_TAB,
   SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE,
   SITE_WITH_A_SINGLE_LANGUAGE,
+  SITE_WITH_A_WHITESPACE_ONLY_PAGE_REF,
   SITE_WITH_OTHER_CLIENTS,
   type BuiltSite,
   buildSite,
@@ -2160,6 +2161,24 @@ test.describe('hero content errors: build failure', () => {
         `with ${name}, hero error messages that quote the pageRef as ${quoted} and say it has whitespace, in:\n${build.errors}`,
       ).not.toEqual([]);
     }
+  });
+
+  test('a home page where a hero button declares a pageRef made only of whitespace makes the site build fail with a single hero error message that says the pageRef is empty', () => {
+    /* The first button of tests/fixtures/button-target-of-spaces-only/content/_index.md
+       declares pageRef = " \t ": a space, a tab and a space, and no page reference at all. A
+       message saying this pageRef has whitespace at its start or end, to be trimmed, would send
+       the person building the site looking for a reference inside it that is not there: the
+       message must name the pageRef field and say, on that same line, that it is empty (or
+       blank), whatever the rest of the wording. Any other hero message, such as one saying the
+       page cannot be found or that the button has no destination, would mislead them: this one
+       must be the only one. A tab between two spaces, so that checking only the space
+       character does not pass. */
+    const build = tryToBuildSite(SITE_WITH_A_WHITESPACE_ONLY_PAGE_REF);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), 'number of hero error messages').toBe(1);
+    expect(build.errors, 'the error message should say the pageRef is empty').toMatch(
+      /\bhero:.*\bpageRef\b.*\b(?:empty|blank)\b/i,
+    );
   });
 
   test('a site whose home page declares a hero without params.author being set makes the site build fail, with an error message that cites the author field', () => {
