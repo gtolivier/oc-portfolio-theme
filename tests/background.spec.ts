@@ -82,6 +82,19 @@ async function expectKeyFigures(section: Locator, keyFigures: { value: string; l
   await expect.poll(() => displayedText(section), 'text displayed by the background section').toMatch(inOrder);
 }
 
+/* A key figure's label as the screen shows it, whitespace excluded, written as it is inside a
+   regular expression. */
+function labelOnScreen(label: string): string {
+  return literally(label.replace(/\s+/g, ''));
+}
+
+/* The key figures given as the screen shows them once they have counted, in reading order,
+   whitespace excluded: each label right after its full value, whole (no digit before it). */
+function fullValuesOnScreen(keyFigures: { value: string; label: string }[]): RegExp {
+  const figures = keyFigures.map(({ value, label }) => `(?<!\\d)${literally(value)}${labelOnScreen(label)}`);
+  return new RegExp(figures.join('.*'), 'u');
+}
+
 test.describe('without JavaScript', () => {
   test.use({ javaScriptEnabled: false });
 
@@ -114,7 +127,7 @@ test('with JavaScript, on the French home page, while the section "Parcours" has
      digit precedes, so neither the full value ("20+"), nor its number alone ("20"), nor 0 with
      the rest of the value ("0+") can pass. What follows the last label is left open. Text that
      only assistive technologies get does not count: it is not what a visitor sees. */
-  const figures = KEY_FIGURES.map(({ label }) => `(?<!\\d)0${literally(label.replace(/\s+/g, ''))}`);
+  const figures = KEY_FIGURES.map(({ label }) => `(?<!\\d)0${labelOnScreen(label)}`);
   const inOrder = new RegExp(figures.join('.*'), 'u');
   expect(await textOnScreen(section), 'text the background section shows on screen').toMatch(inOrder);
 });
@@ -132,10 +145,7 @@ test('with JavaScript, on the French home page, once the section "Parcours" come
   /* On screen, in reading order, whitespace excluded: each label comes right after its full value,
      whole (no digit before it, so that neither a count still running nor a 0 left over can pass).
      Text that only assistive technologies get does not count: it is not what a visitor sees. */
-  const figures = KEY_FIGURES.map(
-    ({ value, label }) => `(?<!\\d)${literally(value)}${literally(label.replace(/\s+/g, ''))}`,
-  );
-  const inOrder = new RegExp(figures.join('.*'), 'u');
+  const inOrder = fullValuesOnScreen(KEY_FIGURES);
   await expect
     .poll(() => textOnScreen(section), { message: 'text the background section shows on screen', timeout: 2000 })
     .toMatch(inOrder);
@@ -159,7 +169,7 @@ test('with JavaScript, on the French home page, once the section "Parcours" come
   const figures = KEY_FIGURES.map(({ value, label }) => {
     const target = parseInt(value, 10);
     const rest = value.slice(String(target).length);
-    const shownLabel = literally(label.replace(/\s+/g, ''));
+    const shownLabel = labelOnScreen(label);
     return {
       value,
       target,
@@ -385,6 +395,18 @@ test('with JavaScript, on the French home page, before, during and after the cli
   ).toEqual(expected);
 });
 
+/* Every 50 ms, for 2 s on the page's real clock (longer than a count or a climb takes): what the
+   visitor sees on screen in a section, kept each time it does not match the pattern given. */
+async function textsOnScreenNotMatching(section: Locator, pattern: RegExp): Promise<string[]> {
+  const notMatching: string[] = [];
+  for (let elapsed = 0; elapsed <= 2000; elapsed += 50) {
+    if (elapsed > 0) await section.page().waitForTimeout(50);
+    const shown = await textOnScreen(section);
+    if (!pattern.test(shown)) notMatching.push(shown);
+  }
+  return notMatching;
+}
+
 test('with JavaScript, on the French home page, once the key figures of the section "Parcours" have shown their full value, scrolling the section out of view and back does not count them again: each one keeps showing its full value next to its label', async ({
   page,
 }) => {
@@ -396,10 +418,7 @@ test('with JavaScript, on the French home page, once the key figures of the sect
   /* On screen, in reading order, whitespace excluded: each label comes right after its full value,
      whole (no digit before it, so that neither a count running again nor a 0 can pass). Text that
      only assistive technologies get does not count: it is not what a visitor sees. */
-  const figures = KEY_FIGURES.map(
-    ({ value, label }) => `(?<!\\d)${literally(value)}${literally(label.replace(/\s+/g, ''))}`,
-  );
-  const inOrder = new RegExp(figures.join('.*'), 'u');
+  const inOrder = fullValuesOnScreen(KEY_FIGURES);
   await section.scrollIntoViewIfNeeded();
   await expect(section, 'the section has come into view').toBeInViewport();
   await expect
@@ -410,14 +429,9 @@ test('with JavaScript, on the French home page, once the key figures of the sect
   await expect(section, 'the section has left the view').not.toBeInViewport();
   await section.scrollIntoViewIfNeeded();
   await expect(section, 'the section is back in view').toBeInViewport();
-  /* Every 50 ms, for 2 s on the page's real clock (longer than a count takes): what the visitor
-     sees on screen, kept each time it is not every full value next to its label. */
-  const notFull: string[] = [];
-  for (let elapsed = 0; elapsed <= 2000; elapsed += 50) {
-    if (elapsed > 0) await page.waitForTimeout(50);
-    const shown = await textOnScreen(section);
-    if (!inOrder.test(shown)) notFull.push(shown);
-  }
+  /* What the visitor sees on screen, for longer than a count takes, kept each time it is not every
+     full value next to its label. */
+  const notFull = await textsOnScreenNotMatching(section, inOrder);
   expect(notFull, 'texts the background section showed on screen without every full value').toEqual([]);
 });
 
@@ -437,21 +451,13 @@ test('with JavaScript, under prefers-reduced-motion: reduce, on the French home 
   /* On screen, in reading order, whitespace excluded: each label comes right after its full value,
      whole (no digit before it, so that neither a 0 nor a number on its way can pass). Text that
      only assistive technologies get does not count: it is not what a visitor sees. */
-  const figures = KEY_FIGURES.map(
-    ({ value, label }) => `(?<!\\d)${literally(value)}${literally(label.replace(/\s+/g, ''))}`,
-  );
-  const inOrder = new RegExp(figures.join('.*'), 'u');
+  const inOrder = fullValuesOnScreen(KEY_FIGURES);
   expect(await textOnScreen(section), 'text the background section shows on screen while out of view').toMatch(inOrder);
   await section.scrollIntoViewIfNeeded();
   await expect(section, 'the section has come into view').toBeInViewport();
-  /* Every 50 ms, for 2 s on the page's real clock (longer than a climb takes): what the visitor
-     sees on screen, kept each time it is not every full value next to its label. */
-  const notFull: string[] = [];
-  for (let elapsed = 0; elapsed <= 2000; elapsed += 50) {
-    if (elapsed > 0) await page.waitForTimeout(50);
-    const shown = await textOnScreen(section);
-    if (!inOrder.test(shown)) notFull.push(shown);
-  }
+  /* What the visitor sees on screen, for longer than a climb takes, kept each time it is not every
+     full value next to its label. */
+  const notFull = await textsOnScreenNotMatching(section, inOrder);
   expect(notFull, 'texts the background section showed on screen without every full value').toEqual([]);
 });
 
@@ -467,16 +473,14 @@ test('with JavaScript, on the French home page, when the visitor turns on prefer
   await expect(section).toHaveCount(1);
   await expect(section).not.toBeInViewport();
   /* Each figure: a whole number (no digit before it) right before its label, with or without the
-     rest of its value in between, and its full value right before its label, as the screen shows
-     them, whitespace excluded. Text that only assistive technologies get does not count. */
+     rest of its value in between, as the screen shows them, whitespace excluded. Text that only
+     assistive technologies get does not count. */
   const figures = KEY_FIGURES.map(({ value, label }) => {
     const target = parseInt(value, 10);
     const rest = value.slice(String(target).length);
-    const shownLabel = literally(label.replace(/\s+/g, ''));
     return {
       target,
-      shown: new RegExp(`(?<!\\d)(\\d+)(?:${literally(rest)})?${shownLabel}`, 'u'),
-      full: `(?<!\\d)${literally(value)}${shownLabel}`,
+      shown: new RegExp(`(?<!\\d)(\\d+)(?:${literally(rest)})?${labelOnScreen(label)}`, 'u'),
     };
   });
   const climbing = (text: string) =>
@@ -501,7 +505,7 @@ test('with JavaScript, on the French home page, when the visitor turns on prefer
      cannot reach its end on its own. On screen, in reading order, each label comes right after its
      full value, whole. */
   await page.clock.runFor(16);
-  const inOrder = new RegExp(figures.map(({ full }) => full).join('.*'), 'u');
+  const inOrder = fullValuesOnScreen(KEY_FIGURES);
   await expect
     .poll(() => textOnScreen(section), {
       message: 'text the background section shows on screen once motion is reduced',
@@ -671,13 +675,12 @@ async function unionBox(...locators: Locator[]): Promise<Box> {
   };
 }
 
-test('on a phone, the section "Parcours" is one column: the key figures, the intro and the education entries end above the first skill group, the skill groups are stacked one under another in the same column, and the page does not scroll horizontally', async ({
-  page,
-}) => {
-  await page.setViewportSize(PHONE);
-  await page.goto('/fr/');
-  const section = backgroundSection(page);
-  await expect(section).toBeVisible();
+/* The boxes of the parts of the example site's French background section, in the viewport's
+   coordinates: the key figures, the intro, the education entries and each skill group. */
+async function backgroundPartBoxes(
+  section: Locator,
+): Promise<{ figures: Box; intro: Box; education: Box; groups: Box[] }> {
+  const page = section.page();
   /* The key figures: every value and label shown. */
   const figures = await unionBox(
     ...KEY_FIGURES.flatMap(({ value, label }) => [
@@ -699,6 +702,17 @@ test('on a phone, the section "Parcours" is one column: the key figures, the int
       ),
     );
   }
+  return { figures, intro, education, groups };
+}
+
+test('on a phone, the section "Parcours" is one column: the key figures, the intro and the education entries end above the first skill group, the skill groups are stacked one under another in the same column, and the page does not scroll horizontally', async ({
+  page,
+}) => {
+  await page.setViewportSize(PHONE);
+  await page.goto('/fr/');
+  const section = backgroundSection(page);
+  await expect(section).toBeVisible();
+  const { figures, intro, education, groups } = await backgroundPartBoxes(section);
   const firstGroup = groups[0];
   for (const [name, box] of [
     ['the key figures', figures],
@@ -738,27 +752,7 @@ test('on a wide window, the section "Parcours" has two columns: the key figures,
   await page.evaluate(() => document.fonts.ready);
   const section = backgroundSection(page);
   await expect(section).toBeVisible();
-  /* The key figures: every value and label shown. */
-  const figures = await unionBox(
-    ...KEY_FIGURES.flatMap(({ value, label }) => [
-      section.getByText(value, { exact: true }),
-      section.getByText(label, { exact: true }),
-    ]),
-  );
-  const intro = await unionBox(section.getByRole('paragraph').filter({ hasText: INTRO_LINES[0] }));
-  const education = await unionBox(
-    section.getByRole('list').filter({ has: page.getByRole('listitem').filter({ hasText: EDUCATION_ENTRIES[0] }) }),
-  );
-  /* Each skill group: its heading and its list. */
-  const groups: Box[] = [];
-  for (const { title, items } of SKILL_GROUPS) {
-    groups.push(
-      await unionBox(
-        section.getByRole('heading', { level: 3, name: title, exact: true }),
-        section.getByRole('list').filter({ has: page.getByRole('listitem').filter({ hasText: items[0] }) }),
-      ),
-    );
-  }
+  const { figures, intro, education, groups } = await backgroundPartBoxes(section);
   const groupsLeft = Math.min(...groups.map((box) => box.left));
   /* The left column: each of its parts ends before the left edge of every skill group. */
   const leftColumn = [
