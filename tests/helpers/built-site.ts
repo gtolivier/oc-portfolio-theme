@@ -585,6 +585,16 @@ export const SITE_WITH_A_FIRST_BUTTON_WITH_URL_AND_PAGE_REF = testSite('first-wi
 export const SITE_WITH_A_FIRST_BUTTON_WITHOUT_DESTINATION = testSite('first-without-destination');
 export const SITE_WITH_A_FIRST_BUTTON_WITHOUT_LABEL = testSite('first-button-unnamed');
 
+/* The example site's French home page writes its hero buttons as a list of tables,
+   [[params.hero.actions]]: these sites replace that home page with one whose buttons are not a
+   list. In tests/fixtures/named-button-tables/content, its two buttons are named tables,
+   [params.hero.actions.a] and [params.hero.actions.b]; in tests/fixtures/lone-button-table/content,
+   its only button is written [params.hero.actions], with single brackets, a table. Their folder
+   names avoid the word hero, whose error messages are counted, and the table name the
+   error-message assertion looks for. */
+export const SITE_WITH_HERO_BUTTONS_AS_NAMED_TABLES = testSite('named-button-tables');
+export const SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE = testSite('lone-button-table');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

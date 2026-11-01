@@ -39,6 +39,8 @@ import {
   SITE_WITH_A_FIRST_BUTTON_WITH_URL_AND_PAGE_REF,
   SITE_WITH_A_FIRST_BUTTON_WITHOUT_DESTINATION,
   SITE_WITH_A_FIRST_BUTTON_WITHOUT_LABEL,
+  SITE_WITH_HERO_BUTTONS_AS_NAMED_TABLES,
+  SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE,
   type BuildAttempt,
   type BuiltSite,
   buildSite,
@@ -2035,6 +2037,10 @@ const BOTH_FIELDS_DECLARED = /\bboth\b|\b(?:only|just|exactly)\s+one\b|\bone or 
    rest of the wording. */
 const PAGE_REF_MUST_BE_A_PAGE_REFERENCE = /\bhero:.*\bpageRef\b.*\b(?:must|should)\s+be\b.*\bpage\s+reference\b/i;
 
+/* A hero message saying, on its own line, how to write the buttons: as a list of tables,
+   [[params.hero.actions]], whatever the rest of the wording. */
+const BUTTONS_MUST_BE_WRITTEN_AS_A_LIST = /\bhero:.*\[\[params\.hero\.actions\]\]/;
+
 /* A hero message saying, on its own line, that the pageRef is empty or blank. */
 const PAGE_REF_IS_EMPTY = /\bhero:.*\bpageRef\b.*\b(?:empty|blank)\b/i;
 
@@ -2294,6 +2300,35 @@ test.describe('hero content errors: build failure', () => {
       expect(build.errors, `with ${name}, the error message should say the pageRef must be a page reference`).toMatch(
         PAGE_REF_MUST_BE_A_PAGE_REFERENCE,
       );
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
+        TEMPLATE_EXECUTION_ERROR,
+      );
+    }
+  });
+
+  test('a home page whose hero buttons are not a list (named tables such as [params.hero.actions.a] and [params.hero.actions.b], and a single button written [params.hero.actions] with single brackets) makes the site build fail with a single hero error message that says to write the buttons as [[params.hero.actions]], without a template execution error after it', () => {
+    /* tests/fixtures/named-button-tables/content/_index.md writes its two hero buttons as named
+       tables, [params.hero.actions.a] and [params.hero.actions.b], and
+       tests/fixtures/lone-button-table/content/_index.md its only button as
+       [params.hero.actions], with single brackets: in both, Hugo reads the buttons as a table
+       rather than a list. Rather than a Go template execution error from numbering the buttons
+       as if they were a list, the person building the site must get a single hero error message
+       that says, on its own line, to write the buttons as [[params.hero.actions]], whatever the
+       rest of the wording, and no Go template execution error that would follow it and bury it in
+       technical jargon. Two fixtures, so that a check made for a single shape (a table of tables,
+       or a table of texts) does not pass. */
+    const cases: { name: string; site: BuiltSite }[] = [
+      { name: 'buttons as named tables', site: SITE_WITH_HERO_BUTTONS_AS_NAMED_TABLES },
+      { name: 'a single button with single brackets', site: SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(heroErrorCount(build.errors), `with ${name}, number of hero error messages, in:\n${build.errors}`).toBe(1);
+      expect(
+        build.errors,
+        `with ${name}, the error message should say to write the buttons as [[params.hero.actions]]`,
+      ).toMatch(BUTTONS_MUST_BE_WRITTEN_AS_A_LIST);
       expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
         TEMPLATE_EXECUTION_ERROR,
       );
