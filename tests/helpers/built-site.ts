@@ -187,6 +187,13 @@ export const SITE_WITH_A_PAGE_REF_WITH_A_LEADING_TAB = testSite('button-target-w
    for, and hero, whose error messages are counted. */
 export const SITE_WITH_A_WHITESPACE_ONLY_PAGE_REF = testSite('button-target-of-spaces-only');
 
+/* The example site's French home page has a hero whose every pageRef names a page: this site
+   replaces that home page with the one of tests/fixtures/button-target-left-unfilled/content,
+   whose first button declares pageRef = '', an empty text. Its folder name avoids the words
+   empty and blank, which the error-message assertion looks for, and hero, whose error messages
+   are counted. */
+export const SITE_WITH_AN_EMPTY_PAGE_REF = testSite('button-target-left-unfilled');
+
 /* The component catalog: the example site, plus the pages of
    tests/fixtures/catalog/content, each of which places one component of the
    theme on its own, as raw HTML (allowed by tests/fixtures/catalog/hugo.toml).
