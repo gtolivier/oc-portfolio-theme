@@ -222,6 +222,88 @@ test('on the French home page, the section "Parcours" shows one block per skill 
   await expectSkillGroups(section, SKILL_GROUPS);
 });
 
+const PHONE = { width: 390, height: 844 };
+
+type Box = { left: number; right: number; top: number; bottom: number };
+
+/* The smallest box holding every element the locators match, in the viewport's coordinates. */
+async function unionBox(...locators: Locator[]): Promise<Box> {
+  const boxes: Box[] = [];
+  for (const locator of locators) {
+    await expect(locator.first()).toBeVisible();
+    boxes.push(
+      ...(await locator.evaluateAll((elements) =>
+        elements.map((element) => {
+          const { left, right, top, bottom } = element.getBoundingClientRect();
+          return { left, right, top, bottom };
+        }),
+      )),
+    );
+  }
+  return {
+    left: Math.min(...boxes.map((box) => box.left)),
+    right: Math.max(...boxes.map((box) => box.right)),
+    top: Math.min(...boxes.map((box) => box.top)),
+    bottom: Math.max(...boxes.map((box) => box.bottom)),
+  };
+}
+
+test('on a phone, the section "Parcours" is one column: the key figures, the intro and the education entries end above the first skill group, the skill groups are stacked one under another in the same column, and the page does not scroll horizontally', async ({
+  page,
+}) => {
+  await page.setViewportSize(PHONE);
+  await page.goto('/fr/');
+  const section = backgroundSection(page);
+  await expect(section).toBeVisible();
+  /* The key figures: every value and label shown. */
+  const figures = await unionBox(
+    ...KEY_FIGURES.flatMap(({ value, label }) => [
+      section.getByText(value, { exact: true }),
+      section.getByText(label, { exact: true }),
+    ]),
+  );
+  const intro = await unionBox(section.getByRole('paragraph').filter({ hasText: INTRO_LINES[0] }));
+  const education = await unionBox(
+    section.getByRole('list').filter({ has: page.getByRole('listitem').filter({ hasText: EDUCATION_ENTRIES[0] }) }),
+  );
+  /* Each skill group: its heading and its list. */
+  const groups: Box[] = [];
+  for (const { title, items } of SKILL_GROUPS) {
+    groups.push(
+      await unionBox(
+        section.getByRole('heading', { level: 3, name: title, exact: true }),
+        section.getByRole('list').filter({ has: page.getByRole('listitem').filter({ hasText: items[0] }) }),
+      ),
+    );
+  }
+  const firstGroup = groups[0];
+  for (const [name, box] of [
+    ['the key figures', figures],
+    ['the intro', intro],
+    ['the education entries', education],
+  ] as const) {
+    expect
+      .soft(box.bottom, `bottom of ${name} against the top of the first skill group (${firstGroup.top} px)`)
+      .toBeLessThanOrEqual(firstGroup.top + 1);
+  }
+  groups.forEach((box, index) => {
+    if (index === 0) return;
+    const name = `skill group "${SKILL_GROUPS[index].title}"`;
+    const above = groups[index - 1];
+    expect
+      .soft(box.top, `${name}: top against the bottom of the group above (${above.bottom} px)`)
+      .toBeGreaterThanOrEqual(above.bottom - 1);
+    expect
+      .soft(
+        Math.abs(box.left - above.left),
+        `${name}: left edge ${box.left} px against the group above's left edge ${above.left} px`,
+      )
+      .toBeLessThanOrEqual(1);
+  });
+  const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect.soft(pageWidth, 'width of the page content').toBeLessThanOrEqual(PHONE.width);
+});
+
 /* A color, possibly translucent, painted over an opaque one. */
 function paintOver(color: string, below: Rgb): Rgb {
   const { red, green, blue, alpha } = colorComponents(color);
