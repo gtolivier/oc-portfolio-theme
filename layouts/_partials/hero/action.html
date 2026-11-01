@@ -6,11 +6,11 @@
 {{- end }}
 {{- $pageRef := .pageRef }}
 {{- /* A pageRef that is not a text may still be false for Hugo (an empty table or list, 0, false): it counts as declared. */}}
-{{- $declared := .pageRef }}
+{{- $hasPageRef := .pageRef }}
 {{- if and (isset . "pageRef") (ne (printf "%T" $pageRef) "string") }}
   {{- errorf "hero: the pageRef field must be a page reference, a text" }}
   {{- $pageRef = "" }}
-  {{- $declared = true }}
+  {{- $hasPageRef = true }}
 {{- end }}
 {{- $trimmedPageRef := strings.TrimSpace $pageRef }}
 {{- if and $pageRef (eq $trimmedPageRef "") }}
@@ -32,7 +32,7 @@
   {{- end }}
 {{- end }}
 {{- if and .url .pageRef }}{{ errorf "hero: a button declares both a url field and a pageRef field; it needs only one" }}{{ end }}
-{{- if and (not .url) (not $declared) }}{{ errorf "hero: a button has neither a url field nor a pageRef field" }}{{ end }}
+{{- if and (not .url) (not $hasPageRef) }}{{ errorf "hero: a button has neither a url field nor a pageRef field" }}{{ end }}
 {{- if not .label }}{{ errorf "hero: a button has no label field" }}{{ end -}}
 <a href="{{ $href }}">{{ .label }}</a>
 {{- /* Nothing after the link, not even the file's trailing newline:
