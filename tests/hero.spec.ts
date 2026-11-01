@@ -568,8 +568,8 @@ test('on phone as on desktop, the hero content lines up on the left with the hea
   const elements = {
     'author name (h1)': mainHeading,
     'professional title': mainHeading.getByText('Horloger indépendant', { exact: true }),
-    tagline: main.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
-    stack: main.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
+    'tagline': main.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
+    'stack': main.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
     'first button': firstHeroButton(page),
   };
   await expect(elements['first button']).toHaveText(/^\s*Voir les projets/);
@@ -603,7 +603,7 @@ test('on a phone, the hero fits within the screen width: no horizontal scrolling
     'tagline, line 1': main.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
     'tagline, line 2': main.getByText('Conception, réparation et entretien'),
     'tagline, line 3': main.getByText('de pendules et de montres anciennes.'),
-    stack: main.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
+    'stack': main.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
     'first button': firstHeroButton(page),
     'second button': secondHeroButton(page),
   };
@@ -644,9 +644,9 @@ test(
     const hero = heroRegion(page);
     await expect(hero).toBeVisible();
     const elements = {
-      heading: hero.getByRole('heading', { level: 1 }),
-      tagline: hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
-      stack: hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
+      'heading': hero.getByRole('heading', { level: 1 }),
+      'tagline': hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
+      'stack': hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
       'first button, "Voir les projets"': hero.getByRole('link', { name: 'Voir les projets' }),
       'second button, "Contact"': hero.getByRole('link', { name: 'Contact' }),
     };
@@ -703,9 +703,9 @@ test('on phone as on desktop, the hero’s tick field lies behind its text: at t
   /* The field's canvas is in place, so the check below does not pass before it exists. */
   await expect(hero.locator('canvas')).toHaveCount(1);
   const elements = {
-    heading: hero.getByRole('heading', { level: 1 }),
-    tagline: hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
-    stack: hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
+    'heading': hero.getByRole('heading', { level: 1 }),
+    'tagline': hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
+    'stack': hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
     'first button, "Voir les projets"': hero.getByRole('link', { name: 'Voir les projets' }),
     'second button, "Contact"': hero.getByRole('link', { name: 'Contact' }),
   };
@@ -1017,9 +1017,9 @@ async function stillHero(page: Page): Promise<{ hero: Locator; text: Record<stri
   const hero = heroRegion(page);
   await expect(hero).toBeVisible();
   const text = {
-    heading: hero.getByRole('heading', { level: 1 }),
-    tagline: hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
-    stack: hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
+    'heading': hero.getByRole('heading', { level: 1 }),
+    'tagline': hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
+    'stack': hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
     'first button, "Voir les projets"': hero.getByRole('link', { name: 'Voir les projets' }),
     'second button, "Contact"': hero.getByRole('link', { name: 'Contact' }),
   };
@@ -1341,7 +1341,7 @@ test.describe('home page without JavaScript', () => {
       'tagline, line 1': hero.getByText('Montres mécaniques sur mesure — 20 ans d’atelier.'),
       'tagline, line 2': hero.getByText('Conception, réparation et entretien'),
       'tagline, line 3': hero.getByText('de pendules et de montres anciennes.'),
-      stack: hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
+      'stack': hero.getByText('Laiton · Acier · Rubis · Émail', { exact: true }),
       'first button': hero.getByRole('link', { name: 'Voir les projets' }),
       'second button': hero.getByRole('link', { name: 'Contact' }),
     };
