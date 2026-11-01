@@ -34,6 +34,7 @@ import {
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
   type BuiltSite,
   buildSite,
+  languageCodePattern,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
   serveSite,
@@ -152,10 +153,14 @@ function cardName(index: number): string {
   return `card ${index + 1} ("${FEATURED_PROJECTS[index].title}")`;
 }
 
-/* A pattern that matches the text as written, wherever it appears: its special characters are
-   escaped. */
+/* The text as a pattern that matches it as written: its special characters are escaped. */
+function escapedForRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/* A pattern that matches the text as written, wherever it appears. */
 function containing(text: string): RegExp {
-  return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  return new RegExp(escapedForRegExp(text));
 }
 
 /* The cards of the section "Projets sélectionnés" of the page just loaded, once its fonts are
@@ -2183,13 +2188,6 @@ function expectProjectsBuildError(build: BuildAttempt, context = ''): void {
   );
 }
 
-/* The pattern, for a RegExp with the u flag, of a language code (fr, en) as a word that no other
-   word follows, so that the letters "en" or "fr" met as a word inside a message's prose, followed
-   by more of the sentence, do not pass for the code. */
-function languageCodePattern(language: string): string {
-  return `\\b${language}\\b(?!\\s+\\p{L})`;
-}
-
 test.describe('featured project content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
@@ -2343,7 +2341,7 @@ test.describe('featured project content errors: build failure', () => {
       expect(
         build.errors,
         `for the reference ${reference}, the error message should give the position of that entry, entry ${position}`,
-      ).toMatch(new RegExp(`^(?=.*\\bentry\\s+${position}\\b)(?=.*${reference}).*$`, 'im'));
+      ).toMatch(new RegExp(`^(?=.*\\bentry\\s+${position}\\b)(?=.*${escapedForRegExp(reference)}).*$`, 'im'));
     }
   });
 
@@ -2510,12 +2508,12 @@ test.describe('featured project content errors: build failure', () => {
       const build = tryToBuildSite(site);
       expectProjectsBuildError(build, `with ${name}`);
       expect(build.errors, `with ${name}, the error message should name the home page's language`).toMatch(
-        new RegExp(`\\b${language}\\b(?!\\s+\\p{L})`, 'u'),
+        new RegExp(languageCodePattern(language), 'u'),
       );
       expect(
         build.errors,
         `with ${name}, the error message should give a missing translation in ${language} as a possible cause`,
-      ).toMatch(new RegExp(`^(?=.*translat)(?=.*\\b${language}\\b(?!\\s+\\p{L})).*$`, 'imu'));
+      ).toMatch(new RegExp(`^(?=.*translat)(?=.*${languageCodePattern(language)}).*$`, 'imu'));
     }
   });
 

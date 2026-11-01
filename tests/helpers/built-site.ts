@@ -653,6 +653,13 @@ export function tryToBuildSite(site: BuiltSite): BuildAttempt {
   }
 }
 
+/* The pattern, for a RegExp with the u flag, of a language code (fr, en) as a word that no other
+   word follows, so that the letters "en" or "fr" met as a word inside a message's prose, followed
+   by more of the sentence, do not pass for the code. */
+export function languageCodePattern(language: string): string {
+  return `\\b${language}\\b(?!\\s+\\p{L})`;
+}
+
 /* Builds the example site as it is, without a fixture, asking Hugo to warn
    about every translation key a page uses that a language lacks
    (--printI18nWarnings), and returns those warnings, one per missing key and

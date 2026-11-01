@@ -28,8 +28,10 @@ import {
   SITE_WITH_A_WHITESPACE_ONLY_PAGE_REF,
   SITE_WITH_AN_ENGLISH_HOME_PAGE_REF_NOT_FOUND,
   SITE_WITH_OTHER_CLIENTS,
+  type BuildAttempt,
   type BuiltSite,
   buildSite,
+  languageCodePattern,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
   serveSite,
@@ -2022,88 +2024,100 @@ function destinationFieldMessages(errors: string, message: RegExp): string[] {
 test.describe('hero content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
-  test('a home page where a hero button declares a pageRef that matches no page makes the site build fail with a single hero error message, which cites this pageRef and gives the possible causes: a missing translation, a draft, a future date or an expired page', () => {
-    /* The first button of tests/fixtures/page-ref-not-found/content/_index.md declares
-       pageRef = '/page-fictive-introuvable', which the site does not contain. Rather than a
-       button without a destination, the person building the site must get a failure that names
-       this pageRef. A message that only says the pageRef matches no page would send them looking
-       for a missing file, while the page may be right there, in another language or left out of
-       the build: as the projects error does for a page that cannot be found, the message must
-       give as possible causes a missing translation (translation, translated…), a draft, a date
-       in the future (future, scheduled) and an expiry date passed (expired), whatever the rest of
-       the wording. Any other hero message, such as blaming the button for having no destination
-       at all, would mislead them: this one must be the only one. */
-    const build = tryToBuildSite(SITE_WITH_A_PAGE_REF_NOT_FOUND);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(heroErrorCount(build.errors), 'number of hero error messages').toBe(1);
-    expect(build.errors, 'the error message should name the pageRef').toContain('/page-fictive-introuvable');
-    expect(build.errors, 'the error message should name a missing translation as a possible cause').toMatch(
-      /translat/i,
-    );
-    expect(build.errors, 'the error message should name a draft as a possible cause').toMatch(/\bdraft\b/i);
-    expect(build.errors, 'the error message should name a future date as a possible cause').toMatch(
-      /future|scheduled/i,
-    );
-    expect(build.errors, 'the error message should name an expired page as a possible cause').toMatch(/expir/i);
-  });
+  test.describe('a site whose hero button declares a pageRef that matches no page', () => {
+    /* The tests below check the same build: run one after the other in one worker, rather than in
+       parallel, they share a single build of the site. */
+    test.describe.configure({ mode: 'default' });
+    let pageRefNotFoundBuild: BuildAttempt;
+    test.beforeAll(() => {
+      pageRefNotFoundBuild = tryToBuildSite(SITE_WITH_A_PAGE_REF_NOT_FOUND);
+    });
 
-  test("a home page where a hero button's pageRef matches no page makes the site build fail with an error message that names the home page's language, for a French and for an English home page", () => {
-    /* The first button of tests/fixtures/page-ref-not-found/content/_index.md, a French home
-       page, declares pageRef = '/page-fictive-introuvable', and that of
-       tests/fixtures/english-home-page-ref-not-found/content/_index.en.md, an English home
-       page, pageRef = '/imaginary-missing-page': neither page exists. The page may exist in
-       the other language only, so that the person building the site must know in which
-       language the pageRef was looked for: as the projects error does, the hero message that
-       names this pageRef must name, on that same line, the home page's language by its code,
-       as written in the site's configuration and in the content file names (fr, en), whatever
-       the rest of the wording. The code is looked for as a word that no other word follows, so
-       that the letters "en" or "fr" met as a word inside the message's prose do not pass for
-       it. Both languages, so that a message naming a language written in the template does
-       not pass. */
-    const cases: { name: string; site: BuiltSite; pageRef: string; language: string }[] = [
-      {
-        name: 'a French home page',
-        site: SITE_WITH_A_PAGE_REF_NOT_FOUND,
-        pageRef: '/page-fictive-introuvable',
-        language: 'fr',
-      },
-      {
-        name: 'an English home page',
-        site: SITE_WITH_AN_ENGLISH_HOME_PAGE_REF_NOT_FOUND,
-        pageRef: '/imaginary-missing-page',
-        language: 'en',
-      },
-    ];
-    for (const { name, site, pageRef, language } of cases) {
-      const build = tryToBuildSite(site);
-      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
-      const messages = heroMessagesContaining(build.errors, pageRef);
-      expect(messages, `with ${name}, hero error messages that name the pageRef, in:\n${build.errors}`).not.toEqual([]);
+    test('a home page where a hero button declares a pageRef that matches no page makes the site build fail with a single hero error message, which cites this pageRef and gives the possible causes: a missing translation, a draft, a future date or an expired page', () => {
+      /* The first button of tests/fixtures/page-ref-not-found/content/_index.md declares
+         pageRef = '/page-fictive-introuvable', which the site does not contain. Rather than a
+         button without a destination, the person building the site must get a failure that names
+         this pageRef. A message that only says the pageRef matches no page would send them looking
+         for a missing file, while the page may be right there, in another language or left out of
+         the build: as the projects error does for a page that cannot be found, the message must
+         give as possible causes a missing translation (translation, translated…), a draft, a date
+         in the future (future, scheduled) and an expiry date passed (expired), whatever the rest of
+         the wording. Any other hero message, such as blaming the button for having no destination
+         at all, would mislead them: this one must be the only one. */
+      const build = pageRefNotFoundBuild;
+      expect(build.succeeded, 'the site build should fail').toBe(false);
+      expect(heroErrorCount(build.errors), 'number of hero error messages').toBe(1);
+      expect(build.errors, 'the error message should name the pageRef').toContain('/page-fictive-introuvable');
+      expect(build.errors, 'the error message should name a missing translation as a possible cause').toMatch(
+        /translat/i,
+      );
+      expect(build.errors, 'the error message should name a draft as a possible cause').toMatch(/\bdraft\b/i);
+      expect(build.errors, 'the error message should name a future date as a possible cause').toMatch(
+        /future|scheduled/i,
+      );
+      expect(build.errors, 'the error message should name an expired page as a possible cause').toMatch(/expir/i);
+    });
+
+    test("a home page where a hero button's pageRef matches no page makes the site build fail with an error message that names the home page's language, for a French and for an English home page", () => {
+      /* The first button of tests/fixtures/page-ref-not-found/content/_index.md, a French home
+         page, declares pageRef = '/page-fictive-introuvable', and that of
+         tests/fixtures/english-home-page-ref-not-found/content/_index.en.md, an English home
+         page, pageRef = '/imaginary-missing-page': neither page exists. The page may exist in
+         the other language only, so that the person building the site must know in which
+         language the pageRef was looked for: as the projects error does, the hero message that
+         names this pageRef must name, on that same line, the home page's language by its code,
+         as written in the site's configuration and in the content file names (fr, en), whatever
+         the rest of the wording. The code is looked for as a word that no other word follows, so
+         that the letters "en" or "fr" met as a word inside the message's prose do not pass for
+         it. Both languages, so that a message naming a language written in the template does
+         not pass. */
+      const cases: { name: string; attemptBuild: () => BuildAttempt; pageRef: string; language: string }[] = [
+        {
+          name: 'a French home page',
+          attemptBuild: () => pageRefNotFoundBuild,
+          pageRef: '/page-fictive-introuvable',
+          language: 'fr',
+        },
+        {
+          name: 'an English home page',
+          attemptBuild: () => tryToBuildSite(SITE_WITH_AN_ENGLISH_HOME_PAGE_REF_NOT_FOUND),
+          pageRef: '/imaginary-missing-page',
+          language: 'en',
+        },
+      ];
+      for (const { name, attemptBuild, pageRef, language } of cases) {
+        const build = attemptBuild();
+        expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+        const messages = heroMessagesContaining(build.errors, pageRef);
+        expect(messages, `with ${name}, hero error messages that name the pageRef, in:\n${build.errors}`).not.toEqual(
+          [],
+        );
+        expect(
+          messages.filter((line) => new RegExp(languageCodePattern(language), 'u').test(line)),
+          `with ${name}, hero error messages that name the pageRef and the home page's language, ${language}`,
+        ).not.toEqual([]);
+      }
+    });
+
+    test("a home page where a hero button's pageRef matches no page makes the site build fail with an error message that gives a page that does not exist, or a typo in the reference, as a possible cause", () => {
+      /* The first button of tests/fixtures/page-ref-not-found/content/_index.md declares
+         pageRef = '/page-fictive-introuvable', which the site does not contain. The message
+         already names causes where the page exists but is left out (a missing translation, a
+         draft, a future date, an expired page); the most common cause, though, is a page that
+         does not exist at all or a reference typed wrong. A message that leaves it out would
+         send the person building the site looking at the page's front matter rather than at the
+         reference: the hero message that names this pageRef must, on that same line, give as a
+         possible cause a page that does not exist (does not exist, nonexistent) or a typo
+         (typo, misspelled), whatever the rest of the wording. */
+      const build = pageRefNotFoundBuild;
+      expect(build.succeeded, 'the site build should fail').toBe(false);
+      const messages = heroMessagesContaining(build.errors, '/page-fictive-introuvable');
+      expect(messages, `hero error messages that name the pageRef, in:\n${build.errors}`).not.toEqual([]);
       expect(
-        messages.filter((line) => new RegExp(`\\b${language}\\b(?!\\s+\\p{L})`, 'u').test(line)),
-        `with ${name}, hero error messages that name the pageRef and the home page's language, ${language}`,
+        messages.filter((line) => /\b(does not|doesn't) exist|\bnon-?existent\b|\btypo|\bmisspel/i.test(line)),
+        'hero error messages that name the pageRef and give a page that does not exist or a typo as a possible cause',
       ).not.toEqual([]);
-    }
-  });
-
-  test("a home page where a hero button's pageRef matches no page makes the site build fail with an error message that gives a page that does not exist, or a typo in the reference, as a possible cause", () => {
-    /* The first button of tests/fixtures/page-ref-not-found/content/_index.md declares
-       pageRef = '/page-fictive-introuvable', which the site does not contain. The message
-       already names causes where the page exists but is left out (a missing translation, a
-       draft, a future date, an expired page); the most common cause, though, is a page that
-       does not exist at all or a reference typed wrong. A message that leaves it out would
-       send the person building the site looking at the page's front matter rather than at the
-       reference: the hero message that names this pageRef must, on that same line, give as a
-       possible cause a page that does not exist (does not exist, nonexistent) or a typo
-       (typo, misspelled), whatever the rest of the wording. */
-    const build = tryToBuildSite(SITE_WITH_A_PAGE_REF_NOT_FOUND);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    const messages = heroMessagesContaining(build.errors, '/page-fictive-introuvable');
-    expect(messages, `hero error messages that name the pageRef, in:\n${build.errors}`).not.toEqual([]);
-    expect(
-      messages.filter((line) => /\b(does not|doesn't) exist|\bnon-?existent\b|\btypo|\bmisspel/i.test(line)),
-      'hero error messages that name the pageRef and give a page that does not exist or a typo as a possible cause',
-    ).not.toEqual([]);
+    });
   });
 
   test('a home page where a hero button declares a pageRef to a page with [build] render = "never" makes the site build fail, with an error message that cites this pageRef and says the page is not published', () => {
