@@ -126,6 +126,30 @@ test('on the French home page, the section "Parcours" shows the intro lines the 
   }
 });
 
+/* The education entries the example site's French home page declares (exampleSite/content/_index.md,
+   [params.background] block, education key: a list of strings, one per entry), in the order its
+   front matter lists them. */
+const EDUCATION_ENTRIES = [
+  'CFC d’horloger rhabilleur — École d’horlogerie de Porrentruy, 2001',
+  'Brevet de restaurateur de pendules — Lycée Victor-Bérard, Morez, 2003',
+];
+
+test('on the French home page, the section "Parcours" lists the education entries the home page declares, in order', async ({
+  page,
+}) => {
+  await page.goto('/fr/');
+  const section = backgroundSection(page);
+  await expect(section).toBeVisible();
+  /* A list of the section, found by the first entry it holds, has one item per entry, in the
+     order declared, and nothing else. */
+  const list = section
+    .getByRole('list')
+    .filter({ has: page.getByRole('listitem').filter({ hasText: EDUCATION_ENTRIES[0] }) });
+  await expect(list).toHaveCount(1);
+  await expect(list).toBeVisible();
+  await expect(list.getByRole('listitem')).toHaveText(EDUCATION_ENTRIES);
+});
+
 test.describe('home page of another site, without background', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
