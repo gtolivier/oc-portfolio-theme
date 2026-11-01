@@ -2629,4 +2629,22 @@ test.describe('featured project content errors: build failure', () => {
     );
     expect(build.errors, 'the error message should name an expired page as a possible reason').toMatch(/expir/i);
   });
+
+  test('a home page whose projects list references a page that cannot be found makes the site build fail, with an error message that gives a project that does not exist as a possible cause', () => {
+    /* tests/fixtures/featured-ref-without-page/content/_index.md features
+       'projets/restauration-pendule', an existing page, then 'projets/sablier-introuvable', which
+       no page answers, in any language, published or not. A message that only blames a missing
+       translation or an unpublished page (a draft, a future date, an expired page) would send the
+       person building the site looking for a translation or a publishing setting, while the most
+       common cause is a reference that matches no content file at all: a project that does not
+       exist, or a reference with a typo. The message must also give that as a possible cause —
+       a page or project that does not exist (does not exist, doesn't exist, non-existent, no such
+       page), whatever the rest of the wording. "cannot be found" alone does not count: it states
+       the failure, not its cause. */
+    const build = tryToBuildSite(SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND);
+    expectProjectsBuildError(build);
+    expect(build.errors, 'the error message should give a project that does not exist as a possible cause').toMatch(
+      /\b(?:not|n['’]t)\s+exist|\bnon-?existent\b|\bno\s+such\b/i,
+    );
+  });
 });
