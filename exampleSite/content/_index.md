@@ -16,6 +16,13 @@ projects = [
   'projets/regulateur-noyer',
 ]
 
+[params.background]
+intro = [
+  'Formé à l’horlogerie ancienne dans le Jura.',
+  'Atelier indépendant depuis 2004.',
+  'Pendules, régulateurs et montres de poche.',
+]
+
 [[params.background.stats]]
 value = '20+'
 label = 'Ans de métier'
