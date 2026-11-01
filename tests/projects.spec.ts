@@ -2183,6 +2183,13 @@ function expectProjectsBuildError(build: BuildAttempt, context = ''): void {
   );
 }
 
+/* The pattern, for a RegExp with the u flag, of a language code (fr, en) as a word that no other
+   word follows, so that the letters "en" or "fr" met as a word inside a message's prose, followed
+   by more of the sentence, do not pass for the code. */
+function languageCodePattern(language: string): string {
+  return `\\b${language}\\b(?!\\s+\\p{L})`;
+}
+
 test.describe('featured project content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
@@ -2524,27 +2531,27 @@ test.describe('featured project content errors: build failure', () => {
         {
           name: 'a French home page with a table',
           site: SITE_WITH_A_FEATURED_PROJECT_AS_MAP,
-          line: '\\bentry\\s+2\\b',
+          linePattern: '\\bentry\\s+2\\b',
         },
         {
           name: 'a French home page with an empty reference',
           site: SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF,
-          line: '\\bentry\\s+2\\b',
+          linePattern: '\\bentry\\s+2\\b',
         },
         {
           name: 'a French home page with a whitespace-only reference',
           site: SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF,
-          line: '\\bentry\\s+3\\b',
+          linePattern: '\\bentry\\s+3\\b',
         },
         {
           name: 'a French home page with a padded reference',
           site: SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_WHITESPACE,
-          line: '\\bentry\\s+1\\b',
+          linePattern: '\\bentry\\s+1\\b',
         },
         {
           name: 'a French home page with a section page',
           site: SITE_WITH_A_SECTION_AS_FEATURED_PROJECT,
-          line: '\\bnot\\s+a\\s+project\\b',
+          linePattern: '\\bnot\\s+a\\s+project\\b',
         },
       ],
     },
@@ -2554,22 +2561,22 @@ test.describe('featured project content errors: build failure', () => {
         {
           name: 'an English home page with a table',
           site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
-          line: '\\bentry\\s+1\\b',
+          linePattern: '\\bentry\\s+1\\b',
         },
         {
           name: 'an English home page with an empty reference',
           site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
-          line: '\\bentry\\s+2\\b',
+          linePattern: '\\bentry\\s+2\\b',
         },
         {
           name: 'an English home page with a padded reference',
           site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
-          line: '\\bentry\\s+3\\b',
+          linePattern: '\\bentry\\s+3\\b',
         },
         {
           name: 'an English home page with a section page',
           site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
-          line: '\\bnot\\s+a\\s+project\\b',
+          linePattern: '\\bnot\\s+a\\s+project\\b',
         },
       ],
     },
@@ -2590,14 +2597,14 @@ test.describe('featured project content errors: build failure', () => {
        apart. */
     const builds = new Map<BuiltSite, BuildAttempt>();
     for (const { language, sites } of HOME_PAGES_WITH_BAD_PROJECT_ENTRIES) {
-      for (const { name, site, line } of sites) {
+      for (const { name, site, linePattern } of sites) {
         if (!builds.has(site)) builds.set(site, tryToBuildSite(site));
         const build = builds.get(site)!;
         expectProjectsBuildError(build, `with ${name}`);
         expect(
           build.errors,
           `with ${name}, the error message on that entry should name the home page's language, ${language}`,
-        ).toMatch(new RegExp(`^(?=.*${line})(?=.*\\b${language}\\b(?!\\s+\\p{L})).*$`, 'imu'));
+        ).toMatch(new RegExp(`^(?=.*${linePattern})(?=.*${languageCodePattern(language)}).*$`, 'imu'));
       }
     }
   });

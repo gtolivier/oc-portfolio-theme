@@ -1994,6 +1994,12 @@ function heroErrorCount(errors: string): number {
   return (errors.match(/\bhero:/g) ?? []).length;
 }
 
+/* The lines of the build's errors that are hero error messages and contain this text, such as
+   a pageRef as written in the front matter or as quoted by the message. */
+function heroMessagesContaining(errors: string, text: string): string[] {
+  return errors.split('\n').filter((line) => /\bhero:/.test(line) && line.includes(text));
+}
+
 /* A message saying a button has neither of its two destination fields, whatever the wording:
    "neither a url nor a pageRef", "no url and no pageRef", "both fields are missing"… */
 const BOTH_FIELDS_MISSING =
@@ -2067,7 +2073,7 @@ test.describe('hero content errors: build failure', () => {
     for (const { name, site, pageRef, language } of cases) {
       const build = tryToBuildSite(site);
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
-      const messages = build.errors.split('\n').filter((line) => /\bhero:/.test(line) && line.includes(pageRef));
+      const messages = heroMessagesContaining(build.errors, pageRef);
       expect(messages, `with ${name}, hero error messages that name the pageRef, in:\n${build.errors}`).not.toEqual([]);
       expect(
         messages.filter((line) => new RegExp(`\\b${language}\\b(?!\\s+\\p{L})`, 'u').test(line)),
@@ -2088,9 +2094,7 @@ test.describe('hero content errors: build failure', () => {
        (typo, misspelled), whatever the rest of the wording. */
     const build = tryToBuildSite(SITE_WITH_A_PAGE_REF_NOT_FOUND);
     expect(build.succeeded, 'the site build should fail').toBe(false);
-    const messages = build.errors
-      .split('\n')
-      .filter((line) => /\bhero:/.test(line) && line.includes('/page-fictive-introuvable'));
+    const messages = heroMessagesContaining(build.errors, '/page-fictive-introuvable');
     expect(messages, `hero error messages that name the pageRef, in:\n${build.errors}`).not.toEqual([]);
     expect(
       messages.filter((line) => /\b(does not|doesn't) exist|\bnon-?existent\b|\btypo|\bmisspel/i.test(line)),
@@ -2167,7 +2171,7 @@ test.describe('hero content errors: build failure', () => {
     expect(build.errors, 'the error message should not say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
   });
 
-  test('a home page where a hero button declares a pageRef that is not a text, a table or a number, makes the site build fail with a single hero error message that says the pageRef must be a page reference, without a template execution error after it', () => {
+  test('a home page where a hero button declares a pageRef that is not a text but a table or a number makes the site build fail with a single hero error message that says the pageRef must be a page reference, without a template execution error after it', () => {
     /* The first button of tests/fixtures/table-as-button-target/content/_index.md declares
        pageRef = { path = '/projets' }, a table, and that of
        tests/fixtures/number-as-button-target/content/_index.md pageRef = 42, a number, rather
@@ -2215,9 +2219,7 @@ test.describe('hero content errors: build failure', () => {
       const build = tryToBuildSite(site);
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
       expect(heroErrorCount(build.errors), `with ${name}, number of hero error messages`).toBe(1);
-      const messages = build.errors
-        .split('\n')
-        .filter((line) => /\bhero:/.test(line) && line.includes(quoted) && /\bwhitespace\b/i.test(line));
+      const messages = heroMessagesContaining(build.errors, quoted).filter((line) => /\bwhitespace\b/i.test(line));
       expect(
         messages,
         `with ${name}, hero error messages that quote the pageRef as ${quoted} and say it has whitespace, in:\n${build.errors}`,
