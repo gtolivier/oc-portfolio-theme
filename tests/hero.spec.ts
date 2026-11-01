@@ -32,6 +32,13 @@ import {
   SITE_WITH_AN_ENGLISH_HOME_PAGE_REF_NOT_FOUND,
   SITE_WITH_AN_ENGLISH_HOME_WITH_BAD_BUTTONS,
   SITE_WITH_OTHER_CLIENTS,
+  SITE_WITH_A_PAGE_REF_AS_TABLE_ON_THE_SECOND_BUTTON,
+  SITE_WITH_AN_EMPTY_PAGE_REF_ON_THE_SECOND_BUTTON,
+  SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE_ON_THE_SECOND_BUTTON,
+  SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE_ON_THE_SECOND_BUTTON,
+  SITE_WITH_A_FIRST_BUTTON_WITH_URL_AND_PAGE_REF,
+  SITE_WITH_A_FIRST_BUTTON_WITHOUT_DESTINATION,
+  SITE_WITH_A_FIRST_BUTTON_WITHOUT_LABEL,
   type BuildAttempt,
   type BuiltSite,
   buildSite,
@@ -2415,6 +2422,83 @@ test.describe('hero content errors: build failure', () => {
         messages.filter((line) => !new RegExp(languageCodePattern(language), 'u').test(line)),
         `with ${name}, hero error messages that do not name the home page's language, ${language}`,
       ).toEqual([]);
+    }
+  });
+
+  test('a home page where a hero button is badly filled — its pageRef is not a text, is empty, is padded, references an unpublished page, or the button has both a url and a pageRef, neither, or no label — makes the site build fail with an error message that gives the position of that button, for the first and the second button', () => {
+    /* A hero holds several buttons, often with the same fields: a message that does not say which
+       button is badly filled leaves the person building the site to check each of them. The hero
+       message for each kind of bad button must give its position among the hero's buttons,
+       counted from 1 ("button 1", "button 2"), as the projects messages give an entry's position,
+       whatever the rest of the wording. Each kind is checked with the bad button first, the
+       second well filled in, and with the bad button second, the first well filled in: the
+       fixtures of the tests of these messages above, and those of the sites declared last in
+       tests/helpers/built-site.ts, which put the bad button at the other position. Two positions
+       for each kind, so that a position written in the template does not pass. Each home page
+       holds a single bad button, so that the position is looked for on the hero message's line. */
+    const cases: { name: string; site: BuiltSite; position: number }[] = [
+      { name: 'a table as the first pageRef', site: SITE_WITH_A_PAGE_REF_AS_TABLE, position: 1 },
+      {
+        name: 'a table as the second pageRef',
+        site: SITE_WITH_A_PAGE_REF_AS_TABLE_ON_THE_SECOND_BUTTON,
+        position: 2,
+      },
+      { name: 'an empty first pageRef', site: SITE_WITH_AN_EMPTY_PAGE_REF, position: 1 },
+      { name: 'an empty second pageRef', site: SITE_WITH_AN_EMPTY_PAGE_REF_ON_THE_SECOND_BUTTON, position: 2 },
+      {
+        name: 'a first pageRef with a trailing space',
+        site: SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE,
+        position: 1,
+      },
+      {
+        name: 'a second pageRef with a trailing space',
+        site: SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE_ON_THE_SECOND_BUTTON,
+        position: 2,
+      },
+      {
+        name: 'a first pageRef to an unpublished page',
+        site: SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE,
+        position: 1,
+      },
+      {
+        name: 'a second pageRef to an unpublished page',
+        site: SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE_ON_THE_SECOND_BUTTON,
+        position: 2,
+      },
+      {
+        name: 'a first button with both a url and a pageRef',
+        site: SITE_WITH_A_FIRST_BUTTON_WITH_URL_AND_PAGE_REF,
+        position: 1,
+      },
+      {
+        name: 'a second button with both a url and a pageRef',
+        site: SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF,
+        position: 2,
+      },
+      {
+        name: 'a first button with neither url nor pageRef',
+        site: SITE_WITH_A_FIRST_BUTTON_WITHOUT_DESTINATION,
+        position: 1,
+      },
+      {
+        name: 'a second button with neither url nor pageRef',
+        site: SITE_WITH_A_BUTTON_WITHOUT_DESTINATION,
+        position: 2,
+      },
+      { name: 'a first button without a label', site: SITE_WITH_A_FIRST_BUTTON_WITHOUT_LABEL, position: 1 },
+      { name: 'a second button without a label', site: SITE_WITH_A_BUTTON_WITHOUT_LABEL, position: 2 },
+    ];
+    for (const { name, site, position } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const messages = build.errors.split('\n').filter((line) => /\bhero:/.test(line));
+      expect(messages, `with ${name}, hero error messages, in:\n${build.errors}`).not.toEqual([]);
+      expect
+        .soft(
+          messages.filter((line) => new RegExp(`\\bbutton\\s+${position}\\b`).test(line)),
+          `with ${name}, the error message should give the position of that button, button ${position}, in:\n${messages.join('\n')}`,
+        )
+        .not.toEqual([]);
     }
   });
 

@@ -559,6 +559,32 @@ export const SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES = testSite('english
    for. */
 export const SITE_WITH_AN_ENGLISH_HOME_WITH_BAD_BUTTONS = testSite('english-home-bad-buttons');
 
+/* The example site's French home page has a hero whose two buttons are well filled in: these
+   sites replace that home page with one whose bad button is at the other position than in the
+   fixtures above, the other button being well filled in. The second button is the bad one in
+   tests/fixtures/table-as-second-target/content, whose pageRef is a table,
+   { path = '/projets' }; in tests/fixtures/second-target-left-unfilled/content, an empty
+   pageRef, ''; in tests/fixtures/second-target-with-trailing-space/content, a pageRef with a
+   trailing space, '/projets '; and in tests/fixtures/second-target-never-rendered/content,
+   pageRef = '/atelier-clos', a page of the same fixture that exists but declares
+   [build] render = 'never'. The first button is the bad one in
+   tests/fixtures/first-with-two-destinations/content, with both url = '#contact' and
+   pageRef = '/projets'; in tests/fixtures/first-without-destination/content, with a label but
+   neither url nor pageRef; and in tests/fixtures/first-button-unnamed/content, with
+   pageRef = '/projets' but no label. Their folder names and that page reference avoid the
+   words label, author, url, published and whitespace, which the error-message assertions look
+   for, and the word button followed by a number, which the position assertion looks for. */
+export const SITE_WITH_A_PAGE_REF_AS_TABLE_ON_THE_SECOND_BUTTON = testSite('table-as-second-target');
+export const SITE_WITH_AN_EMPTY_PAGE_REF_ON_THE_SECOND_BUTTON = testSite('second-target-left-unfilled');
+export const SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE_ON_THE_SECOND_BUTTON = testSite(
+  'second-target-with-trailing-space',
+);
+export const SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE_ON_THE_SECOND_BUTTON =
+  testSite('second-target-never-rendered');
+export const SITE_WITH_A_FIRST_BUTTON_WITH_URL_AND_PAGE_REF = testSite('first-with-two-destinations');
+export const SITE_WITH_A_FIRST_BUTTON_WITHOUT_DESTINATION = testSite('first-without-destination');
+export const SITE_WITH_A_FIRST_BUTTON_WITHOUT_LABEL = testSite('first-button-unnamed');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
