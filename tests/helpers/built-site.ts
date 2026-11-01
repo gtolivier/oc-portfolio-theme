@@ -644,6 +644,14 @@ export const SITE_WITH_BACKGROUND_SKILLS_AS_A_SINGLE_TABLE = testSite('lone-grou
    assertions look for. */
 export const SITE_WITH_A_SKILL_GROUP_WHOSE_ITEMS_ARE_A_TEXT = testSite('know-how-as-text');
 
+/* The example site's French home page writes its education entries as a list of texts: this site
+   replaces that home page with the one of tests/fixtures/diploma-as-text/content, without a hero,
+   clients nor projects, whose background declares a fictional luthier's only education entry as a
+   single text, 'CAP de luthier — École nationale de lutherie, Mirecourt, 2008', rather than a
+   list. Its folder name avoids the words background, education and list, which the error-message
+   assertion looks for. */
+export const SITE_WITH_EDUCATION_AS_A_TEXT = testSite('diploma-as-text');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

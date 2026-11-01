@@ -7,6 +7,7 @@ import {
   SITE_WITH_A_KEY_FIGURE_NOT_STARTING_WITH_A_NUMBER,
   SITE_WITH_BACKGROUND_SKILLS_AS_A_SINGLE_TABLE,
   SITE_WITH_A_SKILL_GROUP_WHOSE_ITEMS_ARE_A_TEXT,
+  SITE_WITH_EDUCATION_AS_A_TEXT,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1167,6 +1168,24 @@ test.describe('background content errors: build failure', () => {
     );
     expect(build.errors, 'the error message should say the items must be a list').toMatch(
       /\bbackground:.*\bitems\b.*\blist\b/,
+    );
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose education is written as a text rather than a list makes the site build fail, with an error message that says the education must be a list, without a template execution error after it', () => {
+    /* tests/fixtures/diploma-as-text/content/_index.md writes its only education entry as a single
+       text, 'CAP de luthier — École nationale de lutherie, Mirecourt, 2008', rather than a list:
+       ranging over a text in a Go template may raise an execution error, or none, and the section
+       would show anything but the entry. Rather than that, the person building the site must get
+       an error message that says, on its own line, that the education must be a list, whatever the
+       rest of the wording, and no Go template execution error that would follow it and bury it in
+       technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_EDUCATION_AS_A_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the error message should say the education must be a list').toMatch(
+      /\bbackground:.*\beducation\b.*\blist\b/,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       /execute of template failed|error calling/i,
