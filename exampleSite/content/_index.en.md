@@ -16,6 +16,9 @@ projects = [
   'projets/regulateur-noyer',
 ]
 
+[[params.background]]
+year = '2004'
+
 [params.hero]
 title = 'Independent clockmaker'
 tagline = [

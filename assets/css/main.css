@@ -818,6 +818,10 @@ tick-field > canvas {
   color: var(--color-accent-dark);
 }
 
+.background h2::before {
+  content: '02 // ' / '';
+}
+
 /* Light section: dark cards on the paper background. The header takes a
    line of its own, then the cards fill one line each, two from 1024 px. */
 .projects {

@@ -102,5 +102,10 @@
     {{- end }}
   </section>
   {{- end }}
+  {{- if .Params.background }}
+  <section class="background" aria-labelledby="background-heading">
+    <h2 id="background-heading">{{ i18n "background" }}</h2>
+  </section>
+  {{- end }}
   {{ .Content }}
 {{ end }}
