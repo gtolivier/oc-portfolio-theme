@@ -18,6 +18,8 @@ import {
   SITE_WITH_A_PAGE_REF_NOT_FOUND,
   SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE,
   SITE_WITH_A_PAGE_REF_TO_A_LINK_ONLY_PAGE,
+  SITE_WITH_A_PAGE_REF_WITH_A_LEADING_TAB,
+  SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE,
   SITE_WITH_A_SINGLE_LANGUAGE,
   SITE_WITH_OTHER_CLIENTS,
   type BuiltSite,
@@ -2127,6 +2129,36 @@ test.describe('hero content errors: build failure', () => {
       expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
         /execute of template failed|error calling/i,
       );
+    }
+  });
+
+  test('a home page where a hero button declares a pageRef with whitespace at its start or end makes the site build fail with a single hero error message that quotes this pageRef and says it has whitespace, which Hugo does not trim', () => {
+    /* The first button of tests/fixtures/button-target-with-trailing-space/content/_index.md
+       declares pageRef = '/projets ', with a trailing space, and that of
+       tests/fixtures/button-target-with-leading-tab/content/_index.md pageRef = "\t/projets",
+       with a leading tab: '/projets' exists, but Hugo does not trim the whitespace, so that it
+       finds no page. A message that only says the pageRef matches no page would show the person
+       building the site a reference that looks right, the whitespace being invisible in it: the
+       message must quote the pageRef as Go's %q does, which shows the whitespace ("/projets ",
+       "\t/projets"), and say, on that same line, that it has whitespace, whatever the rest of
+       the wording. Any other hero message, such as one saying the page cannot be found, would
+       send them looking elsewhere: this one must be the only one. A trailing space and a leading
+       tab, so that checking only one end, or only the space character, does not pass. */
+    const cases: { name: string; site: BuiltSite; quoted: string }[] = [
+      { name: 'a trailing space', site: SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE, quoted: '"/projets "' },
+      { name: 'a leading tab', site: SITE_WITH_A_PAGE_REF_WITH_A_LEADING_TAB, quoted: '"\\t/projets"' },
+    ];
+    for (const { name, site, quoted } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(heroErrorCount(build.errors), `with ${name}, number of hero error messages`).toBe(1);
+      const messages = build.errors
+        .split('\n')
+        .filter((line) => /\bhero:/.test(line) && line.includes(quoted) && /\bwhitespace\b/i.test(line));
+      expect(
+        messages,
+        `with ${name}, hero error messages that quote the pageRef as ${quoted} and say it has whitespace, in:\n${build.errors}`,
+      ).not.toEqual([]);
     }
   });
 
