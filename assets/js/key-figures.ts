@@ -47,7 +47,7 @@ const countUp = (figures: KeyFigure[]): void => {
   requestAnimationFrame(step);
 };
 
-if (section && values.length > 0) {
+if (section && values.length > 0 && !reducedMotionQuery().matches) {
   const figures = values.map(prepare);
   const observer = new IntersectionObserver((entries) => {
     if (entries.some((entry) => entry.isIntersecting)) {
