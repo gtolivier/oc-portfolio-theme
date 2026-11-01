@@ -28,7 +28,7 @@
     {{- end }}
   {{- end }}
 {{- end }}
-{{- if and .url .pageRef }}{{ errorf "hero: a button declares both a url field and a pageRef field; it needs only one" }}{{ end }}
+{{- if and .url $hasPageRef }}{{ errorf "hero: a button declares both a url field and a pageRef field; it needs only one" }}{{ end }}
 {{- if and (not .url) (not $hasPageRef) }}{{ errorf "hero: a button has neither a url field nor a pageRef field" }}{{ end }}
 {{- if not .label }}{{ errorf "hero: a button has no label field" }}{{ end -}}
 <a href="{{ $href }}">{{ .label }}</a>
