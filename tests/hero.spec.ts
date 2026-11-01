@@ -2011,10 +2011,15 @@ function heroErrorCount(errors: string): number {
   return (errors.match(/\bhero:/g) ?? []).length;
 }
 
+/* The lines of the build's errors that are hero error messages. */
+function heroMessages(errors: string): string[] {
+  return errors.split('\n').filter((line) => /\bhero:/.test(line));
+}
+
 /* The lines of the build's errors that are hero error messages and contain this text, such as
    a pageRef as written in the front matter or as quoted by the message. */
 function heroMessagesContaining(errors: string, text: string): string[] {
-  return errors.split('\n').filter((line) => /\bhero:/.test(line) && line.includes(text));
+  return heroMessages(errors).filter((line) => line.includes(text));
 }
 
 /* A message saying a button has neither of its two destination fields, whatever the wording:
@@ -2025,6 +2030,17 @@ const BOTH_FIELDS_MISSING =
 /* A message saying a button declares both of its two destination fields, whatever the
    wording: "declares both a url and a pageRef", "needs only one", "not both"… */
 const BOTH_FIELDS_DECLARED = /\bboth\b|\b(?:only|just|exactly)\s+one\b|\bone or the other\b/i;
+
+/* A hero message saying, on its own line, that the pageRef must be a page reference, whatever the
+   rest of the wording. */
+const PAGE_REF_MUST_BE_A_PAGE_REFERENCE = /\bhero:.*\bpageRef\b.*\b(?:must|should)\s+be\b.*\bpage\s+reference\b/i;
+
+/* A hero message saying, on its own line, that the pageRef is empty or blank. */
+const PAGE_REF_IS_EMPTY = /\bhero:.*\bpageRef\b.*\b(?:empty|blank)\b/i;
+
+/* A Go template execution error, which would follow a hero message and bury it in technical
+   jargon. */
+const TEMPLATE_EXECUTION_ERROR = /execute of template failed|error calling/i;
 
 /* The lines of the build's errors that match this message pattern and name both of a
    button's destination fields, url and pageRef, on that same line. */
@@ -2244,10 +2260,10 @@ test.describe('hero content errors: build failure', () => {
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
       expect(heroErrorCount(build.errors), `with ${name}, number of hero error messages`).toBe(1);
       expect(build.errors, `with ${name}, the error message should say the pageRef must be a page reference`).toMatch(
-        /\bhero:.*\bpageRef\b.*\b(?:must|should)\s+be\b.*\bpage\s+reference\b/i,
+        PAGE_REF_MUST_BE_A_PAGE_REFERENCE,
       );
       expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
-        /execute of template failed|error calling/i,
+        TEMPLATE_EXECUTION_ERROR,
       );
     }
   });
@@ -2276,10 +2292,10 @@ test.describe('hero content errors: build failure', () => {
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
       expect(heroErrorCount(build.errors), `with ${name}, number of hero error messages`).toBe(1);
       expect(build.errors, `with ${name}, the error message should say the pageRef must be a page reference`).toMatch(
-        /\bhero:.*\bpageRef\b.*\b(?:must|should)\s+be\b.*\bpage\s+reference\b/i,
+        PAGE_REF_MUST_BE_A_PAGE_REFERENCE,
       );
       expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
-        /execute of template failed|error calling/i,
+        TEMPLATE_EXECUTION_ERROR,
       );
     }
   });
@@ -2325,9 +2341,7 @@ test.describe('hero content errors: build failure', () => {
     const build = tryToBuildSite(SITE_WITH_A_WHITESPACE_ONLY_PAGE_REF);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(heroErrorCount(build.errors), 'number of hero error messages').toBe(1);
-    expect(build.errors, 'the error message should say the pageRef is empty').toMatch(
-      /\bhero:.*\bpageRef\b.*\b(?:empty|blank)\b/i,
-    );
+    expect(build.errors, 'the error message should say the pageRef is empty').toMatch(PAGE_REF_IS_EMPTY);
   });
 
   test("a home page where a hero button's pageRef is an empty text makes the site build fail with a single hero error message that says the pageRef is empty", () => {
@@ -2341,9 +2355,7 @@ test.describe('hero content errors: build failure', () => {
     const build = tryToBuildSite(SITE_WITH_AN_EMPTY_PAGE_REF);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(heroErrorCount(build.errors), 'number of hero error messages').toBe(1);
-    expect(build.errors, 'the error message should say the pageRef is empty').toMatch(
-      /\bhero:.*\bpageRef\b.*\b(?:empty|blank)\b/i,
-    );
+    expect(build.errors, 'the error message should say the pageRef is empty').toMatch(PAGE_REF_IS_EMPTY);
   });
 
   test("a home page where a hero button's pageRef is not a text, is empty, is padded, references an unpublished page, or where a button has both a url and a pageRef, neither, or no label, makes the site build fail with an error message that names the home page's language, for French home pages and for an English one", () => {
@@ -2414,7 +2426,7 @@ test.describe('hero content errors: build failure', () => {
     for (const { name, site, language, badButtons } of cases) {
       const build = tryToBuildSite(site);
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
-      const messages = build.errors.split('\n').filter((line) => /\bhero:/.test(line));
+      const messages = heroMessages(build.errors);
       expect(messages, `with ${name}, hero error messages, one per bad button, in:\n${build.errors}`).toHaveLength(
         badButtons,
       );
@@ -2491,7 +2503,7 @@ test.describe('hero content errors: build failure', () => {
     for (const { name, site, position } of cases) {
       const build = tryToBuildSite(site);
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
-      const messages = build.errors.split('\n').filter((line) => /\bhero:/.test(line));
+      const messages = heroMessages(build.errors);
       expect(messages, `with ${name}, hero error messages, in:\n${build.errors}`).not.toEqual([]);
       expect
         .soft(

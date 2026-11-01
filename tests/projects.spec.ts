@@ -158,6 +158,15 @@ function escapedForRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/* The pattern, for a RegExp, of the position the projects error messages give an entry of the
+   list, counted from 1 ("entry 1", "entry 2"). */
+function entryPositionPattern(position: number): string {
+  return `\\bentry\\s+${position}\\b`;
+}
+
+/* The pattern, for a RegExp, of the projects error message on a page that is no project. */
+const NOT_A_PROJECT_PATTERN = '\\bnot\\s+a\\s+project\\b';
+
 /* A pattern that matches the text as written, wherever it appears. */
 function containing(text: string): RegExp {
   return new RegExp(escapedForRegExp(text));
@@ -2341,7 +2350,7 @@ test.describe('featured project content errors: build failure', () => {
       expect(
         build.errors,
         `for the reference ${reference}, the error message should give the position of that entry, entry ${position}`,
-      ).toMatch(new RegExp(`^(?=.*\\bentry\\s+${position}\\b)(?=.*${escapedForRegExp(reference)}).*$`, 'im'));
+      ).toMatch(new RegExp(`^(?=.*${entryPositionPattern(position)})(?=.*${escapedForRegExp(reference)}).*$`, 'im'));
     }
   });
 
@@ -2529,27 +2538,27 @@ test.describe('featured project content errors: build failure', () => {
         {
           name: 'a French home page with a table',
           site: SITE_WITH_A_FEATURED_PROJECT_AS_MAP,
-          linePattern: '\\bentry\\s+2\\b',
+          linePattern: entryPositionPattern(2),
         },
         {
           name: 'a French home page with an empty reference',
           site: SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF,
-          linePattern: '\\bentry\\s+2\\b',
+          linePattern: entryPositionPattern(2),
         },
         {
           name: 'a French home page with a whitespace-only reference',
           site: SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF,
-          linePattern: '\\bentry\\s+3\\b',
+          linePattern: entryPositionPattern(3),
         },
         {
           name: 'a French home page with a padded reference',
           site: SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_WHITESPACE,
-          linePattern: '\\bentry\\s+1\\b',
+          linePattern: entryPositionPattern(1),
         },
         {
           name: 'a French home page with a section page',
           site: SITE_WITH_A_SECTION_AS_FEATURED_PROJECT,
-          linePattern: '\\bnot\\s+a\\s+project\\b',
+          linePattern: NOT_A_PROJECT_PATTERN,
         },
       ],
     },
@@ -2559,22 +2568,22 @@ test.describe('featured project content errors: build failure', () => {
         {
           name: 'an English home page with a table',
           site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
-          linePattern: '\\bentry\\s+1\\b',
+          linePattern: entryPositionPattern(1),
         },
         {
           name: 'an English home page with an empty reference',
           site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
-          linePattern: '\\bentry\\s+2\\b',
+          linePattern: entryPositionPattern(2),
         },
         {
           name: 'an English home page with a padded reference',
           site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
-          linePattern: '\\bentry\\s+3\\b',
+          linePattern: entryPositionPattern(3),
         },
         {
           name: 'an English home page with a section page',
           site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
-          linePattern: '\\bnot\\s+a\\s+project\\b',
+          linePattern: NOT_A_PROJECT_PATTERN,
         },
       ],
     },
