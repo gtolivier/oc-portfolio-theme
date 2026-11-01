@@ -10,10 +10,11 @@
 {{- if and (isset . "pageRef") (ne (printf "%T" $pageRef) "string") }}
   {{- errorf "hero: the pageRef field must be a page reference, a text" }}
   {{- $hasPageRef = true }}
-{{- else if $pageRef }}
+{{- else if isset . "pageRef" }}
   {{- $trimmedPageRef := strings.TrimSpace $pageRef }}
   {{- if eq $trimmedPageRef "" }}
     {{- errorf "hero: the pageRef field is empty: it must be a page reference" }}
+    {{- $hasPageRef = true }}
   {{- else if ne $pageRef $trimmedPageRef }}
     {{- errorf "hero: the pageRef %q has whitespace at its start or end, which Hugo does not trim" $pageRef }}
   {{- else }}
