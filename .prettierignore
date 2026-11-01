@@ -1,6 +1,10 @@
 # Go templates, which Prettier reads as plain HTML and would break.
 layouts/
 
+# Hugo archetypes: Go templates too.
+archetypes/
+exampleSite/archetypes/
+
 # Fictional content: its Markdown is what the tests read.
 exampleSite/content/
 tests/fixtures/**/*.md
