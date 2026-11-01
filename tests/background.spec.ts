@@ -413,6 +413,40 @@ test('with JavaScript, on the French home page, once the key figures of the sect
   expect(notFull, 'texts the background section showed on screen without every full value').toEqual([]);
 });
 
+test('with JavaScript, under prefers-reduced-motion: reduce, on the French home page, each key figure of the section "Parcours" shows its full value next to its label from load, while the section is out of view, and never another number once it comes into view', async ({
+  page,
+}) => {
+  /* The visitor asks for reduced motion, before the page loads. */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/fr/');
+  const section = backgroundSection(page);
+  /* Below the first screen on load, where the figures would otherwise show 0. */
+  await expect(section).toHaveCount(1);
+  await expect(section).not.toBeInViewport();
+  for (const { label } of KEY_FIGURES) {
+    await expect(section.getByText(label, { exact: true }), `the label "${label}"`).toBeVisible();
+  }
+  /* On screen, in reading order, whitespace excluded: each label comes right after its full value,
+     whole (no digit before it, so that neither a 0 nor a number on its way can pass). Text that
+     only assistive technologies get does not count: it is not what a visitor sees. */
+  const figures = KEY_FIGURES.map(
+    ({ value, label }) => `(?<!\\d)${literally(value)}${literally(label.replace(/\s+/g, ''))}`,
+  );
+  const inOrder = new RegExp(figures.join('.*'), 'u');
+  expect(await textOnScreen(section), 'text the background section shows on screen while out of view').toMatch(inOrder);
+  await section.scrollIntoViewIfNeeded();
+  await expect(section, 'the section has come into view').toBeInViewport();
+  /* Every 50 ms, for 2 s on the page's real clock (longer than a climb takes): what the visitor
+     sees on screen, kept each time it is not every full value next to its label. */
+  const notFull: string[] = [];
+  for (let elapsed = 0; elapsed <= 2000; elapsed += 50) {
+    if (elapsed > 0) await page.waitForTimeout(50);
+    const shown = await textOnScreen(section);
+    if (!inOrder.test(shown)) notFull.push(shown);
+  }
+  expect(notFull, 'texts the background section showed on screen without every full value').toEqual([]);
+});
+
 /* The intro lines the example site's French home page declares (exampleSite/content/_index.md,
    [params.background] block, intro key: a list of strings, one per line), in the order its front
    matter lists them. */
