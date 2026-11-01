@@ -14,7 +14,7 @@
 {{- $page := $.GetPage $entry }}
 {{- if not $page }}{{ errorf "projects: the home page's projects parameter references a page that cannot be found (language: %s): %q. The project may not exist, the page may not be translated into this language, or not published: a draft, a future (scheduled) date or an expired page" $lang $entry }}{{ continue }}{{ end }}
 {{- if not $page.IsPage }}{{ errorf "projects: the home page's projects parameter references %s, which is not a project (language: %s): %q" (index $nonProjectKindWords $page.Kind | default "a page of another type") $lang $entry }}{{ continue }}{{ end }}
-{{- if and (isset $page.Params "build") (not (reflect.IsMap $page.Params.build)) }}{{ errorf "projects: the project %q declares a custom parameter named build, which Hugo reserves for its build options: rename this parameter" $entry }}{{ continue }}{{ end }}
+{{- if and (isset $page.Params "build") (not (reflect.IsMap $page.Params.build)) }}{{ errorf "projects: the project %q declares a custom parameter named build, which the theme reads as Hugo's build options (the [build] front matter): rename this parameter" $entry }}{{ continue }}{{ end }}
 {{- $projects = $projects | append $page }}
 {{- end }}
 {{- return $projects }}
