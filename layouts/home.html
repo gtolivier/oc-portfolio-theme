@@ -22,9 +22,12 @@
       <p class="hero-stack">{{ delimit . $stackSeparator }}</p>
       {{- end }}
       {{- with .actions }}
+      {{- $actions := . }}
+      {{- /* errorf does not stop the template: after an error, the list of buttons is empty, so that no template execution error buries the message. */}}
+      {{- if not (reflect.IsSlice $actions) }}{{ errorf "hero: the buttons must be written as a list of tables, [[params.hero.actions]], with double brackets" }}{{ $actions = slice }}{{ end }}
       <p class="hero-actions">
-        {{- range . }}
-        {{ partial "hero/action.html" . }}
+        {{- range $index, $action := $actions }}
+        {{ partial "hero/action.html" (dict "action" $action "position" (add $index 1)) }}
         {{- end }}
       </p>
       {{- end }}
@@ -37,8 +40,10 @@
     {{- if not (reflect.IsSlice $clients) }}{{ errorf "clients: the home page's clients parameter must be a list of names" }}{{ $clients = slice }}{{ end }}
     {{- range $index, $client := $clients }}
     {{- $entryNumber := add $index 1 }}
-    {{- if ne (printf "%T" $client) "string" }}{{ errorf "clients: entry %d of the home page's clients parameter must be a name" $entryNumber }}{{ $clients = slice }}
-    {{- else if eq (strings.TrimSpace $client) "" }}{{ errorf "clients: entry %d of the home page's clients parameter must be a non-empty name" $entryNumber }}{{ $clients = slice }}
+    {{- /* A name with whitespace at its start or end ("padded") is shown as it is: only a page reference needs trimming. */}}
+    {{- $clientProblem := partial "text-problem.html" $client }}
+    {{- if eq $clientProblem "not-text" }}{{ errorf "clients: entry %d of the home page's clients parameter must be a name" $entryNumber }}{{ $clients = slice }}
+    {{- else if eq $clientProblem "empty" }}{{ errorf "clients: entry %d of the home page's clients parameter must be a non-empty name" $entryNumber }}{{ $clients = slice }}
     {{- end }}
     {{- end }}
     {{- $label := i18n "clients" }}

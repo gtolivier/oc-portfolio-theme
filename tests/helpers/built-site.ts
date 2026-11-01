@@ -79,6 +79,13 @@ export const SITE_WITH_ANOTHER_HERO = testSite('other-hero');
    exist. */
 export const SITE_WITH_A_PAGE_REF_NOT_FOUND = testSite('page-ref-not-found');
 
+/* The example site's English home page has a hero whose every button leads
+   to an existing page or to an address: this site replaces that home page
+   with the one of tests/fixtures/english-home-page-ref-not-found/content,
+   where a button declares pageRef = '/imaginary-missing-page', a page that
+   does not exist. */
+export const SITE_WITH_AN_ENGLISH_HOME_PAGE_REF_NOT_FOUND = testSite('english-home-page-ref-not-found');
+
 /* The fixture folders of the build-failure sites below avoid the words
    label, author and url: a folder name shows up in temporary paths, hence
    possibly in Hugo's error output, which the error-message assertions must
@@ -136,6 +143,67 @@ export const SITE_WITH_A_HERO_WITHOUT_AUTHOR = testSite('authorless-hero');
    has a label and declares both url = '#contact' and pageRef = '/projets',
    two valid destinations. */
 export const SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF = testSite('button-with-two-destinations');
+
+/* The example site's French home page has a hero whose every button has a single
+   destination: these sites replace that home page with the one of
+   tests/fixtures/address-and-unfilled-target/content, whose second button has a label and
+   declares both url = '#contact' and pageRef = '', an empty text, and with the one of
+   tests/fixtures/address-and-false-target/content, whose second button declares both
+   url = '#contact' and pageRef = false: two pageRef values that Hugo reads as false. Their
+   folder names avoid the words url, pageRef, both and one, which the error-message assertion
+   looks for. */
+export const SITE_WITH_A_BUTTON_WITH_URL_AND_EMPTY_PAGE_REF = testSite('address-and-unfilled-target');
+export const SITE_WITH_A_BUTTON_WITH_URL_AND_FALSE_PAGE_REF = testSite('address-and-false-target');
+
+/* The example site's French home page has a hero whose every pageRef is a
+   text, a page reference: these sites replace that home page with the one of
+   tests/fixtures/table-as-button-target/content, whose first button declares
+   a table, pageRef = { path = '/projets' }, and with the one of
+   tests/fixtures/number-as-button-target/content, whose first button
+   declares a number, pageRef = 42. Their folder names also avoid the words
+   pageRef and page reference, which the error-message assertion looks for,
+   and hero, whose error messages are counted. */
+export const SITE_WITH_A_PAGE_REF_AS_TABLE = testSite('table-as-button-target');
+export const SITE_WITH_A_PAGE_REF_AS_NUMBER = testSite('number-as-button-target');
+
+/* The example site's French home page has a hero whose every pageRef is a text, a page
+   reference: these sites replace that home page with the one of
+   tests/fixtures/empty-table-as-button-target/content, whose first button declares an empty
+   table, pageRef = {}, of tests/fixtures/empty-list-as-button-target/content, an empty list,
+   pageRef = [], of tests/fixtures/zero-as-button-target/content, the number zero, pageRef = 0,
+   and of tests/fixtures/false-as-button-target/content, the boolean false, pageRef = false:
+   four values that are not texts and that Hugo reads as false. Their folder names also avoid
+   the words pageRef and page reference, which the error-message assertion looks for, and
+   hero, whose error messages are counted. */
+export const SITE_WITH_A_PAGE_REF_AS_AN_EMPTY_TABLE = testSite('empty-table-as-button-target');
+export const SITE_WITH_A_PAGE_REF_AS_AN_EMPTY_LIST = testSite('empty-list-as-button-target');
+export const SITE_WITH_A_PAGE_REF_AS_ZERO = testSite('zero-as-button-target');
+export const SITE_WITH_A_PAGE_REF_AS_FALSE = testSite('false-as-button-target');
+
+/* The example site's French home page has a hero whose every pageRef is written without
+   whitespace around it: these sites replace that home page with the one of
+   tests/fixtures/button-target-with-trailing-space/content, whose first button declares
+   pageRef = '/projets ', with a trailing space, and with the one of
+   tests/fixtures/button-target-with-leading-tab/content, whose first button declares
+   pageRef = "\t/projets", with a leading tab: '/projets' exists, but Hugo does not trim the
+   whitespace. Their folder names avoid the word whitespace, which the error-message assertion
+   looks for, and hero, whose error messages are counted. */
+export const SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE = testSite('button-target-with-trailing-space');
+export const SITE_WITH_A_PAGE_REF_WITH_A_LEADING_TAB = testSite('button-target-with-leading-tab');
+
+/* The example site's French home page has a hero whose every pageRef names a page: this site
+   replaces that home page with the one of tests/fixtures/button-target-of-spaces-only/content,
+   whose first button declares pageRef = " \t ", a space, a tab and a space, and nothing else.
+   Its folder name avoids the words empty and blank, which the error-message assertion looks
+   for, and hero, whose error messages are counted. */
+export const SITE_WITH_A_WHITESPACE_ONLY_PAGE_REF = testSite('button-target-of-spaces-only');
+
+/* The example site's French home page has a hero whose every pageRef names a page: this site
+   replaces that home page with the one of tests/fixtures/button-target-left-unfilled/content,
+   whose first button declares pageRef = '', an empty text. Its folder name avoids the words
+   empty and blank, which the error-message assertion looks for, and hero, whose error messages
+   are counted. */
+export const SITE_WITH_AN_EMPTY_PAGE_REF = testSite('button-target-left-unfilled');
 
 /* The component catalog: the example site, plus the pages of
    tests/fixtures/catalog/content, each of which places one component of the
@@ -467,6 +535,66 @@ export const SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE = testSite('never-rende
    looks for. */
 export const SITE_WITH_A_PAGE_REF_TO_A_LINK_ONLY_PAGE = testSite('link-rendered-ref');
 
+/* The example site's English home page features only project pages, each as a page reference:
+   this site replaces that home page with the one of tests/fixtures/english-home-bad-entries/content,
+   without a hero nor clients, whose params.projects is a list (so the check that projects is a list
+   lets it through) of four bad entries, one of each kind: a table,
+   { path = 'projets/restauration-pendule' }, instead of a page reference, as entry 1; an empty
+   text, '', as entry 2; 'projets/montre-grande-complication ', an existing page with a trailing
+   space Hugo does not trim, as entry 3; and 'projets', the projects section itself, which exists
+   but is no project, as entry 4. The example site's French home page is unchanged. Its folder name
+   avoids the words projects and whitespace and the language codes, which the error-message
+   assertions look for. */
+export const SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES = testSite('english-home-bad-entries');
+
+/* The example site's English home page has a hero whose every button is well filled in: this site
+   replaces that home page with the one of tests/fixtures/english-home-bad-buttons/content, whose
+   seven hero buttons are each filled in wrong, one of each kind: a pageRef that is a table,
+   { path = '/projets' }; an empty pageRef, ''; a pageRef with a trailing space, '/projets ';
+   pageRef = '/shut-workshop', a page of the same fixture that exists but declares
+   [build] render = 'never'; both url = '#contact' and pageRef = '/projets'; a label but neither
+   url nor pageRef; and url = '#contact' but no label. The example site's French home page is
+   unchanged. Its folder name and that page reference avoid the words label, author, url,
+   published and whitespace and the language codes, which the error-message assertions look
+   for. */
+export const SITE_WITH_AN_ENGLISH_HOME_WITH_BAD_BUTTONS = testSite('english-home-bad-buttons');
+
+/* The example site's French home page has a hero whose two buttons are well filled in: these
+   sites replace that home page with one whose bad button is at the other position than in the
+   fixtures above, the other button being well filled in. The second button is the bad one in
+   tests/fixtures/table-as-second-target/content, whose pageRef is a table,
+   { path = '/projets' }; in tests/fixtures/second-target-left-unfilled/content, an empty
+   pageRef, ''; in tests/fixtures/second-target-with-trailing-space/content, a pageRef with a
+   trailing space, '/projets '; and in tests/fixtures/second-target-never-rendered/content,
+   pageRef = '/atelier-clos', a page of the same fixture that exists but declares
+   [build] render = 'never'. The first button is the bad one in
+   tests/fixtures/first-with-two-destinations/content, with both url = '#contact' and
+   pageRef = '/projets'; in tests/fixtures/first-without-destination/content, with a label but
+   neither url nor pageRef; and in tests/fixtures/first-button-unnamed/content, with
+   pageRef = '/projets' but no label. Their folder names and that page reference avoid the
+   words label, author, url, published and whitespace, which the error-message assertions look
+   for, and the word button followed by a number, which the position assertion looks for. */
+export const SITE_WITH_A_PAGE_REF_AS_TABLE_ON_THE_SECOND_BUTTON = testSite('table-as-second-target');
+export const SITE_WITH_AN_EMPTY_PAGE_REF_ON_THE_SECOND_BUTTON = testSite('second-target-left-unfilled');
+export const SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE_ON_THE_SECOND_BUTTON = testSite(
+  'second-target-with-trailing-space',
+);
+export const SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE_ON_THE_SECOND_BUTTON =
+  testSite('second-target-never-rendered');
+export const SITE_WITH_A_FIRST_BUTTON_WITH_URL_AND_PAGE_REF = testSite('first-with-two-destinations');
+export const SITE_WITH_A_FIRST_BUTTON_WITHOUT_DESTINATION = testSite('first-without-destination');
+export const SITE_WITH_A_FIRST_BUTTON_WITHOUT_LABEL = testSite('first-button-unnamed');
+
+/* The example site's French home page writes its hero buttons as a list of tables,
+   [[params.hero.actions]]: these sites replace that home page with one whose buttons are not a
+   list. In tests/fixtures/named-button-tables/content, its two buttons are named tables,
+   [params.hero.actions.a] and [params.hero.actions.b]; in tests/fixtures/lone-button-table/content,
+   its only button is written [params.hero.actions], with single brackets, a table. Their folder
+   names avoid the word hero, whose error messages are counted, and the table name the
+   error-message assertion looks for. */
+export const SITE_WITH_HERO_BUTTONS_AS_NAMED_TABLES = testSite('named-button-tables');
+export const SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE = testSite('lone-button-table');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
@@ -589,6 +717,13 @@ export function tryToBuildSite(site: BuiltSite): BuildAttempt {
   } finally {
     removeDirectory(destination);
   }
+}
+
+/* The pattern, for a RegExp with the u flag, of a language code (fr, en) as a word that no other
+   word follows, so that the letters "en" or "fr" met as a word inside a message's prose, followed
+   by more of the sentence, do not pass for the code. */
+export function languageCodePattern(language: string): string {
+  return `\\b${language}\\b(?!\\s+\\p{L})`;
 }
 
 /* Builds the example site as it is, without a fixture, asking Hugo to warn

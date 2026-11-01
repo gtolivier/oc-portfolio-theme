@@ -31,7 +31,10 @@ import {
   SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS,
   SITE_WITH_UNUSUAL_RENDER_VALUES,
   SITE_WITH_A_BUILD_PARAM_AS_TEXT,
+  SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
+  type BuiltSite,
   buildSite,
+  languageCodePattern,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
   serveSite,
@@ -150,10 +153,23 @@ function cardName(index: number): string {
   return `card ${index + 1} ("${FEATURED_PROJECTS[index].title}")`;
 }
 
-/* A pattern that matches the text as written, wherever it appears: its special characters are
-   escaped. */
+/* The text as a pattern that matches it as written: its special characters are escaped. */
+function escapedForRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/* The pattern, for a RegExp, of the position the projects error messages give an entry of the
+   list, counted from 1 ("entry 1", "entry 2"). */
+function entryPositionPattern(position: number): string {
+  return `\\bentry\\s+${position}\\b`;
+}
+
+/* The pattern, for a RegExp, of the projects error message on a page that is no project. */
+const NOT_A_PROJECT_PATTERN = '\\bnot\\s+a\\s+project\\b';
+
+/* A pattern that matches the text as written, wherever it appears. */
 function containing(text: string): RegExp {
-  return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  return new RegExp(escapedForRegExp(text));
 }
 
 /* The cards of the section "Projets sélectionnés" of the page just loaded, once its fonts are
@@ -1760,19 +1776,22 @@ test.describe('home page of another site, featuring projects whose page declares
 test.describe('featured project whose page declares a custom param named build: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
-  test('a featured project whose page declares a custom param build = "2020", a text rather than a table, makes the site build fail, with an error message that says Hugo reserves build for its build options and names that project, without a template execution error after it', () => {
+  test('a featured project whose page declares a custom param build = "2020", a text rather than a table, makes the site build fail, with an error message that says the theme reads the page’s build param as Hugo’s build options (the [build] front matter) and names that project, without a template execution error after it', () => {
     /* tests/fixtures/build-param-as-text/content/projets/pendule-squelette.md sets no [build]
-       options, but declares under [params] a custom param build = '2020'. Hugo reserves build for
-       the page's build options: .Params.build holds the real [build] table, and a custom build param
-       replaces it, so the theme cannot tell whether that page is published. Rather than a card
-       guessed from that text, the person building the site must get a failure whose message
-       names the build param, says Hugo reserves it, and names that project by its reference or
-       path, whatever the rest of the wording, and no Go template execution error that would follow
-       it and bury it in technical jargon. */
+       options, but declares under [params] a custom param build = '2020'. The theme reads the
+       page's build param as Hugo's build options, the [build] front matter: .Params.build holds the
+       real [build] table, and a custom build param replaces it, so the theme cannot tell whether
+       that page is published. Rather than a card guessed from that text, the person building the
+       site must get a failure whose message names the build param, says the theme reads it as
+       Hugo's build options, and names that project by its reference or path, whatever the rest of
+       the wording, and no Go template execution error that would follow it and bury it in
+       technical jargon. */
     const build = tryToBuildSite(SITE_WITH_A_BUILD_PARAM_AS_TEXT);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors, 'the error message should name the build param').toMatch(/\bbuild\b/);
-    expect(build.errors, 'the error message should say the build param is reserved').toMatch(/\breserve/i);
+    expect(build.errors, 'the error message should say the theme reads build as Hugo’s build options').toMatch(
+      /\btheme\b/,
+    );
     expect(build.errors, 'the error message should name Hugo').toMatch(/\bHugo\b/);
     expect(build.errors, 'the error message should name the project').toContain('projets/pendule-squelette');
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
@@ -2316,6 +2335,28 @@ test.describe('featured project content errors: build failure', () => {
     }
   });
 
+  test('a home page whose projects list holds page references with leading or trailing whitespace makes the site build fail, with an error message, for each such reference, that gives the position of that entry', () => {
+    /* tests/fixtures/padded-ref/content/_index.md features 'projets/restauration-pendule ', with
+       a trailing space, as its first entry, then "\tprojets/montre-grande-complication", with a
+       leading tab, as its second. Besides the reference, whose whitespace is invisible in the
+       message, the message must give the position of the entry in the list, counted from 1
+       ("entry 1", "entry 2"), as the messages on blank entries do, so that whoever fills in the
+       content finds it. The position is looked for on the same line as the reference it belongs
+       to, whatever the rest of the wording; two positions, so that a hard-coded position does not
+       pass. */
+    const build = tryToBuildSite(SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_WHITESPACE);
+    expectProjectsBuildError(build);
+    for (const { position, reference } of [
+      { position: 1, reference: 'projets/restauration-pendule' },
+      { position: 2, reference: 'projets/montre-grande-complication' },
+    ]) {
+      expect(
+        build.errors,
+        `for the reference ${reference}, the error message should give the position of that entry, entry ${position}`,
+      ).toMatch(new RegExp(`^(?=.*${entryPositionPattern(position)})(?=.*${escapedForRegExp(reference)}).*$`, 'im'));
+    }
+  });
+
   test('a home page whose projects list references the home page itself, as "/", makes the site build fail, with an error message that names the projects parameter and that entry, without a template execution error after it', () => {
     /* tests/fixtures/self-ref/content/_index.md features 'projets/restauration-pendule', then '/':
        a reference to the home page itself, which exists, so that the check for a page not found
@@ -2479,12 +2520,102 @@ test.describe('featured project content errors: build failure', () => {
       const build = tryToBuildSite(site);
       expectProjectsBuildError(build, `with ${name}`);
       expect(build.errors, `with ${name}, the error message should name the home page's language`).toMatch(
-        new RegExp(`\\b${language}\\b(?!\\s+\\p{L})`, 'u'),
+        new RegExp(languageCodePattern(language), 'u'),
       );
       expect(
         build.errors,
         `with ${name}, the error message should give a missing translation in ${language} as a possible cause`,
-      ).toMatch(new RegExp(`^(?=.*translat)(?=.*\\b${language}\\b(?!\\s+\\p{L})).*$`, 'imu'));
+      ).toMatch(new RegExp(`^(?=.*translat)(?=.*${languageCodePattern(language)}).*$`, 'imu'));
+    }
+  });
+
+  /* Each bad entry the projects checks reject before looking its page up, or after finding a page
+     that is no project, with the pattern of the line of its own error message, as the tests above
+     find it: the position of the entry for a table, a blank or a padded reference, "not a project"
+     for a page that is no project. The French home pages come from the fixtures of the tests above;
+     the English one holds an entry of each kind, at positions 1 to 4. */
+  const HOME_PAGES_WITH_BAD_PROJECT_ENTRIES = [
+    {
+      language: 'fr',
+      sites: [
+        {
+          name: 'a French home page with a table',
+          site: SITE_WITH_A_FEATURED_PROJECT_AS_MAP,
+          linePattern: entryPositionPattern(2),
+        },
+        {
+          name: 'a French home page with an empty reference',
+          site: SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF,
+          linePattern: entryPositionPattern(2),
+        },
+        {
+          name: 'a French home page with a whitespace-only reference',
+          site: SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF,
+          linePattern: entryPositionPattern(3),
+        },
+        {
+          name: 'a French home page with a padded reference',
+          site: SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_WHITESPACE,
+          linePattern: entryPositionPattern(1),
+        },
+        {
+          name: 'a French home page with a section page',
+          site: SITE_WITH_A_SECTION_AS_FEATURED_PROJECT,
+          linePattern: NOT_A_PROJECT_PATTERN,
+        },
+      ],
+    },
+    {
+      language: 'en',
+      sites: [
+        {
+          name: 'an English home page with a table',
+          site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
+          linePattern: entryPositionPattern(1),
+        },
+        {
+          name: 'an English home page with an empty reference',
+          site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
+          linePattern: entryPositionPattern(2),
+        },
+        {
+          name: 'an English home page with a padded reference',
+          site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
+          linePattern: entryPositionPattern(3),
+        },
+        {
+          name: 'an English home page with a section page',
+          site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
+          linePattern: NOT_A_PROJECT_PATTERN,
+        },
+      ],
+    },
+  ];
+
+  test("a home page whose projects list holds an entry that is not a reference, a blank one, a padded one, or one that references a page that is not a project makes the site build fail, with an error message that names the home page's language, for French home pages and for an English one", () => {
+    /* A bilingual site has a home page per language, each with its own projects list: an error
+       message that does not say which language's home page holds the bad entry leaves the person
+       building the site to look for it in every content/_index.<language>.md file. The message
+       for a page that cannot be found already names the home page's language by its code (fr,
+       en); the messages for a table instead of a reference, a blank reference, a reference with
+       whitespace at its start or end, and a reference to a page that is no project must name it
+       too, each on its own line, whatever the rest of the wording. The code is looked for, as in
+       the test above, as a word that no other word follows, on the line of each error message,
+       found by the pattern of its kind, so that every one of these messages must name it. A
+       French home page and an English one, so that a language written in the template does not
+       pass; the English site holds the four kinds at once, at positions that tell their lines
+       apart. */
+    const builds = new Map<BuiltSite, BuildAttempt>();
+    for (const { language, sites } of HOME_PAGES_WITH_BAD_PROJECT_ENTRIES) {
+      for (const { name, site, linePattern } of sites) {
+        if (!builds.has(site)) builds.set(site, tryToBuildSite(site));
+        const build = builds.get(site)!;
+        expectProjectsBuildError(build, `with ${name}`);
+        expect(
+          build.errors,
+          `with ${name}, the error message on that entry should name the home page's language, ${language}`,
+        ).toMatch(new RegExp(`^(?=.*${linePattern})(?=.*${languageCodePattern(language)}).*$`, 'imu'));
+      }
     }
   });
 
@@ -2509,5 +2640,23 @@ test.describe('featured project content errors: build failure', () => {
       /future|scheduled/i,
     );
     expect(build.errors, 'the error message should name an expired page as a possible reason').toMatch(/expir/i);
+  });
+
+  test('a home page whose projects list references a page that cannot be found makes the site build fail, with an error message that gives a project that does not exist as a possible cause', () => {
+    /* tests/fixtures/featured-ref-without-page/content/_index.md features
+       'projets/restauration-pendule', an existing page, then 'projets/sablier-introuvable', which
+       no page answers, in any language, published or not. A message that only blames a missing
+       translation or an unpublished page (a draft, a future date, an expired page) would send the
+       person building the site looking for a translation or a publishing setting, while the most
+       common cause is a reference that matches no content file at all: a project that does not
+       exist, or a reference with a typo. The message must also give that as a possible cause —
+       a page or project that does not exist (does not exist, doesn't exist, non-existent, no such
+       page), whatever the rest of the wording. "cannot be found" alone does not count: it states
+       the failure, not its cause. */
+    const build = tryToBuildSite(SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND);
+    expectProjectsBuildError(build);
+    expect(build.errors, 'the error message should give a project that does not exist as a possible cause').toMatch(
+      /\b(?:not|n['’]t)\s+exist|\bnon-?existent\b|\bno\s+such\b/i,
+    );
   });
 });

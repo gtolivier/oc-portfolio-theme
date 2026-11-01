@@ -30,8 +30,9 @@ The roadmap (one conversation per feature) lives in the private repository
 - `npm run format`: formats the repository with Prettier (`.prettierrc.json`);
   `npm run format:check` only checks, as the CI does. `.prettierignore`
   leaves out the Go templates of `layouts/` and of the archetypes, which
-  Prettier would break, the fictional content of `exampleSite/content/` and
-  the Markdown of the test fixtures.
+  Prettier would break, the fictional content of `exampleSite/content/`,
+  the Markdown of the test fixtures and `package-lock.json`, which npm
+  writes.
 
 ## Rules
 
@@ -52,6 +53,14 @@ The roadmap (one conversation per feature) lives in the private repository
   tests deliberately leave open (a delay, a duration, a light curve), or a
   gap from the design that no test can catch without measuring pixels
   finely, is tuned by eye, in its own commit; the suite must stay green.
+  Second exception: translating or rewording a build error message
+  (`errorf`) that the tests already check, without adding or removing any
+  fact it gives (the value it cites, an entry's position, the language, a
+  possible cause), goes in its own commit, without a red/green cycle; the
+  suite must stay green without any test changed. A new fact in the
+  message is a behavior, with its own cycle; a test that fails on the new
+  wording because it pins the old words is a change to an existing test,
+  which needs the user's agreement first.
 - **Design fidelity**: the tests pin behaviors, never the look, and the
   green step never sees the design, so TDD alone does not converge on the
   mockup. For a step that has a mockup:

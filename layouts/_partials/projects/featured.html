@@ -1,4 +1,5 @@
 {{- /* The home page's featured projects: the pages its params.projects references, each entry checked and its page looked up once, for both the all-projects link and the cards. errorf does not stop the template: after an error, only the bad entry is skipped (a list that is not one counts as empty), so that no template execution error buries the error message. */}}
+{{- $lang := site.Language.Lang }}
 {{- $featured := .Params.projects }}
 {{- if and (isset .Params "projects") (not (reflect.IsSlice $featured)) }}{{ errorf "projects: the home page's projects parameter must be a list of pages" }}{{ $featured = slice }}{{ end }}
 {{- /* Only regular pages are projects. The words the error uses for each other kind of page an entry may reference; a kind missing here gets the generic wording, so that it is still rejected. */}}
@@ -6,14 +7,14 @@
 {{- $projects := slice }}
 {{- range $index, $entry := $featured }}
 {{- $entryNumber := add $index 1 }}
-{{- if ne (printf "%T" $entry) "string" }}{{ errorf "projects: entry %d of the home page's projects parameter must be a page reference" $entryNumber }}{{ continue }}{{ end }}
-{{- $trimmedEntry := strings.TrimSpace $entry }}
-{{- if eq $trimmedEntry "" }}{{ errorf "projects: entry %d of the home page's projects parameter must be a non-empty page reference" $entryNumber }}{{ continue }}{{ end }}
-{{- if ne $entry $trimmedEntry }}{{ errorf "projects: the home page's projects parameter has a page reference with whitespace at its start or end, which Hugo does not trim: %q" $entry }}{{ continue }}{{ end }}
+{{- $entryProblem := partial "text-problem.html" $entry }}
+{{- if eq $entryProblem "not-text" }}{{ errorf "projects: entry %d of the home page's projects parameter must be a page reference (language: %s)" $entryNumber $lang }}{{ continue }}{{ end }}
+{{- if eq $entryProblem "empty" }}{{ errorf "projects: entry %d of the home page's projects parameter must be a non-empty page reference (language: %s)" $entryNumber $lang }}{{ continue }}{{ end }}
+{{- if eq $entryProblem "padded" }}{{ errorf "projects: entry %d of the home page's projects parameter has a page reference with whitespace at its start or end, which Hugo does not trim (language: %s): %q" $entryNumber $lang $entry }}{{ continue }}{{ end }}
 {{- $page := $.GetPage $entry }}
-{{- if not $page }}{{ errorf "projects: the home page's projects parameter references a page that cannot be found (language: %s): %q. The page may not be translated into this language, or not published: a draft, a future (scheduled) date or an expired page" $.Language.Lang $entry }}{{ continue }}{{ end }}
-{{- if not $page.IsPage }}{{ errorf "projects: the home page's projects parameter references %s, which is not a project: %q" (index $nonProjectKindWords $page.Kind | default "a page of another type") $entry }}{{ continue }}{{ end }}
-{{- if and (isset $page.Params "build") (not (reflect.IsMap $page.Params.build)) }}{{ errorf "projects: the project %q declares a custom parameter named build, which Hugo reserves for its build options: rename this parameter" $entry }}{{ continue }}{{ end }}
+{{- if not $page }}{{ errorf "projects: the home page's projects parameter references a page that cannot be found (language: %s): %q. The project may not exist, the page may not be translated into this language, or not published: a draft, a future (scheduled) date or an expired page" $lang $entry }}{{ continue }}{{ end }}
+{{- if not $page.IsPage }}{{ errorf "projects: the home page's projects parameter references %s, which is not a project (language: %s): %q" (index $nonProjectKindWords $page.Kind | default "a page of another type") $lang $entry }}{{ continue }}{{ end }}
+{{- if and (isset $page.Params "build") (not (reflect.IsMap $page.Params.build)) }}{{ errorf "projects: the project %q declares a custom parameter named build, which the theme reads as Hugo's build options (the [build] front matter): rename this parameter" $entry }}{{ continue }}{{ end }}
 {{- $projects = $projects | append $page }}
 {{- end }}
 {{- return $projects }}

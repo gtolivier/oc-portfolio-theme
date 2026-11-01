@@ -8,17 +8,43 @@ import {
   SITE_WITH_A_BUTTON_WITHOUT_DESTINATION,
   SITE_WITH_A_BUTTON_WITHOUT_LABEL,
   SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF,
+  SITE_WITH_A_BUTTON_WITH_URL_AND_EMPTY_PAGE_REF,
+  SITE_WITH_A_BUTTON_WITH_URL_AND_FALSE_PAGE_REF,
   SITE_WITH_A_HERO_WITHOUT_AUTHOR,
   SITE_WITH_A_HERO_WITH_LONG_WORDS,
   SITE_WITH_A_HERO_WITHOUT_TITLE,
   SITE_WITH_A_HERO_WITHOUT_CLIENTS,
   SITE_WITH_A_LONG_MENU,
+  SITE_WITH_A_PAGE_REF_AS_AN_EMPTY_LIST,
+  SITE_WITH_A_PAGE_REF_AS_AN_EMPTY_TABLE,
+  SITE_WITH_A_PAGE_REF_AS_FALSE,
+  SITE_WITH_A_PAGE_REF_AS_NUMBER,
+  SITE_WITH_A_PAGE_REF_AS_TABLE,
+  SITE_WITH_A_PAGE_REF_AS_ZERO,
   SITE_WITH_A_PAGE_REF_NOT_FOUND,
   SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE,
   SITE_WITH_A_PAGE_REF_TO_A_LINK_ONLY_PAGE,
+  SITE_WITH_A_PAGE_REF_WITH_A_LEADING_TAB,
+  SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE,
   SITE_WITH_A_SINGLE_LANGUAGE,
+  SITE_WITH_A_WHITESPACE_ONLY_PAGE_REF,
+  SITE_WITH_AN_EMPTY_PAGE_REF,
+  SITE_WITH_AN_ENGLISH_HOME_PAGE_REF_NOT_FOUND,
+  SITE_WITH_AN_ENGLISH_HOME_WITH_BAD_BUTTONS,
   SITE_WITH_OTHER_CLIENTS,
+  SITE_WITH_A_PAGE_REF_AS_TABLE_ON_THE_SECOND_BUTTON,
+  SITE_WITH_AN_EMPTY_PAGE_REF_ON_THE_SECOND_BUTTON,
+  SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE_ON_THE_SECOND_BUTTON,
+  SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE_ON_THE_SECOND_BUTTON,
+  SITE_WITH_A_FIRST_BUTTON_WITH_URL_AND_PAGE_REF,
+  SITE_WITH_A_FIRST_BUTTON_WITHOUT_DESTINATION,
+  SITE_WITH_A_FIRST_BUTTON_WITHOUT_LABEL,
+  SITE_WITH_HERO_BUTTONS_AS_NAMED_TABLES,
+  SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE,
+  type BuildAttempt,
+  type BuiltSite,
   buildSite,
+  languageCodePattern,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
   serveSite,
@@ -1987,6 +2013,17 @@ function heroErrorCount(errors: string): number {
   return (errors.match(/\bhero:/g) ?? []).length;
 }
 
+/* The lines of the build's errors that are hero error messages. */
+function heroMessages(errors: string): string[] {
+  return errors.split('\n').filter((line) => /\bhero:/.test(line));
+}
+
+/* The lines of the build's errors that are hero error messages and contain this text, such as
+   a pageRef as written in the front matter or as quoted by the message. */
+function heroMessagesContaining(errors: string, text: string): string[] {
+  return heroMessages(errors).filter((line) => line.includes(text));
+}
+
 /* A message saying a button has neither of its two destination fields, whatever the wording:
    "neither a url nor a pageRef", "no url and no pageRef", "both fields are missing"… */
 const BOTH_FIELDS_MISSING =
@@ -1995,6 +2032,21 @@ const BOTH_FIELDS_MISSING =
 /* A message saying a button declares both of its two destination fields, whatever the
    wording: "declares both a url and a pageRef", "needs only one", "not both"… */
 const BOTH_FIELDS_DECLARED = /\bboth\b|\b(?:only|just|exactly)\s+one\b|\bone or the other\b/i;
+
+/* A hero message saying, on its own line, that the pageRef must be a page reference, whatever the
+   rest of the wording. */
+const PAGE_REF_MUST_BE_A_PAGE_REFERENCE = /\bhero:.*\bpageRef\b.*\b(?:must|should)\s+be\b.*\bpage\s+reference\b/i;
+
+/* A hero message saying, on its own line, how to write the buttons: as a list of tables,
+   [[params.hero.actions]], whatever the rest of the wording. */
+const BUTTONS_MUST_BE_WRITTEN_AS_A_LIST = /\bhero:.*\[\[params\.hero\.actions\]\]/;
+
+/* A hero message saying, on its own line, that the pageRef is empty or blank. */
+const PAGE_REF_IS_EMPTY = /\bhero:.*\bpageRef\b.*\b(?:empty|blank)\b/i;
+
+/* A Go template execution error, which would follow a hero message and bury it in technical
+   jargon. */
+const TEMPLATE_EXECUTION_ERROR = /execute of template failed|error calling/i;
 
 /* The lines of the build's errors that match this message pattern and name both of a
    button's destination fields, url and pageRef, on that same line. */
@@ -2005,29 +2057,100 @@ function destinationFieldMessages(errors: string, message: RegExp): string[] {
 test.describe('hero content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
-  test('a home page where a hero button declares a pageRef that matches no page makes the site build fail with a single hero error message, which cites this pageRef and gives the possible causes: a missing translation, a draft, a future date or an expired page', () => {
-    /* The first button of tests/fixtures/page-ref-not-found/content/_index.md declares
-       pageRef = '/page-fictive-introuvable', which the site does not contain. Rather than a
-       button without a destination, the person building the site must get a failure that names
-       this pageRef. A message that only says the pageRef matches no page would send them looking
-       for a missing file, while the page may be right there, in another language or left out of
-       the build: as the projects error does for a page that cannot be found, the message must
-       give as possible causes a missing translation (translation, translated…), a draft, a date
-       in the future (future, scheduled) and an expiry date passed (expired), whatever the rest of
-       the wording. Any other hero message, such as blaming the button for having no destination
-       at all, would mislead them: this one must be the only one. */
-    const build = tryToBuildSite(SITE_WITH_A_PAGE_REF_NOT_FOUND);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(heroErrorCount(build.errors), 'number of hero error messages').toBe(1);
-    expect(build.errors, 'the error message should name the pageRef').toContain('/page-fictive-introuvable');
-    expect(build.errors, 'the error message should name a missing translation as a possible cause').toMatch(
-      /translat/i,
-    );
-    expect(build.errors, 'the error message should name a draft as a possible cause').toMatch(/\bdraft\b/i);
-    expect(build.errors, 'the error message should name a future date as a possible cause').toMatch(
-      /future|scheduled/i,
-    );
-    expect(build.errors, 'the error message should name an expired page as a possible cause').toMatch(/expir/i);
+  test.describe('a site whose hero button declares a pageRef that matches no page', () => {
+    /* The tests below check the same build: run one after the other in one worker, rather than in
+       parallel, they share a single build of the site. */
+    test.describe.configure({ mode: 'default' });
+    let pageRefNotFoundBuild: BuildAttempt;
+    test.beforeAll(() => {
+      pageRefNotFoundBuild = tryToBuildSite(SITE_WITH_A_PAGE_REF_NOT_FOUND);
+    });
+
+    test('a home page where a hero button declares a pageRef that matches no page makes the site build fail with a single hero error message, which cites this pageRef and gives the possible causes: a missing translation, a draft, a future date or an expired page', () => {
+      /* The first button of tests/fixtures/page-ref-not-found/content/_index.md declares
+         pageRef = '/page-fictive-introuvable', which the site does not contain. Rather than a
+         button without a destination, the person building the site must get a failure that names
+         this pageRef. A message that only says the pageRef matches no page would send them looking
+         for a missing file, while the page may be right there, in another language or left out of
+         the build: as the projects error does for a page that cannot be found, the message must
+         give as possible causes a missing translation (translation, translated…), a draft, a date
+         in the future (future, scheduled) and an expiry date passed (expired), whatever the rest of
+         the wording. Any other hero message, such as blaming the button for having no destination
+         at all, would mislead them: this one must be the only one. */
+      const build = pageRefNotFoundBuild;
+      expect(build.succeeded, 'the site build should fail').toBe(false);
+      expect(heroErrorCount(build.errors), 'number of hero error messages').toBe(1);
+      expect(build.errors, 'the error message should name the pageRef').toContain('/page-fictive-introuvable');
+      expect(build.errors, 'the error message should name a missing translation as a possible cause').toMatch(
+        /translat/i,
+      );
+      expect(build.errors, 'the error message should name a draft as a possible cause').toMatch(/\bdraft\b/i);
+      expect(build.errors, 'the error message should name a future date as a possible cause').toMatch(
+        /future|scheduled/i,
+      );
+      expect(build.errors, 'the error message should name an expired page as a possible cause').toMatch(/expir/i);
+    });
+
+    test("a home page where a hero button's pageRef matches no page makes the site build fail with an error message that names the home page's language, for a French and for an English home page", () => {
+      /* The first button of tests/fixtures/page-ref-not-found/content/_index.md, a French home
+         page, declares pageRef = '/page-fictive-introuvable', and that of
+         tests/fixtures/english-home-page-ref-not-found/content/_index.en.md, an English home
+         page, pageRef = '/imaginary-missing-page': neither page exists. The page may exist in
+         the other language only, so that the person building the site must know in which
+         language the pageRef was looked for: as the projects error does, the hero message that
+         names this pageRef must name, on that same line, the home page's language by its code,
+         as written in the site's configuration and in the content file names (fr, en), whatever
+         the rest of the wording. The code is looked for as a word that no other word follows, so
+         that the letters "en" or "fr" met as a word inside the message's prose do not pass for
+         it. Both languages, so that a message naming a language written in the template does
+         not pass. */
+      const cases: { name: string; attemptBuild: () => BuildAttempt; pageRef: string; language: string }[] = [
+        {
+          name: 'a French home page',
+          attemptBuild: () => pageRefNotFoundBuild,
+          pageRef: '/page-fictive-introuvable',
+          language: 'fr',
+        },
+        {
+          name: 'an English home page',
+          attemptBuild: () => tryToBuildSite(SITE_WITH_AN_ENGLISH_HOME_PAGE_REF_NOT_FOUND),
+          pageRef: '/imaginary-missing-page',
+          language: 'en',
+        },
+      ];
+      for (const { name, attemptBuild, pageRef, language } of cases) {
+        const build = attemptBuild();
+        expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+        const messages = heroMessagesContaining(build.errors, pageRef);
+        expect(messages, `with ${name}, hero error messages that name the pageRef, in:\n${build.errors}`).not.toEqual(
+          [],
+        );
+        expect(
+          messages.filter((line) => new RegExp(languageCodePattern(language), 'u').test(line)),
+          `with ${name}, hero error messages that name the pageRef and the home page's language, ${language}`,
+        ).not.toEqual([]);
+      }
+    });
+
+    test("a home page where a hero button's pageRef matches no page makes the site build fail with an error message that gives a page that does not exist, or a typo in the reference, as a possible cause", () => {
+      /* The first button of tests/fixtures/page-ref-not-found/content/_index.md declares
+         pageRef = '/page-fictive-introuvable', which the site does not contain. The message
+         already names causes where the page exists but is left out (a missing translation, a
+         draft, a future date, an expired page); the most common cause, though, is a page that
+         does not exist at all or a reference typed wrong. A message that leaves it out would
+         send the person building the site looking at the page's front matter rather than at the
+         reference: the hero message that names this pageRef must, on that same line, give as a
+         possible cause a page that does not exist (does not exist, nonexistent) or a typo
+         (typo, misspelled), whatever the rest of the wording. */
+      const build = pageRefNotFoundBuild;
+      expect(build.succeeded, 'the site build should fail').toBe(false);
+      const messages = heroMessagesContaining(build.errors, '/page-fictive-introuvable');
+      expect(messages, `hero error messages that name the pageRef, in:\n${build.errors}`).not.toEqual([]);
+      expect(
+        messages.filter((line) => /\b(does not|doesn't) exist|\bnon-?existent\b|\btypo|\bmisspel/i.test(line)),
+        'hero error messages that name the pageRef and give a page that does not exist or a typo as a possible cause',
+      ).not.toEqual([]);
+    });
   });
 
   test('a home page where a hero button declares a pageRef to a page with [build] render = "never" makes the site build fail, with an error message that cites this pageRef and says the page is not published', () => {
@@ -2097,6 +2220,333 @@ test.describe('hero content errors: build failure', () => {
       `error messages that name the url and pageRef fields and say both are declared, in:\n${build.errors}`,
     ).not.toEqual([]);
     expect(build.errors, 'the error message should not say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
+  });
+
+  test('a home page where a hero button declares a url and a pageRef that Hugo reads as false (an empty text, and false) makes the site build fail with the hero error message that cites both fields and, on that same line, says both are declared', () => {
+    /* The second button of tests/fixtures/address-and-unfilled-target/content/_index.md has
+       a label and declares url = '#contact' and pageRef = '', an empty text, and that of
+       tests/fixtures/address-and-false-target/content/_index.md url = '#contact' and
+       pageRef = false. Hugo reads both pageRef values as false, but the button does declare
+       a pageRef next to its url: the person building the site must get the message that
+       names the url and pageRef fields of the front matter and, on that same line, says
+       that both are declared, whatever wording is chosen, so that they remove one of the
+       two rather than only fill in the pageRef. An empty text and false, so that a check
+       made for a single value Hugo reads as false does not pass. */
+    const cases: { name: string; site: BuiltSite }[] = [
+      { name: 'an empty text as pageRef', site: SITE_WITH_A_BUTTON_WITH_URL_AND_EMPTY_PAGE_REF },
+      { name: 'false as pageRef', site: SITE_WITH_A_BUTTON_WITH_URL_AND_FALSE_PAGE_REF },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(
+        destinationFieldMessages(build.errors, BOTH_FIELDS_DECLARED),
+        `with ${name}, error messages that name the url and pageRef fields and say both are declared, in:\n${build.errors}`,
+      ).not.toEqual([]);
+    }
+  });
+
+  test('a home page where a hero button declares a pageRef that is not a text but a table or a number makes the site build fail with a single hero error message that says the pageRef must be a page reference, without a template execution error after it', () => {
+    /* The first button of tests/fixtures/table-as-button-target/content/_index.md declares
+       pageRef = { path = '/projets' }, a table, and that of
+       tests/fixtures/number-as-button-target/content/_index.md pageRef = 42, a number, rather
+       than a page reference, a text. Rather than a Go template execution error about a function
+       called with a table, or a message saying that the page "42" cannot be found, the person
+       building the site must get a single hero error message that names the pageRef field and
+       says, on that same line, that it must be a page reference, whatever the rest of the
+       wording, and no Go template execution error that would follow it and bury it in technical
+       jargon. Two fixtures, so that a check, or a message, made for a single type does not
+       pass. */
+    const cases: { name: string; site: BuiltSite }[] = [
+      { name: 'a table as pageRef', site: SITE_WITH_A_PAGE_REF_AS_TABLE },
+      { name: 'a number as pageRef', site: SITE_WITH_A_PAGE_REF_AS_NUMBER },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(heroErrorCount(build.errors), `with ${name}, number of hero error messages`).toBe(1);
+      expect(build.errors, `with ${name}, the error message should say the pageRef must be a page reference`).toMatch(
+        PAGE_REF_MUST_BE_A_PAGE_REFERENCE,
+      );
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
+        TEMPLATE_EXECUTION_ERROR,
+      );
+    }
+  });
+
+  test('a home page where a hero button declares a pageRef that is not a text and that Hugo reads as false (an empty table, an empty list, the number 0 or false) makes the site build fail with a single hero error message that says the pageRef must be a page reference, without a template execution error after it', () => {
+    /* The first button of tests/fixtures/empty-table-as-button-target/content/_index.md
+       declares pageRef = {}, an empty table, that of
+       tests/fixtures/empty-list-as-button-target/content/_index.md pageRef = [], an empty list,
+       that of tests/fixtures/zero-as-button-target/content/_index.md pageRef = 0, and that of
+       tests/fixtures/false-as-button-target/content/_index.md pageRef = false. None is a page
+       reference, a text, and Hugo reads all four as false: rather than a Go template execution
+       error, or a message saying the button has neither a url nor a pageRef when it does
+       declare one, the person building the site must get a single hero error message that
+       names the pageRef field and says, on that same line, that it must be a page reference,
+       whatever the rest of the wording, and no Go template execution error that would follow it
+       and bury it in technical jargon. Four fixtures, so that a check made for a single empty
+       or false value does not pass. */
+    const cases: { name: string; site: BuiltSite }[] = [
+      { name: 'an empty table as pageRef', site: SITE_WITH_A_PAGE_REF_AS_AN_EMPTY_TABLE },
+      { name: 'an empty list as pageRef', site: SITE_WITH_A_PAGE_REF_AS_AN_EMPTY_LIST },
+      { name: 'the number 0 as pageRef', site: SITE_WITH_A_PAGE_REF_AS_ZERO },
+      { name: 'false as pageRef', site: SITE_WITH_A_PAGE_REF_AS_FALSE },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(heroErrorCount(build.errors), `with ${name}, number of hero error messages`).toBe(1);
+      expect(build.errors, `with ${name}, the error message should say the pageRef must be a page reference`).toMatch(
+        PAGE_REF_MUST_BE_A_PAGE_REFERENCE,
+      );
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
+        TEMPLATE_EXECUTION_ERROR,
+      );
+    }
+  });
+
+  test('a home page whose hero buttons are not a list (named tables such as [params.hero.actions.a] and [params.hero.actions.b], and a single button written [params.hero.actions] with single brackets) makes the site build fail with a single hero error message that says to write the buttons as [[params.hero.actions]], without a template execution error after it', () => {
+    /* tests/fixtures/named-button-tables/content/_index.md writes its two hero buttons as named
+       tables, [params.hero.actions.a] and [params.hero.actions.b], and
+       tests/fixtures/lone-button-table/content/_index.md its only button as
+       [params.hero.actions], with single brackets: in both, Hugo reads the buttons as a table
+       rather than a list. Rather than a Go template execution error from numbering the buttons
+       as if they were a list, the person building the site must get a single hero error message
+       that says, on its own line, to write the buttons as [[params.hero.actions]], whatever the
+       rest of the wording, and no Go template execution error that would follow it and bury it in
+       technical jargon. Two fixtures, so that a check made for a single shape (a table of tables,
+       or a table of texts) does not pass. */
+    const cases: { name: string; site: BuiltSite }[] = [
+      { name: 'buttons as named tables', site: SITE_WITH_HERO_BUTTONS_AS_NAMED_TABLES },
+      { name: 'a single button with single brackets', site: SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(heroErrorCount(build.errors), `with ${name}, number of hero error messages, in:\n${build.errors}`).toBe(1);
+      expect(
+        build.errors,
+        `with ${name}, the error message should say to write the buttons as [[params.hero.actions]]`,
+      ).toMatch(BUTTONS_MUST_BE_WRITTEN_AS_A_LIST);
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
+        TEMPLATE_EXECUTION_ERROR,
+      );
+    }
+  });
+
+  test('a home page where a hero button declares a pageRef with whitespace at its start or end makes the site build fail with a single hero error message that quotes this pageRef and says it has whitespace, which Hugo does not trim', () => {
+    /* The first button of tests/fixtures/button-target-with-trailing-space/content/_index.md
+       declares pageRef = '/projets ', with a trailing space, and that of
+       tests/fixtures/button-target-with-leading-tab/content/_index.md pageRef = "\t/projets",
+       with a leading tab: '/projets' exists, but Hugo does not trim the whitespace, so that it
+       finds no page. A message that only says the pageRef matches no page would show the person
+       building the site a reference that looks right, the whitespace being invisible in it: the
+       message must quote the pageRef as Go's %q does, which shows the whitespace ("/projets ",
+       "\t/projets"), and say, on that same line, that it has whitespace, whatever the rest of
+       the wording. Any other hero message, such as one saying the page cannot be found, would
+       send them looking elsewhere: this one must be the only one. A trailing space and a leading
+       tab, so that checking only one end, or only the space character, does not pass. */
+    const cases: { name: string; site: BuiltSite; quoted: string }[] = [
+      { name: 'a trailing space', site: SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE, quoted: '"/projets "' },
+      { name: 'a leading tab', site: SITE_WITH_A_PAGE_REF_WITH_A_LEADING_TAB, quoted: '"\\t/projets"' },
+    ];
+    for (const { name, site, quoted } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(heroErrorCount(build.errors), `with ${name}, number of hero error messages`).toBe(1);
+      const messages = heroMessagesContaining(build.errors, quoted).filter((line) => /\bwhitespace\b/i.test(line));
+      expect(
+        messages,
+        `with ${name}, hero error messages that quote the pageRef as ${quoted} and say it has whitespace, in:\n${build.errors}`,
+      ).not.toEqual([]);
+    }
+  });
+
+  test('a home page where a hero button declares a pageRef made only of whitespace makes the site build fail with a single hero error message that says the pageRef is empty', () => {
+    /* The first button of tests/fixtures/button-target-of-spaces-only/content/_index.md
+       declares pageRef = " \t ": a space, a tab and a space, and no page reference at all. A
+       message saying this pageRef has whitespace at its start or end, to be trimmed, would send
+       the person building the site looking for a reference inside it that is not there: the
+       message must name the pageRef field and say, on that same line, that it is empty (or
+       blank), whatever the rest of the wording. Any other hero message, such as one saying the
+       page cannot be found or that the button has no destination, would mislead them: this one
+       must be the only one. A tab between two spaces, so that checking only the space
+       character does not pass. */
+    const build = tryToBuildSite(SITE_WITH_A_WHITESPACE_ONLY_PAGE_REF);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), 'number of hero error messages').toBe(1);
+    expect(build.errors, 'the error message should say the pageRef is empty').toMatch(PAGE_REF_IS_EMPTY);
+  });
+
+  test("a home page where a hero button's pageRef is an empty text makes the site build fail with a single hero error message that says the pageRef is empty", () => {
+    /* The first button of tests/fixtures/button-target-left-unfilled/content/_index.md
+       declares pageRef = '', an empty text, and no url. The button does declare a pageRef: a
+       message saying it has neither a url nor a pageRef would send the person building the
+       site looking for a field that is right there. The message must name the pageRef field
+       and say, on that same line, that it is empty (or blank), whatever the rest of the
+       wording. Any other hero message, such as one saying the button has no destination,
+       would mislead them: this one must be the only one. */
+    const build = tryToBuildSite(SITE_WITH_AN_EMPTY_PAGE_REF);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), 'number of hero error messages').toBe(1);
+    expect(build.errors, 'the error message should say the pageRef is empty').toMatch(PAGE_REF_IS_EMPTY);
+  });
+
+  test("a home page where a hero button's pageRef is not a text, is empty, is padded, references an unpublished page, or where a button has both a url and a pageRef, neither, or no label, makes the site build fail with an error message that names the home page's language, for French home pages and for an English one", () => {
+    /* A bilingual site has a home page per language, each with its own hero buttons: an error
+       message that does not say which language's home page holds the bad button leaves the person
+       building the site to look for it in every content/_index.<language>.md file. The message for
+       a pageRef that matches no page already names the home page's language by its code (fr, en);
+       the messages for a pageRef that is not a text, an empty one, one with whitespace at its
+       start or end, one that references a page that is not published, and for a button with both
+       a url and a pageRef, with neither or without a label must name it too, whatever the rest of
+       the wording. Each French home page comes from the fixture of the test of its message above
+       and holds a single bad button; the English one, from
+       tests/fixtures/english-home-bad-buttons/content/_index.en.md, holds a bad button of each
+       kind, seven in all. Every hero error message must be there, one per bad button, and each
+       must name, on its own line, the home page's language, looked for, as in the test on a
+       pageRef that matches no page, as a word that no other word follows. A French home page and
+       an English one, so that a language written in the template does not pass. */
+    const cases: { name: string; site: BuiltSite; language: string; badButtons: number }[] = [
+      {
+        name: 'a French home page with a table as pageRef',
+        site: SITE_WITH_A_PAGE_REF_AS_TABLE,
+        language: 'fr',
+        badButtons: 1,
+      },
+      {
+        name: 'a French home page with an empty pageRef',
+        site: SITE_WITH_AN_EMPTY_PAGE_REF,
+        language: 'fr',
+        badButtons: 1,
+      },
+      {
+        name: 'a French home page with a pageRef with a trailing space',
+        site: SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE,
+        language: 'fr',
+        badButtons: 1,
+      },
+      {
+        name: 'a French home page with a pageRef to an unpublished page',
+        site: SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE,
+        language: 'fr',
+        badButtons: 1,
+      },
+      {
+        name: 'a French home page with a button with both a url and a pageRef',
+        site: SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF,
+        language: 'fr',
+        badButtons: 1,
+      },
+      {
+        name: 'a French home page with a button with neither url nor pageRef',
+        site: SITE_WITH_A_BUTTON_WITHOUT_DESTINATION,
+        language: 'fr',
+        badButtons: 1,
+      },
+      {
+        name: 'a French home page with a button without a label',
+        site: SITE_WITH_A_BUTTON_WITHOUT_LABEL,
+        language: 'fr',
+        badButtons: 1,
+      },
+      {
+        name: 'an English home page with a bad button of each kind',
+        site: SITE_WITH_AN_ENGLISH_HOME_WITH_BAD_BUTTONS,
+        language: 'en',
+        badButtons: 7,
+      },
+    ];
+    for (const { name, site, language, badButtons } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const messages = heroMessages(build.errors);
+      expect(messages, `with ${name}, hero error messages, one per bad button, in:\n${build.errors}`).toHaveLength(
+        badButtons,
+      );
+      expect(
+        messages.filter((line) => !new RegExp(languageCodePattern(language), 'u').test(line)),
+        `with ${name}, hero error messages that do not name the home page's language, ${language}`,
+      ).toEqual([]);
+    }
+  });
+
+  test('a home page where a hero button is badly filled — its pageRef is not a text, is empty, is padded, references an unpublished page, or the button has both a url and a pageRef, neither, or no label — makes the site build fail with an error message that gives the position of that button, for the first and the second button', () => {
+    /* A hero holds several buttons, often with the same fields: a message that does not say which
+       button is badly filled leaves the person building the site to check each of them. The hero
+       message for each kind of bad button must give its position among the hero's buttons,
+       counted from 1 ("button 1", "button 2"), as the projects messages give an entry's position,
+       whatever the rest of the wording. Each kind is checked with the bad button first, the
+       second well filled in, and with the bad button second, the first well filled in: the
+       fixtures of the tests of these messages above, and those of the sites declared last in
+       tests/helpers/built-site.ts, which put the bad button at the other position. Two positions
+       for each kind, so that a position written in the template does not pass. Each home page
+       holds a single bad button, so that the position is looked for on the hero message's line. */
+    const cases: { name: string; site: BuiltSite; position: number }[] = [
+      { name: 'a table as the first pageRef', site: SITE_WITH_A_PAGE_REF_AS_TABLE, position: 1 },
+      {
+        name: 'a table as the second pageRef',
+        site: SITE_WITH_A_PAGE_REF_AS_TABLE_ON_THE_SECOND_BUTTON,
+        position: 2,
+      },
+      { name: 'an empty first pageRef', site: SITE_WITH_AN_EMPTY_PAGE_REF, position: 1 },
+      { name: 'an empty second pageRef', site: SITE_WITH_AN_EMPTY_PAGE_REF_ON_THE_SECOND_BUTTON, position: 2 },
+      {
+        name: 'a first pageRef with a trailing space',
+        site: SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE,
+        position: 1,
+      },
+      {
+        name: 'a second pageRef with a trailing space',
+        site: SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE_ON_THE_SECOND_BUTTON,
+        position: 2,
+      },
+      {
+        name: 'a first pageRef to an unpublished page',
+        site: SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE,
+        position: 1,
+      },
+      {
+        name: 'a second pageRef to an unpublished page',
+        site: SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE_ON_THE_SECOND_BUTTON,
+        position: 2,
+      },
+      {
+        name: 'a first button with both a url and a pageRef',
+        site: SITE_WITH_A_FIRST_BUTTON_WITH_URL_AND_PAGE_REF,
+        position: 1,
+      },
+      {
+        name: 'a second button with both a url and a pageRef',
+        site: SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF,
+        position: 2,
+      },
+      {
+        name: 'a first button with neither url nor pageRef',
+        site: SITE_WITH_A_FIRST_BUTTON_WITHOUT_DESTINATION,
+        position: 1,
+      },
+      {
+        name: 'a second button with neither url nor pageRef',
+        site: SITE_WITH_A_BUTTON_WITHOUT_DESTINATION,
+        position: 2,
+      },
+      { name: 'a first button without a label', site: SITE_WITH_A_FIRST_BUTTON_WITHOUT_LABEL, position: 1 },
+      { name: 'a second button without a label', site: SITE_WITH_A_BUTTON_WITHOUT_LABEL, position: 2 },
+    ];
+    for (const { name, site, position } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const messages = heroMessages(build.errors);
+      expect(messages, `with ${name}, hero error messages, in:\n${build.errors}`).not.toEqual([]);
+      expect
+        .soft(
+          messages.filter((line) => new RegExp(`\\bbutton\\s+${position}\\b`).test(line)),
+          `with ${name}, the error message should give the position of that button, button ${position}, in:\n${messages.join('\n')}`,
+        )
+        .not.toEqual([]);
+    }
   });
 
   test('a site whose home page declares a hero without params.author being set makes the site build fail, with an error message that cites the author field', () => {
