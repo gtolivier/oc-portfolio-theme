@@ -105,7 +105,10 @@
   {{- if .Params.background }}
   <section class="background" aria-labelledby="background-heading">
     <h2 id="background-heading">{{ i18n "background" }}</h2>
-    {{- with .Params.background.intro }}
+    {{- $intro := .Params.background.intro }}
+    {{- /* errorf does not stop the template: after an error, the intro is empty, so that no template execution error buries the message. */}}
+    {{- if and $intro (not (reflect.IsSlice $intro)) }}{{ errorf "background: the intro must be a list" }}{{ $intro = slice }}{{ end }}
+    {{- with $intro }}
     <p class="background-intro">
       {{- partial "lines.html" . -}}
     </p>
