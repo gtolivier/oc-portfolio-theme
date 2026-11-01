@@ -11,13 +11,13 @@
      text, an empty table or list, 0, false): its own error says what is
      wrong with it, not the missing-field one. */}}
 {{- $hasPageRef := isset $button "pageRef" }}
-{{- if and $hasPageRef (ne (printf "%T" $pageRef) "string") }}
-  {{- errorf "hero: button %d: the pageRef field must be a page reference, a text (language: %s)" $position site.Language.Lang }}
-{{- else if $hasPageRef }}
-  {{- $trimmedPageRef := strings.TrimSpace $pageRef }}
-  {{- if eq $trimmedPageRef "" }}
+{{- if $hasPageRef }}
+  {{- $pageRefProblem := partial "page-ref-problem.html" $pageRef }}
+  {{- if eq $pageRefProblem "not-text" }}
+    {{- errorf "hero: button %d: the pageRef field must be a page reference, a text (language: %s)" $position site.Language.Lang }}
+  {{- else if eq $pageRefProblem "empty" }}
     {{- errorf "hero: button %d: the pageRef field is empty: it must be a page reference (language: %s)" $position site.Language.Lang }}
-  {{- else if ne $pageRef $trimmedPageRef }}
+  {{- else if eq $pageRefProblem "padded" }}
     {{- errorf "hero: button %d: the pageRef %q has whitespace at its start or end, which Hugo does not trim (language: %s)" $position $pageRef site.Language.Lang }}
   {{- else }}
     {{- with site.GetPage $pageRef }}
