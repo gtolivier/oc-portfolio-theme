@@ -15,7 +15,7 @@
       </h1>
       {{- with .tagline }}
       <p class="hero-tagline">
-        {{- range $index, $line := . }}{{ if $index }}<br>{{ end }}{{ $line }}{{ end -}}
+        {{- partial "lines.html" . -}}
       </p>
       {{- end }}
       {{- with .stack }}
@@ -107,7 +107,7 @@
     <h2 id="background-heading">{{ i18n "background" }}</h2>
     {{- with .Params.background.intro }}
     <p class="background-intro">
-      {{- range $index, $line := . }}{{ if $index }}<br>{{ end }}{{ $line }}{{ end -}}
+      {{- partial "lines.html" . -}}
     </p>
     {{- end }}
     {{- with .Params.background.stats }}
