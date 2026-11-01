@@ -150,6 +150,47 @@ test('on the French home page, the section "Parcours" lists the education entrie
   await expect(list.getByRole('listitem')).toHaveText(EDUCATION_ENTRIES);
 });
 
+/* The skill groups the example site's French home page declares (exampleSite/content/_index.md,
+   [[params.background.skills]], each with a title and an items list of strings), in the order its
+   front matter lists them. The groups have different numbers of items, so that items moved from
+   one group to the other cannot pass. */
+const SKILL_GROUPS = [
+  { title: 'Mécanique', items: ['Restauration de mouvements', 'Taillage d’engrenages'] },
+  { title: 'Finitions', items: ['Anglage', 'Perlage', 'Dorure à la feuille'] },
+];
+
+test('on the French home page, the section "Parcours" shows one block per skill group the home page declares, in order, each headed by its title and listing its items in order', async ({
+  page,
+}) => {
+  await page.goto('/fr/');
+  const section = backgroundSection(page);
+  await expect(section).toBeVisible();
+  /* Each group: a level-3 heading of the section named by its title, and a list of the section,
+     found by its first item, that has one item per entry, in the order declared, and nothing else. */
+  const handles = [];
+  for (const { title, items } of SKILL_GROUPS) {
+    const heading = section.getByRole('heading', { level: 3, name: title, exact: true });
+    await expect(heading, `the heading of the group "${title}"`).toHaveCount(1);
+    await expect(heading).toBeVisible();
+    const list = section.getByRole('list').filter({ has: page.getByRole('listitem').filter({ hasText: items[0] }) });
+    await expect(list, `the list of the group "${title}"`).toHaveCount(1);
+    await expect(list).toBeVisible();
+    await expect(list.getByRole('listitem')).toHaveText(items);
+    handles.push((await heading.elementHandle())!, (await list.elementHandle())!);
+  }
+  /* In document order: each group's heading, then its list, then the next group's heading, so that
+     each list sits under its own heading and the groups come in the order declared. */
+  const inOrder = await page.evaluate(
+    (elements) =>
+      elements.every(
+        (element, i) =>
+          i === 0 || Boolean(elements[i - 1].compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING),
+      ),
+    handles,
+  );
+  expect(inOrder, 'headings and lists alternate, each group in the order declared').toBe(true);
+});
+
 test.describe('home page of another site, without background', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
