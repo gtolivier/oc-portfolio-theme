@@ -22,8 +22,11 @@
       <p class="hero-stack">{{ delimit . $stackSeparator }}</p>
       {{- end }}
       {{- with .actions }}
+      {{- $actions := . }}
+      {{- /* errorf does not stop the template: after an error, the list of buttons is empty, so that no template execution error buries the message. */}}
+      {{- if not (reflect.IsSlice $actions) }}{{ errorf "hero: the buttons must be written as a list of tables, [[params.hero.actions]], with double brackets" }}{{ $actions = slice }}{{ end }}
       <p class="hero-actions">
-        {{- range $index, $action := . }}
+        {{- range $index, $action := $actions }}
         {{ partial "hero/action.html" (dict "action" $action "position" (add $index 1)) }}
         {{- end }}
       </p>
