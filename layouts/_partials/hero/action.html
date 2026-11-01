@@ -11,13 +11,17 @@
 {{- end }}
 {{- with $pageRef }}
   {{- $ref := . }}
-  {{- with site.GetPage $ref }}
-    {{- $href = .RelPermalink }}
-    {{- if not (partial "is-published.html" .) }}
-      {{- errorf "hero: the pageRef %q points to a page that is not published" $ref }}
-    {{- end }}
+  {{- if ne $ref (strings.TrimSpace $ref) }}
+    {{- errorf "hero: the pageRef %q has whitespace at its start or end, which Hugo does not trim" $ref }}
   {{- else }}
-    {{- errorf "hero: the pageRef %q matches no page: check for a missing translation, a draft, a future (scheduled) date or an expired page" $ref }}
+    {{- with site.GetPage $ref }}
+      {{- $href = .RelPermalink }}
+      {{- if not (partial "is-published.html" .) }}
+        {{- errorf "hero: the pageRef %q points to a page that is not published" $ref }}
+      {{- end }}
+    {{- else }}
+      {{- errorf "hero: the pageRef %q matches no page: check for a missing translation, a draft, a future (scheduled) date or an expired page" $ref }}
+    {{- end }}
   {{- end }}
 {{- end }}
 {{- if and .url .pageRef }}{{ errorf "hero: a button declares both a url field and a pageRef field; it needs only one" }}{{ end }}
