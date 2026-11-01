@@ -8,6 +8,7 @@ import {
   serveSite,
 } from './helpers/built-site';
 import { displayedText } from './helpers/text-on-screen';
+import { type Rgb, colorComponents, contrastRatio } from './helpers/colors';
 
 /* The background section of a home page, in its main content: a region named by its title, the
    French one unless another is given. */
@@ -219,6 +220,119 @@ test('on the French home page, the section "Parcours" shows one block per skill 
   const section = backgroundSection(page);
   await expect(section).toBeVisible();
   await expectSkillGroups(section, SKILL_GROUPS);
+});
+
+/* A color, possibly translucent, painted over an opaque one. */
+function paintOver(color: string, below: Rgb): Rgb {
+  const { red, green, blue, alpha } = colorComponents(color);
+  const mix = (top: number, bottom: number) => alpha * top + (1 - alpha) * bottom;
+  return { red: mix(red, below.red), green: mix(green, below.green), blue: mix(blue, below.blue) };
+}
+
+/* Opaque color behind an element, from the background colors of the element and its ancestors,
+   nearest first: each painted over the next, over the browser's white canvas. */
+function effectiveBackground(backgrounds: string[]): Rgb {
+  return [...backgrounds]
+    .reverse()
+    .reduce<Rgb>((below, color) => paintOver(color, below), { red: 255, green: 255, blue: 255 });
+}
+
+/* Every text an element displays — its text nodes and the generated content of the ::before and
+   ::after pseudo-elements of it and its descendants — hidden elements excluded, each with its
+   text color, the background colors behind it, nearest first, its font size in px and its font
+   weight. As in projects.spec.ts, with the size and weight that tell large text. */
+async function displayedTexts(
+  root: Locator,
+): Promise<{ text: string; color: string; backgrounds: string[]; fontSize: number; fontWeight: number }[]> {
+  return root.evaluate((rootElement) => {
+    const chainOf = (el: Element) => {
+      const chain: string[] = [];
+      for (let current: Element | null = el; current; current = current.parentElement)
+        chain.push(getComputedStyle(current).backgroundColor);
+      return chain;
+    };
+    const texts: { text: string; color: string; backgrounds: string[]; fontSize: number; fontWeight: number }[] = [];
+    const walk = (el: Element) => {
+      const style = getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden') return;
+      for (const pseudo of ['::before', '::after'] as const) {
+        const pseudoStyle = getComputedStyle(el, pseudo);
+        const strings = pseudoStyle.content.split(/\s+\/\s+/)[0].match(/"(?:[^"\\]|\\.)*"/g) ?? [];
+        const text = strings
+          .map((string) => JSON.parse(string) as string)
+          .join('')
+          .trim();
+        if (text)
+          texts.push({
+            text: `${pseudo} ${text}`,
+            color: pseudoStyle.color,
+            backgrounds: [pseudoStyle.backgroundColor, ...chainOf(el)],
+            fontSize: parseFloat(pseudoStyle.fontSize),
+            fontWeight: parseFloat(pseudoStyle.fontWeight),
+          });
+      }
+      for (const child of Array.from(el.childNodes)) {
+        if (child.nodeType === Node.TEXT_NODE) {
+          const text = (child.textContent ?? '').replace(/\s+/g, ' ').trim();
+          if (text)
+            texts.push({
+              text,
+              color: style.color,
+              backgrounds: chainOf(el),
+              fontSize: parseFloat(style.fontSize),
+              fontWeight: parseFloat(style.fontWeight),
+            });
+        } else if (child.nodeType === Node.ELEMENT_NODE) walk(child as Element);
+      }
+    };
+    walk(rootElement);
+    return texts;
+  });
+}
+
+/* Large text, as WCAG defines it: at least 18pt (24px), or at least 14pt (about 18.67px) bold. */
+function isLargeText(fontSize: number, fontWeight: number): boolean {
+  return fontSize >= 24 || (fontSize >= (14 * 4) / 3 && fontWeight >= 700);
+}
+
+test('on the French home page, every text of the section "Parcours" — its heading and number, the key figures’ values and labels, the intro, the education entries, the skill group headings and their items — contrasts at least 4.5:1 with what is behind it, or 3:1 for large text', async ({
+  page,
+}) => {
+  await page.goto('/fr/');
+  const section = backgroundSection(page);
+  await expect(section).toBeVisible();
+  const texts = await displayedTexts(section);
+  /* Each kind of text of the section is measured: the heading's number and title, each key
+     figure's value and label, each intro line, each education entry, each group's title and
+     each of its items. */
+  const expected = [
+    '02 //',
+    'Parcours',
+    ...KEY_FIGURES.flatMap(({ value, label }) => [value, label]),
+    ...INTRO_LINES,
+    ...EDUCATION_ENTRIES,
+    ...SKILL_GROUPS.flatMap(({ title, items }) => [title, ...items]),
+  ];
+  for (const piece of expected) {
+    expect
+      .soft(
+        texts.some(({ text }) => text.includes(piece)),
+        `"${piece}" is among the texts measured`,
+      )
+      .toBe(true);
+  }
+  /* WCAG AA: 4.5:1 for normal text, 3:1 for large text. */
+  for (const { text, color, backgrounds, fontSize, fontWeight } of texts) {
+    const background = effectiveBackground(backgrounds);
+    const ratio = contrastRatio(paintOver(color, background), background);
+    const large = isLargeText(fontSize, fontWeight);
+    expect
+      .soft(
+        ratio,
+        `contrast of "${text}" (${color}, ${fontSize}px, weight ${fontWeight}, ${large ? 'large' : 'normal'} text) with what is behind it`,
+      )
+      .toBeGreaterThanOrEqual(large ? 3 : 4.5);
+  }
 });
 
 /* What the example site's English home page declares for its background
