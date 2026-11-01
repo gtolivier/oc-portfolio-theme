@@ -1710,20 +1710,12 @@ const BOTH_FIELDS_MISSING =
    wording: "declares both a url and a pageRef", "needs only one", "not both"… */
 const BOTH_FIELDS_DECLARED = /\bboth\b|\b(?:only|just|exactly)\s+one\b|\bone or the other\b/i;
 
-/* The lines of the build's errors that say a button declares both of its two destination
-   fields and name both of them, url and pageRef, on that same line. */
-function bothFieldsDeclaredMessages(errors: string): string[] {
+/* The lines of the build's errors that match this message pattern and name both of a
+   button's destination fields, url and pageRef, on that same line. */
+function destinationFieldMessages(errors: string, message: RegExp): string[] {
   return errors
     .split('\n')
-    .filter((line) => BOTH_FIELDS_DECLARED.test(line) && /\burl\b/.test(line) && /\bpageRef\b/.test(line));
-}
-
-/* The lines of the build's errors that say a button has neither of its two destination fields
-   and name both of them, url and pageRef, on that same line. */
-function bothFieldsMissingMessages(errors: string): string[] {
-  return errors
-    .split('\n')
-    .filter((line) => BOTH_FIELDS_MISSING.test(line) && /\burl\b/.test(line) && /\bpageRef\b/.test(line));
+    .filter((line) => message.test(line) && /\burl\b/.test(line) && /\bpageRef\b/.test(line));
 }
 
 test.describe('hero content errors: build failure', () => {
@@ -1799,7 +1791,7 @@ test.describe('hero content errors: build failure', () => {
     const build = tryToBuildSite(SITE_WITH_A_BUTTON_WITHOUT_DESTINATION);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(
-      bothFieldsMissingMessages(build.errors),
+      destinationFieldMessages(build.errors, BOTH_FIELDS_MISSING),
       `error messages that name the url and pageRef fields and say both are missing, in:\n${build.errors}`,
     ).not.toEqual([]);
   });
@@ -1817,7 +1809,7 @@ test.describe('hero content errors: build failure', () => {
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(heroErrorCount(build.errors), 'number of hero error messages').toBe(1);
     expect(
-      bothFieldsDeclaredMessages(build.errors),
+      destinationFieldMessages(build.errors, BOTH_FIELDS_DECLARED),
       `error messages that name the url and pageRef fields and say both are declared, in:\n${build.errors}`,
     ).not.toEqual([]);
     expect(build.errors, 'the error message should not say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
