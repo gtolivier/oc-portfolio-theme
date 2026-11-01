@@ -30,8 +30,9 @@ The roadmap (one conversation per feature) lives in the private repository
 - `npm run format`: formats the repository with Prettier (`.prettierrc.json`);
   `npm run format:check` only checks, as the CI does. `.prettierignore`
   leaves out the Go templates of `layouts/` and of the archetypes, which
-  Prettier would break, the fictional content of `exampleSite/content/` and
-  the Markdown of the test fixtures.
+  Prettier would break, the fictional content of `exampleSite/content/`,
+  the Markdown of the test fixtures and `package-lock.json`, which npm
+  writes.
 
 ## Rules
 
