@@ -610,6 +610,14 @@ export const SITE_WITH_ANOTHER_BACKGROUND = testSite('other-background');
    education entries. */
 export const SITE_WITH_A_SKILLS_ONLY_BACKGROUND = testSite('skills-only-background');
 
+/* The example site's French home page writes its key figures as a list of tables,
+   [[params.background.stats]]: this site replaces that home page with the one of
+   tests/fixtures/lone-figure-table/content, without a hero, clients nor projects, whose only key
+   figure, a fictional blacksmith's ("12" "Ans de forge"), is written [params.background.stats],
+   with single brackets, a table rather than a list. Its folder name avoids the words background
+   and stats, which the error-message assertion looks for. */
+export const SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE = testSite('lone-figure-table');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

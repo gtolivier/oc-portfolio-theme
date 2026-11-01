@@ -3,9 +3,12 @@ import {
   SITE_WITHOUT_HERO,
   SITE_WITH_ANOTHER_BACKGROUND,
   SITE_WITH_A_SKILLS_ONLY_BACKGROUND,
+  SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE,
   buildSite,
   removeDirectory,
+  runBuildTestsInOneProjectOnly,
   serveSite,
+  tryToBuildSite,
 } from './helpers/built-site';
 import { displayedText, textOnScreen } from './helpers/text-on-screen';
 import { type Rgb, colorComponents, contrastRatio } from './helpers/colors';
@@ -1077,5 +1080,28 @@ test.describe('home page of another site, with a background of skill groups only
       filled,
     );
     expect(strayElements, 'elements of the section taking room on screen outside its headings and groups').toEqual([]);
+  });
+});
+
+test.describe('background content errors: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a home page whose key figures are written [params.background.stats], with single brackets, rather than as a list of tables makes the site build fail with an error message that says to write them as [[params.background.stats]], without a template execution error after it', () => {
+    /* tests/fixtures/lone-figure-table/content/_index.md writes its only key figure as
+       [params.background.stats], with single brackets: Hugo reads the key figures as a table rather
+       than a list. Rather than a Go template execution error from reading each of its fields as a
+       key figure, the person building the site must get an error message that says, on its own
+       line, to write the key figures as [[params.background.stats]], whatever the rest of the
+       wording, and no Go template execution error that would follow it and bury it in technical
+       jargon. */
+    const build = tryToBuildSite(SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(
+      build.errors,
+      'the error message should say to write the key figures as [[params.background.stats]]',
+    ).toMatch(/\bbackground:.*\[\[params\.background\.stats\]\]/);
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
   });
 });
