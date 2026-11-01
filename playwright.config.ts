@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { EXAMPLE_SITE_UNDER_PORTFOLIO, EXAMPLE_SITE_UNDER_PORTFOLIO_PORT } from './tests/helpers/built-site';
 
 /**
  * Read environment variables from file.
@@ -92,8 +93,8 @@ export default defineConfig({
        subfolder (baseURL /portfolio/). */
     {
       command:
-        'hugo server --source exampleSite --environment production --port 1315 --baseURL http://localhost:1315/portfolio/ --disableLiveReload --renderToMemory',
-      url: 'http://localhost:1315/portfolio/',
+        `hugo server --source exampleSite --environment production --port ${EXAMPLE_SITE_UNDER_PORTFOLIO_PORT} --baseURL ${EXAMPLE_SITE_UNDER_PORTFOLIO} --disableLiveReload --renderToMemory`,
+      url: EXAMPLE_SITE_UNDER_PORTFOLIO,
       reuseExistingServer: !process.env.CI,
     },
   ],
