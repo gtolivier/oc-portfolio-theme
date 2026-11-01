@@ -13,11 +13,14 @@ import {
   SITE_WITH_A_HERO_WITHOUT_TITLE,
   SITE_WITH_A_HERO_WITHOUT_CLIENTS,
   SITE_WITH_A_LONG_MENU,
+  SITE_WITH_A_PAGE_REF_AS_NUMBER,
+  SITE_WITH_A_PAGE_REF_AS_TABLE,
   SITE_WITH_A_PAGE_REF_NOT_FOUND,
   SITE_WITH_A_PAGE_REF_TO_AN_UNPUBLISHED_PAGE,
   SITE_WITH_A_PAGE_REF_TO_A_LINK_ONLY_PAGE,
   SITE_WITH_A_SINGLE_LANGUAGE,
   SITE_WITH_OTHER_CLIENTS,
+  type BuiltSite,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -2097,6 +2100,34 @@ test.describe('hero content errors: build failure', () => {
       `error messages that name the url and pageRef fields and say both are declared, in:\n${build.errors}`,
     ).not.toEqual([]);
     expect(build.errors, 'the error message should not say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
+  });
+
+  test('a home page where a hero button declares a pageRef that is not a text, a table or a number, makes the site build fail with a single hero error message that says the pageRef must be a page reference, without a template execution error after it', () => {
+    /* The first button of tests/fixtures/table-as-button-target/content/_index.md declares
+       pageRef = { path = '/projets' }, a table, and that of
+       tests/fixtures/number-as-button-target/content/_index.md pageRef = 42, a number, rather
+       than a page reference, a text. Rather than a Go template execution error about a function
+       called with a table, or a message saying that the page "42" cannot be found, the person
+       building the site must get a single hero error message that names the pageRef field and
+       says, on that same line, that it must be a page reference, whatever the rest of the
+       wording, and no Go template execution error that would follow it and bury it in technical
+       jargon. Two fixtures, so that a check, or a message, made for a single type does not
+       pass. */
+    const cases: { name: string; site: BuiltSite }[] = [
+      { name: 'a table as pageRef', site: SITE_WITH_A_PAGE_REF_AS_TABLE },
+      { name: 'a number as pageRef', site: SITE_WITH_A_PAGE_REF_AS_NUMBER },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(heroErrorCount(build.errors), `with ${name}, number of hero error messages`).toBe(1);
+      expect(build.errors, `with ${name}, the error message should say the pageRef must be a page reference`).toMatch(
+        /\bhero:.*\bpageRef\b.*\b(?:must|should)\s+be\b.*\bpage\s+reference\b/i,
+      );
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
+        /execute of template failed|error calling/i,
+      );
+    }
   });
 
   test('a site whose home page declares a hero without params.author being set makes the site build fail, with an error message that cites the author field', () => {

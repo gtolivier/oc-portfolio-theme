@@ -137,6 +137,17 @@ export const SITE_WITH_A_HERO_WITHOUT_AUTHOR = testSite('authorless-hero');
    two valid destinations. */
 export const SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF = testSite('button-with-two-destinations');
 
+/* The example site's French home page has a hero whose every pageRef is a
+   text, a page reference: these sites replace that home page with the one of
+   tests/fixtures/table-as-button-target/content, whose first button declares
+   a table, pageRef = { path = '/projets' }, and with the one of
+   tests/fixtures/number-as-button-target/content, whose first button
+   declares a number, pageRef = 42. Their folder names also avoid the words
+   pageRef and page reference, which the error-message assertion looks for,
+   and hero, whose error messages are counted. */
+export const SITE_WITH_A_PAGE_REF_AS_TABLE = testSite('table-as-button-target');
+export const SITE_WITH_A_PAGE_REF_AS_NUMBER = testSite('number-as-button-target');
+
 /* The component catalog: the example site, plus the pages of
    tests/fixtures/catalog/content, each of which places one component of the
    theme on its own, as raw HTML (allowed by tests/fixtures/catalog/hugo.toml).
