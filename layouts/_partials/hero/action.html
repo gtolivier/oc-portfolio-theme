@@ -10,27 +10,27 @@
      wrong with it, not the missing-field one. */}}
 {{- $hasPageRef := isset . "pageRef" }}
 {{- if and $hasPageRef (ne (printf "%T" $pageRef) "string") }}
-  {{- errorf "hero: the pageRef field must be a page reference, a text" }}
+  {{- errorf "hero: the pageRef field must be a page reference, a text (language: %s)" site.Language.Lang }}
 {{- else if $hasPageRef }}
   {{- $trimmedPageRef := strings.TrimSpace $pageRef }}
   {{- if eq $trimmedPageRef "" }}
-    {{- errorf "hero: the pageRef field is empty: it must be a page reference" }}
+    {{- errorf "hero: the pageRef field is empty: it must be a page reference (language: %s)" site.Language.Lang }}
   {{- else if ne $pageRef $trimmedPageRef }}
-    {{- errorf "hero: the pageRef %q has whitespace at its start or end, which Hugo does not trim" $pageRef }}
+    {{- errorf "hero: the pageRef %q has whitespace at its start or end, which Hugo does not trim (language: %s)" $pageRef site.Language.Lang }}
   {{- else }}
     {{- with site.GetPage $pageRef }}
       {{- $href = .RelPermalink }}
       {{- if not (partial "is-published.html" .) }}
-        {{- errorf "hero: the pageRef %q points to a page that is not published" $pageRef }}
+        {{- errorf "hero: the pageRef %q points to a page that is not published (language: %s)" $pageRef site.Language.Lang }}
       {{- end }}
     {{- else }}
       {{- errorf "hero: the pageRef %q matches no page (language: %s): check for a page that does not exist, a typo in the reference, a missing translation, a draft, a future (scheduled) date or an expired page" $pageRef site.Language.Lang }}
     {{- end }}
   {{- end }}
 {{- end }}
-{{- if and .url $hasPageRef }}{{ errorf "hero: a button declares both a url field and a pageRef field; it needs only one" }}{{ end }}
-{{- if and (not .url) (not $hasPageRef) }}{{ errorf "hero: a button has neither a url field nor a pageRef field" }}{{ end }}
-{{- if not .label }}{{ errorf "hero: a button has no label field" }}{{ end -}}
+{{- if and .url $hasPageRef }}{{ errorf "hero: a button declares both a url field and a pageRef field; it needs only one (language: %s)" site.Language.Lang }}{{ end }}
+{{- if and (not .url) (not $hasPageRef) }}{{ errorf "hero: a button has neither a url field nor a pageRef field (language: %s)" site.Language.Lang }}{{ end }}
+{{- if not .label }}{{ errorf "hero: a button has no label field (language: %s)" site.Language.Lang }}{{ end -}}
 <a href="{{ $href }}">{{ .label }}</a>
 {{- /* Nothing after the link, not even the file's trailing newline:
      spacing between buttons belongs to the page that places them. */ -}}
