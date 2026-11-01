@@ -822,6 +822,38 @@ tick-field > canvas {
   content: '02 // ' / '';
 }
 
+/* From 768 px, two columns: the figures, the intro and the education on the
+   left, the skill groups on the right, two per row. */
+@media (min-width: 768px) {
+  .background {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    column-gap: 48px;
+    align-items: start;
+  }
+
+  .background > h2 {
+    grid-column: 1 / -1;
+  }
+
+  .background > :not(h2, .background-skill-groups) {
+    grid-column: 1;
+    margin-top: 0;
+  }
+
+  .background-skills > h3 {
+    margin-top: 0;
+  }
+
+  .background-skill-groups {
+    grid-column: 2;
+    grid-row: 2 / span 3;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+  }
+}
+
 /* Light section: dark cards on the paper background. The header takes a
    line of its own, then the cards fill one line each, two from 1024 px. */
 .projects {

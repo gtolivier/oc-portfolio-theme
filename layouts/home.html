@@ -127,14 +127,18 @@
       {{- end }}
     </ul>
     {{- end }}
-    {{- range .Params.background.skills }}
-    <div class="background-skills">
-      <h3>{{ .title }}</h3>
-      <ul>
-        {{- range .items }}
-        <li>{{ . }}</li>
-        {{- end }}
-      </ul>
+    {{- with .Params.background.skills }}
+    <div class="background-skill-groups">
+      {{- range . }}
+      <div class="background-skills">
+        <h3>{{ .title }}</h3>
+        <ul>
+          {{- range .items }}
+          <li>{{ . }}</li>
+          {{- end }}
+        </ul>
+      </div>
+      {{- end }}
     </div>
     {{- end }}
   </section>
