@@ -2076,6 +2076,28 @@ test.describe('hero content errors: build failure', () => {
     }
   });
 
+  test("a home page where a hero button's pageRef matches no page makes the site build fail with an error message that gives a page that does not exist, or a typo in the reference, as a possible cause", () => {
+    /* The first button of tests/fixtures/page-ref-not-found/content/_index.md declares
+       pageRef = '/page-fictive-introuvable', which the site does not contain. The message
+       already names causes where the page exists but is left out (a missing translation, a
+       draft, a future date, an expired page); the most common cause, though, is a page that
+       does not exist at all or a reference typed wrong. A message that leaves it out would
+       send the person building the site looking at the page's front matter rather than at the
+       reference: the hero message that names this pageRef must, on that same line, give as a
+       possible cause a page that does not exist (does not exist, nonexistent) or a typo
+       (typo, misspelled), whatever the rest of the wording. */
+    const build = tryToBuildSite(SITE_WITH_A_PAGE_REF_NOT_FOUND);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors
+      .split('\n')
+      .filter((line) => /\bhero:/.test(line) && line.includes('/page-fictive-introuvable'));
+    expect(messages, `hero error messages that name the pageRef, in:\n${build.errors}`).not.toEqual([]);
+    expect(
+      messages.filter((line) => /\b(does not|doesn't) exist|\bnon-?existent\b|\btypo|\bmisspel/i.test(line)),
+      'hero error messages that name the pageRef and give a page that does not exist or a typo as a possible cause',
+    ).not.toEqual([]);
+  });
+
   test('a home page where a hero button declares a pageRef to a page with [build] render = "never" makes the site build fail, with an error message that cites this pageRef and says the page is not published', () => {
     /* The first button of tests/fixtures/never-rendered-ref/content/_index.md declares
        pageRef = '/atelier-ferme', a page of the same fixture that exists but declares
