@@ -8,6 +8,7 @@ import {
   SITE_WITH_BACKGROUND_SKILLS_AS_A_SINGLE_TABLE,
   SITE_WITH_A_SKILL_GROUP_WHOSE_ITEMS_ARE_A_TEXT,
   SITE_WITH_EDUCATION_AS_A_TEXT,
+  SITE_WITH_A_BACKGROUND_INTRO_AS_A_TEXT,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1186,6 +1187,24 @@ test.describe('background content errors: build failure', () => {
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors, 'the error message should say the education must be a list').toMatch(
       /\bbackground:.*\beducation\b.*\blist\b/,
+    );
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose intro is written as a text rather than a list makes the site build fail, with an error message that says the intro must be a list, without a template execution error after it', () => {
+    /* tests/fixtures/preamble-as-text/content/_index.md writes its intro as a single text,
+       'Restauratrice de pendules comtoises depuis 2005, entre Morez et Besançon.', rather than a
+       list of lines: ranging over a text in a Go template may raise an execution error, or none,
+       and the section would show anything but the intro. Rather than that, the person building the
+       site must get an error message that says, on its own line, that the intro must be a list,
+       whatever the rest of the wording, and no Go template execution error that would follow it
+       and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_A_BACKGROUND_INTRO_AS_A_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the error message should say the intro must be a list').toMatch(
+      /\bbackground:.*\bintro\b.*\blist\b/,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       /execute of template failed|error calling/i,

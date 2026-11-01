@@ -652,6 +652,14 @@ export const SITE_WITH_A_SKILL_GROUP_WHOSE_ITEMS_ARE_A_TEXT = testSite('know-how
    assertion looks for. */
 export const SITE_WITH_EDUCATION_AS_A_TEXT = testSite('diploma-as-text');
 
+/* The example site's French home page writes its background intro as a list of texts, one per
+   line: this site replaces that home page with the one of tests/fixtures/preamble-as-text/content,
+   without a hero, clients nor projects, whose background declares a fictional clock restorer's
+   intro as a single text, 'Restauratrice de pendules comtoises depuis 2005, entre Morez et
+   Besançon.', rather than a list. Its folder name avoids the words background, intro and list,
+   which the error-message assertion looks for. */
+export const SITE_WITH_A_BACKGROUND_INTRO_AS_A_TEXT = testSite('preamble-as-text');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
