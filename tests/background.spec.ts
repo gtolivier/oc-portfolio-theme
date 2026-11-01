@@ -304,6 +304,77 @@ test('on a phone, the section "Parcours" is one column: the key figures, the int
   expect.soft(pageWidth, 'width of the page content').toBeLessThanOrEqual(PHONE.width);
 });
 
+/* A wide window, the same size as the one the projects section's layout is checked at. */
+const WIDE_WINDOW = { width: 1280, height: 800 };
+
+test('on a wide window, the section "Parcours" has two columns: the key figures, the intro and the education entries on the left of every skill group, both columns starting at the same height, the skill groups two per row, and the page does not scroll horizontally', async ({
+  page,
+}) => {
+  await page.setViewportSize(WIDE_WINDOW);
+  await page.goto('/fr/');
+  await page.evaluate(() => document.fonts.ready);
+  const section = backgroundSection(page);
+  await expect(section).toBeVisible();
+  /* The key figures: every value and label shown. */
+  const figures = await unionBox(
+    ...KEY_FIGURES.flatMap(({ value, label }) => [
+      section.getByText(value, { exact: true }),
+      section.getByText(label, { exact: true }),
+    ]),
+  );
+  const intro = await unionBox(section.getByRole('paragraph').filter({ hasText: INTRO_LINES[0] }));
+  const education = await unionBox(
+    section.getByRole('list').filter({ has: page.getByRole('listitem').filter({ hasText: EDUCATION_ENTRIES[0] }) }),
+  );
+  /* Each skill group: its heading and its list. */
+  const groups: Box[] = [];
+  for (const { title, items } of SKILL_GROUPS) {
+    groups.push(
+      await unionBox(
+        section.getByRole('heading', { level: 3, name: title, exact: true }),
+        section.getByRole('list').filter({ has: page.getByRole('listitem').filter({ hasText: items[0] }) }),
+      ),
+    );
+  }
+  const groupsLeft = Math.min(...groups.map((box) => box.left));
+  /* The left column: each of its parts ends before the left edge of every skill group. */
+  const leftColumn = [
+    ['the key figures', figures],
+    ['the intro', intro],
+    ['the education entries', education],
+  ] as const;
+  for (const [name, box] of leftColumn) {
+    expect
+      .soft(box.right, `right edge of ${name} against the left edge of the skill groups (${groupsLeft} px)`)
+      .toBeLessThanOrEqual(groupsLeft + 1);
+  }
+  /* Both columns start at the same height: the top of the left column's first part is level with
+     the top of the first skill group. */
+  const leftColumnTop = Math.min(...leftColumn.map(([, box]) => box.top));
+  const firstGroup = groups[0];
+  expect
+    .soft(
+      Math.abs(leftColumnTop - firstGroup.top),
+      `top of the left column (${leftColumnTop} px) against the top of the first skill group (${firstGroup.top} px)`,
+    )
+    .toBeLessThanOrEqual(1);
+  /* Two per row: the second group shares the first one's top and sits to its right. */
+  const secondGroup = groups[1];
+  const secondName = `skill group "${SKILL_GROUPS[1].title}"`;
+  const firstName = `skill group "${SKILL_GROUPS[0].title}"`;
+  expect
+    .soft(
+      Math.abs(secondGroup.top - firstGroup.top),
+      `${secondName}: top ${secondGroup.top} px against the top of ${firstName} (${firstGroup.top} px)`,
+    )
+    .toBeLessThanOrEqual(1);
+  expect
+    .soft(secondGroup.left, `${secondName}: left edge against the right edge of ${firstName} (${firstGroup.right} px)`)
+    .toBeGreaterThanOrEqual(firstGroup.right - 1);
+  const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect.soft(pageWidth, 'width of the page content').toBeLessThanOrEqual(WIDE_WINDOW.width);
+});
+
 /* A color, possibly translucent, painted over an opaque one. */
 function paintOver(color: string, below: Rgb): Rgb {
   const { red, green, blue, alpha } = colorComponents(color);
