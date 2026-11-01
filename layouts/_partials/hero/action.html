@@ -30,9 +30,9 @@
     {{- end }}
   {{- end }}
 {{- end }}
-{{- if and $button.url $hasPageRef }}{{ errorf "hero: button %d: a button declares both a url field and a pageRef field; it needs only one (language: %s)" $position site.Language.Lang }}{{ end }}
-{{- if and (not $button.url) (not $hasPageRef) }}{{ errorf "hero: button %d: a button has neither a url field nor a pageRef field (language: %s)" $position site.Language.Lang }}{{ end }}
-{{- if not $button.label }}{{ errorf "hero: button %d: a button has no label field (language: %s)" $position site.Language.Lang }}{{ end -}}
+{{- if and $button.url $hasPageRef }}{{ errorf "hero: button %d declares both a url field and a pageRef field; it needs only one (language: %s)" $position site.Language.Lang }}{{ end }}
+{{- if and (not $button.url) (not $hasPageRef) }}{{ errorf "hero: button %d has neither a url field nor a pageRef field (language: %s)" $position site.Language.Lang }}{{ end }}
+{{- if not $button.label }}{{ errorf "hero: button %d has no label field (language: %s)" $position site.Language.Lang }}{{ end -}}
 <a href="{{ $href }}">{{ $button.label }}</a>
 {{- /* Nothing after the link, not even the file's trailing newline:
      spacing between buttons belongs to the page that places them. */ -}}
