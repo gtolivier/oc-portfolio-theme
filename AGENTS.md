@@ -101,7 +101,9 @@ The roadmap (one conversation per feature) lives in the private repository
 - **Formatting**: run `npm run format` before every commit; in a TDD cycle,
   the orchestrator runs it after each step's report, before committing the
   step. Never format by hand what Prettier formats. A commit that only
-  reformats goes in `.git-blame-ignore-revs`.
+  reformats goes in `.git-blame-ignore-revs`, and its PR is merged with a
+  merge commit, so that its SHA reaches `main`; the other PRs are
+  squash-merged.
 - **Pull requests**: every change goes through a branch and a PR, even a
   simple documentation fix; never a direct commit on `main` (a GitHub rule
   enforces it too). Merge only with the user's explicit agreement.
