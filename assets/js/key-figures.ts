@@ -1,8 +1,8 @@
 /* The key figures of the background section show 0 until the section comes into view, then count
    up to their value. With JavaScript, a 0 is drawn over each value, which stays in the page,
    invisible, for assistive technologies and to keep the figure's width; once counted, the 0 goes
-   and the value shows. Without JavaScript, or when the visitor asks for reduced motion at load,
-   the page shows the full values. */
+   and the value shows. Without JavaScript, or when the visitor asks for reduced motion, at load
+   or during the count, the page shows the full values. */
 import { reducedMotionQuery } from './reduced-motion';
 
 const COUNT_MS = 1000;
@@ -29,10 +29,6 @@ const finish = ({ value, zero }: KeyFigure): void => {
 };
 
 const countUp = (figures: KeyFigure[]): void => {
-  if (reducedMotionQuery().matches) {
-    figures.forEach(finish);
-    return;
-  }
   const start = performance.now();
   const step = (now: number): void => {
     if (reducedMotionQuery().matches) {
@@ -49,7 +45,7 @@ const countUp = (figures: KeyFigure[]): void => {
       figures.forEach(finish);
     }
   };
-  requestAnimationFrame(step);
+  step(start);
 };
 
 if (section && values.length > 0 && !reducedMotionQuery().matches) {
