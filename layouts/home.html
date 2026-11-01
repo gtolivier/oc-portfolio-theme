@@ -113,6 +113,9 @@
     {{- $stats := .Params.background.stats }}
     {{- /* errorf does not stop the template: after an error, the key figures are empty, so that no template execution error buries the message. */}}
     {{- if and $stats (not (reflect.IsSlice $stats)) }}{{ errorf "background: the key figures must be written as a list of tables, [[params.background.stats]], with double brackets" }}{{ $stats = slice }}{{ end }}
+    {{- range $index, $stat := $stats }}
+    {{- if not (findRE `^\s*\d` (printf "%v" $stat.value)) }}{{ errorf "background: key figure %d must start with a whole number" (add $index 1) }}{{ $stats = slice }}{{ end }}
+    {{- end }}
     {{- with $stats }}
     <dl class="background-stats">
       {{- range . }}
