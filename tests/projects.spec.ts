@@ -2316,6 +2316,28 @@ test.describe('featured project content errors: build failure', () => {
     }
   });
 
+  test('a home page whose projects list holds page references with leading or trailing whitespace makes the site build fail, with an error message, for each such reference, that gives the position of that entry', () => {
+    /* tests/fixtures/padded-ref/content/_index.md features 'projets/restauration-pendule ', with
+       a trailing space, as its first entry, then "\tprojets/montre-grande-complication", with a
+       leading tab, as its second. Besides the reference, whose whitespace is invisible in the
+       message, the message must give the position of the entry in the list, counted from 1
+       ("entry 1", "entry 2"), as the messages on blank entries do, so that whoever fills in the
+       content finds it. The position is looked for on the same line as the reference it belongs
+       to, whatever the rest of the wording; two positions, so that a hard-coded position does not
+       pass. */
+    const build = tryToBuildSite(SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_WHITESPACE);
+    expectProjectsBuildError(build);
+    for (const { position, reference } of [
+      { position: 1, reference: 'projets/restauration-pendule' },
+      { position: 2, reference: 'projets/montre-grande-complication' },
+    ]) {
+      expect(
+        build.errors,
+        `for the reference ${reference}, the error message should give the position of that entry, entry ${position}`,
+      ).toMatch(new RegExp(`^(?=.*\\bentry\\s+${position}\\b)(?=.*${reference}).*$`, 'im'));
+    }
+  });
+
   test('a home page whose projects list references the home page itself, as "/", makes the site build fail, with an error message that names the projects parameter and that entry, without a template execution error after it', () => {
     /* tests/fixtures/self-ref/content/_index.md features 'projets/restauration-pendule', then '/':
        a reference to the home page itself, which exists, so that the check for a page not found
