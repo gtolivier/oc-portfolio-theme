@@ -23,8 +23,8 @@
       {{- end }}
       {{- with .actions }}
       <p class="hero-actions">
-        {{- range . }}
-        {{ partial "hero/action.html" . }}
+        {{- range $index, $action := . }}
+        {{ partial "hero/action.html" (dict "action" $action "position" (add $index 1)) }}
         {{- end }}
       </p>
       {{- end }}
