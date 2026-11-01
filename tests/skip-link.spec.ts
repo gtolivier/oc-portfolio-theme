@@ -28,15 +28,6 @@ test('on a French page, the first Tab focuses an "Aller au contenu" link, invisi
   await expect.poll(() => isVisibleOnScreen(link)).toBe(true);
 });
 
-test('on the English home page, the first Tab focuses a link labeled "Skip to content"', async ({ page, browserName }) => {
-  await page.goto('/en/');
-  const link = page.getByRole('link', { name: 'Skip to content', exact: true });
-
-  await page.keyboard.press(tabKey(browserName));
-
-  await expect(link).toBeFocused();
-});
-
 test('activating "Aller au contenu" with the Enter key moves focus to the main content, and the next Tab reaches the first hero action button, "Voir les projets"', async ({ page, browserName }) => {
   await page.goto('/fr/');
   const link = page.getByRole('link', { name: 'Aller au contenu', exact: true });

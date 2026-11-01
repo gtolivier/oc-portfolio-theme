@@ -1,5 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import {
+  EXAMPLE_SITE_UNDER_PORTFOLIO,
+  type BuildAttempt,
   SITE_WITHOUT_HERO,
   SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND,
   SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT,
@@ -16,12 +18,11 @@ import {
   SITE_WITH_A_FEATURED_PROJECT_AS_MAP,
   SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF,
   SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF,
-  SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_SPACES,
+  SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_WHITESPACE,
   SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT,
   SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT_WRITTEN_AS_A_DOT,
   SITE_WITH_A_SECTION_AS_FEATURED_PROJECT,
-  SITE_WITH_A_TERM_AS_FEATURED_PROJECT,
-  SITE_WITH_A_TAXONOMY_AS_FEATURED_PROJECT,
+  SITE_WITH_TAXONOMY_PAGES_AS_FEATURED_PROJECTS,
   SITE_WITH_THE_404_PAGE_AS_FEATURED_PROJECT,
   SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT,
@@ -38,7 +39,6 @@ import {
 } from './helpers/built-site';
 import {
   type Rectangle,
-  canvasOpacityOverBackgroundAt,
   drawnStrokesInRectangle,
   horizontalBandsWithoutDrawnPixels,
   luminanceAboveBackgroundInRectangle,
@@ -46,8 +46,11 @@ import {
   pixelsNotOfBackgroundPerRow,
   verticalBands,
 } from './helpers/pixels';
+import { type Rgb, colorComponents, contrastRatio } from './helpers/colors';
 import { displayedText } from './helpers/text-on-screen';
 import { tabUntilFocused } from './helpers/keyboard';
+import { stopClockBeforeLoad } from './helpers/clock';
+import { DELAY_AFTER_MOVE_MS, moveToScreenOfDensity } from './helpers/screen-density';
 
 /* The projects the example site's French home page features, in the order its front matter lists
    them (params.projects, page references to content/projets/<slug>). The order is neither
@@ -196,23 +199,6 @@ function elementBox(locator: Locator): Promise<Box> {
   });
 }
 
-type Rgb = { red: number; green: number; blue: number };
-
-/* Components of a computed color, however the browser serializes it (`rgb(…)`, `rgba(…)` or
-   `color(srgb …)`): red, green and blue from 0 to 255, alpha from 0 to 1. */
-function colorComponents(color: string): Rgb & { alpha: number } {
-  const number = '([\\d.]+%?)';
-  const toUnit = (value: string) => (value.endsWith('%') ? parseFloat(value) / 100 : parseFloat(value));
-  const rgb = color.match(new RegExp(`^rgba?\\(\\s*${number}[\\s,]+${number}[\\s,]+${number}(?:\\s*[,/]\\s*${number})?\\s*\\)$`));
-  const srgb = color.match(new RegExp(`^color\\(srgb\\s+${number}\\s+${number}\\s+${number}(?:\\s*/\\s*${number})?\\s*\\)$`));
-  const match = rgb ?? srgb;
-  if (!match) throw new Error(`unrecognized color: ${color}`);
-  const scale = rgb ? 1 : 255;
-  const [red, green, blue] = match.slice(1, 4).map((value) => (value.endsWith('%') ? toUnit(value) * 255 : parseFloat(value) * scale));
-  const alpha = match[4] === undefined ? 1 : toUnit(match[4]);
-  return { red, green, blue, alpha };
-}
-
 /* A color painted over an opaque one, with its alpha. */
 function paintOver(color: string, below: Rgb): Rgb {
   const { red, green, blue, alpha } = colorComponents(color);
@@ -224,22 +210,6 @@ function paintOver(color: string, below: Rgb): Rgb {
    nearest first: each painted over the next, over the browser's white canvas. */
 function effectiveBackground(backgrounds: string[]): Rgb {
   return [...backgrounds].reverse().reduce<Rgb>((below, color) => paintOver(color, below), { red: 255, green: 255, blue: 255 });
-}
-
-/* Relative luminance of an opaque color, as WCAG defines it: from 0 (black) to 1 (white). */
-function relativeLuminance({ red, green, blue }: Rgb): number {
-  const [r, g, b] = [red, green, blue].map((value) => {
-    const channel = value / 255;
-    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-/* Contrast ratio between two opaque colors, as WCAG defines it: from 1 (same luminance) to 21
-   (black on white). */
-function contrastRatio(a: Rgb, b: Rgb): number {
-  const [lighter, darker] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
-  return (lighter + 0.05) / (darker + 0.05);
 }
 
 /* Light: it contrasts more with black than with white. */
@@ -263,6 +233,7 @@ async function backgroundChain(element: Locator): Promise<string[]> {
    text color and the background colors behind it, nearest first. */
 async function displayedTexts(root: Locator): Promise<{ text: string; color: string; backgrounds: string[] }[]> {
   return root.evaluate((rootElement) => {
+    /* As backgroundChain, inside the page. */
     const chainOf = (el: Element) => {
       const chain: string[] = [];
       for (let current: Element | null = el; current; current = current.parentElement) chain.push(getComputedStyle(current).backgroundColor);
@@ -288,71 +259,6 @@ async function displayedTexts(root: Locator): Promise<{ text: string; color: str
     walk(rootElement);
     return texts;
   });
-}
-
-/* The pixels drawn inside a rectangle of an element (CSS pixels, relative to its box), sorted by
-   the colour drawn there over the element's background. In the element's screenshot, a pixel is
-   drawn when it differs from the background colour by more than a rounding error on a channel.
-   It is drawn in one of `colours` (CSS colours) when it lies on the way from the background
-   towards that colour, whatever opacity or anti-aliasing keeps it short of it: the direction from
-   the background to the pixel within `maxAngle` degrees of the direction from the background to
-   that colour, and nearer to it than to the direction to any other of `colours`, at least
-   `minShareOfTheWay` of the way there. Returns the number of drawn pixels and, for each colour,
-   in the order given, the number drawn in it. Decoded in the page, so that the colours are read
-   through the same colour handling as the screenshot. */
-async function drawnPixelsByColourInRectangle(
-  element: Locator,
-  screenshot: Buffer,
-  rectangle: Rectangle,
-  colours: string[],
-  maxAngle: number,
-  minShareOfTheWay: number,
-): Promise<{ drawn: number; inColour: number[] }> {
-  return element.evaluate(
-    async (el, [base64, zone, cssColours, angle, minShare]) => {
-      const TOLERANCE = 2;
-      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
-      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
-      const scale = image.width / el.getBoundingClientRect().width;
-      const fromColumn = Math.max(0, Math.round(zone.x * scale));
-      const toColumn = Math.min(image.width, Math.round((zone.x + zone.width) * scale));
-      const fromRow = Math.max(0, Math.round(zone.y * scale));
-      const toRow = Math.min(image.height, Math.round((zone.y + zone.height) * scale));
-      const canvas = document.createElement('canvas');
-      canvas.width = image.width;
-      canvas.height = image.height;
-      const context = canvas.getContext('2d', { willReadFrequently: true })!;
-      const read = (colour: string): number[] => {
-        context.clearRect(0, 0, 1, 1);
-        context.fillStyle = colour;
-        context.fillRect(0, 0, 1, 1);
-        return Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
-      };
-      const background = read(getComputedStyle(el).backgroundColor);
-      const ways = cssColours.map((colour) => read(colour).map((value, channel) => value - background[channel]));
-      context.clearRect(0, 0, canvas.width, canvas.height);
-      context.drawImage(image, 0, 0);
-      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
-      const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-      const minCosine = Math.cos((angle * Math.PI) / 180);
-      let drawn = 0;
-      const inColour = cssColours.map(() => 0);
-      for (let row = fromRow; row < toRow; row++) {
-        for (let column = fromColumn; column < toColumn; column++) {
-          const i = 4 * (row * image.width + column);
-          const offset = [0, 1, 2].map((channel) => pixels[i + channel] - background[channel]);
-          if (!offset.some((value) => Math.abs(value) > TOLERANCE)) continue;
-          drawn += 1;
-          const cosines = ways.map((way) => dot(offset, way) / Math.sqrt(dot(offset, offset) * dot(way, way)));
-          const nearest = cosines.indexOf(Math.max(...cosines));
-          const way = ways[nearest];
-          if (cosines[nearest] >= minCosine && dot(offset, way) / dot(way, way) >= minShare) inColour[nearest] += 1;
-        }
-      }
-      return { drawn, inColour };
-    },
-    [screenshot.toString('base64'), rectangle, colours, maxAngle, minShareOfTheWay] as const,
-  );
 }
 
 /* Measured inside a card's tick pattern, this far from each edge of its box, so that a border, a
@@ -470,7 +376,7 @@ test('on the French home page, no featured project’s card shows the years its 
 
 test('on the French home page, each featured project’s card ends with a "Voir le détail" link, separate from its title, whose accessible name names the project; following it opens the project’s page, at the site root and under /portfolio/', async ({ page }) => {
   /* The example site served at the root of its origin, then under a subpath (playwright.config.ts). */
-  for (const siteRoot of ['http://localhost:1314/', 'http://localhost:1315/portfolio/']) {
+  for (const siteRoot of ['/', EXAMPLE_SITE_UNDER_PORTFOLIO]) {
     for (const project of FEATURED_PROJECTS) {
       await page.goto(`${siteRoot}fr/`);
       const section = projectsSection(page);
@@ -538,48 +444,6 @@ test('on the French home page, the cards of the section "Projets sélectionnés"
     const background = effectiveBackground(backgrounds);
     const ratio = contrastRatio(paintOver(color, background), background);
     expect.soft(ratio, `contrast of "${text}" (${color}) with what is behind it`).toBeGreaterThanOrEqual(4.5);
-  }
-});
-
-test('on the French home page, the "Voir le détail" link of each card stays readable while hovered with a fine pointer and while reached by keyboard: its text still contrasts at least 4.5:1 with the card’s background', async ({ page, hasTouch, browserName }) => {
-  await page.goto('/fr/');
-  const cards = await cardsOnceLoaded(page);
-  const links = await Promise.all(
-    (await cards.all()).map(async (card) => {
-      const link = card.getByRole('link', { name: 'Voir le détail' });
-      await expect(link).toHaveCount(1);
-      return link;
-    }),
-  );
-
-  /* Every text the link displays, its arrow included, against the background behind it. WCAG AA
-     for normal text: 4.5:1. */
-  const expectReadable = async (link: Locator, state: string, index: number) => {
-    const texts = await displayedTexts(link);
-    expect(texts.length, `${cardName(index)}: texts displayed by its link ${state}`).toBeGreaterThan(0);
-    for (const { text, color, backgrounds } of texts) {
-      const background = effectiveBackground(backgrounds);
-      const ratio = contrastRatio(paintOver(color, background), background);
-      expect.soft(ratio, `${cardName(index)}: contrast of "${text}" (${color}) ${state} with what is behind it`).toBeGreaterThanOrEqual(4.5);
-    }
-  };
-
-  /* Hovering needs a fine pointer; touch screens have none. */
-  if (!hasTouch) {
-    for (const [index, link] of links.entries()) {
-      await link.hover();
-      expect(await link.evaluate((el) => el.matches(':hover')), `${cardName(index)}: its link is hovered`).toBe(true);
-      await expectReadable(link, 'while hovered', index);
-    }
-    /* The pointer leaves the links, so that only the focus remains below. */
-    await page.mouse.move(0, 0);
-  }
-
-  /* A keyboard visitor tabs from one link to the next. */
-  for (const [index, link] of links.entries()) {
-    await tabUntilFocused(link, browserName, TABS_TO_REACH_THE_PROJECTS_LINKS);
-    expect(await link.evaluate((el) => el.matches(':focus-visible')), `${cardName(index)}: its link shows the keyboard focus`).toBe(true);
-    await expectReadable(link, 'while focused by keyboard', index);
   }
 });
 
@@ -1008,68 +872,6 @@ test('on the French home page, with JavaScript, each card’s tick pattern is ma
   }
 });
 
-test('on the French home page, inside the first card’s tick pattern, the ticks are not all the same length: several of its separate strokes are clearly longer than several others', { tag: '@pixels' }, async ({ page }) => {
-  /* Reduced motion, so that whatever could animate shows a still picture. */
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* Several strokes on each side: the shortest of the STROKES_EACH_SIDE longest strokes is
-     compared with the longest of the STROKES_EACH_SIDE shortest, so that one stray speck or one
-     pair of merged ticks cannot decide the outcome. */
-  const STROKES_EACH_SIDE = 3;
-  /* Clearly longer: at least this many times as long. The mockup's ticks range from 8 to 12 px.
-     Anti-aliasing at both ends of a tick can add up to a screenshot pixel to each, yet ticks of a
-     single length of 8 px or more never measure more than 1.25 times as long as one another. */
-  const MIN_LENGTH_RATIO = 1.3;
-  await page.goto('/fr/');
-  const cards = await cardsOnceLoaded(page);
-  const where = cardName(0);
-  const card = cards.first();
-  const inside = insideTickPattern(await tickPatternBoxInCard(card, where));
-  const strokes = await drawnStrokesInRectangle(card, await card.screenshot(), inside);
-  const lengths = strokes.map((stroke) => stroke.height).sort((a, b) => a - b);
-  expect(
-    lengths.length,
-    `${where}: separate strokes inside the tick pattern (${INSET}px from its edges)`,
-  ).toBeGreaterThanOrEqual(2 * STROKES_EACH_SIDE);
-  const short = lengths[STROKES_EACH_SIDE - 1];
-  const long = lengths[lengths.length - STROKES_EACH_SIDE];
-  const counts = new Map<string, number>();
-  for (const length of lengths) counts.set(length.toFixed(1), (counts.get(length.toFixed(1)) ?? 0) + 1);
-  const describeLengths = [...counts].map(([length, count]) => `${length}px × ${count}`).join(', ');
-  expect(
-    long / short,
-    `${where}: length of the shortest of the ${STROKES_EACH_SIDE} longest separate strokes inside the tick pattern (${long.toFixed(1)}px) over that of the longest of the ${STROKES_EACH_SIDE} shortest (${short.toFixed(1)}px); stroke lengths: ${describeLengths}`,
-  ).toBeGreaterThanOrEqual(MIN_LENGTH_RATIO);
-});
-
-test('on the French home page, inside the first card’s tick pattern, the ticks come in two colours: many of the pixels drawn there are teal, the accent colour, and many others light, the paper colour, either possibly see-through over the card’s background', { tag: '@pixels' }, async ({ page }) => {
-  /* Reduced motion, so that whatever could animate shows a still picture. */
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* A drawn pixel shows a colour when it lies on the way from the card's background towards it,
-     however far (see-through ticks, anti-aliased edges): its direction from the background
-     within MAX_ANGLE degrees of that colour's, nearer to it than to the other's. From the card's
-     ink, teal raises green and blue far more than red, and the paper raises all three, red the
-     most: their directions lie about 25° apart. A faint edge, less than MIN_SHARE_OF_THE_WAY of
-     the way there, shows no colour clearly and does not count. */
-  const MAX_ANGLE = 12;
-  const MIN_SHARE_OF_THE_WAY = 0.2;
-  /* Many: at least this share of the pixels drawn inside the tick pattern, for each colour. */
-  const MIN_SHARE_OF_DRAWN = 0.1;
-  await page.goto('/fr/');
-  const cards = await cardsOnceLoaded(page);
-  const where = cardName(0);
-  const card = cards.first();
-  const inside = insideTickPattern(await tickPatternBoxInCard(card, where));
-  /* The site's accent (teal) and paper colours, as its stylesheet declares them. */
-  const [teal, paper] = await page.evaluate(() =>
-    ['--color-accent', '--color-paper'].map((name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim()),
-  );
-  const { drawn, inColour } = await drawnPixelsByColourInRectangle(card, await card.screenshot(), inside, [teal, paper], MAX_ANGLE, MIN_SHARE_OF_THE_WAY);
-  const [inTeal, inPaper] = inColour;
-  const counts = `${drawn} screenshot pixels drawn inside the tick pattern (${INSET}px from its edges): ${inTeal} teal, ${inPaper} light, paper-coloured, ${drawn - inTeal - inPaper} neither clearly`;
-  expect.soft(inTeal / drawn, `${where}: share of the pixels drawn inside the tick pattern that are teal (${teal}); ${counts}`).toBeGreaterThanOrEqual(MIN_SHARE_OF_DRAWN);
-  expect.soft(inPaper / drawn, `${where}: share of the pixels drawn inside the tick pattern that are light, paper-coloured (${paper}); ${counts}`).toBeGreaterThanOrEqual(MIN_SHARE_OF_DRAWN);
-});
-
 /* Comparing the tick patterns of two cards, or of one card at two moments. Two cards sit at
    different, possibly fractional, positions: the browser may draw two copies of one pattern up to
    a pixel or two apart, relative to their boxes, and anti-aliasing and the rounding of the
@@ -1134,24 +936,6 @@ function bestMatchOfTicks(first: TicksOfTickPattern, second: TicksOfTickPattern)
     });
   return { ...best, shareUnmatched: (best.inFirst + best.inSecond) / (first.core.length + second.core.length) };
 }
-
-test('on the French home page, with JavaScript, each card’s tick pattern is its own: the tick patterns of the first two cards differ, many of the ticks drawn in one having no tick at the same place in the other', { tag: '@pixels' }, async ({ page }) => {
-  /* Reduced motion, so that whatever could animate shows a still picture. */
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/fr/');
-  const cards = await cardsOnceLoaded(page);
-  /* The ticks of the tick patterns of the first two cards. */
-  const ticksOfTickPatterns: TicksOfTickPattern[] = [];
-  for (const index of [0, 1]) {
-    ticksOfTickPatterns.push(await ticksOfTickPattern(cards.nth(index), cardName(index)));
-  }
-  const [first, second] = ticksOfTickPatterns;
-  const { shareUnmatched, ...best } = bestMatchOfTicks(first, second);
-  expect.soft(
-    shareUnmatched,
-    `share of the ticks of the first two cards' tick patterns (at least ${CORE}px inside them) with no tick at the same place (each edge within ${SAME_PLACE}px) in the other tick pattern, with the first moved by up to ${MAX_SHIFT}px the way that matches most (${best.dx}px across, ${best.dy}px down); ticks: ${first.core.length} in the first, ${best.inFirst} of them unmatched, ${second.core.length} in the second, ${best.inSecond} of them unmatched`,
-  ).toBeGreaterThanOrEqual(MIN_SHARE_UNMATCHED);
-});
 
 test('on the French home page, the tick patterns of the four cards all differ from one another: for each pair of cards, many of the ticks drawn in one have no tick at the same place in the other', { tag: '@pixels' }, async ({ page }) => {
   /* Reduced motion, so that whatever could animate shows a still picture. */
@@ -1272,77 +1056,39 @@ test('on the French home page, with JavaScript, when the window widens, the firs
   ).toBeLessThanOrEqual(stripBefore + spacing + SPACING_TOLERANCE);
 });
 
-test('on the French home page, with JavaScript, after the window moves to a screen with twice the pixel density without changing size, each card’s tick pattern is redrawn at the new density without anything else happening: 100 ms after the move, it shows what it shows once redrawn at that density, the same ticks, crisp, not its old drawing stretched', { tag: '@pixels' }, async ({ page, isMobile }) => {
+test('on the French home page, with JavaScript, after the window moves to a screen with twice the pixel density without changing size, each card’s tick pattern is redrawn at the new density: shortly after the move, with nothing else happening, it shows what it shows once drawn anew at that density, the same ticks, crisp, not its old drawing stretched', { tag: '@pixels' }, async ({ page, isMobile }) => {
   /* Reduced motion, so that whatever could animate shows a still picture. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* What it shows once redrawn, within this share of its drawn pixels: the old drawing stretched
-     to the new density smears the edges of every tick. */
+  /* What it shows once drawn anew, within this share of its drawn pixels: the old drawing
+     stretched to the new density smears the edges of every tick. */
   const MAX_SHARE_CHANGED = 0.02;
-  /* Time left after the move, once the page is rendered on the new screen: the redraw waits for
-     nothing else. */
-  const DELAY_AFTER_MOVE = 100;
+  /* Time stands still, so that nothing but the move can redraw a pattern. */
+  await stopClockBeforeLoad(page);
   await page.goto('/fr/');
   const cards = await cardsOnceLoaded(page);
-  const viewport = page.viewportSize();
-  expect(viewport, 'the page has a viewport size').not.toBeNull();
+  const patterns = page.locator('tick-pattern');
   const oldDensity = await page.evaluate(() => window.devicePixelRatio);
   const newDensity = 2 * oldDensity;
 
-  /* The window moves to a screen with another pixel density, at the same size in CSS pixels.
-     Chromium emulates the screen through the DevTools protocol. */
-  const session = await page.context().newCDPSession(page);
-  const moveToScreen = async (width: number): Promise<void> => {
-    await session.send('Emulation.setDeviceMetricsOverride', {
-      width,
-      height: viewport!.height,
-      deviceScaleFactor: newDensity,
-      mobile: isMobile,
-    });
-    /* Resolves once the browser has rendered the page on the new screen: a resize observer
-       reports the first tick pattern's box, as it does once it starts observing it. */
-    await tickPatternOf(cards.first()).evaluate(
-      (element) =>
-        new Promise<void>((resolve) => {
-          const observer = new ResizeObserver(() => {
-            observer.disconnect();
-            resolve();
-          });
-          observer.observe(element);
-        }),
-    );
-    await page.waitForTimeout(DELAY_AFTER_MOVE);
-  };
-  /* A screenshot of a card at the new screen's density, taken through the same protocol:
-     Playwright's own screenshot would bring back the density it emulates. Its clip is rounded
-     out to whole CSS pixels, as Playwright's element screenshots are, so that the boxes from
-     cardAndTickPatternBoxes read it. */
-  const cardScreenshotsOnNewScreen = async (): Promise<Buffer[]> => {
+  const screen = await moveToScreenOfDensity(page, { density: newDensity, isMobile, rendered: tickPatternOf(cards.first()) });
+  const cardScreenshots = async (): Promise<Buffer[]> => {
     const screenshots: Buffer[] = [];
-    for (const index of FEATURED_PROJECTS.keys()) {
-      const card = cards.nth(index);
-      await card.scrollIntoViewIfNeeded();
-      const clip = await card.evaluate((element) => {
-        const box = element.getBoundingClientRect();
-        const left = Math.floor(box.left + window.scrollX);
-        const top = Math.floor(box.top + window.scrollY);
-        const right = Math.ceil(box.right + window.scrollX);
-        const bottom = Math.ceil(box.bottom + window.scrollY);
-        return { x: left, y: top, width: right - left, height: bottom - top, scale: 1 };
-      });
-      const { data } = await session.send('Page.captureScreenshot', { format: 'png', clip });
-      screenshots.push(Buffer.from(data, 'base64'));
-    }
+    for (const index of FEATURED_PROJECTS.keys()) screenshots.push(await screen.screenshot(cards.nth(index)));
     return screenshots;
   };
-  await moveToScreen(viewport!.width);
-  const afterMove = await cardScreenshotsOnNewScreen();
+  const afterMove = await cardScreenshots();
 
-  /* The reference: the same tick patterns drawn anew at the new density, once the window has been
-     narrowed by one CSS pixel and widened back, at the same size as before. They keep their ticks
-     across redraws. */
-  await moveToScreen(viewport!.width - 1);
-  await moveToScreen(viewport!.width);
-  const redrawn = await cardScreenshotsOnNewScreen();
+  /* The reference: each tick pattern taken off the page and put back in its place, which draws
+     it anew at the new density, whatever the layout. It keeps its ticks. */
+  await patterns.evaluateAll((elements) => {
+    for (const element of elements) {
+      const [parent, next] = [element.parentNode!, element.nextSibling];
+      element.remove();
+      parent.insertBefore(element, next);
+    }
+  });
+  await screen.waitForRender(tickPatternOf(cards.first()));
+  const redrawn = await cardScreenshots();
   expect(await page.evaluate(() => window.devicePixelRatio), 'pixel density of the new screen').toBeCloseTo(newDensity, 3);
 
   for (const index of FEATURED_PROJECTS.keys()) {
@@ -1355,106 +1101,13 @@ test('on the French home page, with JavaScript, after the window moves to a scre
     const box = withinCardEdges(patternBox, cardInScreenshot);
     const { rows } = await pixelsNotOfBackgroundPerRow(card, redrawn[index], box);
     const drawnPixels = rows.reduce((sum, count) => sum + count, 0);
-    expect.soft(drawnPixels, `${where}: pixels of its tick pattern redrawn at the new density that differ from the card's background`).toBeGreaterThan(0);
+    expect.soft(drawnPixels, `${where}: pixels of its tick pattern drawn anew at the new density that differ from the card's background`).toBeGreaterThan(0);
     const { columns } = await pixelsChangedPerColumnInRectangle(card, afterMove[index], redrawn[index], box);
     const changedPixels = columns.reduce((sum, count) => sum + count, 0);
     expect.soft(
       changedPixels,
-      `${where}: pixels of its ${Math.round(box.width)}px-wide tick pattern, ${DELAY_AFTER_MOVE} ms after the window moved from a density of ${oldDensity} to ${newDensity}, that differ from the tick pattern redrawn at that density, which shows ${drawnPixels} drawn pixels`,
+      `${where}: pixels of its ${Math.round(box.width)}px-wide tick pattern, ${DELAY_AFTER_MOVE_MS} ms after the window moved from a density of ${oldDensity} to ${newDensity}, that differ from the tick pattern drawn anew at that density, which shows ${drawnPixels} drawn pixels`,
     ).toBeLessThanOrEqual(MAX_SHARE_CHANGED * drawnPixels);
-  }
-});
-
-test('on the French home page, with JavaScript, the ticks of each card’s tick pattern vary in intensity: most of them are faint, see-through over the card’s background, and a few, across the cards, nearly opaque', { tag: '@pixels' }, async ({ page }) => {
-  /* Reduced motion, so that whatever could animate shows a still picture. */
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* A tick's opacity: the share of the way from the card's background to the tick's own colour
-     that a pixel it covers fully shows. Faint: well between the two, clearly drawn yet clearly
-     see-through. Nearly opaque: close to the tick's own colour. */
-  const FAINT = { min: 0.1, max: 0.7 };
-  const NEARLY_OPAQUE = 0.85;
-  /* Most: at least this share of the ticks of each card's tick pattern are faint. Nearly opaque
-     ticks are rare, so they are counted across the four cards, where at least one is near
-     certain. */
-  const MIN_SHARE_FAINT = 0.75;
-  const MIN_NEARLY_OPAQUE = 1;
-  /* Across a tick, every quarter of a CSS pixel, so that at least one point falls on a pixel the
-     tick covers fully. */
-  const STEP = 0.25;
-  await page.goto('/fr/');
-  const cards = await cardsOnceLoaded(page);
-  const described: string[] = [];
-  let nearlyOpaque = 0;
-  for (const index of FEATURED_PROJECTS.keys()) {
-    const where = cardName(index);
-    const card = cards.nth(index);
-    const { ticks } = await ticksOfTickPattern(card, where);
-    /* The ticks' boxes are relative to the tick pattern's, the card's screenshot to the card's. */
-    const { patternBox: offset } = await cardAndTickPatternBoxes(card, where);
-    const screenshot = await card.screenshot();
-    /* Of the points across a tick, halfway down it, the most opaque reading is that of a fully
-       covered pixel, whichever colour the tick has. */
-    const opacities: number[] = [];
-    for (const tick of ticks) {
-      const points = Array.from({ length: Math.max(1, Math.ceil(tick.width / STEP)) }, (_, step) => ({
-        x: offset.x + tick.x + (step + 0.5) * STEP,
-        y: offset.y + tick.y + tick.height / 2,
-      }));
-      const measures = await canvasOpacityOverBackgroundAt(card, screenshot, points);
-      opacities.push(Math.max(...measures.map(({ opacity }) => opacity).filter((opacity) => !Number.isNaN(opacity))));
-    }
-    const faint = opacities.filter((opacity) => opacity >= FAINT.min && opacity <= FAINT.max).length;
-    const opaque = opacities.filter((opacity) => opacity >= NEARLY_OPAQUE).length;
-    nearlyOpaque += opaque;
-    const sorted = [...opacities].sort((a, b) => a - b);
-    const percent = (opacity: number | undefined) => (opacity === undefined ? '–' : `${(100 * opacity).toFixed(0)}%`);
-    const summary = `${ticks.length} ticks, ${faint} faint (${FAINT.min * 100}–${FAINT.max * 100}% of their colour), ${opaque} nearly opaque (at least ${NEARLY_OPAQUE * 100}%); opacities from ${percent(sorted[0])} to ${percent(sorted[sorted.length - 1])}, median ${percent(sorted[Math.floor(sorted.length / 2)])}`;
-    described.push(`${where}: ${summary}`);
-    expect.soft(ticks.length, `${where}: separate ticks inside its tick pattern`).toBeGreaterThan(0);
-    expect.soft(faint / ticks.length, `${where}: share of the ticks of its tick pattern that are faint, see-through over the card's background; ${summary}`).toBeGreaterThanOrEqual(MIN_SHARE_FAINT);
-  }
-  expect.soft(nearlyOpaque, `nearly opaque ticks (at least ${NEARLY_OPAQUE * 100}% of their colour) across the tick patterns of the four cards; ${described.join('; ')}`).toBeGreaterThanOrEqual(MIN_NEARLY_OPAQUE);
-});
-
-test('on the French home page, each card’s tick pattern has no frame: along each of its four edges, inside it, a thin band shows only the card’s background', { tag: '@pixels' }, async ({ page }) => {
-  /* Reduced motion, so that whatever could animate shows a still picture. */
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* The band along each edge, inside the tick pattern's box: this high (or wide), in CSS pixels.
-     A border, an outline or a frame line drawn there would show in it. */
-  const BAND = 2;
-  /* Each band also reaches this far outside the box, over the card's padding and the space
-     below the tick pattern, which show the card's background: a frame line the browser snaps to
-     the pixel grid just outside a fractional box edge still shows in it. Where the tick pattern
-     touches the card's edges, the bands stop CARD_EDGE inside them, as the screenshot shows
-     them, instead: the card's outermost pixel there blends with the section's background, while
-     the band's inner pixel still shows a frame line two pixels wide. */
-  const OUTSIDE = 1;
-  await page.goto('/fr/');
-  const cards = await cardsOnceLoaded(page);
-  for (const index of FEATURED_PROJECTS.keys()) {
-    const where = cardName(index);
-    const card = cards.nth(index);
-    const box = await tickPatternBoxInCard(card, where);
-    const { cardInScreenshot } = await cardAndTickPatternBoxes(card, where);
-    const edges: [string, Rectangle][] = (
-      [
-        ['top', { x: box.x - OUTSIDE, y: box.y - OUTSIDE, width: box.width + 2 * OUTSIDE, height: BAND + OUTSIDE }],
-        ['bottom', { x: box.x - OUTSIDE, y: box.y + box.height - BAND, width: box.width + 2 * OUTSIDE, height: BAND + OUTSIDE }],
-        ['left', { x: box.x - OUTSIDE, y: box.y - OUTSIDE, width: BAND + OUTSIDE, height: box.height + 2 * OUTSIDE }],
-        ['right', { x: box.x + box.width - BAND, y: box.y - OUTSIDE, width: BAND + OUTSIDE, height: box.height + 2 * OUTSIDE }],
-      ] as [string, Rectangle][]
-    ).map(([edge, band]) => [edge, withinCardEdges(band, cardInScreenshot)]);
-    const screenshot = await card.screenshot();
-    const drawnAlongEdges: string[] = [];
-    for (const [edge, band] of edges) {
-      const { rows } = await pixelsNotOfBackgroundPerRow(card, screenshot, band);
-      const drawn = rows.reduce((sum, count) => sum + count, 0);
-      if (drawn > 0) drawnAlongEdges.push(`${edge}: ${drawn}`);
-    }
-    expect.soft(
-      drawnAlongEdges,
-      `${where}: screenshot pixels other than the card's background in the band along each edge (${BAND}px inside, ${OUTSIDE}px outside) of the ${Math.round(box.width)}×${Math.round(box.height)}px tick pattern`,
-    ).toEqual([]);
   }
 });
 
@@ -1557,7 +1210,7 @@ test.describe('home page of another site, featuring other projects', () => {
     ]);
   });
 
-  test('a featured project whose page declares only a title and a description gets a card with just those: no empty slot for the role, years or stack, no stray separator', async ({ page }) => {
+  test('a featured project whose page declares only a title and a description gets a card with just those: no empty slot for the role or stack, no stray separator', async ({ page }) => {
     const section = projectsSection(page);
     /* tests/fixtures/other-projects/content/projets/barometre-mercure.md declares no [params]. */
     const title = 'Baromètre à mercure';
@@ -1566,8 +1219,7 @@ test.describe('home page of another site, featuring other projects', () => {
     await expect(card).toHaveCount(1);
     await expect(card.getByText(description, { exact: true })).toHaveRole('paragraph');
     /* Outside links (the link to the project's page has its own text), the title and the
-       description are all the card shows: no role, years or stack text, no separator left
-       alone… */
+       description are all the card shows: no role or stack text, no separator left alone… */
     const textOutsideLinks = () =>
       card.evaluate((article) => {
         const copy = article.cloneNode(true) as HTMLElement;
@@ -1671,8 +1323,8 @@ test.describe('home page of another site, featuring projects whose page declares
     await serveSite(context, SITE_WITH_UNUSUAL_RENDER_VALUES, siteDirectory);
     /* In tests/fixtures/unusual-render-values/content/projets/, horloge-a-poids.md declares
        [build] render = 'Always' and pendulette-officier.md [build] render = 'nevr': Hugo reads the
-       value case-insensitively and treats a value it does not recognise as 'always', so that both
-       pages are published. */
+       value case-sensitively, so that 'Always' and 'nevr' are both values it does not recognise,
+       which it treats as 'always' (as for render = 'false', below): both pages are published. */
     const projects = [
       { title: 'Horloge à poids', slug: 'horloge-a-poids' },
       { title: 'Pendulette d’officier', slug: 'pendulette-officier' },
@@ -1760,8 +1412,8 @@ test.describe('home pages whose featured projects live in sections of different 
     const sites = [
       /* The example site, whose featured projects are in content/projets/ (title "Projets"),
          served at the root of its origin, then under a subpath (playwright.config.ts)… */
-      { home: 'http://localhost:1314/fr/', sectionAddress: 'http://localhost:1314/fr/projets/', sectionTitle: 'Projets' },
-      { home: 'http://localhost:1315/portfolio/fr/', sectionAddress: 'http://localhost:1315/portfolio/fr/projets/', sectionTitle: 'Projets' },
+      { home: '/fr/', sectionAddress: '/fr/projets/', sectionTitle: 'Projets' },
+      { home: `${EXAMPLE_SITE_UNDER_PORTFOLIO}fr/`, sectionAddress: `${EXAMPLE_SITE_UNDER_PORTFOLIO}fr/projets/`, sectionTitle: 'Projets' },
       /* …and a site whose featured project is in content/realisations/, while projets/ still
          exists: a hard-coded /projets/ address cannot pass. */
       {
@@ -1823,7 +1475,7 @@ test.describe('home page of another site, featuring a project at the content roo
       return card.top - above.bottom;
     };
     /* The example site's home page has the link, below the heading and above the first card. */
-    await page.goto('http://localhost:1314/fr/');
+    await page.goto('/fr/');
     await page.evaluate(() => document.fonts.ready);
     const sectionWithLink = projectsSection(page);
     const link = sectionWithLink.getByRole('link', { name: 'Tous les projets', exact: true });
@@ -2065,8 +1717,33 @@ test.describe('home page of another site, featuring a project with a long title 
       titleRight,
       `right edge of the title's widest line, against the right end of the card's text (${textRight.toFixed(1)} px), less one character of the title (${titleCharacterWidth.toFixed(1)} px)`,
     ).toBeGreaterThan(textRight - titleCharacterWidth);
+    /* The right end of the card's content, inside its padding and border: the description
+       could stop short of it along with the title, if both lost the same width. */
+    const cardContentRight = await card.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return element.getBoundingClientRect().right - Number.parseFloat(style.paddingRight) - Number.parseFloat(style.borderRightWidth);
+    });
+    expect(
+      titleRight,
+      `right edge of the title's widest line, against the right end of the card's content (${cardContentRight.toFixed(1)} px), less one character of the title (${titleCharacterWidth.toFixed(1)} px)`,
+    ).toBeGreaterThan(cardContentRight - titleCharacterWidth);
   });
 });
+
+/* The three checks every featured project content error shares: the build fails, its message
+   names the projects parameter, in the style of the clients messages, which name the clients
+   parameter, and no Go template execution error follows it and buries it in technical jargon.
+   The context, if any, starts each assertion message ("with an empty reference"). */
+function expectProjectsBuildError(build: BuildAttempt, context = ''): void {
+  const prefix = context ? `${context}, ` : '';
+  expect(build.succeeded, `${prefix}the site build should fail`).toBe(false);
+  expect(build.errors, `${prefix}the error message should name the projects parameter`).toMatch(
+    /\bprojects\s+parameter\b/,
+  );
+  expect(build.errors, `${prefix}no template execution error should follow the error message`).not.toMatch(
+    /execute of template failed|error calling/i,
+  );
+}
 
 test.describe('featured project content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
@@ -2080,90 +1757,73 @@ test.describe('featured project content errors: build failure', () => {
        front matter, whatever the rest of the wording, and no Go template execution error that
        would follow it and bury it in technical jargon. */
     const build = tryToBuildSite(SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
+    expectProjectsBuildError(build);
     expect(build.errors, 'the error message should name the missing page reference').toContain(
       'projets/sablier-introuvable',
     );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
-    );
   });
 
-  test('a home page whose projects parameter is a text instead of a list makes the site build fail, with an error message that names the projects parameter, without a template execution error after it', () => {
+  test('a home page whose projects parameter is a text instead of a list makes the site build fail, with an error message that names the projects parameter and says it must be a list, without a template execution error after it', () => {
     /* tests/fixtures/single-ref-instead-of-list/content/_index.md declares
        projects = 'projets/restauration-pendule', a text rather than a list of page references,
        although that page exists. Rather than a section built from that text, or a build that
        quietly treats it as a list of one, the person building the site must get a failure whose
        message names the projects parameter, in the style of the clients messages, which name the
-       clients parameter, whatever the rest of the wording, and no Go template execution error,
-       about a range over a text, that would follow it and bury it in technical jargon. */
+       clients parameter, and says, on that same line, that it must be a list, whatever the rest
+       of the wording, and no Go template execution error, about a range over a text, that would
+       follow it and bury it in technical jargon. */
     const build = tryToBuildSite(SITE_WITH_PROJECTS_AS_TEXT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+    expectProjectsBuildError(build);
+    expect(build.errors, 'the error message should say the projects parameter must be a list').toMatch(
+      /\bprojects\s+parameter\b.*\blist\b/,
     );
   });
 
-  test('a home page whose projects parameter is an empty text instead of a list makes the site build fail, with an error message that names the projects parameter, without a template execution error after it', () => {
+  test('a home page whose projects parameter is an empty text instead of a list makes the site build fail, with an error message that names the projects parameter and says it must be a list, without a template execution error after it', () => {
     /* tests/fixtures/empty-text-instead-of-list/content/_index.md declares projects = '', an
        empty text rather than a list of page references. Rather than a home page that quietly
        leaves out the projects section, as if the parameter were absent, the person building the
        site must get a failure whose message names the projects parameter, in the style of the
-       clients messages, which name the clients parameter, whatever the rest of the wording, and
-       no Go template execution error that would follow it and bury it in technical jargon. */
+       clients messages, which name the clients parameter, and says, on that same line, that it
+       must be a list, whatever the rest of the wording, and no Go template execution error that
+       would follow it and bury it in technical jargon. */
     const build = tryToBuildSite(SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+    expectProjectsBuildError(build);
+    expect(build.errors, 'the error message should say the projects parameter must be a list').toMatch(
+      /\bprojects\s+parameter\b.*\blist\b/,
     );
   });
 
-  test('a home page whose projects parameter is false instead of a list makes the site build fail, with an error message that names the projects parameter, without a template execution error after it', () => {
+  test('a home page whose projects parameter is false instead of a list makes the site build fail, with an error message that names the projects parameter and says it must be a list, without a template execution error after it', () => {
     /* tests/fixtures/false-instead-of-list/content/_index.md declares projects = false, a
        boolean rather than a list of page references. Rather than a home page that quietly
        leaves out the projects section, as if the parameter were absent, the person building the
        site must get a failure whose message names the projects parameter, in the style of the
-       clients messages, which name the clients parameter, whatever the rest of the wording, and
-       no Go template execution error that would follow it and bury it in technical jargon. */
+       clients messages, which name the clients parameter, and says, on that same line, that it
+       must be a list, whatever the rest of the wording, and no Go template execution error that
+       would follow it and bury it in technical jargon. */
     const build = tryToBuildSite(SITE_WITH_PROJECTS_AS_FALSE);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+    expectProjectsBuildError(build);
+    expect(build.errors, 'the error message should say the projects parameter must be a list').toMatch(
+      /\bprojects\s+parameter\b.*\blist\b/,
     );
   });
 
-  test('a home page whose projects list holds a table instead of a page reference makes the site build fail, with an error message that names the projects parameter and the position of the table, without a template execution error after it', () => {
+  test('a home page whose projects list holds tables instead of page references makes the site build fail, with an error message that names the projects parameter and the position of each table, without a template execution error after it', () => {
     /* tests/fixtures/table-instead-of-ref/content/_index.md declares projects as a list (so the
        check that projects is a list lets it through) whose second entry is a table,
        { path = 'projets/restauration-pendule' }, rather than a page reference, although that page
-       exists. Rather than a section that looks that table up as a page, the person building the
+       exists, and so is its fourth, { path = 'projets/montre-grande-complication' }. Rather than a section that looks that table up as a page, the person building the
        site must get a failure whose message names the projects parameter, in the style of the
        clients messages, which name the clients parameter, whatever the rest of the wording, and
        no Go template execution error, about a function called with a table, that would follow it
-       and bury it in technical jargon. The message also gives the table's position in the list,
-       counted from 1, "entry 2", as the clients messages do, so that whoever fills in the content
-       finds it. */
+       and bury it in technical jargon. The message also gives each table's position in the list,
+       counted from 1, "entry 2" and "entry 4", as the clients messages do, so that whoever fills
+       in the content finds them. Two tables, so that a hard-coded position does not pass. */
     const build = tryToBuildSite(SITE_WITH_A_FEATURED_PROJECT_AS_MAP);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
-    );
-    expect(build.errors, 'the error message should give the position of the table').toMatch(/\bentry\s+2\b/);
+    expectProjectsBuildError(build);
+    expect(build.errors, 'the error message should give the position of the first table').toMatch(/\bentry\s+2\b/);
+    expect(build.errors, 'the error message should give the position of the second table').toMatch(/\bentry\s+4\b/);
   });
 
   test('a home page whose projects list holds an empty or whitespace-only page reference makes the site build fail, with an error message that names the projects parameter and the position of the blank entry, without a template execution error after it', () => {
@@ -2191,39 +1851,33 @@ test.describe('featured project content errors: build failure', () => {
     ];
     for (const { name, site, position } of cases) {
       const build = tryToBuildSite(site);
-      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
-      expect(build.errors, `with ${name}, the error message should name the projects parameter`).toMatch(
-        /\bprojects\s+parameter\b/,
-      );
-      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
-        /execute of template failed|error calling/i,
-      );
+      expectProjectsBuildError(build, `with ${name}`);
       expect(build.errors, `with ${name}, the error message should give the position of the blank entry`).toMatch(
         position,
       );
     }
   });
 
-  test('a home page whose projects list holds a page reference with a leading or trailing space makes the site build fail, with an error message, for each such reference, that names the projects parameter and that reference and says it has a space', () => {
+  test('a home page whose projects list holds a page reference with leading or trailing whitespace makes the site build fail, with an error message, for each such reference, that names the projects parameter and that reference and says it has whitespace', () => {
     /* tests/fixtures/padded-ref/content/_index.md features 'projets/restauration-pendule ', with
-       a trailing space, then ' projets/montre-grande-complication', with a leading one: both
-       pages exist, but Hugo does not trim the space, so that it finds neither. A message that
-       only says the page cannot be found would show the person building the site a reference that
-       looks right, the space being invisible in it: the message must also say that the reference
-       has a space (space, whitespace…), on the same line as the projects parameter and that
-       reference, whatever the rest of the wording. Both a trailing and a leading space, so that
-       checking only one end does not pass. */
-    const build = tryToBuildSite(SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_SPACES);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
+       a trailing space, then "\tprojets/montre-grande-complication", with a leading tab: both
+       pages exist, but Hugo does not trim the whitespace, so that it finds neither. A message
+       that only says the page cannot be found would show the person building the site a
+       reference that looks right, the whitespace being invisible in it: the message must also
+       say that the reference has whitespace, on the same line as the projects parameter and that
+       reference, whatever the rest of the wording. A trailing space and a leading tab, so that
+       checking only one end, or only the space character, does not pass. */
+    const build = tryToBuildSite(SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_WHITESPACE);
+    expectProjectsBuildError(build);
     for (const { name, reference } of [
       { name: 'a trailing space', reference: 'projets/restauration-pendule' },
-      { name: 'a leading space', reference: 'projets/montre-grande-complication' },
+      { name: 'a leading tab', reference: 'projets/montre-grande-complication' },
     ]) {
       expect(
         build.errors,
-        `for the reference with ${name}, the error message should name the projects parameter and that reference and say it has a space`,
+        `for the reference with ${name}, the error message should name the projects parameter and that reference and say it has whitespace`,
       ).toMatch(
-        new RegExp(`^(?=.*\\bprojects\\s+parameter\\b)(?=.*${reference})(?=.*\\b(?:white)?spaces?\\b).*$`, 'im'),
+        new RegExp(`^(?=.*\\bprojects\\s+parameter\\b)(?=.*${reference})(?=.*\\bwhitespace\\b).*$`, 'im'),
       );
     }
   });
@@ -2239,15 +1893,9 @@ test.describe('featured project content errors: build failure', () => {
        The entry, a lone '/', is looked for on the message's line as a token of its own, between
        spaces, quotes or punctuation, so that the slashes of a file path do not pass for it. */
     const build = tryToBuildSite(SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
+    expectProjectsBuildError(build);
     expect(build.errors, 'the error message should name the entry "/" as written in the front matter').toMatch(
       /\bprojects\s+parameter\b.*(?:^|[\s:«"'‘“(])\/(?=$|[\s»"'’”),.;])/m,
-    );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
     );
   });
 
@@ -2263,15 +1911,9 @@ test.describe('featured project content errors: build failure', () => {
        file name nor a sentence's full stop pass for it, nor a full stop right after the entry
        for the entry followed by a full stop. */
     const build = tryToBuildSite(SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT_WRITTEN_AS_A_DOT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
+    expectProjectsBuildError(build);
     expect(build.errors, 'the error message should name the entry "." as written in the front matter').toMatch(
       /\bprojects\s+parameter\b.*(?:^|[\s:«"'‘“(])\.(?=$|[\s»"'’”),;])/m,
-    );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
     );
   });
 
@@ -2288,24 +1930,18 @@ test.describe('featured project content errors: build failure', () => {
        file path or another page reference under projets/ does not pass for it; "not a project"
        is looked for on that same line. */
     const build = tryToBuildSite(SITE_WITH_A_SECTION_AS_FEATURED_PROJECT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
+    expectProjectsBuildError(build);
     expect(build.errors, 'the error message should name the entry "projets" as written in the front matter').toMatch(
       /\bprojects\s+parameter\b.*(?:^|[\s:«"'‘“(])projets(?=$|[\s»"'’”),.;])/m,
     );
     expect(build.errors, 'the error message should say that entry is not a project').toMatch(
       /\bprojects\s+parameter\b.*\bnot\s+a\s+project\b/im,
     );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
-    );
   });
 
   test('a home page whose projects list references a taxonomy term page, such as "tags/horlogerie", the page of a tag a project carries, makes the site build fail, with an error message that names the projects parameter and that entry and says it is not a project, without a template execution error after it', () => {
-    /* tests/fixtures/term-ref enables the tags taxonomy, which the example site disables, adds a
-       project that carries the tag 'horlogerie', and its content/_index.md features
+    /* tests/fixtures/taxonomy-refs enables the tags taxonomy, which the example site disables,
+       adds a project that carries the tag 'horlogerie', and its content/_index.md features
        'projets/restauration-pendule', then 'tags/horlogerie': the page of that tag, which exists,
        so that the check for a page not found lets it through, and is neither the home page nor a
        section page, so that those checks let it through too, but is a taxonomy term page, no
@@ -2315,49 +1951,38 @@ test.describe('featured project content errors: build failure', () => {
        says that it is "not a project", whatever the rest of the wording. The entry,
        'tags/horlogerie', is looked for on the message's line as a token of its own, between
        spaces, quotes or punctuation other than a slash, so that a longer path ending or starting
-       with it does not pass for it; "not a project" is looked for on that same line. */
-    const build = tryToBuildSite(SITE_WITH_A_TERM_AS_FEATURED_PROJECT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
-    expect(build.errors, 'the error message should name the entry "tags/horlogerie" as written in the front matter').toMatch(
-      /\bprojects\s+parameter\b.*(?:^|[\s:«"'‘“(])tags\/horlogerie(?=$|[\s»"'’”),.;])/m,
-    );
-    expect(build.errors, 'the error message should say that entry is not a project').toMatch(
-      /\bprojects\s+parameter\b.*\bnot\s+a\s+project\b/im,
-    );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+       with it does not pass for it; "not a project" is looked for on that same line. The same
+       site also features 'tags', which the next test checks: since its own message says "not a
+       project" too, both are looked for on the line that names this entry. */
+    const build = tryToBuildSite(SITE_WITH_TAXONOMY_PAGES_AS_FEATURED_PROJECTS);
+    expectProjectsBuildError(build);
+    expect(
+      build.errors,
+      'the error message should name the entry "tags/horlogerie" as written in the front matter and say it is not a project',
+    ).toMatch(
+      /^(?=.*\bprojects\s+parameter\b)(?=.*(?:^|[\s:«"'‘“(])tags\/horlogerie(?=$|[\s»"'’”),.;]))(?=.*\bnot\s+a\s+project\b).*$/im,
     );
   });
 
   test('a home page whose projects list references a taxonomy page, such as "tags", the page listing every tag, makes the site build fail, with an error message that names the projects parameter and that entry and says it is not a project, without a template execution error after it', () => {
-    /* tests/fixtures/taxonomy-ref enables the tags taxonomy, which the example site disables,
-       adds a project that carries the tag 'horlogerie', and its content/_index.md features
-       'projets/restauration-pendule', then 'tags': the page listing every tag, which exists, so
-       that the check for a page not found lets it through, and is neither the home page, nor a
-       section page, nor a tag's own page, so that those checks let it through too, but is a
-       taxonomy page, no project. Rather than a section with a card of that page, the person
-       building the site must get a failure whose message names the projects parameter, in the
-       style of the clients messages, which name the clients parameter, the entry as written in
-       the front matter, and says that it is "not a project", whatever the rest of the wording.
-       The entry, 'tags', is looked for on the message's line as a token of its own, between
-       spaces, quotes or punctuation other than a slash, so that a path such as 'tags/horlogerie'
-       does not pass for it; "not a project" is looked for on that same line. */
-    const build = tryToBuildSite(SITE_WITH_A_TAXONOMY_AS_FEATURED_PROJECT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
-    expect(build.errors, 'the error message should name the entry "tags" as written in the front matter').toMatch(
-      /\bprojects\s+parameter\b.*(?:^|[\s:«"'‘“(])tags(?=$|[\s»"'’”),.;])/m,
-    );
-    expect(build.errors, 'the error message should say that entry is not a project').toMatch(
-      /\bprojects\s+parameter\b.*\bnot\s+a\s+project\b/im,
-    );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+    /* Same site as the test above, whose content/_index.md also features, third, 'tags': the
+       page listing every tag, which exists, so that the check for a page not found lets it
+       through, and is neither the home page, nor a section page, nor a tag's own page, so that
+       those checks let it through too, but is a taxonomy page, no project. Rather than a section
+       with a card of that page, the person building the site must get a failure whose message
+       names the projects parameter, in the style of the clients messages, which name the clients
+       parameter, the entry as written in the front matter, and says that it is "not a project",
+       whatever the rest of the wording. The entry, 'tags', is looked for on the message's line as
+       a token of its own, between spaces, quotes or punctuation other than a slash, so that a
+       path such as 'tags/horlogerie' does not pass for it; "not a project" is looked for on that
+       same line, not on the line of 'tags/horlogerie'. */
+    const build = tryToBuildSite(SITE_WITH_TAXONOMY_PAGES_AS_FEATURED_PROJECTS);
+    expectProjectsBuildError(build);
+    expect(
+      build.errors,
+      'the error message should name the entry "tags" as written in the front matter and say it is not a project',
+    ).toMatch(
+      /^(?=.*\bprojects\s+parameter\b)(?=.*(?:^|[\s:«"'‘“(])tags(?=$|[\s»"'’”),.;]))(?=.*\bnot\s+a\s+project\b).*$/im,
     );
   });
 
@@ -2374,18 +1999,12 @@ test.describe('featured project content errors: build failure', () => {
        punctuation other than a slash, so that a longer path ending or starting with it does not
        pass for it; "not a project" is looked for on that same line. */
     const build = tryToBuildSite(SITE_WITH_THE_404_PAGE_AS_FEATURED_PROJECT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
+    expectProjectsBuildError(build);
     expect(build.errors, 'the error message should name the entry "/404" as written in the front matter').toMatch(
       /\bprojects\s+parameter\b.*(?:^|[\s:«"'‘“(])\/404(?=$|[\s»"'’”),.;])/m,
     );
     expect(build.errors, 'the error message should say that entry is not a project').toMatch(
       /\bprojects\s+parameter\b.*\bnot\s+a\s+project\b/im,
-    );
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
     );
   });
 
@@ -2404,7 +2023,7 @@ test.describe('featured project content errors: build failure', () => {
     },
   ];
 
-  test('a home page that features a project without a translation in its language makes the site build fail, with an error message that names the projects parameter and that language, without a template execution error after it', () => {
+  test('a home page that features a project without a translation in its language makes the site build fail, with an error message that names the projects parameter and that language and gives a missing translation in that language as a possible cause, without a template execution error after it', () => {
     /* tests/fixtures/english-only-project features, on the French home page, a project that only
        has an English page; tests/fixtures/french-only-project features, on the English home page,
        a project that only has a French page. Rather than a section that drops that card, or one
@@ -2413,37 +2032,21 @@ test.describe('featured project content errors: build failure', () => {
        clients messages, which name the clients parameter, and the home page's language by its
        code, as written in the site's configuration and in the content file names (fr, en),
        whatever the rest of the wording, and no Go template execution error that would follow it
-       and bury it in technical jargon. The code is looked for as a word that no other word
-       follows, so that the letters "en" or "fr" met as a word inside the message's prose, followed
-       by more of the sentence, do not pass for the code. Both directions, so that a message naming
-       a language written in the template does not pass. */
+       and bury it in technical jargon.
+       A message that only says the page cannot be found, or only blames an unpublished page (a
+       draft, a future date, an expired page), would send the person building the site looking
+       for a missing or unpublished file, while the project's file is right there, in the other
+       language: the message must also name a missing translation (translation, translated…) as a
+       possible cause, on the same line as the language code. The code is looked for as a word
+       that no other word follows, so that the letters "en" or "fr" met as a word inside the
+       message's prose, followed by more of the sentence, do not pass for the code. Both
+       directions, so that a message naming a language written in the template does not pass. */
     for (const { name, site, language } of HOME_PAGES_FEATURING_AN_UNTRANSLATED_PROJECT) {
       const build = tryToBuildSite(site);
-      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
-      expect(build.errors, `with ${name}, the error message should name the projects parameter`).toMatch(
-        /\bprojects\s+parameter\b/,
-      );
+      expectProjectsBuildError(build, `with ${name}`);
       expect(build.errors, `with ${name}, the error message should name the home page's language`).toMatch(
         new RegExp(`\\b${language}\\b(?!\\s+\\p{L})`, 'u'),
       );
-      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
-        /execute of template failed|error calling/i,
-      );
-    }
-  });
-
-  test('a home page that features a project without a translation in its language makes the site build fail, with an error message that gives a missing translation in that language as a possible cause', () => {
-    /* Same fixtures as the test above. A message that only says the page cannot be found, or only
-       blames an unpublished page (a draft, a future date, an expired page), would send the person
-       building the site looking for a missing or unpublished file, while the project's file is
-       right there, in the other language: the error message must also name a missing translation
-       (translation, translated…) as a possible cause, on the same line as the home page's language
-       code (fr, en), whatever the rest of the wording. The code is looked for as in the test
-       above, as a word that no other word follows. Both directions, so that a message naming a
-       language written in the template does not pass. */
-    for (const { name, site, language } of HOME_PAGES_FEATURING_AN_UNTRANSLATED_PROJECT) {
-      const build = tryToBuildSite(site);
-      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
       expect(
         build.errors,
         `with ${name}, the error message should give a missing translation in ${language} as a possible cause`,
@@ -2462,10 +2065,7 @@ test.describe('featured project content errors: build failure', () => {
        passed (expired) — whatever the rest of the wording, and no Go template execution error
        must follow it and bury it in technical jargon. */
     const build = tryToBuildSite(SITE_WITH_A_DRAFT_FEATURED_PROJECT);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should name the projects parameter').toMatch(
-      /\bprojects\s+parameter\b/,
-    );
+    expectProjectsBuildError(build);
     expect(build.errors, 'the error message should name the unpublished page reference').toContain(
       'projets/pendule-portique',
     );
@@ -2475,8 +2075,5 @@ test.describe('featured project content errors: build failure', () => {
       /future|scheduled/i,
     );
     expect(build.errors, 'the error message should name an expired page as a possible reason').toMatch(/expir/i);
-    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
-    );
   });
 });

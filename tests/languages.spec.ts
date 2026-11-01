@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import {
+  EXAMPLE_SITE_UNDER_PORTFOLIO,
   SITE_WITH_ALIASES,
   buildSite,
   findMissingTranslations,
@@ -72,8 +73,8 @@ test.describe('English browser, site served under a subpath', () => {
   test.use({ locale: 'en-US' });
 
   test('served under /portfolio/, an English browser that opens /portfolio/ lands on /portfolio/en/', async ({ page }) => {
-    await page.goto('http://localhost:1315/portfolio/');
-    await expect(page).toHaveURL('http://localhost:1315/portfolio/en/');
+    await page.goto(EXAMPLE_SITE_UNDER_PORTFOLIO);
+    await expect(page).toHaveURL(`${EXAMPLE_SITE_UNDER_PORTFOLIO}en/`);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
   });
 });

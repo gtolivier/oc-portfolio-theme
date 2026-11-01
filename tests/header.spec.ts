@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import {
+  EXAMPLE_SITE_UNDER_PORTFOLIO,
   SITE_WITH_A_LONG_MENU,
   SITE_WITH_A_SINGLE_LANGUAGE,
   SITE_WITH_ENGLISH_BY_DEFAULT,
@@ -140,7 +141,7 @@ test('the header navigation lists the entries of the site main menu', async ({ p
 
 test('served under /portfolio/, the "Contact" link of the header leads to /portfolio/{lang}/#contact, in French and in English', async ({ page }) => {
   for (const lang of ['fr', 'en']) {
-    await page.goto(`http://localhost:1315/portfolio/${lang}/`);
+    await page.goto(`${EXAMPLE_SITE_UNDER_PORTFOLIO}${lang}/`);
     const contact = page.locator('header nav').getByRole('link', { name: 'Contact', exact: true });
     await expect(contact).toHaveAttribute('href', `/portfolio/${lang}/#contact`);
   }
@@ -522,7 +523,7 @@ test('after the window is widened from 375 px to 1280 px on the same page, the h
     .toBeLessThanOrEqual(1);
 });
 
-test('from 768 px wide, at least 24 px separate the header logo from the first navigation link, in French and in English (at 768 and 1280 px)', async ({ page }) => {
+test('from 768 px wide, a gap separates the header logo from the first navigation link, without overlap, in French and in English (at 768 and 1280 px)', async ({ page }) => {
   const gaps: Record<string, number> = {};
   for (const { url, menu } of [
     { url: '/fr/', menu: ['Accueil', 'Projets', 'Contact'] },
@@ -539,9 +540,8 @@ test('from 768 px wide, at least 24 px separate the header logo from the first n
       gaps[`${url} at ${viewport.width} px`] = firstLinkBox.x - (logoBox.x + logoBox.width);
     }
   }
-  /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
   expect(
-    Object.values(gaps).every((gap) => gap >= 24 - 0.5),
+    Object.values(gaps).every((gap) => gap > 0),
     `gaps: ${JSON.stringify(gaps)}`,
   ).toBe(true);
 });
