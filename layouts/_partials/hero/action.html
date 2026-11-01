@@ -19,14 +19,13 @@
   {{- $pageRef = "" }}
 {{- end }}
 {{- with $pageRef }}
-  {{- $ref := . }}
-  {{- with site.GetPage $ref }}
+  {{- with site.GetPage $pageRef }}
     {{- $href = .RelPermalink }}
     {{- if not (partial "is-published.html" .) }}
-      {{- errorf "hero: the pageRef %q points to a page that is not published" $ref }}
+      {{- errorf "hero: the pageRef %q points to a page that is not published" $pageRef }}
     {{- end }}
   {{- else }}
-    {{- errorf "hero: the pageRef %q matches no page (language: %s): check for a page that does not exist, a typo in the reference, a missing translation, a draft, a future (scheduled) date or an expired page" $ref site.Language.Lang }}
+    {{- errorf "hero: the pageRef %q matches no page (language: %s): check for a page that does not exist, a typo in the reference, a missing translation, a draft, a future (scheduled) date or an expired page" $pageRef site.Language.Lang }}
   {{- end }}
 {{- end }}
 {{- if and .url .pageRef }}{{ errorf "hero: a button declares both a url field and a pageRef field; it needs only one" }}{{ end }}
