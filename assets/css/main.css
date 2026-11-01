@@ -1069,3 +1069,15 @@ tick-field > canvas {
     flex-basis: calc((100% - var(--projects-gap)) / 2);
   }
 }
+
+/* With JavaScript, a key figure shows 0 over its value, which stays in place but invisible. */
+.background-stats dt {
+  position: relative;
+}
+.background-stats dt:not(.is-counted) .figure-value {
+  opacity: 0;
+}
+.background-stats .figure-zero {
+  position: absolute;
+  inset: 0 auto auto 0;
+}
