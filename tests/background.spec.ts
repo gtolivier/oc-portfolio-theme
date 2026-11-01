@@ -7,7 +7,7 @@ import {
   removeDirectory,
   serveSite,
 } from './helpers/built-site';
-import { displayedText } from './helpers/text-on-screen';
+import { displayedText, textOnScreen } from './helpers/text-on-screen';
 import { type Rgb, colorComponents, contrastRatio } from './helpers/colors';
 
 /* The background section of a home page, in its main content: a region named by its title, the
@@ -84,6 +84,30 @@ test.describe('without JavaScript', () => {
     await expect(section).toBeVisible();
     await expectKeyFigures(section, KEY_FIGURES);
   });
+});
+
+test('with JavaScript, on the French home page, while the section "Parcours" has not come into view, even 3 s after load, each key figure shows 0 alone in place of its value, without the rest of it, next to its label', async ({
+  page,
+}) => {
+  await page.goto('/fr/');
+  const section = backgroundSection(page);
+  /* Below the first screen, so that the figures have no reason to count yet. */
+  await expect(section).toHaveCount(1);
+  await expect(section).not.toBeInViewport();
+  /* Time passes, on the page's real clock, as the visitor lives it: long enough for a counter
+     started on load to reach its target. */
+  await page.waitForTimeout(3000);
+  await expect(section, 'the section is still out of view').not.toBeInViewport();
+  for (const { label } of KEY_FIGURES) {
+    await expect(section.getByText(label, { exact: true }), `the label "${label}"`).toBeVisible();
+  }
+  /* On screen, in reading order, whitespace excluded: each label comes right after a 0 that no
+     digit precedes and nothing follows, so neither the full value ("20+"), nor its number alone
+     ("20"), nor 0 with the rest of the value ("0+") can pass. Text that only assistive
+     technologies get does not count: it is not what a visitor sees. */
+  const figures = KEY_FIGURES.map(({ label }) => `(?<!\\d)0${literally(label.replace(/\s+/g, ''))}`);
+  const inOrder = new RegExp(`${figures.join('.*')}(?!\\p{L})`, 'u');
+  expect(await textOnScreen(section), 'text the background section shows on screen').toMatch(inOrder);
 });
 
 /* The intro lines the example site's French home page declares (exampleSite/content/_index.md,
