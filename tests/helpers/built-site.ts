@@ -635,6 +635,15 @@ export const SITE_WITH_A_KEY_FIGURE_NOT_STARTING_WITH_A_NUMBER = testSite('numbe
    avoids the words background and skills, which the error-message assertion looks for. */
 export const SITE_WITH_BACKGROUND_SKILLS_AS_A_SINGLE_TABLE = testSite('lone-group-table');
 
+/* The example site's French home page writes each skill group's items as a list: this site
+   replaces that home page with the one of tests/fixtures/know-how-as-text/content, without a hero,
+   clients nor projects, which declares a fictional potter's three skill groups as a list of
+   tables, [[params.background.skills]], the second of which ("Émaillage") writes its items as a
+   single text, 'Émaux de cendre', rather than a list, between two groups of three items. Its
+   folder name avoids the words background, skill, group, items and list, which the error-message
+   assertions look for. */
+export const SITE_WITH_A_SKILL_GROUP_WHOSE_ITEMS_ARE_A_TEXT = testSite('know-how-as-text');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

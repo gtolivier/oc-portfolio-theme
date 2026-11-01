@@ -6,6 +6,7 @@ import {
   SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE,
   SITE_WITH_A_KEY_FIGURE_NOT_STARTING_WITH_A_NUMBER,
   SITE_WITH_BACKGROUND_SKILLS_AS_A_SINGLE_TABLE,
+  SITE_WITH_A_SKILL_GROUP_WHOSE_ITEMS_ARE_A_TEXT,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1144,6 +1145,29 @@ test.describe('background content errors: build failure', () => {
       build.errors,
       'the error message should say to write the skill groups as [[params.background.skills]]',
     ).toMatch(/\bbackground:.*\[\[params\.background\.skills\]\]/);
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page with a skill group whose items are written as a text rather than a list makes the site build fail, with an error message that gives the position of that skill group, without a template execution error after it', () => {
+    /* tests/fixtures/know-how-as-text/content/_index.md writes its three skill groups as a list of
+       tables, but the second writes its items as a single text, 'Émaux de cendre', rather than a
+       list: ranging over a text in a Go template may raise no error, and the group would show
+       anything but its items. Rather than that, the person building the site must get an error
+       message that says, on its own line, that the items of skill group 2 must be a list, the
+       position counted from 1 as the key figure message gives a figure's position, whatever the
+       rest of the wording, and no Go template execution error that would follow it and bury it in
+       technical jargon. The bad group is the second, so that a position written in the template,
+       or the first group's, does not pass. */
+    const build = tryToBuildSite(SITE_WITH_A_SKILL_GROUP_WHOSE_ITEMS_ARE_A_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the error message should give the position of the skill group').toMatch(
+      /\bbackground:.*\bskill\s+group\s+2\b/,
+    );
+    expect(build.errors, 'the error message should say the items must be a list').toMatch(
+      /\bbackground:.*\bitems\b.*\blist\b/,
+    );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       /execute of template failed|error calling/i,
     );
