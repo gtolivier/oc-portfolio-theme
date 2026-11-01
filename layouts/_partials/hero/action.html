@@ -4,7 +4,12 @@
 {{- if and .url (hasPrefix .url "/") (not (hasPrefix .url "//")) }}
   {{- $href = relURL (strings.TrimPrefix "/" .url) }}
 {{- end }}
-{{- with .pageRef }}
+{{- $pageRef := .pageRef }}
+{{- if and $pageRef (ne (printf "%T" $pageRef) "string") }}
+  {{- errorf "hero: the pageRef field must be a page reference, a text" }}
+  {{- $pageRef = "" }}
+{{- end }}
+{{- with $pageRef }}
   {{- $ref := . }}
   {{- with site.GetPage $ref }}
     {{- $href = .RelPermalink }}
