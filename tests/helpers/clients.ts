@@ -9,13 +9,19 @@ export function clientList(page: Page): Locator {
    the list "Ils me font confiance", that is the list itself or its nearest ancestor that spans the
    page width (the document's client width, within 1 px) without holding the hero's heading.
    Null when no such strip exists. */
-export async function clientBandBox(page: Page): Promise<{ left: number; right: number; top: number; bottom: number } | null> {
+export async function clientBandBox(
+  page: Page,
+): Promise<{ left: number; right: number; top: number; bottom: number } | null> {
   const list = clientList(page);
   await expect(list).toBeVisible();
   return list.evaluate((element) => {
     const pageWidth = document.documentElement.clientWidth;
     const heading = document.querySelector('main h1');
-    for (let candidate: Element | null = element; candidate && candidate !== document.body; candidate = candidate.parentElement) {
+    for (
+      let candidate: Element | null = element;
+      candidate && candidate !== document.body;
+      candidate = candidate.parentElement
+    ) {
       if (heading && candidate.contains(heading)) return null;
       const { left, right, top, bottom } = candidate.getBoundingClientRect();
       if (Math.abs(left) <= 1 && Math.abs(right - pageWidth) <= 1) return { left, right, top, bottom };

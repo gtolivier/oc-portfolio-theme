@@ -120,7 +120,9 @@ test('the header logo displays the initials and leads to the home page', async (
   await expect(logo).toHaveAttribute('href', '/fr/');
 });
 
-test('for screen readers, the header logo link holds only the site name, without the visible initials and bars', async ({ page }) => {
+test('for screen readers, the header logo link holds only the site name, without the visible initials and bars', async ({
+  page,
+}) => {
   await page.goto('/fr/');
   /* "/children: equal" makes the match exact: any text child (such as "| E |||") fails it. */
   await expect(headerLogo(page)).toMatchAriaSnapshot(`
@@ -139,7 +141,9 @@ test('the header navigation lists the entries of the site main menu', async ({ p
   await expect(links.nth(2)).toHaveAttribute('href', '/fr/#contact');
 });
 
-test('served under /portfolio/, the "Contact" link of the header leads to /portfolio/{lang}/#contact, in French and in English', async ({ page }) => {
+test('served under /portfolio/, the "Contact" link of the header leads to /portfolio/{lang}/#contact, in French and in English', async ({
+  page,
+}) => {
   for (const lang of ['fr', 'en']) {
     await page.goto(`${EXAMPLE_SITE_UNDER_PORTFOLIO}${lang}/`);
     const contact = page.locator('header nav').getByRole('link', { name: 'Contact', exact: true });
@@ -147,7 +151,9 @@ test('served under /portfolio/, the "Contact" link of the header leads to /portf
   }
 });
 
-test('only the navigation link of the current page is marked as the current page, on the home page and on the Projets page', async ({ page }) => {
+test('only the navigation link of the current page is marked as the current page, on the home page and on the Projets page', async ({
+  page,
+}) => {
   for (const { url, current } of [
     { url: '/fr/', current: 'Accueil' },
     { url: '/fr/projets/', current: 'Projets' },
@@ -171,7 +177,9 @@ test('the navigation link marked as the current page is underlined with an accen
   await expect(current).not.toHaveCSS('border-bottom-width', '0px');
 });
 
-test('in English, the header logo leads to the English home page and the navigation lists the English main menu', async ({ page }) => {
+test('in English, the header logo leads to the English home page and the navigation lists the English main menu', async ({
+  page,
+}) => {
   await page.goto('/en/');
   await expect(headerLogo(page)).toHaveAttribute('href', '/en/');
   const links = navigationLinks(page);
@@ -194,7 +202,9 @@ test('the header "EN" and "FR" links lead to the translated page', async ({ page
   }
 });
 
-test('on a French page without a translation, the header "EN" link leads to the English home page', async ({ page }) => {
+test('on a French page without a translation, the header "EN" link leads to the English home page', async ({
+  page,
+}) => {
   await page.goto('/fr/page-longue/');
   const enLink = page.locator('header').getByRole('link', { name: 'EN', exact: true });
   await expect(enLink).toBeVisible();
@@ -210,7 +220,9 @@ test('on a French page, the header "EN" link announces its language: hreflang="e
   await expect(enLink).toHaveAttribute('lang', 'en');
 });
 
-test('on a French page, the header displays the current language "FR" next to the "EN" link, without a link, marked as current', async ({ page }) => {
+test('on a French page, the header displays the current language "FR" next to the "EN" link, without a link, marked as current', async ({
+  page,
+}) => {
   await page.goto('/fr/');
   const header = page.locator('header');
   await expect(header.getByRole('link', { name: 'EN', exact: true })).toBeVisible();
@@ -220,7 +232,9 @@ test('on a French page, the header displays the current language "FR" next to th
   await expect(header.getByRole('link', { name: 'FR', exact: true })).toHaveCount(0);
 });
 
-test('the header language switcher is a group named "Langue" on a French page, "Language" on an English page', async ({ page }) => {
+test('the header language switcher is a group named "Langue" on a French page, "Language" on an English page', async ({
+  page,
+}) => {
   for (const { url, name, current, other, href } of [
     { url: '/fr/', name: 'Langue', current: 'FR', other: 'EN', href: '/en/' },
     { url: '/en/', name: 'Language', current: 'EN', other: 'FR', href: '/fr/' },
@@ -233,7 +247,9 @@ test('the header language switcher is a group named "Langue" on a French page, "
   }
 });
 
-test('the header language switcher shows the languages in the site order, FR then EN, on a French page as on an English page, the current one highlighted', async ({ page }) => {
+test('the header language switcher shows the languages in the site order, FR then EN, on a French page as on an English page, the current one highlighted', async ({
+  page,
+}) => {
   for (const { url, name, current } of [
     { url: '/fr/', name: 'Langue', current: 'FR' },
     { url: '/en/', name: 'Language', current: 'EN' },
@@ -258,7 +274,10 @@ test.describe('site whose default language has the greatest weight', () => {
     removeDirectory(siteDirectory);
   });
 
-  test('on a site in English by default, with fr of weight 1 and en of weight 2, the header language switcher shows FR then EN', async ({ page, context }) => {
+  test('on a site in English by default, with fr of weight 1 and en of weight 2, the header language switcher shows FR then EN', async ({
+    page,
+    context,
+  }) => {
     await serveSite(context, SITE_WITH_ENGLISH_BY_DEFAULT, siteDirectory);
     for (const { url, name } of [
       { url: '/en/', name: 'Language' },
@@ -291,7 +310,9 @@ test.describe('single-language site', () => {
   });
 });
 
-test('the border of the header language switcher surrounds only its FR and EN entries, without spanning the full width of the header', async ({ page }) => {
+test('the border of the header language switcher surrounds only its FR and EN entries, without spanning the full width of the header', async ({
+  page,
+}) => {
   await page.goto('/fr/');
   const group = languageSwitcher(page, 'Langue');
   const groupBox = (await group.boundingBox())!;
@@ -306,18 +327,30 @@ test('the border of the header language switcher surrounds only its FR and EN en
   expect(groupBox.width - (entriesRight - entriesLeft)).toBeLessThanOrEqual(10);
 });
 
-test('in the header logo, the first "|" of each initial is bold (700), every other character stays at weight 400', async ({ page }) => {
+test('in the header logo, the first "|" of each initial is bold (700), every other character stays at weight 400', async ({
+  page,
+}) => {
   await page.goto('/fr/');
   const logo = headerLogo(page);
   await expect(logo).toHaveText('| E ||| | X |||');
   const characters = await characterWeights(logo);
   expect(characters).toEqual([
-    '| 700', 'E 400', '| 400', '| 400', '| 400',
-    '| 700', 'X 400', '| 400', '| 400', '| 400',
+    '| 700',
+    'E 400',
+    '| 400',
+    '| 400',
+    '| 400',
+    '| 700',
+    'X 400',
+    '| 400',
+    '| 400',
+    '| 400',
   ]);
 });
 
-test('in the header language switcher, the link to the other language offers a target of at least 24 × 24 px (WCAG 2.5.8)', async ({ page }) => {
+test('in the header language switcher, the link to the other language offers a target of at least 24 × 24 px (WCAG 2.5.8)', async ({
+  page,
+}) => {
   await page.goto('/fr/');
   const otherLanguage = languageSwitcher(page, 'Langue').getByRole('link', { name: 'EN', exact: true });
   await expect(otherLanguage).toBeVisible();
@@ -341,7 +374,9 @@ test('after scrolling a long page, the header stays stuck to the top of the wind
   expect(box?.y).toBeCloseTo(0, 0);
 });
 
-test('the sticky header stays above positioned content that scrolls under it: logo and links stay clickable', async ({ page }) => {
+test('the sticky header stays above positioned content that scrolls under it: logo and links stay clickable', async ({
+  page,
+}) => {
   await page.goto('/fr/page-longue/');
   const insert = page.getByText('Encart positionné', { exact: false });
   await expect(insert).toHaveCount(1);
@@ -355,19 +390,27 @@ test('the sticky header stays above positioned content that scrolls under it: lo
   for (const link of await links.all()) {
     const box = (await link.boundingBox())!;
     const insertUnderTheLink = await insert.evaluate(
-      (el, { x, y }) => { const r = el.getBoundingClientRect(); return r.top <= y && y <= r.bottom && r.left <= x && x <= r.right; },
+      (el, { x, y }) => {
+        const r = el.getBoundingClientRect();
+        return r.top <= y && y <= r.bottom && r.left <= x && x <= r.right;
+      },
       { x: box.x + box.width / 2, y: box.y + box.height / 2 },
     );
     expect(insertUnderTheLink).toBe(true);
     const reachesTheLink = await link.evaluate(
-      (el, { x, y }) => { const hit = document.elementFromPoint(x, y); return hit !== null && el.contains(hit); },
+      (el, { x, y }) => {
+        const hit = document.elementFromPoint(x, y);
+        return hit !== null && el.contains(hit);
+      },
       { x: box.x + box.width / 2, y: box.y + box.height / 2 },
     );
     expect(reachesTheLink).toBe(true);
   }
 });
 
-test('on arriving at an anchor of a long page, the targeted element is not hidden by the sticky header', async ({ page }) => {
+test('on arriving at an anchor of a long page, the targeted element is not hidden by the sticky header', async ({
+  page,
+}) => {
   await page.goto('/fr/page-longue/#quatrième-chapitre');
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 
@@ -380,7 +423,9 @@ test('on arriving at an anchor of a long page, the targeted element is not hidde
   expect(targetBox.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height);
 });
 
-test('on a phone, down to 320 px wide, the header fits within the screen width: no horizontal scrolling, logo, links and language switcher fully visible', async ({ page }) => {
+test('on a phone, down to 320 px wide, the header fits within the screen width: no horizontal scrolling, logo, links and language switcher fully visible', async ({
+  page,
+}) => {
   for (const viewport of [PHONE_VIEWPORT, NARROWEST_PHONE_VIEWPORT]) {
     const { width } = viewport;
     await page.setViewportSize(viewport);
@@ -405,7 +450,9 @@ test('on a phone, down to 320 px wide, the header fits within the screen width: 
   }
 });
 
-test('on a phone, the header logo and the language switcher share the first row, and the navigation links sit on a row below it, lined up on the left with the logo', async ({ page }) => {
+test('on a phone, the header logo and the language switcher share the first row, and the navigation links sit on a row below it, lined up on the left with the logo', async ({
+  page,
+}) => {
   await page.setViewportSize(PHONE_VIEWPORT);
   await page.goto('/fr/');
   const links = navigationLinks(page);
@@ -416,17 +463,25 @@ test('on a phone, the header logo and the language switcher share the first row,
 
   const logoCentre = logoBox.y + logoBox.height / 2;
   const switcherCentre = switcherBox.y + switcherBox.height / 2;
-  expect(Math.abs(logoCentre - switcherCentre), 'gap between the vertical centres of the logo and the switcher').toBeLessThanOrEqual(1);
+  expect(
+    Math.abs(logoCentre - switcherCentre),
+    'gap between the vertical centres of the logo and the switcher',
+  ).toBeLessThanOrEqual(1);
   const firstRowBottom = Math.max(logoBox.y + logoBox.height, switcherBox.y + switcherBox.height);
   /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
   expect(
     linkBoxes.every((box) => box.y >= firstRowBottom - 0.5),
     `link tops ${linkBoxes.map((box) => box.y).join(', ')}, first row bottom ${firstRowBottom}`,
   ).toBe(true);
-  expect(Math.abs(linkBoxes[0].x - logoBox.x), 'horizontal offset between the logo and the first link').toBeLessThanOrEqual(1);
+  expect(
+    Math.abs(linkBoxes[0].x - logoBox.x),
+    'horizontal offset between the logo and the first link',
+  ).toBeLessThanOrEqual(1);
 });
 
-test('on a phone, on a page where no menu link is current, the header keeps the home page layout: same height, logo, language switcher and navigation links in the same place', async ({ page }) => {
+test('on a phone, on a page where no menu link is current, the header keeps the home page layout: same height, logo, language switcher and navigation links in the same place', async ({
+  page,
+}) => {
   await page.setViewportSize(PHONE_VIEWPORT);
   /* The header height and the position of each item relative to the header's top-left corner. */
   const layouts: Record<string, Record<string, number>> = {};
@@ -434,8 +489,9 @@ test('on a phone, on a page where no menu link is current, the header keeps the 
     await page.goto(url);
     const links = navigationLinks(page);
     await expect(links, `navigation links on ${url}`).toHaveText(['Accueil', 'Projets', 'Contact']);
-    await expect(links.and(page.locator('[aria-current]')), `current navigation links on ${url}`)
-      .toHaveCount(url === '/fr/' ? 1 : 0);
+    await expect(links.and(page.locator('[aria-current]')), `current navigation links on ${url}`).toHaveCount(
+      url === '/fr/' ? 1 : 0,
+    );
     const headerBox = (await page.locator('header').boundingBox())!;
     const layout: Record<string, number> = { 'header height': headerBox.height };
     for (const [name, item] of await headerItems(page)) {
@@ -454,7 +510,9 @@ test('on a phone, on a page where no menu link is current, the header keeps the 
   expect(differences, 'measures that differ from the home page').toEqual([]);
 });
 
-test('from 768 px wide, the header sits on a single row, vertically centred: the logo on the left, then the navigation links, then the language switcher on the right, without overlap (at 768 and 1280 px)', async ({ page }) => {
+test('from 768 px wide, the header sits on a single row, vertically centred: the logo on the left, then the navigation links, then the language switcher on the right, without overlap (at 768 and 1280 px)', async ({
+  page,
+}) => {
   for (const viewport of DESKTOP_VIEWPORTS) {
     await page.setViewportSize(viewport);
     await page.goto('/fr/');
@@ -489,7 +547,9 @@ test('from 768 px wide, the header sits on a single row, vertically centred: the
   }
 });
 
-test('after the window is widened from 375 px to 1280 px on the same page, the hero still ends where the client band begins and the band’s bottom edge meets the bottom of the window, within 1 px', async ({ page }) => {
+test('after the window is widened from 375 px to 1280 px on the same page, the hero still ends where the client band begins and the band’s bottom edge meets the bottom of the window, within 1 px', async ({
+  page,
+}) => {
   /* 900 px high: tall enough for the hero's content at 375 px as at 1280 px, so the hero's
      height is set by the header above it and the client band below it. */
   const height = 900;
@@ -511,19 +571,26 @@ test('after the window is widened from 375 px to 1280 px on the same page, the h
     return band ? heroBox.y + heroBox.height - band.top : Infinity;
   };
   await expect
-    .poll(async () => Math.abs(await heroBottomOffset()), { message: 'hero bottom against the client band top after widening to 1280 px' })
+    .poll(async () => Math.abs(await heroBottomOffset()), {
+      message: 'hero bottom against the client band top after widening to 1280 px',
+    })
     .toBeLessThanOrEqual(1);
   /* The hero and the band fill the window below the header: the band's bottom meets the window's
      bottom, which a header height left over from the 375 px layout would break. */
   await expect
-    .poll(async () => {
-      const band = await clientBandBox(page);
-      return band ? Math.abs(band.bottom - height) : Infinity;
-    }, { message: `client band bottom against the window bottom (${height} px) after widening to 1280 px` })
+    .poll(
+      async () => {
+        const band = await clientBandBox(page);
+        return band ? Math.abs(band.bottom - height) : Infinity;
+      },
+      { message: `client band bottom against the window bottom (${height} px) after widening to 1280 px` },
+    )
     .toBeLessThanOrEqual(1);
 });
 
-test('from 768 px wide, a gap separates the header logo from the first navigation link, without overlap, in French and in English (at 768 and 1280 px)', async ({ page }) => {
+test('from 768 px wide, a gap separates the header logo from the first navigation link, without overlap, in French and in English (at 768 and 1280 px)', async ({
+  page,
+}) => {
   const gaps: Record<string, number> = {};
   for (const { url, menu } of [
     { url: '/fr/', menu: ['Accueil', 'Projets', 'Contact'] },
@@ -549,7 +616,9 @@ test('from 768 px wide, a gap separates the header logo from the first navigatio
 test.describe('without JavaScript', () => {
   test.use({ javaScriptEnabled: false });
 
-  test('without JavaScript, the header is complete: logo, three links and language switcher visible and clickable, on a single row from 768 px wide', async ({ page }) => {
+  test('without JavaScript, the header is complete: logo, three links and language switcher visible and clickable, on a single row from 768 px wide', async ({
+    page,
+  }) => {
     for (const viewport of [PHONE_VIEWPORT, ...DESKTOP_VIEWPORTS]) {
       await page.setViewportSize(viewport);
       await page.goto('/fr/');
@@ -601,7 +670,10 @@ test.describe('site with a long menu', () => {
     removeDirectory(siteDirectory);
   });
 
-  test('in a 320 px wide window, a menu too long for a single line wraps onto another line: no link goes past the header, no horizontal scrolling', async ({ page, context }) => {
+  test('in a 320 px wide window, a menu too long for a single line wraps onto another line: no link goes past the header, no horizontal scrolling', async ({
+    page,
+    context,
+  }) => {
     await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
     await page.setViewportSize(NARROWEST_PHONE_VIEWPORT);
     await page.goto(`${SITE_WITH_A_LONG_MENU.origin}/fr/`);
@@ -633,7 +705,10 @@ test.describe('site with a long menu', () => {
     expect(lineCount, `top edges of the links: ${linkTops.join(', ')}`).toBeGreaterThan(1);
   });
 
-  test('from 768 px wide, with a menu too long to fit on the header line, the links wrap between the logo and the language switcher without overlapping them or going past the header, and the logo stays on a single line (at 768, 1024 and 1280 px)', async ({ page, context }) => {
+  test('from 768 px wide, with a menu too long to fit on the header line, the links wrap between the logo and the language switcher without overlapping them or going past the header, and the logo stays on a single line (at 768, 1024 and 1280 px)', async ({
+    page,
+    context,
+  }) => {
     await serveSite(context, SITE_WITH_A_LONG_MENU, siteDirectory);
     await page.setViewportSize(NARROW_DESKTOP_VIEWPORT);
     await page.goto(`${SITE_WITH_A_LONG_MENU.origin}/fr/`);
@@ -656,15 +731,18 @@ test.describe('site with a long menu', () => {
       if (width === DESKTOP_MIN_WIDTH) {
         /* The menu is too long for a single line here: its links sit on more than one line. */
         const linkTops = linkBoxes.map((box) => box.y);
-        expect(new Set(linkTops.map(Math.round)).size, `top edges of the links at ${width} px: ${linkTops.join(', ')}`)
-          .toBeGreaterThan(1);
+        expect(
+          new Set(linkTops.map(Math.round)).size,
+          `top edges of the links at ${width} px: ${linkTops.join(', ')}`,
+        ).toBeGreaterThan(1);
       }
 
       /* Compared with a small tolerance: rendered box positions may carry sub-pixel rounding. */
       for (const [index, box] of linkBoxes.entries()) {
         const name = `at ${width} px, navigation link ${index + 1}`;
         if (box.x < logoBox.x + logoBox.width - 0.5) problems.push(`${name} starts at ${box.x}, before the logo ends`);
-        if (box.x + box.width > switcherBox.x + 0.5) problems.push(`${name} ends at ${box.x + box.width}, after the switcher starts`);
+        if (box.x + box.width > switcherBox.x + 0.5)
+          problems.push(`${name} ends at ${box.x + box.width}, after the switcher starts`);
         if (box.y < headerBox.y - 0.5 || box.y + box.height > bottomBorderTop(headerBox) + 0.5) {
           problems.push(`${name} goes past the header: ${JSON.stringify(box)}`);
         }

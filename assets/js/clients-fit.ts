@@ -43,8 +43,10 @@ if (clientsBand && clientsWindow && clientsList && clientsTrack) {
      gets it back. Measured the same way in both states, or the names would never stop. */
   const namesRoom = (): number => {
     const bandStyle = getComputedStyle(clientsBand);
-    const contentRight = clientsBand.getBoundingClientRect().right
-      - parseFloat(bandStyle.borderRightWidth) - parseFloat(bandStyle.paddingRight);
+    const contentRight =
+      clientsBand.getBoundingClientRect().right -
+      parseFloat(bandStyle.borderRightWidth) -
+      parseFloat(bandStyle.paddingRight);
     return contentRight - clientsWindow.getBoundingClientRect().left;
   };
   const update = () => {

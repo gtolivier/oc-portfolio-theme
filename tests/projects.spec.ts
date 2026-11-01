@@ -63,7 +63,8 @@ const FEATURED_PROJECTS = [
   {
     slug: 'restauration-pendule',
     title: 'Restauration d’une pendule de cheminée',
-    description: 'Remise en marche d’une pendule Empire en bronze doré : mouvement nettoyé, suspension refaite, cadran retouché.',
+    description:
+      'Remise en marche d’une pendule Empire en bronze doré : mouvement nettoyé, suspension refaite, cadran retouché.',
     role: 'Restaurateur',
     years: '2019 – 2020',
     stack: ['Bronze doré', 'Laiton', 'Soie'],
@@ -79,7 +80,8 @@ const FEATURED_PROJECTS = [
   {
     slug: 'horloge-astronomique',
     title: 'Horloge astronomique de l’atelier',
-    description: 'Horloge murale qui affiche les phases de la lune, l’équation du temps et le lever du soleil à la latitude de l’atelier.',
+    description:
+      'Horloge murale qui affiche les phases de la lune, l’équation du temps et le lever du soleil à la latitude de l’atelier.',
     role: 'Horloger principal',
     years: '2016 – 2018',
     stack: ['Laiton', 'Acier', 'Verre'],
@@ -101,7 +103,8 @@ const FEATURED_PROJECTS_IN_ENGLISH = [
   {
     slug: 'restauration-pendule',
     title: 'Restoration of a mantel clock',
-    description: 'An Empire gilt-bronze clock brought back to life: movement cleaned, suspension rebuilt, dial touched up.',
+    description:
+      'An Empire gilt-bronze clock brought back to life: movement cleaned, suspension rebuilt, dial touched up.',
   },
   {
     slug: 'montre-grande-complication',
@@ -111,7 +114,8 @@ const FEATURED_PROJECTS_IN_ENGLISH = [
   {
     slug: 'horloge-astronomique',
     title: 'The workshop’s astronomical clock',
-    description: 'A wall clock showing the phases of the moon, the equation of time and sunrise at the workshop’s latitude.',
+    description:
+      'A wall clock showing the phases of the moon, the equation of time and sunrise at the workshop’s latitude.',
   },
   {
     slug: 'regulateur-noyer',
@@ -136,7 +140,9 @@ function projectsSection(page: Page): Locator {
 
 /* The card of a section that is headed by the given project title. */
 function cardTitled(section: Locator, title: string): Locator {
-  return section.getByRole('article').filter({ has: section.page().getByRole('heading', { level: 3, name: title, exact: true }) });
+  return section
+    .getByRole('article')
+    .filter({ has: section.page().getByRole('heading', { level: 3, name: title, exact: true }) });
 }
 
 /* How the assertion messages name the card of the example site's featured project at `index`. */
@@ -209,7 +215,9 @@ function paintOver(color: string, below: Rgb): Rgb {
 /* Opaque color behind an element, from the background colors of the element and its ancestors,
    nearest first: each painted over the next, over the browser's white canvas. */
 function effectiveBackground(backgrounds: string[]): Rgb {
-  return [...backgrounds].reverse().reduce<Rgb>((below, color) => paintOver(color, below), { red: 255, green: 255, blue: 255 });
+  return [...backgrounds]
+    .reverse()
+    .reduce<Rgb>((below, color) => paintOver(color, below), { red: 255, green: 255, blue: 255 });
 }
 
 /* Light: it contrasts more with black than with white. */
@@ -223,7 +231,8 @@ function isLight(color: Rgb): boolean {
 async function backgroundChain(element: Locator): Promise<string[]> {
   return element.evaluate((el) => {
     const chain: string[] = [];
-    for (let current: Element | null = el; current; current = current.parentElement) chain.push(getComputedStyle(current).backgroundColor);
+    for (let current: Element | null = el; current; current = current.parentElement)
+      chain.push(getComputedStyle(current).backgroundColor);
     return chain;
   });
 }
@@ -236,7 +245,8 @@ async function displayedTexts(root: Locator): Promise<{ text: string; color: str
     /* As backgroundChain, inside the page. */
     const chainOf = (el: Element) => {
       const chain: string[] = [];
-      for (let current: Element | null = el; current; current = current.parentElement) chain.push(getComputedStyle(current).backgroundColor);
+      for (let current: Element | null = el; current; current = current.parentElement)
+        chain.push(getComputedStyle(current).backgroundColor);
       return chain;
     };
     const texts: { text: string; color: string; backgrounds: string[] }[] = [];
@@ -246,8 +256,16 @@ async function displayedTexts(root: Locator): Promise<{ text: string; color: str
       for (const pseudo of ['::before', '::after'] as const) {
         const pseudoStyle = getComputedStyle(el, pseudo);
         const strings = pseudoStyle.content.split(/\s+\/\s+/)[0].match(/"(?:[^"\\]|\\.)*"/g) ?? [];
-        const text = strings.map((string) => JSON.parse(string) as string).join('').trim();
-        if (text) texts.push({ text: `${pseudo} ${text}`, color: pseudoStyle.color, backgrounds: [pseudoStyle.backgroundColor, ...chainOf(el)] });
+        const text = strings
+          .map((string) => JSON.parse(string) as string)
+          .join('')
+          .trim();
+        if (text)
+          texts.push({
+            text: `${pseudo} ${text}`,
+            color: pseudoStyle.color,
+            backgrounds: [pseudoStyle.backgroundColor, ...chainOf(el)],
+          });
       }
       for (const child of Array.from(el.childNodes)) {
         if (child.nodeType === Node.TEXT_NODE) {
@@ -275,15 +293,28 @@ function tickPatternOf(card: Locator): Locator {
    pixel at or above and left of the card's top-left corner (Playwright rounds an element
    screenshot's clip out to whole CSS pixels): a card at a fractional position starts that
    fraction, under a pixel, below and right of the screenshot's corner. */
-async function cardAndTickPatternBoxes(card: Locator, where: string): Promise<{ cardInScreenshot: Rectangle; patternBox: Rectangle }> {
+async function cardAndTickPatternBoxes(
+  card: Locator,
+  where: string,
+): Promise<{ cardInScreenshot: Rectangle; patternBox: Rectangle }> {
   const cardBox = await card.boundingBox();
   const patternBox = await tickPatternOf(card).boundingBox();
   expect(cardBox && patternBox, `${where}: the card and its tick pattern have a box on screen`).toBeTruthy();
   const scroll = await card.page().evaluate(() => ({ x: window.scrollX, y: window.scrollY }));
   const fraction = (position: number): number => position - Math.floor(position);
   return {
-    cardInScreenshot: { x: fraction(cardBox!.x + scroll.x), y: fraction(cardBox!.y + scroll.y), width: cardBox!.width, height: cardBox!.height },
-    patternBox: { x: patternBox!.x - cardBox!.x, y: patternBox!.y - cardBox!.y, width: patternBox!.width, height: patternBox!.height },
+    cardInScreenshot: {
+      x: fraction(cardBox!.x + scroll.x),
+      y: fraction(cardBox!.y + scroll.y),
+      width: cardBox!.width,
+      height: cardBox!.height,
+    },
+    patternBox: {
+      x: patternBox!.x - cardBox!.x,
+      y: patternBox!.y - cardBox!.y,
+      width: patternBox!.width,
+      height: patternBox!.height,
+    },
   };
 }
 
@@ -317,28 +348,38 @@ function withinCardEdges(rectangle: Rectangle, card: Rectangle): Rectangle {
   return { x: left, y: top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
 }
 
-test('on the French home page, the heading of the section "Projets sélectionnés" shows the section number "01 //" before its title, while assistive technologies get the title alone', async ({ page }) => {
+test('on the French home page, the heading of the section "Projets sélectionnés" shows the section number "01 //" before its title, while assistive technologies get the title alone', async ({
+  page,
+}) => {
   await page.goto('/fr/');
   const section = projectsSection(page);
   const heading = section.getByRole('heading', { level: 2 });
   await expect(heading).toBeVisible();
   /* On screen: the decorative number, then the title, and nothing else, whether the number is
      text in the page or generated by the stylesheet. */
-  await expect.poll(() => displayedText(heading), 'text displayed by the heading').toMatch(/^01 ?\/\/ ?Projets sélectionnés$/);
+  await expect
+    .poll(() => displayedText(heading), 'text displayed by the heading')
+    .toMatch(/^01 ?\/\/ ?Projets sélectionnés$/);
   /* For assistive technologies: the title alone, for the heading and the region it names. */
   await expect(heading).toHaveAccessibleName('Projets sélectionnés');
   await expect(section).toHaveAccessibleName('Projets sélectionnés');
 });
 
-test('on the French home page, the section "Projets sélectionnés" shows one card per featured project, in the order the home page lists them, each headed by the project’s title', async ({ page }) => {
+test('on the French home page, the section "Projets sélectionnés" shows one card per featured project, in the order the home page lists them, each headed by the project’s title', async ({
+  page,
+}) => {
   await page.goto('/fr/');
   const section = projectsSection(page);
   await expect(section.getByRole('heading', { level: 2, name: 'Projets sélectionnés' })).toBeVisible();
   /* An array makes the match exact: a missing, extra, repeated or misplaced project fails it. */
-  await expect(section.getByRole('heading', { level: 3 })).toHaveText(FEATURED_PROJECTS.map((project) => project.title));
+  await expect(section.getByRole('heading', { level: 3 })).toHaveText(
+    FEATURED_PROJECTS.map((project) => project.title),
+  );
 });
 
-test('on the French home page, each featured project’s card gives the role, description and stack its page declares, the description as a paragraph and the stack on one line, items separated by " · "', async ({ page }) => {
+test('on the French home page, each featured project’s card gives the role, description and stack its page declares, the description as a paragraph and the stack on one line, items separated by " · "', async ({
+  page,
+}) => {
   await page.goto('/fr/');
   const section = projectsSection(page);
   for (const project of FEATURED_PROJECTS) {
@@ -374,7 +415,9 @@ test('on the French home page, no featured project’s card shows the years its 
   for (const project of FEATURED_PROJECTS) await expect(section).not.toContainText(project.years);
 });
 
-test('on the French home page, each featured project’s card ends with a "Voir le détail" link, separate from its title, whose accessible name names the project; following it opens the project’s page, at the site root and under /portfolio/', async ({ page }) => {
+test('on the French home page, each featured project’s card ends with a "Voir le détail" link, separate from its title, whose accessible name names the project; following it opens the project’s page, at the site root and under /portfolio/', async ({
+  page,
+}) => {
   /* The example site served at the root of its origin, then under a subpath (playwright.config.ts). */
   for (const siteRoot of ['/', EXAMPLE_SITE_UNDER_PORTFOLIO]) {
     for (const project of FEATURED_PROJECTS) {
@@ -399,12 +442,16 @@ test('on the French home page, each featured project’s card ends with a "Voir 
   }
 });
 
-test('on the English home page, the section "Selected projects" shows the English title and description of each featured project, in the order the home page lists them, and each card’s "See details" link opens the project’s English page', async ({ page }) => {
+test('on the English home page, the section "Selected projects" shows the English title and description of each featured project, in the order the home page lists them, and each card’s "See details" link opens the project’s English page', async ({
+  page,
+}) => {
   await page.goto('/en/');
   const section = page.getByRole('main').getByRole('region', { name: 'Selected projects' });
   await expect(section.getByRole('heading', { level: 2, name: 'Selected projects' })).toBeVisible();
   /* An array makes the match exact: a French, missing, extra or misplaced title fails it. */
-  await expect(section.getByRole('heading', { level: 3 })).toHaveText(FEATURED_PROJECTS_IN_ENGLISH.map((project) => project.title));
+  await expect(section.getByRole('heading', { level: 3 })).toHaveText(
+    FEATURED_PROJECTS_IN_ENGLISH.map((project) => project.title),
+  );
   for (const project of FEATURED_PROJECTS_IN_ENGLISH) {
     const card = cardTitled(section, project.title);
     await expect(card).toHaveCount(1);
@@ -422,7 +469,9 @@ test('on the English home page, the section "Selected projects" shows the Englis
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(first.title);
 });
 
-test('on the French home page, the cards of the section "Projets sélectionnés" are readable: dark cards on the section’s light background, and every text of the section, its heading’s number included, contrasts at least 4.5:1 with what is behind it', async ({ page }) => {
+test('on the French home page, the cards of the section "Projets sélectionnés" are readable: dark cards on the section’s light background, and every text of the section, its heading’s number included, contrasts at least 4.5:1 with what is behind it', async ({
+  page,
+}) => {
   await page.goto('/fr/');
   const section = projectsSection(page);
   await expect(section).toBeVisible();
@@ -430,10 +479,17 @@ test('on the French home page, the cards of the section "Projets sélectionnés"
   await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
   /* Light behind the section, dark behind each card, whatever the exact colors. */
   const sectionBackground = effectiveBackground(await backgroundChain(section));
-  expect.soft(isLight(sectionBackground), `the section's background ${JSON.stringify(sectionBackground)} is light`).toBe(true);
+  expect
+    .soft(isLight(sectionBackground), `the section's background ${JSON.stringify(sectionBackground)} is light`)
+    .toBe(true);
   for (const card of await cards.all()) {
     const cardBackground = effectiveBackground(await backgroundChain(card));
-    expect.soft(isLight(cardBackground), `the background ${JSON.stringify(cardBackground)} of the card "${await card.getByRole('heading', { level: 3 }).textContent()}" is dark`).toBe(false);
+    expect
+      .soft(
+        isLight(cardBackground),
+        `the background ${JSON.stringify(cardBackground)} of the card "${await card.getByRole('heading', { level: 3 }).textContent()}" is dark`,
+      )
+      .toBe(false);
   }
   /* Every text displayed in the section, against the background behind it: the card's in a
      card, the section's elsewhere. WCAG AA for normal text: 4.5:1. */
@@ -447,15 +503,24 @@ test('on the French home page, the cards of the section "Projets sélectionnés"
   }
 });
 
-test('on the French home page, the "Tous les projets" link and the "Voir le détail" link of each card show, while hovered with a fine pointer and while reached by keyboard, an underline in the accent colour thicker than their underline at rest, their text still contrasting at least 4.5:1 with what is behind it', async ({ page, hasTouch, browserName }) => {
+test('on the French home page, the "Tous les projets" link and the "Voir le détail" link of each card show, while hovered with a fine pointer and while reached by keyboard, an underline in the accent colour thicker than their underline at rest, their text still contrasting at least 4.5:1 with what is behind it', async ({
+  page,
+  hasTouch,
+  browserName,
+}) => {
   await page.goto('/fr/');
   const cards = await cardsOnceLoaded(page);
   const section = projectsSection(page);
   /* In the order a keyboard visitor reaches them: the "Tous les projets" link comes before the
      cards. */
-  const links: { name: string; link: Locator }[] = [{ name: '"Tous les projets" link', link: section.getByRole('link', { name: 'Tous les projets', exact: true }) }];
+  const links: { name: string; link: Locator }[] = [
+    { name: '"Tous les projets" link', link: section.getByRole('link', { name: 'Tous les projets', exact: true }) },
+  ];
   for (const [index, card] of (await cards.all()).entries()) {
-    links.push({ name: `"Voir le détail" link of ${cardName(index)}`, link: card.getByRole('link', { name: 'Voir le détail' }) });
+    links.push({
+      name: `"Voir le détail" link of ${cardName(index)}`,
+      link: card.getByRole('link', { name: 'Voir le détail' }),
+    });
   }
   for (const { name, link } of links) await expect(link, name).toHaveCount(1);
 
@@ -472,7 +537,12 @@ test('on the French home page, the "Tous les projets" link and the "Voir le dét
   );
   const isAccent = (color: string) => {
     const { red, green, blue, alpha } = colorComponents(color);
-    return alpha === 1 && Math.abs(red - accent.red) <= 1 && Math.abs(green - accent.green) <= 1 && Math.abs(blue - accent.blue) <= 1;
+    return (
+      alpha === 1 &&
+      Math.abs(red - accent.red) <= 1 &&
+      Math.abs(green - accent.green) <= 1 &&
+      Math.abs(blue - accent.blue) <= 1
+    );
   };
 
   /* A link's underline: the thickest of the visible lines drawn under its text, whether a bottom
@@ -482,8 +552,13 @@ test('on the French home page, the "Tous les projets" link and the "Voir le dét
     const lines = await link.evaluate((el) => {
       const style = getComputedStyle(el);
       const drawn: Underline[] = [];
-      if (!['none', 'hidden'].includes(style.borderBottomStyle)) drawn.push({ width: parseFloat(style.borderBottomWidth), color: style.borderBottomColor });
-      if (style.textDecorationLine.includes('underline')) drawn.push({ width: parseFloat(style.textDecorationThickness), color: style.textDecorationColor || style.color });
+      if (!['none', 'hidden'].includes(style.borderBottomStyle))
+        drawn.push({ width: parseFloat(style.borderBottomWidth), color: style.borderBottomColor });
+      if (style.textDecorationLine.includes('underline'))
+        drawn.push({
+          width: parseFloat(style.textDecorationThickness),
+          color: style.textDecorationColor || style.color,
+        });
       return drawn;
     });
     const visible = lines.filter(({ width, color }) => width > 0 && colorComponents(color).alpha > 0);
@@ -508,15 +583,27 @@ test('on the French home page, the "Tous les projets" link and the "Voir le dét
     const underline = await underlineOf(link);
     expect.soft(underline, `${name}: underline ${state}`).not.toBeNull();
     if (underline) {
-      expect.soft(underline.width, `${name}: thickness of its underline ${state} (${describe(underline)}) against its underline at rest (${describe(rest)})`).toBeGreaterThan(rest.width);
-      expect.soft(isAccent(underline.color), `${name}: colour of its underline ${state} (${underline.color}) is the accent colour (${JSON.stringify(accent)})`).toBe(true);
+      expect
+        .soft(
+          underline.width,
+          `${name}: thickness of its underline ${state} (${describe(underline)}) against its underline at rest (${describe(rest)})`,
+        )
+        .toBeGreaterThan(rest.width);
+      expect
+        .soft(
+          isAccent(underline.color),
+          `${name}: colour of its underline ${state} (${underline.color}) is the accent colour (${JSON.stringify(accent)})`,
+        )
+        .toBe(true);
     }
     const texts = await displayedTexts(link);
     expect(texts.length, `${name}: texts displayed ${state}`).toBeGreaterThan(0);
     for (const { text, color, backgrounds } of texts) {
       const background = effectiveBackground(backgrounds);
       const ratio = contrastRatio(paintOver(color, background), background);
-      expect.soft(ratio, `${name}: contrast of "${text}" (${color}) ${state} with what is behind it`).toBeGreaterThanOrEqual(4.5);
+      expect
+        .soft(ratio, `${name}: contrast of "${text}" (${color}) ${state} with what is behind it`)
+        .toBeGreaterThanOrEqual(4.5);
     }
   };
 
@@ -534,20 +621,31 @@ test('on the French home page, the "Tous les projets" link and the "Voir le dét
   /* A keyboard visitor tabs from one link to the next. */
   for (const [index, { name, link }] of links.entries()) {
     await tabUntilFocused(link, browserName, TABS_TO_REACH_THE_PROJECTS_LINKS);
-    expect(await link.evaluate((el) => el.matches(':focus-visible')), `${name}: it shows the keyboard focus`).toBe(true);
+    expect(await link.evaluate((el) => el.matches(':focus-visible')), `${name}: it shows the keyboard focus`).toBe(
+      true,
+    );
     await expectHighlighted(index, 'while focused by keyboard');
   }
 });
 
-test('on the French home page, the text of the "Tous les projets" link and of the "Voir le détail" link of each card stays where it is at rest while the link is hovered with a fine pointer and while it is reached by keyboard, as the header menu’s links do when their underline appears', async ({ page, hasTouch, browserName }) => {
+test('on the French home page, the text of the "Tous les projets" link and of the "Voir le détail" link of each card stays where it is at rest while the link is hovered with a fine pointer and while it is reached by keyboard, as the header menu’s links do when their underline appears', async ({
+  page,
+  hasTouch,
+  browserName,
+}) => {
   await page.goto('/fr/');
   const cards = await cardsOnceLoaded(page);
   const section = projectsSection(page);
   /* In the order a keyboard visitor reaches them: the "Tous les projets" link comes before the
      cards. */
-  const links: { name: string; link: Locator }[] = [{ name: '"Tous les projets" link', link: section.getByRole('link', { name: 'Tous les projets', exact: true }) }];
+  const links: { name: string; link: Locator }[] = [
+    { name: '"Tous les projets" link', link: section.getByRole('link', { name: 'Tous les projets', exact: true }) },
+  ];
   for (const [index, card] of (await cards.all()).entries()) {
-    links.push({ name: `"Voir le détail" link of ${cardName(index)}`, link: card.getByRole('link', { name: 'Voir le détail' }) });
+    links.push({
+      name: `"Voir le détail" link of ${cardName(index)}`,
+      link: card.getByRole('link', { name: 'Voir le détail' }),
+    });
   }
   for (const { name, link } of links) await expect(link, name).toHaveCount(1);
 
@@ -579,8 +677,18 @@ test('on the French home page, the text of the "Tous les projets" link and of th
     const position = await textPosition(link);
     expect.soft(position, `${name}: its text ${state}`).not.toBeNull();
     if (position) {
-      expect.soft(Math.abs(position.top - rest.top), `${name}: vertical shift of its text ${state} (top ${position.top} against ${rest.top} at rest)`).toBeLessThan(0.5);
-      expect.soft(Math.abs(position.left - rest.left), `${name}: horizontal shift of its text ${state} (left ${position.left} against ${rest.left} at rest)`).toBeLessThan(0.5);
+      expect
+        .soft(
+          Math.abs(position.top - rest.top),
+          `${name}: vertical shift of its text ${state} (top ${position.top} against ${rest.top} at rest)`,
+        )
+        .toBeLessThan(0.5);
+      expect
+        .soft(
+          Math.abs(position.left - rest.left),
+          `${name}: horizontal shift of its text ${state} (left ${position.left} against ${rest.left} at rest)`,
+        )
+        .toBeLessThan(0.5);
     }
   };
 
@@ -598,12 +706,16 @@ test('on the French home page, the text of the "Tous les projets" link and of th
   /* A keyboard visitor tabs from one link to the next. */
   for (const [index, { name, link }] of links.entries()) {
     await tabUntilFocused(link, browserName, TABS_TO_REACH_THE_PROJECTS_LINKS);
-    expect(await link.evaluate((el) => el.matches(':focus-visible')), `${name}: it shows the keyboard focus`).toBe(true);
+    expect(await link.evaluate((el) => el.matches(':focus-visible')), `${name}: it shows the keyboard focus`).toBe(
+      true,
+    );
     await expectInPlace(index, 'while focused by keyboard');
   }
 });
 
-test('on the French home page, on a phone and on a wide window, each card of the section "Projets sélectionnés" shows its role below its title and above its description', async ({ page }) => {
+test('on the French home page, on a phone and on a wide window, each card of the section "Projets sélectionnés" shows its role below its title and above its description', async ({
+  page,
+}) => {
   for (const viewport of [PHONE, WIDE_WINDOW]) {
     await page.setViewportSize(viewport);
     await page.goto('/fr/');
@@ -620,16 +732,31 @@ test('on the French home page, on a phone and on a wide window, each card of the
         textBox(role),
         textBox(card.getByText(project.description, { exact: true })),
       ]);
-      expect(title && roleBox && description, `${where}: the title, role and description each show text on screen`).toBeTruthy();
+      expect(
+        title && roleBox && description,
+        `${where}: the title, role and description each show text on screen`,
+      ).toBeTruthy();
       /* Below the title: under its last line. */
-      expect.soft(roleBox!.top, `${where}: top of the role "${project.role}" against the bottom of the title (${title!.bottom.toFixed(1)} px)`).toBeGreaterThanOrEqual(title!.bottom - 1);
+      expect
+        .soft(
+          roleBox!.top,
+          `${where}: top of the role "${project.role}" against the bottom of the title (${title!.bottom.toFixed(1)} px)`,
+        )
+        .toBeGreaterThanOrEqual(title!.bottom - 1);
       /* Above the description. */
-      expect.soft(roleBox!.bottom, `${where}: bottom of the role "${project.role}" against the top of the description (${description!.top.toFixed(1)} px)`).toBeLessThanOrEqual(description!.top + 1);
+      expect
+        .soft(
+          roleBox!.bottom,
+          `${where}: bottom of the role "${project.role}" against the top of the description (${description!.top.toFixed(1)} px)`,
+        )
+        .toBeLessThanOrEqual(description!.top + 1);
     }
   }
 });
 
-test('on a phone, the cards of the section "Projets sélectionnés" are stacked in a single column, each as wide as the section’s content, and the page does not scroll horizontally', async ({ page }) => {
+test('on a phone, the cards of the section "Projets sélectionnés" are stacked in a single column, each as wide as the section’s content, and the page does not scroll horizontally', async ({
+  page,
+}) => {
   await page.setViewportSize(PHONE);
   await page.goto('/fr/');
   const section = projectsSection(page);
@@ -642,53 +769,91 @@ test('on a phone, the cards of the section "Projets sélectionnés" are stacked 
     const style = getComputedStyle(element);
     return { left: box.left + parseFloat(style.paddingLeft), right: box.right - parseFloat(style.paddingRight) };
   });
-  const boxes = await cards.evaluateAll((elements) => elements.map((element) => {
-    const { left, right, top, bottom } = element.getBoundingClientRect();
-    return { left, right, top, bottom };
-  }));
+  const boxes = await cards.evaluateAll((elements) =>
+    elements.map((element) => {
+      const { left, right, top, bottom } = element.getBoundingClientRect();
+      return { left, right, top, bottom };
+    }),
+  );
   boxes.forEach((box, index) => {
     const card = cardName(index);
-    expect.soft(Math.abs(box.left - content.left), `${card}: left edge ${box.left} px against the section's content left edge ${content.left} px`).toBeLessThanOrEqual(1);
-    expect.soft(Math.abs(box.right - content.right), `${card}: right edge ${box.right} px against the section's content right edge ${content.right} px`).toBeLessThanOrEqual(1);
+    expect
+      .soft(
+        Math.abs(box.left - content.left),
+        `${card}: left edge ${box.left} px against the section's content left edge ${content.left} px`,
+      )
+      .toBeLessThanOrEqual(1);
+    expect
+      .soft(
+        Math.abs(box.right - content.right),
+        `${card}: right edge ${box.right} px against the section's content right edge ${content.right} px`,
+      )
+      .toBeLessThanOrEqual(1);
     if (index > 0) {
-      expect.soft(box.top, `${card}: top against the bottom of the card above (${boxes[index - 1].bottom} px)`).toBeGreaterThanOrEqual(boxes[index - 1].bottom - 1);
+      expect
+        .soft(box.top, `${card}: top against the bottom of the card above (${boxes[index - 1].bottom} px)`)
+        .toBeGreaterThanOrEqual(boxes[index - 1].bottom - 1);
     }
   });
   const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
   expect.soft(pageWidth, 'width of the page content').toBeLessThanOrEqual(PHONE.width);
 });
 
-test('on a wide window, the cards of the section "Projets sélectionnés" sit two per row, of equal width', async ({ page }) => {
+test('on a wide window, the cards of the section "Projets sélectionnés" sit two per row, of equal width', async ({
+  page,
+}) => {
   await page.setViewportSize(WIDE_WINDOW);
   await page.goto('/fr/');
   const section = projectsSection(page);
   await expect(section).toBeVisible();
   const cards = section.getByRole('article');
   await expect(cards).toHaveCount(FEATURED_PROJECTS.length);
-  const boxes = await cards.evaluateAll((elements) => elements.map((element) => {
-    const { left, right, top, bottom, width } = element.getBoundingClientRect();
-    return { left, right, top, bottom, width };
-  }));
+  const boxes = await cards.evaluateAll((elements) =>
+    elements.map((element) => {
+      const { left, right, top, bottom, width } = element.getBoundingClientRect();
+      return { left, right, top, bottom, width };
+    }),
+  );
   /* Rows of two, in order: cards 1 and 2, then cards 3 and 4 below them. Within a row, both cards
      share a top edge and the second sits to the right of the first. */
   for (let first = 0; first < boxes.length; first += 2) {
     const second = first + 1;
     if (second >= boxes.length) break;
-    expect.soft(Math.abs(boxes[second].top - boxes[first].top), `${cardName(second)}: top ${boxes[second].top} px against the top of ${cardName(first)} (${boxes[first].top} px)`).toBeLessThanOrEqual(1);
-    expect.soft(boxes[second].left, `${cardName(second)}: left edge against the right edge of ${cardName(first)} (${boxes[first].right} px)`).toBeGreaterThanOrEqual(boxes[first].right - 1);
+    expect
+      .soft(
+        Math.abs(boxes[second].top - boxes[first].top),
+        `${cardName(second)}: top ${boxes[second].top} px against the top of ${cardName(first)} (${boxes[first].top} px)`,
+      )
+      .toBeLessThanOrEqual(1);
+    expect
+      .soft(
+        boxes[second].left,
+        `${cardName(second)}: left edge against the right edge of ${cardName(first)} (${boxes[first].right} px)`,
+      )
+      .toBeGreaterThanOrEqual(boxes[first].right - 1);
     if (first >= 2) {
       const rowAboveBottom = Math.max(boxes[first - 2].bottom, boxes[first - 1].bottom);
-      expect.soft(boxes[first].top, `${cardName(first)}: top against the bottom of the row above (${rowAboveBottom} px)`).toBeGreaterThanOrEqual(rowAboveBottom - 1);
+      expect
+        .soft(boxes[first].top, `${cardName(first)}: top against the bottom of the row above (${rowAboveBottom} px)`)
+        .toBeGreaterThanOrEqual(rowAboveBottom - 1);
     }
   }
   /* Equal width: every card as wide as the first, whatever the length of its description. */
   boxes.forEach((box, index) => {
-    expect.soft(Math.abs(box.width - boxes[0].width), `${cardName(index)}: width ${box.width} px against the width of ${cardName(0)} (${boxes[0].width} px)`).toBeLessThanOrEqual(1);
+    expect
+      .soft(
+        Math.abs(box.width - boxes[0].width),
+        `${cardName(index)}: width ${box.width} px against the width of ${cardName(0)} (${boxes[0].width} px)`,
+      )
+      .toBeLessThanOrEqual(1);
   });
 });
 
-test('on the French home page, the "Tous les projets" link of the section "Projets sélectionnés" comes before the cards: on a wide window on the heading’s row, at the right end of the cards’ area; on a phone below the heading and above the first card', async ({ page }) => {
-  const span = (box: Box) => `${box.left.toFixed(1)}–${box.right.toFixed(1)} px × ${box.top.toFixed(1)}–${box.bottom.toFixed(1)} px`;
+test('on the French home page, the "Tous les projets" link of the section "Projets sélectionnés" comes before the cards: on a wide window on the heading’s row, at the right end of the cards’ area; on a phone below the heading and above the first card', async ({
+  page,
+}) => {
+  const span = (box: Box) =>
+    `${box.left.toFixed(1)}–${box.right.toFixed(1)} px × ${box.top.toFixed(1)}–${box.bottom.toFixed(1)} px`;
   for (const viewport of [WIDE_WINDOW, PHONE]) {
     await page.setViewportSize(viewport);
     await page.goto('/fr/');
@@ -706,22 +871,43 @@ test('on the French home page, the "Tous les projets" link of the section "Proje
     expect(heading && linkBox, `${where}: the heading and the link each show text on screen`).toBeTruthy();
     if (viewport.width >= 768) {
       /* On the heading's row: the link overlaps the heading vertically, to its right… */
-      expect.soft(
-        linkBox!.top < heading!.bottom && linkBox!.bottom > heading!.top,
-        `${where}: the link (${span(linkBox!)}) overlaps vertically the heading (${span(heading!)})`,
-      ).toBe(true);
-      expect.soft(linkBox!.left, `${where}: the link's left edge against the heading's right edge (${heading!.right.toFixed(1)} px)`).toBeGreaterThanOrEqual(heading!.right);
+      expect
+        .soft(
+          linkBox!.top < heading!.bottom && linkBox!.bottom > heading!.top,
+          `${where}: the link (${span(linkBox!)}) overlaps vertically the heading (${span(heading!)})`,
+        )
+        .toBe(true);
+      expect
+        .soft(
+          linkBox!.left,
+          `${where}: the link's left edge against the heading's right edge (${heading!.right.toFixed(1)} px)`,
+        )
+        .toBeGreaterThanOrEqual(heading!.right);
       /* …at the right end of the cards' area: lined up with the second card's right edge. */
-      expect.soft(Math.abs(linkBox!.right - secondCard.right), `${where}: the link's right edge (${linkBox!.right.toFixed(1)} px) against the second card's right edge (${secondCard.right.toFixed(1)} px)`).toBeLessThanOrEqual(3);
+      expect
+        .soft(
+          Math.abs(linkBox!.right - secondCard.right),
+          `${where}: the link's right edge (${linkBox!.right.toFixed(1)} px) against the second card's right edge (${secondCard.right.toFixed(1)} px)`,
+        )
+        .toBeLessThanOrEqual(3);
     } else {
       /* Between the heading and the first card. */
-      expect.soft(linkBox!.top, `${where}: the link's top against the heading's bottom (${heading!.bottom.toFixed(1)} px)`).toBeGreaterThanOrEqual(heading!.bottom - 1);
-      expect.soft(linkBox!.bottom, `${where}: the link's bottom against the first card's top (${firstCard.top.toFixed(1)} px)`).toBeLessThanOrEqual(firstCard.top + 1);
+      expect
+        .soft(linkBox!.top, `${where}: the link's top against the heading's bottom (${heading!.bottom.toFixed(1)} px)`)
+        .toBeGreaterThanOrEqual(heading!.bottom - 1);
+      expect
+        .soft(
+          linkBox!.bottom,
+          `${where}: the link's bottom against the first card's top (${firstCard.top.toFixed(1)} px)`,
+        )
+        .toBeLessThanOrEqual(firstCard.top + 1);
     }
   }
 });
 
-test('on the French home page, on a phone and on a wide window, the "Voir le détail" link of each card and the "Tous les projets" link of the section "Projets sélectionnés" are each at least 24 px high (WCAG 2.5.8)', async ({ page }) => {
+test('on the French home page, on a phone and on a wide window, the "Voir le détail" link of each card and the "Tous les projets" link of the section "Projets sélectionnés" are each at least 24 px high (WCAG 2.5.8)', async ({
+  page,
+}) => {
   for (const viewport of [PHONE, WIDE_WINDOW]) {
     await page.setViewportSize(viewport);
     await page.goto('/fr/');
@@ -732,7 +918,9 @@ test('on the French home page, on a phone and on a wide window, the "Voir le dé
       '"Tous les projets" link': section.getByRole('link', { name: 'Tous les projets', exact: true }),
     };
     FEATURED_PROJECTS.forEach((project, index) => {
-      links[`"Voir le détail" link of ${cardName(index)}`] = cardTitled(section, project.title).getByRole('link', { name: 'Voir le détail' });
+      links[`"Voir le détail" link of ${cardName(index)}`] = cardTitled(section, project.title).getByRole('link', {
+        name: 'Voir le détail',
+      });
     });
     for (const [name, link] of Object.entries(links)) {
       await expect(link, `${where}: ${name}`).toBeVisible();
@@ -742,11 +930,22 @@ test('on the French home page, on a phone and on a wide window, the "Voir le dé
   }
 });
 
-test('on the French home page, with JavaScript and without, each card of the section "Projets sélectionnés" shows a decorative tick pattern above its title, across the card’s width (its full width or its content box), hidden from assistive technologies', async ({ page, browser, baseURL }) => {
+test('on the French home page, with JavaScript and without, each card of the section "Projets sélectionnés" shows a decorative tick pattern above its title, across the card’s width (its full width or its content box), hidden from assistive technologies', async ({
+  page,
+  browser,
+  baseURL,
+}) => {
   /* The tick pattern's band is in the page whether or not scripts run. */
-  const withoutJavaScript = await browser.newContext({ baseURL, viewport: page.viewportSize(), javaScriptEnabled: false });
+  const withoutJavaScript = await browser.newContext({
+    baseURL,
+    viewport: page.viewportSize(),
+    javaScriptEnabled: false,
+  });
   try {
-    for (const [mode, tab] of [['with JavaScript', page], ['without JavaScript', await withoutJavaScript.newPage()]] as const) {
+    for (const [mode, tab] of [
+      ['with JavaScript', page],
+      ['without JavaScript', await withoutJavaScript.newPage()],
+    ] as const) {
       await tab.goto('/fr/');
       const section = projectsSection(tab);
       const cards = section.getByRole('article');
@@ -769,9 +968,15 @@ test('on the French home page, with JavaScript and without, each card of the sec
             (Math.abs(left - (box.left + parseFloat(style.paddingLeft) + parseFloat(style.borderLeftWidth))) <= 1 &&
               Math.abs(right - (box.right - parseFloat(style.paddingRight) - parseFloat(style.borderRightWidth))) <= 1);
           const found = Array.from(article.querySelectorAll('*')).find((element) => {
-            if (element.contains(title) || !(element.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING)) return false;
+            if (element.contains(title) || !(element.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING))
+              return false;
             const elementStyle = getComputedStyle(element);
-            if (elementStyle.display === 'none' || elementStyle.visibility === 'hidden' || parseFloat(elementStyle.opacity) === 0) return false;
+            if (
+              elementStyle.display === 'none' ||
+              elementStyle.visibility === 'hidden' ||
+              parseFloat(elementStyle.opacity) === 0
+            )
+              return false;
             const { left, right, top, bottom } = element.getBoundingClientRect();
             return bottom - top >= 8 && bottom <= titleTop + 1 && spans(left, right);
           });
@@ -779,20 +984,34 @@ test('on the French home page, with JavaScript and without, each card of the sec
           /* Its path from the card, as an XPath, so that a locator can reach it. */
           const steps: string[] = [];
           for (let element: Element = found; element !== article; element = element.parentElement!) {
-            const sameName = Array.from(element.parentElement!.children).filter((sibling) => sibling.localName === element.localName);
+            const sameName = Array.from(element.parentElement!.children).filter(
+              (sibling) => sibling.localName === element.localName,
+            );
             steps.unshift(`*[local-name()="${element.localName}"][${sameName.indexOf(element) + 1}]`);
           }
           return `xpath=./${steps.join('/')}`;
         });
-        expect.soft(patternPath, `${where}: an element above the title, at least a few pixels tall, across the card's width`).not.toBeNull();
+        expect
+          .soft(
+            patternPath,
+            `${where}: an element above the title, at least a few pixels tall, across the card's width`,
+          )
+          .not.toBeNull();
         if (patternPath === null) continue;
         const pattern = card.locator(patternPath);
         await expect.soft(pattern, `${where}: the tick pattern is visible`).toBeVisible();
         /* Hidden from assistive technologies: the tick pattern contributes nothing to the
            accessibility tree, and the card's accessible content opens with its title. */
-        expect.soft(await pattern.ariaSnapshot(), `${where}: what assistive technologies get from the tick pattern`).toBe('');
-        const cardTree = (await card.ariaSnapshot()).split('\n').slice(1).map((line) => line.trim());
-        expect.soft(cardTree[0], `${where}: first entry of the card's accessibility tree`).toMatch(/^- heading\b.*\[level=3\]/);
+        expect
+          .soft(await pattern.ariaSnapshot(), `${where}: what assistive technologies get from the tick pattern`)
+          .toBe('');
+        const cardTree = (await card.ariaSnapshot())
+          .split('\n')
+          .slice(1)
+          .map((line) => line.trim());
+        expect
+          .soft(cardTree[0], `${where}: first entry of the card's accessibility tree`)
+          .toMatch(/^- heading\b.*\[level=3\]/);
       }
     }
   } finally {
@@ -800,7 +1019,9 @@ test('on the French home page, with JavaScript and without, each card of the sec
   }
 });
 
-test('on the French home page, on a phone and on a wide window, each card of the section "Projets sélectionnés" shows its tick pattern edge to edge, across the card’s full width and touching its top edge, while its title is inset from the card’s left edge', async ({ page }) => {
+test('on the French home page, on a phone and on a wide window, each card of the section "Projets sélectionnés" shows its tick pattern edge to edge, across the card’s full width and touching its top edge, while its title is inset from the card’s left edge', async ({
+  page,
+}) => {
   /* Inset: the title starts more than this many CSS pixels right of the card's left edge. */
   const MIN_TITLE_INSET = 8;
   for (const viewport of [PHONE, WIDE_WINDOW]) {
@@ -812,65 +1033,103 @@ test('on the French home page, on a phone and on a wide window, each card of the
       const card = cards.nth(index);
       const pattern = tickPatternOf(card);
       await expect(pattern, `${where}: the tick pattern is visible`).toBeVisible();
-      const [cardBox, patternBox, titleBox] = await Promise.all([card.boundingBox(), pattern.boundingBox(), card.getByRole('heading', { level: 3 }).boundingBox()]);
-      expect(cardBox && patternBox && titleBox, `${where}: the card, its tick pattern and its title have a box on screen`).toBeTruthy();
+      const [cardBox, patternBox, titleBox] = await Promise.all([
+        card.boundingBox(),
+        pattern.boundingBox(),
+        card.getByRole('heading', { level: 3 }).boundingBox(),
+      ]);
+      expect(
+        cardBox && patternBox && titleBox,
+        `${where}: the card, its tick pattern and its title have a box on screen`,
+      ).toBeTruthy();
       const cardRight = cardBox!.x + cardBox!.width;
       const patternRight = patternBox!.x + patternBox!.width;
       /* Edge to edge: flush with the card's left, right and top edges, within a pixel. */
-      expect.soft(Math.abs(patternBox!.x - cardBox!.x), `${where}: the tick pattern's left edge (${patternBox!.x.toFixed(1)} px) against the card's left edge (${cardBox!.x.toFixed(1)} px)`).toBeLessThanOrEqual(1);
-      expect.soft(Math.abs(patternRight - cardRight), `${where}: the tick pattern's right edge (${patternRight.toFixed(1)} px) against the card's right edge (${cardRight.toFixed(1)} px)`).toBeLessThanOrEqual(1);
-      expect.soft(Math.abs(patternBox!.y - cardBox!.y), `${where}: the tick pattern's top edge (${patternBox!.y.toFixed(1)} px) against the card's top edge (${cardBox!.y.toFixed(1)} px)`).toBeLessThanOrEqual(1);
+      expect
+        .soft(
+          Math.abs(patternBox!.x - cardBox!.x),
+          `${where}: the tick pattern's left edge (${patternBox!.x.toFixed(1)} px) against the card's left edge (${cardBox!.x.toFixed(1)} px)`,
+        )
+        .toBeLessThanOrEqual(1);
+      expect
+        .soft(
+          Math.abs(patternRight - cardRight),
+          `${where}: the tick pattern's right edge (${patternRight.toFixed(1)} px) against the card's right edge (${cardRight.toFixed(1)} px)`,
+        )
+        .toBeLessThanOrEqual(1);
+      expect
+        .soft(
+          Math.abs(patternBox!.y - cardBox!.y),
+          `${where}: the tick pattern's top edge (${patternBox!.y.toFixed(1)} px) against the card's top edge (${cardBox!.y.toFixed(1)} px)`,
+        )
+        .toBeLessThanOrEqual(1);
       /* The text below it stays inside the card: the title starts well right of its left edge. */
-      expect.soft(titleBox!.x - cardBox!.x, `${where}: the title's inset from the card's left edge (title at ${titleBox!.x.toFixed(1)} px, card at ${cardBox!.x.toFixed(1)} px)`).toBeGreaterThan(MIN_TITLE_INSET);
+      expect
+        .soft(
+          titleBox!.x - cardBox!.x,
+          `${where}: the title's inset from the card's left edge (title at ${titleBox!.x.toFixed(1)} px, card at ${cardBox!.x.toFixed(1)} px)`,
+        )
+        .toBeGreaterThan(MIN_TITLE_INSET);
     }
   }
 });
 
-test('on the French home page, with JavaScript, each card’s tick pattern is made of short ticks in rows: inside it, away from its edges, between two rows of drawn pixels, a horizontal band across its width shows only the card’s background, and several rows are each made of many separate short strokes', { tag: '@pixels' }, async ({ page }) => {
-  /* Reduced motion, so that whatever could animate shows a still picture. */
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* A blank band between two rows of ticks: at least this high, in CSS pixels. */
-  const MIN_BAND_HEIGHT = 2;
-  /* A row of ticks: a row of drawn pixels made of at least this many separate strokes. */
-  const MIN_STROKES_PER_ROW = 5;
-  const MIN_ROWS_OF_TICKS = 3;
-  await page.goto('/fr/');
-  const cards = await cardsOnceLoaded(page);
-  for (const index of FEATURED_PROJECTS.keys()) {
-    const where = cardName(index);
-    const card = cards.nth(index);
-    const box = await tickPatternBoxInCard(card, where);
-    const inside = insideTickPattern(box);
-    const screenshot = await card.screenshot();
-    const { rows, scale } = await pixelsNotOfBackgroundPerRow(card, screenshot, inside);
-    const bands = horizontalBandsWithoutDrawnPixels(rows, scale, MIN_BAND_HEIGHT);
-    /* The separate strokes inside, each counted in the row of drawn pixels (a run of
+test(
+  'on the French home page, with JavaScript, each card’s tick pattern is made of short ticks in rows: inside it, away from its edges, between two rows of drawn pixels, a horizontal band across its width shows only the card’s background, and several rows are each made of many separate short strokes',
+  { tag: '@pixels' },
+  async ({ page }) => {
+    /* Reduced motion, so that whatever could animate shows a still picture. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    /* A blank band between two rows of ticks: at least this high, in CSS pixels. */
+    const MIN_BAND_HEIGHT = 2;
+    /* A row of ticks: a row of drawn pixels made of at least this many separate strokes. */
+    const MIN_STROKES_PER_ROW = 5;
+    const MIN_ROWS_OF_TICKS = 3;
+    await page.goto('/fr/');
+    const cards = await cardsOnceLoaded(page);
+    for (const index of FEATURED_PROJECTS.keys()) {
+      const where = cardName(index);
+      const card = cards.nth(index);
+      const box = await tickPatternBoxInCard(card, where);
+      const inside = insideTickPattern(box);
+      const screenshot = await card.screenshot();
+      const { rows, scale } = await pixelsNotOfBackgroundPerRow(card, screenshot, inside);
+      const bands = horizontalBandsWithoutDrawnPixels(rows, scale, MIN_BAND_HEIGHT);
+      /* The separate strokes inside, each counted in the row of drawn pixels (a run of
        adjacent screenshot rows that each show some) its middle lies in. */
-    const strokes = await drawnStrokesInRectangle(card, screenshot, inside);
-    const drawnRows: { from: number; to: number; strokes: number }[] = [];
-    rows.forEach((count, row) => {
-      if (count === 0) return;
-      const last = drawnRows[drawnRows.length - 1];
-      if (last && last.to === row) last.to = row + 1;
-      else drawnRows.push({ from: row, to: row + 1, strokes: 0 });
-    });
-    for (const stroke of strokes) {
-      const middle = (stroke.y + stroke.height / 2) * scale;
-      const drawnRow = drawnRows.find(({ from, to }) => middle >= from && middle < to);
-      if (drawnRow) drawnRow.strokes += 1;
+      const strokes = await drawnStrokesInRectangle(card, screenshot, inside);
+      const drawnRows: { from: number; to: number; strokes: number }[] = [];
+      rows.forEach((count, row) => {
+        if (count === 0) return;
+        const last = drawnRows[drawnRows.length - 1];
+        if (last && last.to === row) last.to = row + 1;
+        else drawnRows.push({ from: row, to: row + 1, strokes: 0 });
+      });
+      for (const stroke of strokes) {
+        const middle = (stroke.y + stroke.height / 2) * scale;
+        const drawnRow = drawnRows.find(({ from, to }) => middle >= from && middle < to);
+        if (drawnRow) drawnRow.strokes += 1;
+      }
+      const rowsOfTicks = drawnRows.filter((drawnRow) => drawnRow.strokes >= MIN_STROKES_PER_ROW);
+      const describeRows =
+        drawnRows
+          .map(({ from, to, strokes: count }) => `${(from / scale).toFixed(1)}–${(to / scale).toFixed(1)}px: ${count}`)
+          .join(', ') || 'none';
+      expect
+        .soft(
+          bands.length,
+          `${where}: horizontal bands at least ${MIN_BAND_HEIGHT}px high showing only the card's background between two rows of drawn pixels, inside the ${Math.round(box.width)}×${Math.round(box.height)}px tick pattern (${INSET}px from its edges): ${bands.join(', ') || 'none'}`,
+        )
+        .toBeGreaterThanOrEqual(MIN_ROWS_OF_TICKS - 1);
+      expect
+        .soft(
+          rowsOfTicks.length,
+          `${where}: rows of drawn pixels inside the tick pattern (${INSET}px from its edges) made of at least ${MIN_STROKES_PER_ROW} separate strokes; separate strokes per row (relative to the card): ${describeRows}`,
+        )
+        .toBeGreaterThanOrEqual(MIN_ROWS_OF_TICKS);
     }
-    const rowsOfTicks = drawnRows.filter((drawnRow) => drawnRow.strokes >= MIN_STROKES_PER_ROW);
-    const describeRows = drawnRows.map(({ from, to, strokes: count }) => `${(from / scale).toFixed(1)}–${(to / scale).toFixed(1)}px: ${count}`).join(', ') || 'none';
-    expect.soft(
-      bands.length,
-      `${where}: horizontal bands at least ${MIN_BAND_HEIGHT}px high showing only the card's background between two rows of drawn pixels, inside the ${Math.round(box.width)}×${Math.round(box.height)}px tick pattern (${INSET}px from its edges): ${bands.join(', ') || 'none'}`,
-    ).toBeGreaterThanOrEqual(MIN_ROWS_OF_TICKS - 1);
-    expect.soft(
-      rowsOfTicks.length,
-      `${where}: rows of drawn pixels inside the tick pattern (${INSET}px from its edges) made of at least ${MIN_STROKES_PER_ROW} separate strokes; separate strokes per row (relative to the card): ${describeRows}`,
-    ).toBeGreaterThanOrEqual(MIN_ROWS_OF_TICKS);
-  }
-});
+  },
+);
 
 /* Comparing the tick patterns of two cards, or of one card at two moments. Two cards sit at
    different, possibly fractional, positions: the browser may draw two copies of one pattern up to
@@ -899,7 +1158,10 @@ async function ticksOfTickPattern(card: Locator, where: string): Promise<TicksOf
   const ticks = strokes.map((stroke) => ({ ...stroke, x: stroke.x - box.x, y: stroke.y - box.y }));
   const core = ticks.filter(
     (tick) =>
-      tick.x >= CORE && tick.y >= CORE && tick.x + tick.width <= box.width - CORE && tick.y + tick.height <= box.height - CORE,
+      tick.x >= CORE &&
+      tick.y >= CORE &&
+      tick.x + tick.width <= box.width - CORE &&
+      tick.y + tick.height <= box.height - CORE,
   );
   return { ticks, core };
 }
@@ -908,7 +1170,10 @@ async function ticksOfTickPattern(card: Locator, where: string): Promise<TicksOf
    MAX_SHIFT CSS pixels, the shift that leaves the fewest core ticks of either pattern with no
    tick at the same place in the other (the smallest such shift on a tie), those unmatched core
    ticks in each, and their share of the core ticks of both. */
-function bestMatchOfTicks(first: TicksOfTickPattern, second: TicksOfTickPattern): { dx: number; dy: number; inFirst: number; inSecond: number; shareUnmatched: number } {
+function bestMatchOfTicks(
+  first: TicksOfTickPattern,
+  second: TicksOfTickPattern,
+): { dx: number; dy: number; inFirst: number; inSecond: number; shareUnmatched: number } {
   const samePlace = (a: Rectangle, b: Rectangle, dx: number, dy: number): boolean =>
     Math.abs(a.x + dx - b.x) <= SAME_PLACE &&
     Math.abs(a.y + dy - b.y) <= SAME_PLACE &&
@@ -917,14 +1182,21 @@ function bestMatchOfTicks(first: TicksOfTickPattern, second: TicksOfTickPattern)
   /* For each core tick, the ticks of the other pattern that some shift could bring to its
      place: only those need comparing once the shift is chosen. */
   const reachable = (tick: Rectangle, others: Rectangle[]) =>
-    others.filter((other) => Math.abs(tick.x - other.x) <= MAX_SHIFT + SAME_PLACE && Math.abs(tick.y - other.y) <= MAX_SHIFT + SAME_PLACE);
+    others.filter(
+      (other) =>
+        Math.abs(tick.x - other.x) <= MAX_SHIFT + SAME_PLACE && Math.abs(tick.y - other.y) <= MAX_SHIFT + SAME_PLACE,
+    );
   const candidatesInFirst = first.core.map((tick) => reachable(tick, second.ticks));
   const candidatesInSecond = second.core.map((tick) => reachable(tick, first.ticks));
   /* For a shift of the first pattern's ticks, the core ticks of each pattern with no tick at
      the same place in the other. */
   const unmatched = (dx: number, dy: number) => ({
-    inFirst: first.core.filter((tick, index) => !candidatesInFirst[index].some((other) => samePlace(tick, other, dx, dy))).length,
-    inSecond: second.core.filter((tick, index) => !candidatesInSecond[index].some((other) => samePlace(other, tick, dx, dy))).length,
+    inFirst: first.core.filter(
+      (tick, index) => !candidatesInFirst[index].some((other) => samePlace(tick, other, dx, dy)),
+    ).length,
+    inSecond: second.core.filter(
+      (tick, index) => !candidatesInSecond[index].some((other) => samePlace(other, tick, dx, dy)),
+    ).length,
   });
   const shifts: number[] = [];
   for (let shift = -MAX_SHIFT; shift <= MAX_SHIFT; shift += SHIFT_STEP) shifts.push(shift);
@@ -932,258 +1204,340 @@ function bestMatchOfTicks(first: TicksOfTickPattern, second: TicksOfTickPattern)
     .flatMap((dx) => shifts.map((dy) => ({ dx, dy, ...unmatched(dx, dy) })))
     .reduce((a, b) => {
       const [missesOfA, missesOfB] = [a.inFirst + a.inSecond, b.inFirst + b.inSecond];
-      return missesOfB < missesOfA || (missesOfB === missesOfA && Math.hypot(b.dx, b.dy) < Math.hypot(a.dx, a.dy)) ? b : a;
+      return missesOfB < missesOfA || (missesOfB === missesOfA && Math.hypot(b.dx, b.dy) < Math.hypot(a.dx, a.dy))
+        ? b
+        : a;
     });
   return { ...best, shareUnmatched: (best.inFirst + best.inSecond) / (first.core.length + second.core.length) };
 }
 
-test('on the French home page, the tick patterns of the four cards all differ from one another: for each pair of cards, many of the ticks drawn in one have no tick at the same place in the other', { tag: '@pixels' }, async ({ page }) => {
-  /* Reduced motion, so that whatever could animate shows a still picture. */
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/fr/');
-  const cards = await cardsOnceLoaded(page);
-  const ticksOfTickPatterns: TicksOfTickPattern[] = [];
-  for (const index of FEATURED_PROJECTS.keys()) ticksOfTickPatterns.push(await ticksOfTickPattern(cards.nth(index), cardName(index)));
-  /* Every pair of cards, not only neighbours: a pattern repeated two cards further fails too. */
-  for (let a = 0; a < ticksOfTickPatterns.length; a++) {
-    for (let b = a + 1; b < ticksOfTickPatterns.length; b++) {
-      const [first, second] = [ticksOfTickPatterns[a], ticksOfTickPatterns[b]];
-      const { shareUnmatched, ...best } = bestMatchOfTicks(first, second);
-      expect.soft(
-        shareUnmatched,
-        `${cardName(a)} and ${cardName(b)}: share of the ticks of their tick patterns (at least ${CORE}px inside them) with no tick at the same place (each edge within ${SAME_PLACE}px) in the other tick pattern, with the first moved by up to ${MAX_SHIFT}px the way that matches most (${best.dx}px across, ${best.dy}px down); ticks: ${first.core.length} in the first, ${best.inFirst} of them unmatched, ${second.core.length} in the second, ${best.inSecond} of them unmatched`,
-      ).toBeGreaterThanOrEqual(MIN_SHARE_UNMATCHED);
-    }
-  }
-});
-
-test('on the French home page, the tick pattern is drawn anew at every load: after a reload, the first card’s tick pattern differs from the one it showed before, many of the ticks drawn in one having no tick at the same place in the other', { tag: '@pixels' }, async ({ page }) => {
-  /* Reduced motion, so that whatever could animate shows a still picture. */
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  const name = cardName(0);
-  /* The ticks of the first card's tick pattern, on a fresh load of the page. */
-  const ticksOfFirstCardOnLoad = async (load: () => Promise<unknown>, when: string): Promise<TicksOfTickPattern> => {
-    await load();
-    const cards = await cardsOnceLoaded(page);
-    return ticksOfTickPattern(cards.first(), `${name}, ${when}`);
-  };
-  const before = await ticksOfFirstCardOnLoad(() => page.goto('/fr/'), 'before the reload');
-  const after = await ticksOfFirstCardOnLoad(() => page.reload(), 'after the reload');
-  const { shareUnmatched, ...best } = bestMatchOfTicks(before, after);
-  expect.soft(
-    shareUnmatched,
-    `${name}: share of the ticks of its tick pattern before and after a reload (at least ${CORE}px inside it) with no tick at the same place (each edge within ${SAME_PLACE}px) in the other load's pattern, with the first moved by up to ${MAX_SHIFT}px the way that matches most (${best.dx}px across, ${best.dy}px down); ticks: ${before.core.length} before the reload, ${best.inFirst} of them unmatched, ${after.core.length} after it, ${best.inSecond} of them unmatched`,
-  ).toBeGreaterThanOrEqual(MIN_SHARE_UNMATCHED);
-});
-
-test('on the French home page, with JavaScript, when the window widens, the first card’s tick pattern is completed rather than stretched: the ticks it showed stay where they were, and new ticks, spaced like them, fill the added width up to its right edge', { tag: '@pixels' }, async ({ page }) => {
-  /* Reduced motion, so that whatever could animate shows a still picture. */
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* Two window widths, both in the single-column layout, where the card, and its tick pattern,
-     follow the window's width: the pattern widens by a few hundred pixels between them. */
-  const NARROW = { width: 400, height: 800 };
-  const WIDE = { width: 720, height: 800 };
-  const MIN_WIDENING = 200;
-  /* Time left for a redraw once the pattern's box has widened. */
-  const REDRAW_DELAY = 500;
-  /* The ticks it showed stay where they were: next to none of them, or of those now drawn over the
-     same region, without a tick at the same place in the other. */
-  const MAX_SHARE_UNMATCHED = 0.05;
-  /* Two neighbouring columns of ticks stand as far apart as the existing ones, each edge of a tick
-     within SAME_PLACE of where it would be. */
-  const SPACING_TOLERANCE = 2 * SAME_PLACE;
-  const name = cardName(0);
-  await page.setViewportSize(NARROW);
-  await page.goto('/fr/');
-  const cards = await cardsOnceLoaded(page);
-  const card = cards.first();
-  const pattern = tickPatternOf(card);
-  const patternWidth = async (): Promise<number> => (await pattern.boundingBox())?.width ?? 0;
-  const narrowWidth = await patternWidth();
-  const before = await ticksOfTickPattern(card, `${name}, before the window widens`);
-
-  await page.setViewportSize(WIDE);
-  await expect.poll(patternWidth, `${name}: width of its tick pattern once the window widens from ${narrowWidth}px`).toBeGreaterThanOrEqual(narrowWidth + MIN_WIDENING);
-  const wideWidth = await patternWidth();
-  await page.waitForTimeout(REDRAW_DELAY);
-  const after = await ticksOfTickPattern(card, `${name}, after the window widens`);
-
-  /* The original region: the ticks drawn there after the widening, against those it showed. The
-     core ticks of that region lie as far inside it as the core ticks of the narrow pattern. */
-  const original: TicksOfTickPattern = {
-    ticks: after.ticks.filter((tick) => tick.x < narrowWidth),
-    core: after.core.filter((tick) => tick.x + tick.width <= narrowWidth - CORE),
-  };
-  const { shareUnmatched, ...best } = bestMatchOfTicks(before, original);
-  expect.soft(
-    shareUnmatched,
-    `${name}: share of the ticks of its ${Math.round(narrowWidth)}px-wide tick pattern, before and after the window widens it to ${Math.round(wideWidth)}px, with no tick at the same place (each edge within ${SAME_PLACE}px) in the other, over the original width (at least ${CORE}px inside it), with the first moved by up to ${MAX_SHIFT}px the way that matches most (${best.dx}px across, ${best.dy}px down); ticks: ${before.core.length} before, ${best.inFirst} of them unmatched, ${original.core.length} after, ${best.inSecond} of them unmatched`,
-  ).toBeLessThanOrEqual(MAX_SHARE_UNMATCHED);
-
-  /* The columns of ticks: the left edges of ticks that stand within SAME_PLACE of one another,
-     from left to right, each column at its leftmost edge. */
-  const columnsOf = (ticks: Rectangle[]): number[] =>
-    [...ticks]
-      .map((tick) => tick.x)
-      .sort((a, b) => a - b)
-      .reduce<number[]>((columns, x) => (columns.length > 0 && x - columns[columns.length - 1] <= SAME_PLACE ? columns : [...columns, x]), []);
-  const gaps = (columns: number[]): number[] => columns.slice(1).map((x, index) => x - columns[index]);
-  const columnsBefore = columnsOf(before.ticks);
-  const gapsBefore = gaps(columnsBefore).sort((a, b) => a - b);
-  const spacing = gapsBefore[Math.floor(gapsBefore.length / 2)];
-  const columnsAfter = columnsOf(after.ticks);
-  /* The columns past the original ones, with the last original column, so that the seam counts
-     too. */
-  const lastOriginalColumn = columnsBefore[columnsBefore.length - 1];
-  const addedColumns = columnsAfter.filter((x) => x >= lastOriginalColumn - SAME_PLACE);
-  const unevenGaps = gaps(addedColumns)
-    .map((gap, index) => ({ at: addedColumns[index], gap }))
-    .filter(({ gap }) => Math.abs(gap - spacing) > SPACING_TOLERANCE)
-    .map(({ at, gap }) => `${gap.toFixed(1)}px after the column at ${at.toFixed(1)}px`);
-  expect.soft(addedColumns.length, `${name}: columns of ticks in its tick pattern from its last original column (${lastOriginalColumn.toFixed(1)}px) to its new right edge (${Math.round(wideWidth)}px)`).toBeGreaterThan(MIN_WIDENING / spacing);
-  expect.soft(
-    unevenGaps,
-    `${name}: gaps between neighbouring columns of ticks, from its last original column (${lastOriginalColumn.toFixed(1)}px) on, that differ by more than ${SPACING_TOLERANCE}px from the spacing of its original columns (${spacing.toFixed(1)}px); columns after the widening: ${columnsAfter.map((x) => x.toFixed(1)).join(', ')}`,
-  ).toEqual([]);
-
-  /* Up to the right edge: the empty strip right of the last tick is no wider, give or take a
-     column, than the one the narrow pattern left. */
-  const emptyStrip = (ticks: Rectangle[], width: number): number => width - Math.max(...ticks.map((tick) => tick.x + tick.width));
-  const stripBefore = emptyStrip(before.ticks, narrowWidth);
-  expect.soft(
-    emptyStrip(after.ticks, wideWidth),
-    `${name}: empty strip between its rightmost tick and the right edge of its ${Math.round(wideWidth)}px-wide tick pattern, against the ${stripBefore.toFixed(1)}px strip of its ${Math.round(narrowWidth)}px-wide pattern and a column spacing of ${spacing.toFixed(1)}px`,
-  ).toBeLessThanOrEqual(stripBefore + spacing + SPACING_TOLERANCE);
-});
-
-test('on the French home page, with JavaScript, after the window moves to a screen with twice the pixel density without changing size, each card’s tick pattern is redrawn at the new density: shortly after the move, with nothing else happening, it shows what it shows once drawn anew at that density, the same ticks, crisp, not its old drawing stretched', { tag: '@pixels' }, async ({ page, isMobile }) => {
-  /* Reduced motion, so that whatever could animate shows a still picture. */
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* What it shows once drawn anew, within this share of its drawn pixels: the old drawing
-     stretched to the new density smears the edges of every tick. */
-  const MAX_SHARE_CHANGED = 0.02;
-  /* Time stands still, so that nothing but the move can redraw a pattern. */
-  await stopClockBeforeLoad(page);
-  await page.goto('/fr/');
-  const cards = await cardsOnceLoaded(page);
-  const patterns = page.locator('tick-pattern');
-  const oldDensity = await page.evaluate(() => window.devicePixelRatio);
-  const newDensity = 2 * oldDensity;
-
-  const screen = await moveToScreenOfDensity(page, { density: newDensity, isMobile, rendered: tickPatternOf(cards.first()) });
-  const cardScreenshots = async (): Promise<Buffer[]> => {
-    const screenshots: Buffer[] = [];
-    for (const index of FEATURED_PROJECTS.keys()) screenshots.push(await screen.screenshot(cards.nth(index)));
-    return screenshots;
-  };
-  const afterMove = await cardScreenshots();
-
-  /* The reference: each tick pattern taken off the page and put back in its place, which draws
-     it anew at the new density, whatever the layout. It keeps its ticks. */
-  await patterns.evaluateAll((elements) => {
-    for (const element of elements) {
-      const [parent, next] = [element.parentNode!, element.nextSibling];
-      element.remove();
-      parent.insertBefore(element, next);
-    }
-  });
-  await screen.waitForRender(tickPatternOf(cards.first()));
-  const redrawn = await cardScreenshots();
-  expect(await page.evaluate(() => window.devicePixelRatio), 'pixel density of the new screen').toBeCloseTo(newDensity, 3);
-
-  for (const index of FEATURED_PROJECTS.keys()) {
-    const where = cardName(index);
-    const card = cards.nth(index);
-    await card.scrollIntoViewIfNeeded();
-    const { cardInScreenshot, patternBox } = await cardAndTickPatternBoxes(card, where);
-    /* The pattern's whole box, measured against the card's background, up to CARD_EDGE inside
-       the card's edges, which it touches. */
-    const box = withinCardEdges(patternBox, cardInScreenshot);
-    const { rows } = await pixelsNotOfBackgroundPerRow(card, redrawn[index], box);
-    const drawnPixels = rows.reduce((sum, count) => sum + count, 0);
-    expect.soft(drawnPixels, `${where}: pixels of its tick pattern drawn anew at the new density that differ from the card's background`).toBeGreaterThan(0);
-    const { columns } = await pixelsChangedPerColumnInRectangle(card, afterMove[index], redrawn[index], box);
-    const changedPixels = columns.reduce((sum, count) => sum + count, 0);
-    expect.soft(
-      changedPixels,
-      `${where}: pixels of its ${Math.round(box.width)}px-wide tick pattern, ${DELAY_AFTER_MOVE_MS} ms after the window moved from a density of ${oldDensity} to ${newDensity}, that differ from the tick pattern drawn anew at that density, which shows ${drawnPixels} drawn pixels`,
-    ).toBeLessThanOrEqual(MAX_SHARE_CHANGED * drawnPixels);
-  }
-});
-
-test('on the French home page, without JavaScript, each card’s tick pattern is an empty band in its place: inside it, no pixel is drawn, it shows only the card’s background', { tag: '@pixels' }, async ({ browser, baseURL, viewport }) => {
-  /* The pattern is drawn by a script: without one, its band stays, with nothing in it. */
-  const withoutJavaScript = await browser.newContext({ baseURL, viewport, javaScriptEnabled: false });
-  try {
-    const page = await withoutJavaScript.newPage();
+test(
+  'on the French home page, the tick patterns of the four cards all differ from one another: for each pair of cards, many of the ticks drawn in one have no tick at the same place in the other',
+  { tag: '@pixels' },
+  async ({ page }) => {
+    /* Reduced motion, so that whatever could animate shows a still picture. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/fr/');
     const cards = await cardsOnceLoaded(page);
+    const ticksOfTickPatterns: TicksOfTickPattern[] = [];
+    for (const index of FEATURED_PROJECTS.keys())
+      ticksOfTickPatterns.push(await ticksOfTickPattern(cards.nth(index), cardName(index)));
+    /* Every pair of cards, not only neighbours: a pattern repeated two cards further fails too. */
+    for (let a = 0; a < ticksOfTickPatterns.length; a++) {
+      for (let b = a + 1; b < ticksOfTickPatterns.length; b++) {
+        const [first, second] = [ticksOfTickPatterns[a], ticksOfTickPatterns[b]];
+        const { shareUnmatched, ...best } = bestMatchOfTicks(first, second);
+        expect
+          .soft(
+            shareUnmatched,
+            `${cardName(a)} and ${cardName(b)}: share of the ticks of their tick patterns (at least ${CORE}px inside them) with no tick at the same place (each edge within ${SAME_PLACE}px) in the other tick pattern, with the first moved by up to ${MAX_SHIFT}px the way that matches most (${best.dx}px across, ${best.dy}px down); ticks: ${first.core.length} in the first, ${best.inFirst} of them unmatched, ${second.core.length} in the second, ${best.inSecond} of them unmatched`,
+          )
+          .toBeGreaterThanOrEqual(MIN_SHARE_UNMATCHED);
+      }
+    }
+  },
+);
+
+test(
+  'on the French home page, the tick pattern is drawn anew at every load: after a reload, the first card’s tick pattern differs from the one it showed before, many of the ticks drawn in one having no tick at the same place in the other',
+  { tag: '@pixels' },
+  async ({ page }) => {
+    /* Reduced motion, so that whatever could animate shows a still picture. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const name = cardName(0);
+    /* The ticks of the first card's tick pattern, on a fresh load of the page. */
+    const ticksOfFirstCardOnLoad = async (load: () => Promise<unknown>, when: string): Promise<TicksOfTickPattern> => {
+      await load();
+      const cards = await cardsOnceLoaded(page);
+      return ticksOfTickPattern(cards.first(), `${name}, ${when}`);
+    };
+    const before = await ticksOfFirstCardOnLoad(() => page.goto('/fr/'), 'before the reload');
+    const after = await ticksOfFirstCardOnLoad(() => page.reload(), 'after the reload');
+    const { shareUnmatched, ...best } = bestMatchOfTicks(before, after);
+    expect
+      .soft(
+        shareUnmatched,
+        `${name}: share of the ticks of its tick pattern before and after a reload (at least ${CORE}px inside it) with no tick at the same place (each edge within ${SAME_PLACE}px) in the other load's pattern, with the first moved by up to ${MAX_SHIFT}px the way that matches most (${best.dx}px across, ${best.dy}px down); ticks: ${before.core.length} before the reload, ${best.inFirst} of them unmatched, ${after.core.length} after it, ${best.inSecond} of them unmatched`,
+      )
+      .toBeGreaterThanOrEqual(MIN_SHARE_UNMATCHED);
+  },
+);
+
+test(
+  'on the French home page, with JavaScript, when the window widens, the first card’s tick pattern is completed rather than stretched: the ticks it showed stay where they were, and new ticks, spaced like them, fill the added width up to its right edge',
+  { tag: '@pixels' },
+  async ({ page }) => {
+    /* Reduced motion, so that whatever could animate shows a still picture. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    /* Two window widths, both in the single-column layout, where the card, and its tick pattern,
+     follow the window's width: the pattern widens by a few hundred pixels between them. */
+    const NARROW = { width: 400, height: 800 };
+    const WIDE = { width: 720, height: 800 };
+    const MIN_WIDENING = 200;
+    /* Time left for a redraw once the pattern's box has widened. */
+    const REDRAW_DELAY = 500;
+    /* The ticks it showed stay where they were: next to none of them, or of those now drawn over the
+     same region, without a tick at the same place in the other. */
+    const MAX_SHARE_UNMATCHED = 0.05;
+    /* Two neighbouring columns of ticks stand as far apart as the existing ones, each edge of a tick
+     within SAME_PLACE of where it would be. */
+    const SPACING_TOLERANCE = 2 * SAME_PLACE;
+    const name = cardName(0);
+    await page.setViewportSize(NARROW);
+    await page.goto('/fr/');
+    const cards = await cardsOnceLoaded(page);
+    const card = cards.first();
+    const pattern = tickPatternOf(card);
+    const patternWidth = async (): Promise<number> => (await pattern.boundingBox())?.width ?? 0;
+    const narrowWidth = await patternWidth();
+    const before = await ticksOfTickPattern(card, `${name}, before the window widens`);
+
+    await page.setViewportSize(WIDE);
+    await expect
+      .poll(patternWidth, `${name}: width of its tick pattern once the window widens from ${narrowWidth}px`)
+      .toBeGreaterThanOrEqual(narrowWidth + MIN_WIDENING);
+    const wideWidth = await patternWidth();
+    await page.waitForTimeout(REDRAW_DELAY);
+    const after = await ticksOfTickPattern(card, `${name}, after the window widens`);
+
+    /* The original region: the ticks drawn there after the widening, against those it showed. The
+     core ticks of that region lie as far inside it as the core ticks of the narrow pattern. */
+    const original: TicksOfTickPattern = {
+      ticks: after.ticks.filter((tick) => tick.x < narrowWidth),
+      core: after.core.filter((tick) => tick.x + tick.width <= narrowWidth - CORE),
+    };
+    const { shareUnmatched, ...best } = bestMatchOfTicks(before, original);
+    expect
+      .soft(
+        shareUnmatched,
+        `${name}: share of the ticks of its ${Math.round(narrowWidth)}px-wide tick pattern, before and after the window widens it to ${Math.round(wideWidth)}px, with no tick at the same place (each edge within ${SAME_PLACE}px) in the other, over the original width (at least ${CORE}px inside it), with the first moved by up to ${MAX_SHIFT}px the way that matches most (${best.dx}px across, ${best.dy}px down); ticks: ${before.core.length} before, ${best.inFirst} of them unmatched, ${original.core.length} after, ${best.inSecond} of them unmatched`,
+      )
+      .toBeLessThanOrEqual(MAX_SHARE_UNMATCHED);
+
+    /* The columns of ticks: the left edges of ticks that stand within SAME_PLACE of one another,
+     from left to right, each column at its leftmost edge. */
+    const columnsOf = (ticks: Rectangle[]): number[] =>
+      [...ticks]
+        .map((tick) => tick.x)
+        .sort((a, b) => a - b)
+        .reduce<number[]>(
+          (columns, x) =>
+            columns.length > 0 && x - columns[columns.length - 1] <= SAME_PLACE ? columns : [...columns, x],
+          [],
+        );
+    const gaps = (columns: number[]): number[] => columns.slice(1).map((x, index) => x - columns[index]);
+    const columnsBefore = columnsOf(before.ticks);
+    const gapsBefore = gaps(columnsBefore).sort((a, b) => a - b);
+    const spacing = gapsBefore[Math.floor(gapsBefore.length / 2)];
+    const columnsAfter = columnsOf(after.ticks);
+    /* The columns past the original ones, with the last original column, so that the seam counts
+     too. */
+    const lastOriginalColumn = columnsBefore[columnsBefore.length - 1];
+    const addedColumns = columnsAfter.filter((x) => x >= lastOriginalColumn - SAME_PLACE);
+    const unevenGaps = gaps(addedColumns)
+      .map((gap, index) => ({ at: addedColumns[index], gap }))
+      .filter(({ gap }) => Math.abs(gap - spacing) > SPACING_TOLERANCE)
+      .map(({ at, gap }) => `${gap.toFixed(1)}px after the column at ${at.toFixed(1)}px`);
+    expect
+      .soft(
+        addedColumns.length,
+        `${name}: columns of ticks in its tick pattern from its last original column (${lastOriginalColumn.toFixed(1)}px) to its new right edge (${Math.round(wideWidth)}px)`,
+      )
+      .toBeGreaterThan(MIN_WIDENING / spacing);
+    expect
+      .soft(
+        unevenGaps,
+        `${name}: gaps between neighbouring columns of ticks, from its last original column (${lastOriginalColumn.toFixed(1)}px) on, that differ by more than ${SPACING_TOLERANCE}px from the spacing of its original columns (${spacing.toFixed(1)}px); columns after the widening: ${columnsAfter.map((x) => x.toFixed(1)).join(', ')}`,
+      )
+      .toEqual([]);
+
+    /* Up to the right edge: the empty strip right of the last tick is no wider, give or take a
+     column, than the one the narrow pattern left. */
+    const emptyStrip = (ticks: Rectangle[], width: number): number =>
+      width - Math.max(...ticks.map((tick) => tick.x + tick.width));
+    const stripBefore = emptyStrip(before.ticks, narrowWidth);
+    expect
+      .soft(
+        emptyStrip(after.ticks, wideWidth),
+        `${name}: empty strip between its rightmost tick and the right edge of its ${Math.round(wideWidth)}px-wide tick pattern, against the ${stripBefore.toFixed(1)}px strip of its ${Math.round(narrowWidth)}px-wide pattern and a column spacing of ${spacing.toFixed(1)}px`,
+      )
+      .toBeLessThanOrEqual(stripBefore + spacing + SPACING_TOLERANCE);
+  },
+);
+
+test(
+  'on the French home page, with JavaScript, after the window moves to a screen with twice the pixel density without changing size, each card’s tick pattern is redrawn at the new density: shortly after the move, with nothing else happening, it shows what it shows once drawn anew at that density, the same ticks, crisp, not its old drawing stretched',
+  { tag: '@pixels' },
+  async ({ page, isMobile }) => {
+    /* Reduced motion, so that whatever could animate shows a still picture. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    /* What it shows once drawn anew, within this share of its drawn pixels: the old drawing
+     stretched to the new density smears the edges of every tick. */
+    const MAX_SHARE_CHANGED = 0.02;
+    /* Time stands still, so that nothing but the move can redraw a pattern. */
+    await stopClockBeforeLoad(page);
+    await page.goto('/fr/');
+    const cards = await cardsOnceLoaded(page);
+    const patterns = page.locator('tick-pattern');
+    const oldDensity = await page.evaluate(() => window.devicePixelRatio);
+    const newDensity = 2 * oldDensity;
+
+    const screen = await moveToScreenOfDensity(page, {
+      density: newDensity,
+      isMobile,
+      rendered: tickPatternOf(cards.first()),
+    });
+    const cardScreenshots = async (): Promise<Buffer[]> => {
+      const screenshots: Buffer[] = [];
+      for (const index of FEATURED_PROJECTS.keys()) screenshots.push(await screen.screenshot(cards.nth(index)));
+      return screenshots;
+    };
+    const afterMove = await cardScreenshots();
+
+    /* The reference: each tick pattern taken off the page and put back in its place, which draws
+     it anew at the new density, whatever the layout. It keeps its ticks. */
+    await patterns.evaluateAll((elements) => {
+      for (const element of elements) {
+        const [parent, next] = [element.parentNode!, element.nextSibling];
+        element.remove();
+        parent.insertBefore(element, next);
+      }
+    });
+    await screen.waitForRender(tickPatternOf(cards.first()));
+    const redrawn = await cardScreenshots();
+    expect(await page.evaluate(() => window.devicePixelRatio), 'pixel density of the new screen').toBeCloseTo(
+      newDensity,
+      3,
+    );
+
     for (const index of FEATURED_PROJECTS.keys()) {
-      const where = `without JavaScript,${cardName(index)}`;
+      const where = cardName(index);
       const card = cards.nth(index);
-      await expect(tickPatternOf(card), `${where}: the tick pattern's band is visible`).toBeVisible();
       await card.scrollIntoViewIfNeeded();
       const { cardInScreenshot, patternBox } = await cardAndTickPatternBoxes(card, where);
-      /* The pattern's whole box, measured against the card's background. Where the pattern
+      /* The pattern's whole box, measured against the card's background, up to CARD_EDGE inside
+       the card's edges, which it touches. */
+      const box = withinCardEdges(patternBox, cardInScreenshot);
+      const { rows } = await pixelsNotOfBackgroundPerRow(card, redrawn[index], box);
+      const drawnPixels = rows.reduce((sum, count) => sum + count, 0);
+      expect
+        .soft(
+          drawnPixels,
+          `${where}: pixels of its tick pattern drawn anew at the new density that differ from the card's background`,
+        )
+        .toBeGreaterThan(0);
+      const { columns } = await pixelsChangedPerColumnInRectangle(card, afterMove[index], redrawn[index], box);
+      const changedPixels = columns.reduce((sum, count) => sum + count, 0);
+      expect
+        .soft(
+          changedPixels,
+          `${where}: pixels of its ${Math.round(box.width)}px-wide tick pattern, ${DELAY_AFTER_MOVE_MS} ms after the window moved from a density of ${oldDensity} to ${newDensity}, that differ from the tick pattern drawn anew at that density, which shows ${drawnPixels} drawn pixels`,
+        )
+        .toBeLessThanOrEqual(MAX_SHARE_CHANGED * drawnPixels);
+    }
+  },
+);
+
+test(
+  'on the French home page, without JavaScript, each card’s tick pattern is an empty band in its place: inside it, no pixel is drawn, it shows only the card’s background',
+  { tag: '@pixels' },
+  async ({ browser, baseURL, viewport }) => {
+    /* The pattern is drawn by a script: without one, its band stays, with nothing in it. */
+    const withoutJavaScript = await browser.newContext({ baseURL, viewport, javaScriptEnabled: false });
+    try {
+      const page = await withoutJavaScript.newPage();
+      await page.goto('/fr/');
+      const cards = await cardsOnceLoaded(page);
+      for (const index of FEATURED_PROJECTS.keys()) {
+        const where = `without JavaScript,${cardName(index)}`;
+        const card = cards.nth(index);
+        await expect(tickPatternOf(card), `${where}: the tick pattern's band is visible`).toBeVisible();
+        await card.scrollIntoViewIfNeeded();
+        const { cardInScreenshot, patternBox } = await cardAndTickPatternBoxes(card, where);
+        /* The pattern's whole box, measured against the card's background. Where the pattern
          touches the card's edges, it is measured up to CARD_EDGE inside them, as the screenshot
          shows them: outside them, it shows the section's background. */
-      const box = withinCardEdges(patternBox, cardInScreenshot);
-      const { rows } = await pixelsNotOfBackgroundPerRow(card, await card.screenshot(), box);
-      const drawn = rows.reduce((sum, count) => sum + count, 0);
-      expect.soft(
-        drawn,
-        `${where}: screenshot pixels other than the card's background inside the ${Math.round(box.width)}×${Math.round(box.height)}px tick pattern`,
-      ).toBe(0);
+        const box = withinCardEdges(patternBox, cardInScreenshot);
+        const { rows } = await pixelsNotOfBackgroundPerRow(card, await card.screenshot(), box);
+        const drawn = rows.reduce((sum, count) => sum + count, 0);
+        expect
+          .soft(
+            drawn,
+            `${where}: screenshot pixels other than the card's background inside the ${Math.round(box.width)}×${Math.round(box.height)}px tick pattern`,
+          )
+          .toBe(0);
+      }
+    } finally {
+      await withoutJavaScript.close();
     }
-  } finally {
-    await withoutJavaScript.close();
-  }
-});
+  },
+);
 
-test('under prefers-reduced-motion: reduce, on the French home page, each card’s tick pattern stays still: 2 s after load, every vertical band inside it, from its left edge to its right edge, shows the brightness it showed right after load', { tag: '@pixels' }, async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* The tick pattern's width split into adjacent vertical bands, at least this wide each. */
-  const MIN_BAND_WIDTH = 40;
-  /* What a band showed right after load, within this share, for rendering noise. */
-  const TOLERANCE = 0.02;
-  await page.goto('/fr/');
-  const cards = await cardsOnceLoaded(page);
+test(
+  'under prefers-reduced-motion: reduce, on the French home page, each card’s tick pattern stays still: 2 s after load, every vertical band inside it, from its left edge to its right edge, shows the brightness it showed right after load',
+  { tag: '@pixels' },
+  async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    /* The tick pattern's width split into adjacent vertical bands, at least this wide each. */
+    const MIN_BAND_WIDTH = 40;
+    /* What a band showed right after load, within this share, for rendering noise. */
+    const TOLERANCE = 0.02;
+    await page.goto('/fr/');
+    const cards = await cardsOnceLoaded(page);
 
-  /* For each card, the bands inside its tick pattern, relative to the card's box. */
-  const bandsOfCards: Rectangle[][] = [];
-  for (const index of FEATURED_PROJECTS.keys()) {
-    const where = cardName(index);
-    const card = cards.nth(index);
-    const inside = insideTickPattern(await tickPatternBoxInCard(card, where));
-    bandsOfCards.push(verticalBands(inside.width, inside.height, MIN_BAND_WIDTH).map((band) => ({ ...band, x: band.x + inside.x, y: inside.y })));
-  }
-  const brightness = async (): Promise<number[][]> => {
-    const perCard: number[][] = [];
-    for (const [index, bands] of bandsOfCards.entries()) {
+    /* For each card, the bands inside its tick pattern, relative to the card's box. */
+    const bandsOfCards: Rectangle[][] = [];
+    for (const index of FEATURED_PROJECTS.keys()) {
+      const where = cardName(index);
       const card = cards.nth(index);
-      await card.scrollIntoViewIfNeeded();
-      const screenshot = await card.screenshot();
-      perCard.push(await Promise.all(bands.map((band) => luminanceAboveBackgroundInRectangle(card, screenshot, band))));
+      const inside = insideTickPattern(await tickPatternBoxInCard(card, where));
+      bandsOfCards.push(
+        verticalBands(inside.width, inside.height, MIN_BAND_WIDTH).map((band) => ({
+          ...band,
+          x: band.x + inside.x,
+          y: inside.y,
+        })),
+      );
     }
-    return perCard;
-  };
+    const brightness = async (): Promise<number[][]> => {
+      const perCard: number[][] = [];
+      for (const [index, bands] of bandsOfCards.entries()) {
+        const card = cards.nth(index);
+        await card.scrollIntoViewIfNeeded();
+        const screenshot = await card.screenshot();
+        perCard.push(
+          await Promise.all(bands.map((band) => luminanceAboveBackgroundInRectangle(card, screenshot, band))),
+        );
+      }
+      return perCard;
+    };
 
-  const rightAfterLoad = await brightness();
-  /* Time passes, on the page's real clock: long enough for an animation to show. */
-  await page.waitForTimeout(2000);
-  const twoSecondsLater = await brightness();
+    const rightAfterLoad = await brightness();
+    /* Time passes, on the page's real clock: long enough for an animation to show. */
+    await page.waitForTimeout(2000);
+    const twoSecondsLater = await brightness();
 
-  for (const index of FEATURED_PROJECTS.keys()) {
-    const changedBands = bandsOfCards[index]
-      .map((band, bandIndex) => ({ band, before: rightAfterLoad[index][bandIndex], after: twoSecondsLater[index][bandIndex] }))
-      .filter(({ before, after }) => Math.abs(after - before) > TOLERANCE * before)
-      .map(({ band, before, after }) => `${Math.round(band.x)}–${Math.round(band.x + band.width)}px: ${Math.round(before)} → ${Math.round(after)}`);
-    expect.soft(
-      changedBands,
-      `${cardName(index)}: bands inside its tick pattern (${INSET}px from its edges, relative to the card) whose brightness above the card's background, under reduced motion, 2 s after load, differs by more than ${TOLERANCE * 100}% from what they showed right after load`,
-    ).toEqual([]);
-  }
-});
+    for (const index of FEATURED_PROJECTS.keys()) {
+      const changedBands = bandsOfCards[index]
+        .map((band, bandIndex) => ({
+          band,
+          before: rightAfterLoad[index][bandIndex],
+          after: twoSecondsLater[index][bandIndex],
+        }))
+        .filter(({ before, after }) => Math.abs(after - before) > TOLERANCE * before)
+        .map(
+          ({ band, before, after }) =>
+            `${Math.round(band.x)}–${Math.round(band.x + band.width)}px: ${Math.round(before)} → ${Math.round(after)}`,
+        );
+      expect
+        .soft(
+          changedBands,
+          `${cardName(index)}: bands inside its tick pattern (${INSET}px from its edges, relative to the card) whose brightness above the card's background, under reduced motion, 2 s after load, differs by more than ${TOLERANCE * 100}% from what they showed right after load`,
+        )
+        .toEqual([]);
+    }
+  },
+);
 
 test.describe('home page of another site, featuring other projects', () => {
   let siteDirectory: string;
@@ -1199,7 +1553,9 @@ test.describe('home page of another site, featuring other projects', () => {
     await page.goto(`${SITE_WITH_OTHER_PROJECTS.origin}/fr/`);
   });
 
-  test('the section "Projets sélectionnés" shows one card per project this site features, in its order, and none of the example site’s', async ({ page }) => {
+  test('the section "Projets sélectionnés" shows one card per project this site features, in its order, and none of the example site’s', async ({
+    page,
+  }) => {
     const section = projectsSection(page);
     /* Featured in tests/fixtures/other-projects/content/_index.md, in an order that is neither
        alphabetical nor reverse alphabetical. An array makes the match exact. */
@@ -1210,7 +1566,9 @@ test.describe('home page of another site, featuring other projects', () => {
     ]);
   });
 
-  test('a featured project whose page declares only a title and a description gets a card with just those: no empty slot for the role or stack, no stray separator', async ({ page }) => {
+  test('a featured project whose page declares only a title and a description gets a card with just those: no empty slot for the role or stack, no stray separator', async ({
+    page,
+  }) => {
     const section = projectsSection(page);
     /* tests/fixtures/other-projects/content/projets/barometre-mercure.md declares no [params]. */
     const title = 'Baromètre à mercure';
@@ -1233,7 +1591,9 @@ test.describe('home page of another site, featuring other projects', () => {
     await expect(textElements.filter({ hasNotText: /\S/ })).toHaveCount(0);
   });
 
-  test('the card of a featured project without a detail page has no link, while the other cards keep theirs, and the site publishes no page at that project’s address', async ({ page }) => {
+  test('the card of a featured project without a detail page has no link, while the other cards keep theirs, and the site publishes no page at that project’s address', async ({
+    page,
+  }) => {
     const section = projectsSection(page);
     /* tests/fixtures/other-projects/content/projets/chronometre-marine.md declares
        [build] render = 'never': its card is still shown, with no link at all, not even an empty one. */
@@ -1260,7 +1620,10 @@ test.describe('home page of another site, featuring a project whose section give
     removeDirectory(siteDirectory);
   });
 
-  test('the card of a featured project that inherits render = "never" from its section’s cascade has no link, while the other card keeps its own, and the site publishes no page at that project’s address', async ({ page, context }) => {
+  test('the card of a featured project that inherits render = "never" from its section’s cascade has no link, while the other card keeps its own, and the site publishes no page at that project’s address', async ({
+    page,
+    context,
+  }) => {
     await serveSite(context, SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES, siteDirectory);
     await page.goto(`${SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES.origin}/fr/`);
     const section = projectsSection(page);
@@ -1272,9 +1635,13 @@ test.describe('home page of another site, featuring a project whose section give
     await expect(card).toBeVisible();
     await expect(card.locator('a')).toHaveCount(0);
     /* The project that has a page keeps its link to it. */
-    await expect(cardTitled(section, 'Restauration d’une pendule de cheminée').getByRole('link', { name: 'Voir le détail' })).toHaveCount(1);
+    await expect(
+      cardTitled(section, 'Restauration d’une pendule de cheminée').getByRole('link', { name: 'Voir le détail' }),
+    ).toHaveCount(1);
     /* Nothing is published where the project's page would be. */
-    const response = await page.goto(`${SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES.origin}/fr/esquisses/regulateur-de-parquet/`);
+    const response = await page.goto(
+      `${SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES.origin}/fr/esquisses/regulateur-de-parquet/`,
+    );
     expect(response?.status()).toBe(404);
   });
 });
@@ -1288,7 +1655,10 @@ test.describe('home page of another site, featuring projects whose page is not p
     removeDirectory(siteDirectory);
   });
 
-  test('the cards of featured projects whose page declares render = "link" or render = false have no link, while the other card keeps its own', async ({ page, context }) => {
+  test('the cards of featured projects whose page declares render = "link" or render = false have no link, while the other card keeps its own', async ({
+    page,
+    context,
+  }) => {
     await serveSite(context, SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES, siteDirectory);
     await page.goto(`${SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES.origin}/fr/`);
     const section = projectsSection(page);
@@ -1303,9 +1673,13 @@ test.describe('home page of another site, featuring projects whose page is not p
       await expect.soft(card.locator('a'), `links in the card of "${title}"`).toHaveCount(0);
     }
     /* The project that has a page keeps its link to it. */
-    await expect(cardTitled(section, 'Restauration d’une pendule de cheminée').getByRole('link', { name: 'Voir le détail' })).toHaveCount(1);
+    await expect(
+      cardTitled(section, 'Restauration d’une pendule de cheminée').getByRole('link', { name: 'Voir le détail' }),
+    ).toHaveCount(1);
     /* render = 'link' gives the clock an address, but nothing is published there. */
-    const response = await page.goto(`${SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES.origin}/fr/projets/horloge-comtoise/`);
+    const response = await page.goto(
+      `${SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES.origin}/fr/projets/horloge-comtoise/`,
+    );
     expect(response?.status()).toBe(404);
   });
 });
@@ -1319,7 +1693,10 @@ test.describe('home page of another site, featuring projects whose page declares
     removeDirectory(siteDirectory);
   });
 
-  test('the cards of featured projects whose page declares render = "Always" (capitalised) or a typo such as render = "nevr", which Hugo still publishes, keep their "Voir le détail" link, which opens that page', async ({ page, context }) => {
+  test('the cards of featured projects whose page declares render = "Always" (capitalised) or a typo such as render = "nevr", which Hugo still publishes, keep their "Voir le détail" link, which opens that page', async ({
+    page,
+    context,
+  }) => {
     await serveSite(context, SITE_WITH_UNUSUAL_RENDER_VALUES, siteDirectory);
     /* In tests/fixtures/unusual-render-values/content/projets/, horloge-a-poids.md declares
        [build] render = 'Always' and pendulette-officier.md [build] render = 'nevr': Hugo reads the
@@ -1342,7 +1719,10 @@ test.describe('home page of another site, featuring projects whose page declares
     }
   });
 
-  test('the card of a featured project whose page declares render = 0, which Hugo reads as "never" and does not publish, has no "Voir le détail" link', async ({ page, context }) => {
+  test('the card of a featured project whose page declares render = 0, which Hugo reads as "never" and does not publish, has no "Voir le détail" link', async ({
+    page,
+    context,
+  }) => {
     await serveSite(context, SITE_WITH_UNUSUAL_RENDER_VALUES, siteDirectory);
     /* tests/fixtures/unusual-render-values/content/projets/montre-gousset.md declares
        [build] render = 0, an integer: Hugo publishes nothing at that project's address… */
@@ -1356,7 +1736,10 @@ test.describe('home page of another site, featuring projects whose page declares
     await expect(card.locator('a')).toHaveCount(0);
   });
 
-  test('the card of a featured project whose page declares render = "false" (a quoted string, not the boolean), which Hugo publishes, keeps its "Voir le détail" link, which opens that page', async ({ page, context }) => {
+  test('the card of a featured project whose page declares render = "false" (a quoted string, not the boolean), which Hugo publishes, keeps its "Voir le détail" link, which opens that page', async ({
+    page,
+    context,
+  }) => {
     await serveSite(context, SITE_WITH_UNUSUAL_RENDER_VALUES, siteDirectory);
     /* tests/fixtures/unusual-render-values/content/projets/carillon-de-bureau.md declares
        [build] render = 'false', a string: Hugo reads render values case-sensitively and only the
@@ -1407,13 +1790,20 @@ test.describe('home pages whose featured projects live in sections of different 
     removeDirectory(siteDirectory);
   });
 
-  test('the section "Projets sélectionnés" has, once and outside the cards, a "Tous les projets" link that opens the section holding the featured projects, at the site root and under /portfolio/', async ({ page, context }) => {
+  test('the section "Projets sélectionnés" has, once and outside the cards, a "Tous les projets" link that opens the section holding the featured projects, at the site root and under /portfolio/', async ({
+    page,
+    context,
+  }) => {
     await serveSite(context, SITE_WITH_PROJECTS_IN_ANOTHER_SECTION, siteDirectory);
     const sites = [
       /* The example site, whose featured projects are in content/projets/ (title "Projets"),
          served at the root of its origin, then under a subpath (playwright.config.ts)… */
       { home: '/fr/', sectionAddress: '/fr/projets/', sectionTitle: 'Projets' },
-      { home: `${EXAMPLE_SITE_UNDER_PORTFOLIO}fr/`, sectionAddress: `${EXAMPLE_SITE_UNDER_PORTFOLIO}fr/projets/`, sectionTitle: 'Projets' },
+      {
+        home: `${EXAMPLE_SITE_UNDER_PORTFOLIO}fr/`,
+        sectionAddress: `${EXAMPLE_SITE_UNDER_PORTFOLIO}fr/projets/`,
+        sectionTitle: 'Projets',
+      },
       /* …and a site whose featured project is in content/realisations/, while projets/ still
          exists: a hard-coded /projets/ address cannot pass. */
       {
@@ -1449,7 +1839,10 @@ test.describe('home page of another site, featuring a project at the content roo
     removeDirectory(siteDirectory);
   });
 
-  test('the section "Projets sélectionnés" shows the card of a featured project that lives at the content root, outside any section, but no "Tous les projets" link, since no section holds that project', async ({ page, context }) => {
+  test('the section "Projets sélectionnés" shows the card of a featured project that lives at the content root, outside any section, but no "Tous les projets" link, since no section holds that project', async ({
+    page,
+    context,
+  }) => {
     await serveSite(context, SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT, siteDirectory);
     await page.goto(`${SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT.origin}/fr/`);
     const section = projectsSection(page);
@@ -1465,7 +1858,10 @@ test.describe('home page of another site, featuring a project at the content roo
     await expect(section.getByText('Tous les projets')).toHaveCount(0);
   });
 
-  test('on a phone, without the "Tous les projets" link, the first card of the section "Projets sélectionnés" is as far below the heading as it is below the link on a home page that has it', async ({ page, context }) => {
+  test('on a phone, without the "Tous les projets" link, the first card of the section "Projets sélectionnés" is as far below the heading as it is below the link on a home page that has it', async ({
+    page,
+    context,
+  }) => {
     await serveSite(context, SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT, siteDirectory);
     await page.setViewportSize(PHONE);
     /* From the bottom of an element's box (the link's ends with its underline) to the top of the
@@ -1522,7 +1918,10 @@ test.describe('home pages of other sites, featuring a project whose section has 
     for (const directory of siteDirectories) removeDirectory(directory);
   });
 
-  test('the section "Projets sélectionnés" shows the card of a featured project whose section declares render = "never", in its cascade or in a plain [build], but no "Tous les projets" link, since that section has no published page', async ({ page, context }) => {
+  test('the section "Projets sélectionnés" shows the card of a featured project whose section declares render = "never", in its cascade or in a plain [build], but no "Tous les projets" link, since that section has no published page', async ({
+    page,
+    context,
+  }) => {
     for (const [index, { site }] of sites.entries()) {
       await serveSite(context, site, siteDirectories[index]);
     }
@@ -1541,8 +1940,12 @@ test.describe('home pages of other sites, featuring a project whose section has 
       await expect(card).toBeVisible();
       await expect(card.getByRole('link', { name: 'Voir le détail' })).toHaveCount(projectHasDetailLink ? 1 : 0);
       /* …but no link claims to list all the projects, not even an empty one: it would lead nowhere. */
-      await expect.soft(section.getByRole('link', { name: 'Tous les projets' }), `"Tous les projets" links on ${site.origin}/fr/`).toHaveCount(0);
-      await expect.soft(section.getByText('Tous les projets'), `"Tous les projets" texts on ${site.origin}/fr/`).toHaveCount(0);
+      await expect
+        .soft(section.getByRole('link', { name: 'Tous les projets' }), `"Tous les projets" links on ${site.origin}/fr/`)
+        .toHaveCount(0);
+      await expect
+        .soft(section.getByText('Tous les projets'), `"Tous les projets" texts on ${site.origin}/fr/`)
+        .toHaveCount(0);
     }
   });
 });
@@ -1556,7 +1959,10 @@ test.describe('home page of another site, featuring projects from two published 
     removeDirectory(siteDirectory);
   });
 
-  test('the section "Projets sélectionnés" shows the cards of featured projects from two different published sections, but no "Tous les projets" link, since no single section holds them all', async ({ page, context }) => {
+  test('the section "Projets sélectionnés" shows the cards of featured projects from two different published sections, but no "Tous les projets" link, since no single section holds them all', async ({
+    page,
+    context,
+  }) => {
     await serveSite(context, SITE_WITH_PROJECTS_IN_TWO_SECTIONS, siteDirectory);
     const origin = SITE_WITH_PROJECTS_IN_TWO_SECTIONS.origin;
     /* tests/fixtures/projects-in-two-sections/content/_index.md features a project of projets/,
@@ -1575,8 +1981,12 @@ test.describe('home page of another site, featuring projects from two published 
     }
     /* …but no link claims to list all the projects, not even an empty one: either section would
        list only some of them. */
-    await expect.soft(section.getByRole('link', { name: 'Tous les projets' }), `"Tous les projets" links on ${origin}/fr/`).toHaveCount(0);
-    await expect.soft(section.getByText('Tous les projets'), `"Tous les projets" texts on ${origin}/fr/`).toHaveCount(0);
+    await expect
+      .soft(section.getByRole('link', { name: 'Tous les projets' }), `"Tous les projets" links on ${origin}/fr/`)
+      .toHaveCount(0);
+    await expect
+      .soft(section.getByText('Tous les projets'), `"Tous les projets" texts on ${origin}/fr/`)
+      .toHaveCount(0);
   });
 });
 
@@ -1589,7 +1999,10 @@ test.describe('home page of another site, featuring no projects', () => {
     removeDirectory(siteDirectory);
   });
 
-  test('a home page whose front matter features no projects shows no section "Projets sélectionnés": no such heading, no empty region, no project card', async ({ page, context }) => {
+  test('a home page whose front matter features no projects shows no section "Projets sélectionnés": no such heading, no empty region, no project card', async ({
+    page,
+    context,
+  }) => {
     await serveSite(context, SITE_WITHOUT_HERO, siteDirectory);
     await page.goto(`${SITE_WITHOUT_HERO.origin}/fr/`);
     /* tests/fixtures/without-hero/content/_index.md declares no params.projects, while the example
@@ -1613,7 +2026,9 @@ type TextLine = { text: string; left: number; right: number };
 
 /* A card's horizontal edges, and the horizontal edges of every line of every text it displays,
    each with the text it belongs to. */
-async function cardAndTextLines(card: Locator): Promise<{ cardBox: { left: number; right: number }; lines: TextLine[] }> {
+async function cardAndTextLines(
+  card: Locator,
+): Promise<{ cardBox: { left: number; right: number }; lines: TextLine[] }> {
   return card.evaluate((article) => {
     const { left, right } = article.getBoundingClientRect();
     const found: TextLine[] = [];
@@ -1640,7 +2055,10 @@ test.describe('home page of another site, featuring a project with long words', 
     removeDirectory(siteDirectory);
   });
 
-  test('on a phone, the card of a featured project whose role, description and stack each hold a word wider than the card keeps them inside the card: no text of the card leaves it, and the page does not scroll horizontally', async ({ page, context }) => {
+  test('on a phone, the card of a featured project whose role, description and stack each hold a word wider than the card keeps them inside the card: no text of the card leaves it, and the page does not scroll horizontally', async ({
+    page,
+    context,
+  }) => {
     await serveSite(context, SITE_WITH_LONG_PROJECT_WORDS, siteDirectory);
     await page.setViewportSize(PHONE);
     await page.goto(`${SITE_WITH_LONG_PROJECT_WORDS.origin}/fr/`);
@@ -1662,8 +2080,18 @@ test.describe('home page of another site, featuring a project with long words', 
     const { cardBox, lines } = await cardAndTextLines(card);
     expect(lines.length, 'lines of text the card displays').toBeGreaterThan(0);
     for (const line of lines) {
-      expect.soft(line.left, `left edge of a line of "${line.text}" against the card's left edge (${cardBox.left.toFixed(1)} px)`).toBeGreaterThanOrEqual(cardBox.left - 1);
-      expect.soft(line.right, `right edge of a line of "${line.text}" against the card's right edge (${cardBox.right.toFixed(1)} px)`).toBeLessThanOrEqual(cardBox.right + 1);
+      expect
+        .soft(
+          line.left,
+          `left edge of a line of "${line.text}" against the card's left edge (${cardBox.left.toFixed(1)} px)`,
+        )
+        .toBeGreaterThanOrEqual(cardBox.left - 1);
+      expect
+        .soft(
+          line.right,
+          `right edge of a line of "${line.text}" against the card's right edge (${cardBox.right.toFixed(1)} px)`,
+        )
+        .toBeLessThanOrEqual(cardBox.right + 1);
     }
     const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect.soft(pageWidth, 'width of the page content').toBeLessThanOrEqual(PHONE.width);
@@ -1679,7 +2107,10 @@ test.describe('home page of another site, featuring a project with a long title 
     removeDirectory(siteDirectory);
   });
 
-  test('on a phone, the card of a featured project without years lets its long title use the whole width of the card’s text: the wrapped title reaches the right end of the card’s text, where the description’s lines end, rather than stopping short where years would be', async ({ page, context }) => {
+  test('on a phone, the card of a featured project without years lets its long title use the whole width of the card’s text: the wrapped title reaches the right end of the card’s text, where the description’s lines end, rather than stopping short where years would be', async ({
+    page,
+    context,
+  }) => {
     await serveSite(context, SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS, siteDirectory);
     await page.setViewportSize(PHONE);
     await page.goto(`${SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS.origin}/fr/`);
@@ -1690,7 +2121,8 @@ test.describe('home page of another site, featuring a project with a long title 
        character short of the width it is given, whatever that width: how far right the title
        reaches shows the width it gets. */
     const title = 'Penduleàrépétitiondesquartsetàsonneriegrandeetpetitesansannées';
-    const description = 'Remise en marche d’une Penduleastronomiqueàquantièmeperpétueléquationdutempsetphasesdelalune de l’atelier.';
+    const description =
+      'Remise en marche d’une Penduleastronomiqueàquantièmeperpétueléquationdutempsetphasesdelalune de l’atelier.';
     const card = cardTitled(projectsSection(page), title);
     await expect(card).toHaveCount(1);
     const heading = card.getByRole('heading', { level: 3, name: title, exact: true });
@@ -1721,7 +2153,11 @@ test.describe('home page of another site, featuring a project with a long title 
        could stop short of it along with the title, if both lost the same width. */
     const cardContentRight = await card.evaluate((element) => {
       const style = getComputedStyle(element);
-      return element.getBoundingClientRect().right - Number.parseFloat(style.paddingRight) - Number.parseFloat(style.borderRightWidth);
+      return (
+        element.getBoundingClientRect().right -
+        Number.parseFloat(style.paddingRight) -
+        Number.parseFloat(style.borderRightWidth)
+      );
     });
     expect(
       titleRight,
@@ -1876,9 +2312,7 @@ test.describe('featured project content errors: build failure', () => {
       expect(
         build.errors,
         `for the reference with ${name}, the error message should name the projects parameter and that reference and say it has whitespace`,
-      ).toMatch(
-        new RegExp(`^(?=.*\\bprojects\\s+parameter\\b)(?=.*${reference})(?=.*\\bwhitespace\\b).*$`, 'im'),
-      );
+      ).toMatch(new RegExp(`^(?=.*\\bprojects\\s+parameter\\b)(?=.*${reference})(?=.*\\bwhitespace\\b).*$`, 'im'));
     }
   });
 

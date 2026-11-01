@@ -11,9 +11,7 @@ test('the footer displays the site logo followed by "© <current year> <site aut
   await page.goto('/fr/');
   const year = new Date().getFullYear();
   const footer = page.locator('footer');
-  await expect(footer).toHaveText(
-    new RegExp(`\\| E \\|\\|\\| \\| X \\|\\|\\|\\s*(—\\s*)?© ${year} Jean Exemple`),
-  );
+  await expect(footer).toHaveText(new RegExp(`\\| E \\|\\|\\| \\| X \\|\\|\\|\\s*(—\\s*)?© ${year} Jean Exemple`));
 });
 
 test('screen readers do not read the decorative bars of the footer logo', async ({ page }) => {
@@ -24,9 +22,14 @@ test('screen readers do not read the decorative bars of the footer logo', async 
   expect(accessibilityTree).not.toContain('|');
 });
 
-test('the footer logo is styled like the header logo: same font, size, letter-spacing, color and character weights', async ({ page }) => {
+test('the footer logo is styled like the header logo: same font, size, letter-spacing, color and character weights', async ({
+  page,
+}) => {
   await page.goto('/fr/');
-  const headerLogo = page.locator('header').getByRole('link', { name: 'Exemple', exact: true }).locator('[aria-hidden="true"]');
+  const headerLogo = page
+    .locator('header')
+    .getByRole('link', { name: 'Exemple', exact: true })
+    .locator('[aria-hidden="true"]');
   const logo = footerLogoText(page);
   await expect(headerLogo).toHaveText('| E ||| | X |||');
   await expect(logo).toHaveText('| E ||| | X |||');

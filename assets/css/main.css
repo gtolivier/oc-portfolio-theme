@@ -40,8 +40,8 @@
   --color-ink: rgb(var(--color-ink-channels));
   --color-paper-channels: 227 223 204;
   --color-paper: rgb(var(--color-paper-channels));
-  --color-accent: #2A888D;
-  --color-accent-dark: #1E6C58;
+  --color-accent: #2a888d;
+  --color-accent-dark: #1e6c58;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
   --font-sans: 'IBM Plex Sans', Helvetica, sans-serif;
   /* Sizes of the sticky header, read both by its rules and by
@@ -75,15 +75,15 @@
      padding outgrow it. */
   --header-switcher-entry-height: max(
     var(--min-target-size),
-    var(--header-switcher-font-size) * var(--header-switcher-line-height)
-    + 2 * var(--header-switcher-entry-padding-block)
+    var(--header-switcher-font-size) * var(--header-switcher-line-height) + 2 *
+      var(--header-switcher-entry-padding-block)
   );
-  --header-switcher-height: calc(2 * var(--header-switcher-border-width) + 2 * var(--header-switcher-padding) + var(--header-switcher-entry-height));
+  --header-switcher-height: calc(
+    2 * var(--header-switcher-border-width) + 2 * var(--header-switcher-padding) + var(--header-switcher-entry-height)
+  );
   /* A nav link, underline room included. */
   --header-nav-link-height: calc(
-    var(--header-link-line-box)
-    + var(--header-link-underline-offset)
-    + var(--header-link-underline-width)
+    var(--header-link-line-box) + var(--header-link-underline-offset) + var(--header-link-underline-width)
   );
   /* On a phone, the nav wraps to a second row, below the switcher's: its
      links are the tallest items there. */
@@ -92,10 +92,8 @@
   --header-first-row-height: var(--header-switcher-height);
   /* Height of the sticky header, estimated for a menu on a single row. */
   --header-estimated-height: calc(
-    2 * var(--header-padding-block)
-    + var(--header-first-row-height)
-    + var(--header-nav-row-height)
-    + var(--header-border-width)
+    2 * var(--header-padding-block) + var(--header-first-row-height) + var(--header-nav-row-height) +
+      var(--header-border-width)
   );
   /* Height of the sticky header; the first screen subtracts it from the
      viewport so it fills the space right below the header. Once it runs,
@@ -157,7 +155,9 @@ html {
   scroll-padding-top: var(--sticky-header-clearance);
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -196,7 +196,7 @@ h1 {
    keeps its distance from the header when it is taller than the room. */
 .hero::before,
 .hero::after {
-  content: "";
+  content: '';
   flex: 1 1 0;
 }
 
@@ -330,8 +330,8 @@ h1 {
    alternative text for screen readers; the first is a fallback for
    browsers that do not support that syntax. */
 .hero-actions a:first-child::after {
-  content: " →";
-  content: " →" / "";
+  content: ' →';
+  content: ' →' / '';
 }
 
 .skip-link {
@@ -441,18 +441,18 @@ h1 {
 }
 
 @media (hover: hover) {
-  .site-header nav a:not([aria-current="page"]):hover {
+  .site-header nav a:not([aria-current='page']):hover {
     text-decoration: underline;
     text-decoration-color: var(--color-accent);
     text-underline-offset: 5px;
   }
 }
 
-.site-header nav a[aria-current="page"] {
+.site-header nav a[aria-current='page'] {
   border-bottom-color: var(--color-accent);
 }
 
-.site-header [role="group"] {
+.site-header [role='group'] {
   display: flex;
   gap: var(--header-switcher-gap);
   padding: var(--header-switcher-padding);
@@ -463,8 +463,8 @@ h1 {
   font-weight: 600;
 }
 
-.site-header [role="group"] a,
-.site-header [role="group"] [aria-current] {
+.site-header [role='group'] a,
+.site-header [role='group'] [aria-current] {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -473,11 +473,11 @@ h1 {
   min-height: var(--min-target-size);
 }
 
-.site-header [role="group"] a {
+.site-header [role='group'] a {
   color: rgb(var(--color-paper-channels) / 0.7);
 }
 
-.site-header [role="group"] [aria-current] {
+.site-header [role='group'] [aria-current] {
   color: var(--color-ink);
   background-color: var(--color-paper);
 }
@@ -614,7 +614,7 @@ tick-field > canvas {
    phone it takes its own line above the names. */
 .clients::before {
   content: attr(data-label);
-  content: attr(data-label) / "";
+  content: attr(data-label) / '';
   flex-basis: 100%;
   /* Wraps on a narrow phone when the visitor enlarged the text, instead of
      being cut by the band. */
@@ -675,8 +675,8 @@ tick-field > canvas {
    technologies do not get (empty alternative text; the first declaration is
    a fallback for browsers without that syntax). */
 .clients li::after {
-  content: "|||";
-  content: "|||" / "";
+  content: '|||';
+  content: '|||' / '';
   margin-left: var(--clients-gap);
 }
 
@@ -688,7 +688,7 @@ tick-field > canvas {
 
 /* Still names, the default: only the exposed list shows, the copy that makes
    the loop seamless stays hidden. */
-.clients ul[aria-hidden="true"] {
+.clients ul[aria-hidden='true'] {
   display: none;
 }
 
@@ -727,7 +727,7 @@ tick-field > canvas {
     animation: clients-scroll linear infinite;
   }
 
-  .clients.is-scrolling ul[aria-hidden="true"] {
+  .clients.is-scrolling ul[aria-hidden='true'] {
     display: flex;
   }
 
@@ -774,13 +774,13 @@ tick-field > canvas {
   /* A small icon, as discreet as the label: pause while the names move,
      play once they stop. The button's label names it. */
   .clients-pause::before {
-    content: "\275A\275A";
-    content: "\275A\275A" / "";
+    content: '\275A\275A';
+    content: '\275A\275A' / '';
   }
 
-  .clients-pause[aria-pressed="true"]::before {
-    content: "\25B6\FE0E";
-    content: "\25B6\FE0E" / "";
+  .clients-pause[aria-pressed='true']::before {
+    content: '\25B6\FE0E';
+    content: '\25B6\FE0E' / '';
   }
 
   .clients.is-scrolling .clients-track.is-paused {
@@ -814,7 +814,7 @@ tick-field > canvas {
 /* The section number is decorative: its empty alternative text keeps it out
    of the heading's accessible name, and so out of the region's. */
 .projects h2::before {
-  content: "01 // " / "";
+  content: '01 // ' / '';
   color: var(--color-accent-dark);
 }
 

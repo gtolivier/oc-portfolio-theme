@@ -27,16 +27,29 @@ test('French pages are served under /fr/: /fr/ is the French home page', async (
   await expect(page).toHaveURL(new URL('/fr/', baseURL).href);
 });
 
-test('the redirect page served for / asks search engines not to index it (meta robots noindex)', async ({ page, request }) => {
+test('the redirect page served for / asks search engines not to index it (meta robots noindex)', async ({
+  page,
+  request,
+}) => {
   /* / redirects at once: the HTML served for / is what gets examined, parsed without being run. */
   const response = await request.get('/');
   expect(response.status()).toBe(200);
   const html = await response.text();
   const robots = await page.evaluate((source) => {
     const document = new DOMParser().parseFromString(source, 'text/html');
-    return Array.from(document.querySelectorAll('head meta[name="robots" i]'), (meta) => meta.getAttribute('content') ?? '');
+    return Array.from(
+      document.querySelectorAll('head meta[name="robots" i]'),
+      (meta) => meta.getAttribute('content') ?? '',
+    );
   }, html);
-  expect(robots.some((content) => content.split(',').map((directive) => directive.trim().toLowerCase()).includes('noindex'))).toBe(true);
+  expect(
+    robots.some((content) =>
+      content
+        .split(',')
+        .map((directive) => directive.trim().toLowerCase())
+        .includes('noindex'),
+    ),
+  ).toBe(true);
 });
 
 test.describe('browser without JavaScript', () => {
@@ -58,7 +71,10 @@ test.describe('English browser', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
   });
 
-  test('an English browser keeps the anchor and the query: /#contact lands on /en/#contact, /?source=test on /en/?source=test', async ({ page, baseURL }) => {
+  test('an English browser keeps the anchor and the query: /#contact lands on /en/#contact, /?source=test on /en/?source=test', async ({
+    page,
+    baseURL,
+  }) => {
     await page.goto('/#contact');
     await expect(page).toHaveURL(new URL('/en/#contact', baseURL).href);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
@@ -72,7 +88,9 @@ test.describe('English browser', () => {
 test.describe('English browser, site served under a subpath', () => {
   test.use({ locale: 'en-US' });
 
-  test('served under /portfolio/, an English browser that opens /portfolio/ lands on /portfolio/en/', async ({ page }) => {
+  test('served under /portfolio/, an English browser that opens /portfolio/ lands on /portfolio/en/', async ({
+    page,
+  }) => {
     await page.goto(EXAMPLE_SITE_UNDER_PORTFOLIO);
     await expect(page).toHaveURL(`${EXAMPLE_SITE_UNDER_PORTFOLIO}en/`);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
@@ -100,7 +118,10 @@ test.describe('French browser, old address of an English page', () => {
     removeDirectory(siteDirectory);
   });
 
-  test('a French browser that opens the old address (alias) of an English page or of the English home page lands on that English page, not on its French translation', async ({ page, context }) => {
+  test('a French browser that opens the old address (alias) of an English page or of the English home page lands on that English page, not on its French translation', async ({
+    page,
+    context,
+  }) => {
     await serveSite(context, SITE_WITH_ALIASES, siteDirectory);
     await page.goto(`${SITE_WITH_ALIASES.origin}/en/old-english-page/`);
     await expect(page).toHaveURL(`${SITE_WITH_ALIASES.origin}/en/page-avec-alias/`);
@@ -117,9 +138,17 @@ test.describe('French browser, old address of an English page', () => {
 test.describe('French browser, after a click on "EN"', () => {
   test.use({ locale: 'fr-FR' });
 
-  test('a click on "EN" from a French page is not remembered: nothing is stored in the browser, and / still leads a French browser to /fr/', async ({ page, context, baseURL }) => {
+  test('a click on "EN" from a French page is not remembered: nothing is stored in the browser, and / still leads a French browser to /fr/', async ({
+    page,
+    context,
+    baseURL,
+  }) => {
     await page.goto('/fr/');
-    await page.locator('header').getByRole('group', { name: 'Langue', exact: true }).getByRole('link', { name: 'EN', exact: true }).click();
+    await page
+      .locator('header')
+      .getByRole('group', { name: 'Langue', exact: true })
+      .getByRole('link', { name: 'EN', exact: true })
+      .click();
     await expect(page).toHaveURL(new URL('/en/', baseURL).href);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
     /* Neither localStorage nor cookie. */
@@ -165,7 +194,10 @@ test.describe('French, then English browser', () => {
 });
 
 test.describe('North Frisian, then English browser', () => {
-  test('a browser whose preferred languages are [frr, en] (North Frisian, then English) that opens / lands on /en/', async ({ page, baseURL }) => {
+  test('a browser whose preferred languages are [frr, en] (North Frisian, then English) that opens / lands on /en/', async ({
+    page,
+    baseURL,
+  }) => {
     await setPreferredLanguages(page, ['frr', 'en']);
     await page.goto('/');
     await expect(page).toHaveURL(new URL('/en/', baseURL).href);
