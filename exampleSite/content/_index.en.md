@@ -16,8 +16,13 @@ projects = [
   'projets/regulateur-noyer',
 ]
 
-[[params.background]]
-year = '2004'
+[[params.background.stats]]
+value = '20+'
+label = 'Years in the trade'
+
+[[params.background.stats]]
+value = '350'
+label = 'Clocks restored'
 
 [params.hero]
 title = 'Independent clockmaker'

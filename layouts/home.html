@@ -105,6 +105,16 @@
   {{- if .Params.background }}
   <section class="background" aria-labelledby="background-heading">
     <h2 id="background-heading">{{ i18n "background" }}</h2>
+    {{- with .Params.background.stats }}
+    <dl class="background-stats">
+      {{- range . }}
+      <div>
+        <dt>{{ .value }}</dt>
+        <dd>{{ .label }}</dd>
+      </div>
+      {{- end }}
+    </dl>
+    {{- end }}
   </section>
   {{- end }}
   {{ .Content }}
