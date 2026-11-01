@@ -72,6 +72,60 @@ test.describe('without JavaScript', () => {
   });
 });
 
+/* The intro lines the example site's French home page declares (exampleSite/content/_index.md,
+   [params.background] block, intro key: a list of strings, one per line), in the order its front
+   matter lists them. */
+const INTRO_LINES = [
+  'Formé à l’horlogerie ancienne dans le Jura.',
+  'Atelier indépendant depuis 2004.',
+  'Pendules, régulateurs et montres de poche.',
+];
+
+test('on the French home page, the section "Parcours" shows the intro lines the home page declares as one paragraph, in order, each starting on a new line', async ({
+  page,
+}) => {
+  await page.goto('/fr/');
+  const section = backgroundSection(page);
+  await expect(section).toBeVisible();
+  /* One paragraph of the section holds every line. */
+  const paragraph = section.getByRole('paragraph').filter({ hasText: INTRO_LINES[0] });
+  await expect(paragraph).toHaveCount(1);
+  for (const line of INTRO_LINES) {
+    await expect(paragraph, `the intro paragraph holds "${line}"`).toContainText(line);
+  }
+  await expect(paragraph).toBeVisible();
+  /* On screen, as for the hero tagline: each line starts below the end of the previous one,
+     however the template separates them. A long line may itself wrap on a phone: the start of a
+     line is compared to the end of the previous one. */
+  const positions = await paragraph.evaluate((root, texts) => {
+    return texts.map((text) => {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const start = (node.textContent ?? '').indexOf(text);
+        if (start === -1) continue;
+        const range = document.createRange();
+        range.setStart(node, start);
+        range.setEnd(node, start + text.length);
+        const boxes = Array.from(range.getClientRects()).filter((box) => box.height > 0);
+        const first = boxes[0];
+        const last = boxes[boxes.length - 1];
+        return { top: first.top, lastTop: last.top, lastHeight: last.height };
+      }
+      return null;
+    });
+  }, INTRO_LINES);
+  for (let i = 1; i < INTRO_LINES.length; i++) {
+    const previous = positions[i - 1];
+    const current = positions[i];
+    expect(previous, `line not found: ${INTRO_LINES[i - 1]}`).not.toBeNull();
+    expect(current, `line not found: ${INTRO_LINES[i]}`).not.toBeNull();
+    expect(
+      current!.top - previous!.lastTop,
+      `"${INTRO_LINES[i]}" starts below "${INTRO_LINES[i - 1]}"`,
+    ).toBeGreaterThanOrEqual(previous!.lastHeight / 2);
+  }
+});
+
 test.describe('home page of another site, without background', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
