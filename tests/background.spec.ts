@@ -293,6 +293,90 @@ test('with JavaScript, on the French home page, while the key figures of the sec
   expect(moves, 'labels and shown numbers that moved during the climb').toEqual([]);
 });
 
+/* What assistive technologies get for the key figures of a section: the terms and definitions of
+   its accessibility tree, in order, each as its role then its text. */
+async function exposedKeyFigures(section: Locator): Promise<string[]> {
+  const accessibilityTree = await section.ariaSnapshot();
+  return accessibilityTree
+    .split('\n')
+    .map((line) => /^\s*- (term|definition)\b(.*)$/.exec(line))
+    .filter((match) => match !== null)
+    .map(([, role, rest]) => {
+      /* "- term: 20+", "- term: \"350\"" (a number, quoted), "- term \"20+\"" or
+         "- term \"20+\": 20+" alike: the role, then its name and its text, if any, unquoted. */
+      const [, name, text] = /^(?:\s+("(?:[^"\\]|\\.)*"))?(?::\s*(.*))?$/.exec(rest) ?? [, undefined, rest];
+      const unquoted = (part: string) => (part.startsWith('"') ? (JSON.parse(part) as string) : part).trim();
+      const texts = [name, text].filter((part) => part !== undefined && part !== '').map((part) => unquoted(part!));
+      return `${role}: ${texts.join(' ')}`;
+    });
+}
+
+test('with JavaScript, on the French home page, before, during and after the climb of the key figures of the section "Parcours", assistive technologies get each figure as its full value then its label, never another number', async ({
+  page,
+}) => {
+  /* Time stands still from before the page loads, until the test advances it, step by step, to
+     check what assistive technologies get as the figures climb. */
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  const section = backgroundSection(page);
+  /* Below the first screen on load, so that the figures start from 0. */
+  await expect(section).toHaveCount(1);
+  await expect(section).not.toBeInViewport();
+  const figures = KEY_FIGURES.map(({ value }) => ({
+    value,
+    target: parseInt(value, 10),
+    figure: section.getByRole('term').filter({ hasText: value }),
+  }));
+  /* Each figure, exactly: its full value as the term, then its label as the definition; nothing
+     else, so neither a 0, nor a number on its way, nor a value given twice can pass. */
+  const expected = KEY_FIGURES.flatMap(({ value, label }) => [`term: ${value}`, `definition: ${label}`]);
+  /* The numbers the figures show on screen, in order: null for a figure that shows none. */
+  const shownNumbers = async () =>
+    Promise.all(figures.map(async ({ figure }) => (await shownNumber(figure))?.digits ?? null));
+
+  /* Before: the section has not come into view, each figure shows 0. */
+  await expect
+    .poll(shownNumbers, { message: 'numbers the figures show before the section comes into view' })
+    .toEqual(figures.map(() => '0'));
+  expect(await exposedKeyFigures(section), 'what assistive technologies get while the figures show 0').toEqual(
+    expected,
+  );
+
+  /* During: every 25 ms, for at most 5 s, until every figure shows its full number; what
+     assistive technologies get is kept each time it is not the expected one. */
+  await section.scrollIntoViewIfNeeded();
+  await expect(section, 'the section has come into view').toBeInViewport();
+  const wrong: string[] = [];
+  let climbing = 0;
+  let allFull = false;
+  for (let elapsed = 0; elapsed <= 5000 && !allFull; elapsed += 25) {
+    if (elapsed > 0) await page.clock.runFor(25);
+    const shown = await shownNumbers();
+    const exposed = await exposedKeyFigures(section);
+    if (JSON.stringify(exposed) !== JSON.stringify(expected)) {
+      wrong.push(`at ${elapsed} ms, while the figures show ${JSON.stringify(shown)}: ${JSON.stringify(exposed)}`);
+    }
+    if (
+      figures.some(({ target }, index) => {
+        const number = parseInt(shown[index] ?? '', 10);
+        return number > 0 && number < target;
+      })
+    ) {
+      climbing += 1;
+    }
+    allFull = figures.every(({ target }, index) => shown[index] === String(target));
+  }
+  expect(climbing, 'moments when a figure showed a number between 0 and its own').toBeGreaterThan(0);
+  expect(allFull, 'every figure has come to show its full number').toBe(true);
+  expect(wrong, 'what assistive technologies got during the climb, when not every full value and label').toEqual([]);
+
+  /* After: every figure shows its full value. */
+  expect(
+    await exposedKeyFigures(section),
+    'what assistive technologies get once the figures show their full value',
+  ).toEqual(expected);
+});
+
 test('with JavaScript, on the French home page, once the key figures of the section "Parcours" have shown their full value, scrolling the section out of view and back does not count them again: each one keeps showing its full value next to its label', async ({
   page,
 }) => {
