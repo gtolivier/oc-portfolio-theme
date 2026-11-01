@@ -126,7 +126,10 @@
       {{- end }}
     </dl>
     {{- end }}
-    {{- with .Params.background.education }}
+    {{- $education := .Params.background.education }}
+    {{- /* errorf does not stop the template: after an error, the education entries are empty, so that no template execution error buries the message. */}}
+    {{- if and $education (not (reflect.IsSlice $education)) }}{{ errorf "background: the education must be a list" }}{{ $education = slice }}{{ end }}
+    {{- with $education }}
     <ul class="background-education">
       {{- range . }}
       <li>{{ . }}</li>
