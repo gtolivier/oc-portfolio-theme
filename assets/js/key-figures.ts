@@ -37,7 +37,7 @@ const countUp = (figures: KeyFigure[]): void => {
       figures.forEach(finish);
       return;
     }
-    const progress = Math.min((now - start) / COUNT_MS, 1);
+    const progress = Math.max(Math.min((now - start) / COUNT_MS, 1), 0);
     for (const figure of figures) {
       figure.zero.textContent = String(Math.round(figure.target * easeOut(progress)));
     }
