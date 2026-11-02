@@ -33,8 +33,8 @@
     </tick-field>
     {{- end }}
     {{- with .Params.clients }}
-    {{- /* errorf does not stop the template: after an error, the checks below and the band get an empty list, so that no template execution error buries the message. */}}
     {{- $clients := partial "list-or-empty.html" (dict "value" . "error" "clients: the home page's clients parameter must be a list of names") }}
+    {{- /* As in list-or-empty.html, an entry error empties the list, so the band shows no names. */}}
     {{- range $index, $client := $clients }}
     {{- $entryNumber := add $index 1 }}
     {{- /* A name with whitespace at its start or end ("padded") is shown as it is: only a page reference needs trimming. */}}

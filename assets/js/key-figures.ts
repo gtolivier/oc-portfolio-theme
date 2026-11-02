@@ -8,26 +8,26 @@ import { reducedMotionQuery } from './reduced-motion';
 const COUNT_MS = 1500;
 /* Fast at first, slowing down as it nears the value. */
 const easeOut = (progress: number): number => 1 - Math.pow(1 - progress, 3);
-const values = Array.from(document.querySelectorAll<HTMLElement>('.background-stats dt'));
+const terms = Array.from(document.querySelectorAll<HTMLElement>('.background-stats dt'));
 const reducedMotion = reducedMotionQuery();
 
-type KeyFigure = { value: HTMLElement; zero: HTMLElement; target: number };
+type KeyFigure = { term: HTMLElement; zero: HTMLElement; target: number };
 
-const prepare = (value: HTMLElement): KeyFigure => {
+const prepare = (term: HTMLElement): KeyFigure => {
   const fullValue = document.createElement('span');
   fullValue.className = 'figure-value';
-  fullValue.textContent = value.textContent;
+  fullValue.textContent = term.textContent;
   const zero = document.createElement('span');
   zero.className = 'figure-zero';
   zero.setAttribute('aria-hidden', 'true');
   zero.textContent = '0';
-  value.replaceChildren(fullValue, zero);
-  return { value, zero, target: parseInt(fullValue.textContent ?? '', 10) };
+  term.replaceChildren(fullValue, zero);
+  return { term, zero, target: parseInt(fullValue.textContent ?? '', 10) };
 };
 
-const finish = ({ value, zero }: KeyFigure): void => {
+const finish = ({ term, zero }: KeyFigure): void => {
   zero.remove();
-  value.classList.add('is-counted');
+  term.classList.add('is-counted');
 };
 
 const countUp = (figures: KeyFigure[]): void => {
@@ -50,13 +50,13 @@ const countUp = (figures: KeyFigure[]): void => {
   step(start);
 };
 
-if (values.length > 0 && !reducedMotion.matches) {
-  const figures = values.map(prepare);
+if (terms.length > 0 && !reducedMotion.matches) {
+  const figures = terms.map(prepare);
   const observer = new IntersectionObserver((entries) => {
     if (entries.some((entry) => entry.isIntersecting)) {
       observer.disconnect();
       countUp(figures);
     }
   });
-  values.forEach((value) => observer.observe(value));
+  terms.forEach((term) => observer.observe(term));
 }
