@@ -59,5 +59,5 @@ if (section && values.length > 0 && !reducedMotion.matches) {
       countUp(figures);
     }
   });
-  observer.observe(section);
+  values.forEach((value) => observer.observe(value));
 }
