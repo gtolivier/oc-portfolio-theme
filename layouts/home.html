@@ -22,9 +22,7 @@
       <p class="hero-stack">{{ delimit . $stackSeparator }}</p>
       {{- end }}
       {{- with .actions }}
-      {{- $actions := . }}
-      {{- /* errorf does not stop the template: after an error, the list of buttons is empty, so that no template execution error buries the message. */}}
-      {{- if not (reflect.IsSlice $actions) }}{{ errorf "hero: the buttons must be written as a list of tables, [[params.hero.actions]], with double brackets" }}{{ $actions = slice }}{{ end }}
+      {{- $actions := partial "list-or-empty.html" (dict "value" . "error" "hero: the buttons must be written as a list of tables, [[params.hero.actions]], with double brackets") }}
       <p class="hero-actions">
         {{- range $index, $action := $actions }}
         {{ partial "hero/action.html" (dict "action" $action "position" (add $index 1)) }}
@@ -35,9 +33,8 @@
     </tick-field>
     {{- end }}
     {{- with .Params.clients }}
-    {{- $clients := . }}
     {{- /* errorf does not stop the template: after an error, the checks below and the band get an empty list, so that no template execution error buries the message. */}}
-    {{- if not (reflect.IsSlice $clients) }}{{ errorf "clients: the home page's clients parameter must be a list of names" }}{{ $clients = slice }}{{ end }}
+    {{- $clients := partial "list-or-empty.html" (dict "value" . "error" "clients: the home page's clients parameter must be a list of names") }}
     {{- range $index, $client := $clients }}
     {{- $entryNumber := add $index 1 }}
     {{- /* A name with whitespace at its start or end ("padded") is shown as it is: only a page reference needs trimming. */}}
