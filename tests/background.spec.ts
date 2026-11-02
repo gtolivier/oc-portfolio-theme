@@ -4,6 +4,7 @@ import {
   SITE_WITH_ANOTHER_BACKGROUND,
   SITE_WITH_A_SKILLS_ONLY_BACKGROUND,
   SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE,
+  SITE_WITH_BACKGROUND_STATS_AS_A_LIST_OF_TEXTS,
   SITE_WITH_A_KEY_FIGURE_NOT_STARTING_WITH_A_NUMBER,
   SITE_WITH_BACKGROUND_SKILLS_AS_A_SINGLE_TABLE,
   SITE_WITH_A_SKILL_GROUP_WHOSE_ITEMS_ARE_A_TEXT,
@@ -1094,6 +1095,24 @@ test.describe('background content errors: build failure', () => {
        wording, and no Go template execution error that would follow it and bury it in technical
        jargon. */
     const build = tryToBuildSite(SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(
+      build.errors,
+      'the error message should say to write the key figures as [[params.background.stats]]',
+    ).toMatch(/\bbackground:.*\[\[params\.background\.stats\]\]/);
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose key figures are written as a list of texts rather than of tables makes the site build fail with an error message that says to write them as [[params.background.stats]], without a template execution error after it', () => {
+    /* tests/fixtures/bare-numbers/content/_index.md writes its only key figure as a bare text,
+       stats = ['20'], without a label: Hugo reads the key figures as a list, but of texts rather
+       than of tables. Rather than a Go template execution error from reading the value of a text,
+       the person building the site must get an error message that says, on its own line, to write
+       the key figures as [[params.background.stats]], whatever the rest of the wording, and no Go
+       template execution error that would follow it and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_BACKGROUND_STATS_AS_A_LIST_OF_TEXTS);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(
       build.errors,

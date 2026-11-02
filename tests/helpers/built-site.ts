@@ -618,6 +618,14 @@ export const SITE_WITH_A_SKILLS_ONLY_BACKGROUND = testSite('skills-only-backgrou
    and stats, which the error-message assertion looks for. */
 export const SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE = testSite('lone-figure-table');
 
+/* The example site's French home page writes its key figures as a list of tables,
+   [[params.background.stats]]: this site replaces that home page with the one of
+   tests/fixtures/bare-numbers/content, without a hero, clients nor projects, whose background
+   declares a fictional cooper's only key figure as a list of texts, stats = ['20'], a bare value
+   without a label, rather than a list of tables. Its folder name avoids the words background,
+   stats, figure and table, which the error-message assertion looks for. */
+export const SITE_WITH_BACKGROUND_STATS_AS_A_LIST_OF_TEXTS = testSite('bare-numbers');
+
 /* The example site's French home page writes each key figure's value starting with a whole number:
    this site replaces that home page with the one of tests/fixtures/number-in-words/content,
    without a hero, clients nor projects, which declares a fictional glassblower's three key
