@@ -811,6 +811,22 @@ tick-field > canvas {
   }
 }
 
+/* The frame the home page's sections share: the page gutter, wider on a
+   screen wide enough to centre the content within the sections' maximum
+   width. */
+.projects,
+.background {
+  --section-max-width: 1280px;
+  padding: 56px max(var(--page-gutter), (100% - var(--section-max-width)) / 2);
+}
+
+.projects h2,
+.background > h2 {
+  font-family: var(--font-mono);
+  font-size: clamp(28px, 3vw, 44px);
+  font-weight: 600;
+}
+
 /* The section number is decorative: its empty alternative text keeps it out
    of the heading's accessible name, and so out of the region's. */
 .projects h2::before {
@@ -827,12 +843,9 @@ tick-field > canvas {
   --background-part-gap: 36px;
   /* Above the skill groups on a phone, and between two groups. */
   --background-skills-gap: 40px;
-  --background-max-width: 1280px;
   border-top: 1px solid rgb(var(--color-paper-channels) / 0.12);
   background: var(--color-ink);
   color: var(--color-paper);
-  /* The page gutter, wider on a screen wide enough to centre the content. */
-  padding: 56px max(var(--page-gutter), (100% - var(--background-max-width)) / 2);
 }
 
 .background > * {
@@ -845,9 +858,6 @@ tick-field > canvas {
 
 .background > h2 {
   margin-bottom: var(--background-heading-space);
-  font-family: var(--font-mono);
-  font-size: clamp(28px, 3vw, 44px);
-  font-weight: 600;
 }
 
 .background h2::before {
@@ -1013,14 +1023,11 @@ tick-field > canvas {
   --projects-gap: 24px;
   /* From the header to the first card. */
   --projects-header-space: 40px;
-  --projects-max-width: 1280px;
   display: flex;
   flex-wrap: wrap;
   gap: var(--projects-gap);
   background: var(--color-paper);
   color: var(--color-ink);
-  /* The page gutter, wider on a screen wide enough to centre the content. */
-  padding: 56px max(var(--page-gutter), (100% - var(--projects-max-width)) / 2);
 }
 
 /* The heading and the link wrap like words: they share a line when there is
@@ -1038,9 +1045,6 @@ tick-field > canvas {
   flex: 1 1 100%;
   align-self: baseline;
   margin: 0;
-  font-family: var(--font-mono);
-  font-size: clamp(28px, 3vw, 44px);
-  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
