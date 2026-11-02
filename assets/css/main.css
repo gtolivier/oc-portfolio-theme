@@ -838,7 +838,7 @@ tick-field > canvas {
    of the heading's accessible name, and so out of the region's. Each section
    sets its number and colour. */
 .projects h2::before,
-.background h2::before {
+.background > h2::before {
   content: var(--section-number) / '';
   color: var(--section-number-color);
 }

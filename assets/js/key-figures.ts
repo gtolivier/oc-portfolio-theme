@@ -51,12 +51,12 @@ const countUp = (figures: KeyFigure[]): void => {
 };
 
 if (terms.length > 0 && !reducedMotion.matches) {
-  const figures = terms.map(prepare);
+  const figureOfTerm = new Map<Element, KeyFigure>(terms.map((term) => [term, prepare(term)]));
   const observer = new IntersectionObserver((entries) => {
     const visible = entries.filter((entry) => entry.isIntersecting);
     visible.forEach((entry) => observer.unobserve(entry.target));
     if (visible.length > 0) {
-      countUp(figures.filter(({ term }) => visible.some((entry) => entry.target === term)));
+      countUp(visible.flatMap((entry) => figureOfTerm.get(entry.target) ?? []));
     }
   });
   terms.forEach((term) => observer.observe(term));
