@@ -632,6 +632,13 @@ export const SITE_WITH_AN_EMPTY_BACKGROUND = testSite('empty-background');
    than a phone. */
 export const SITE_WITH_LONG_BACKGROUND_WORDS = testSite('long-background-words');
 
+/* The example site's French home page declares a background made of short words: this site
+   replaces that home page with the one of tests/fixtures/long-intro-and-figure-words/content,
+   without a hero, clients nor projects, whose [params.background] declares only a single intro
+   line, holding a bindery's name, and a single key figure, "12", whose label is a single word; the
+   name and the label are each a single word, without a hyphen nor a space, wider than a phone. */
+export const SITE_WITH_LONG_INTRO_AND_FIGURE_WORDS = testSite('long-intro-and-figure-words');
+
 /* The example site's French home page titles its skill groups with short words: this site
    replaces that home page with the one of tests/fixtures/long-skill-group-title/content, without
    a hero, clients nor projects, whose [params.background] declares only a single skill group,

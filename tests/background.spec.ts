@@ -6,6 +6,7 @@ import {
   SITE_WITH_A_BACKGROUND_WITHOUT_SKILLS,
   SITE_WITH_AN_EMPTY_BACKGROUND,
   SITE_WITH_LONG_BACKGROUND_WORDS,
+  SITE_WITH_LONG_INTRO_AND_FIGURE_WORDS,
   SITE_WITH_A_LONG_SKILL_GROUP_TITLE,
   SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE,
   SITE_WITH_BACKGROUND_STATS_AS_A_LIST_OF_TEXTS,
@@ -1368,6 +1369,58 @@ test.describe('home page of another site, with long words in its background', ()
       const text = await item.evaluate((element) => {
         const range = document.createRange();
         range.selectNodeContents(element);
+        const { left, right } = range.getBoundingClientRect();
+        return { left, right };
+      });
+      expect
+        .soft(text.left, `left edge of the ${part}'s text against the section's left edge (${sectionBox.left} px)`)
+        .toBeGreaterThanOrEqual(Math.max(sectionBox.left, 0) - 1);
+      expect
+        .soft(text.right, `right edge of the ${part}'s text against the section's right edge (${sectionBox.right} px)`)
+        .toBeLessThanOrEqual(Math.min(sectionBox.right, PHONE.width) + 1);
+    }
+    const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect.soft(pageWidth, 'width of the page content').toBeLessThanOrEqual(PHONE.width);
+  });
+});
+
+test.describe('home page of another site, with long words in its intro and key figures', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_LONG_INTRO_AND_FIGURE_WORDS);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a phone, an intro line and a key figure label that each hold a word wider than the screen wrap within the section "Parcours": their text stays inside the section, and the page does not scroll horizontally', async ({
+    page,
+    context,
+  }) => {
+    await serveSite(context, SITE_WITH_LONG_INTRO_AND_FIGURE_WORDS, siteDirectory);
+    await page.setViewportSize(PHONE);
+    await page.goto(`${SITE_WITH_LONG_INTRO_AND_FIGURE_WORDS.origin}/fr/`);
+    await page.evaluate(() => document.fonts.ready);
+    const section = backgroundSection(page);
+    await expect(section).toBeVisible();
+    /* tests/fixtures/long-intro-and-figure-words/content/_index.md declares an intro line holding a
+       bindery's name, and a key figure whose label is a single word, each without a hyphen nor a
+       space, wider than the screen. */
+    const intro = 'Ateliersfictifsdereliuredartetdedorureàlafeuilledorduvieuxlyon';
+    const label = 'Reliuresrestauréesàlamainpourlesbibliothèquesfictivesdelarégionlyonnaise';
+    const parts = [
+      ['intro line', intro, section.getByRole('paragraph').filter({ hasText: intro })],
+      ['key figure label', label, section.getByRole('definition').filter({ hasText: label })],
+    ] as const;
+    const sectionBox = await unionBox(section);
+    for (const [part, word, element] of parts) {
+      await expect(element, `the ${part} holding "${word}"`).toHaveCount(1);
+      await expect(element).toBeVisible();
+      /* Where its text is displayed, which can overflow the element's box without widening it:
+         within the section, and within the screen. */
+      const text = await element.evaluate((node) => {
+        const range = document.createRange();
+        range.selectNodeContents(node);
         const { left, right } = range.getBoundingClientRect();
         return { left, right };
       });
