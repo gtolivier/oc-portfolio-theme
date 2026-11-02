@@ -10,6 +10,7 @@ const COUNT_MS = 1500;
 const easeOut = (progress: number): number => 1 - Math.pow(1 - progress, 3);
 const section = document.querySelector<HTMLElement>('.background');
 const values = Array.from(document.querySelectorAll<HTMLElement>('.background-stats dt'));
+const reducedMotion = reducedMotionQuery();
 
 type KeyFigure = { value: HTMLElement; zero: HTMLElement; target: number };
 
@@ -33,7 +34,7 @@ const finish = ({ value, zero }: KeyFigure): void => {
 const countUp = (figures: KeyFigure[]): void => {
   const start = performance.now();
   const step = (now: number): void => {
-    if (reducedMotionQuery().matches) {
+    if (reducedMotion.matches) {
       figures.forEach(finish);
       return;
     }
@@ -50,7 +51,7 @@ const countUp = (figures: KeyFigure[]): void => {
   step(start);
 };
 
-if (section && values.length > 0 && !reducedMotionQuery().matches) {
+if (section && values.length > 0 && !reducedMotion.matches) {
   const figures = values.map(prepare);
   const observer = new IntersectionObserver((entries) => {
     if (entries.some((entry) => entry.isIntersecting)) {
