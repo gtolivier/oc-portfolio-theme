@@ -17,6 +17,7 @@ import {
   SITE_WITH_EDUCATION_AS_A_TEXT,
   SITE_WITH_EDUCATION_AS_A_LIST_OF_TABLES,
   SITE_WITH_A_BACKGROUND_INTRO_AS_A_TEXT,
+  SITE_WITH_A_BACKGROUND_INTRO_AS_A_LIST_OF_TABLES,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1659,6 +1660,24 @@ test.describe('background content errors: build failure', () => {
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors, 'the error message should say the intro must be a list').toMatch(
       /\bbackground:.*\bintro\b.*\blist\b/,
+    );
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose intro lines are written as tables rather than texts ([[params.background.intro]]) makes the site build fail, with an error message that says the intro lines must be texts, without a template execution error after it', () => {
+    /* tests/fixtures/preamble-tables/content/_index.md writes its only intro line as a table,
+       [[params.background.intro]], with a phrase field, rather than as a text: Hugo reads the intro
+       as a list, but of tables rather than of texts, and the section would show the table's raw
+       printout rather than a line. Rather than that, the person building the site must get an
+       error message that says, on its own line, that the intro lines must be texts, whatever the
+       rest of the wording, and no Go template execution error that would follow it and bury it in
+       technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_A_BACKGROUND_INTRO_AS_A_LIST_OF_TABLES);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the error message should say the intro lines must be texts').toMatch(
+      /\bbackground:.*\bintro\b.*\btexts?\b/,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       /execute of template failed|error calling/i,

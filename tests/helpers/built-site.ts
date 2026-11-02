@@ -728,6 +728,14 @@ export const SITE_WITH_EDUCATION_AS_A_LIST_OF_TABLES = testSite('diploma-tables'
    which the error-message assertion looks for. */
 export const SITE_WITH_A_BACKGROUND_INTRO_AS_A_TEXT = testSite('preamble-as-text');
 
+/* The example site's French home page writes its background intro as a list of texts, one per
+   line: this site replaces that home page with the one of tests/fixtures/preamble-tables/content,
+   without a hero, clients nor projects, whose background declares a fictional bookbinder's only
+   intro line as a list of tables, [[params.background.intro]], with a phrase field, rather than as
+   a list of texts. Its folder name avoids the words background, intro and text, which the
+   error-message assertion looks for. */
+export const SITE_WITH_A_BACKGROUND_INTRO_AS_A_LIST_OF_TABLES = testSite('preamble-tables');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
