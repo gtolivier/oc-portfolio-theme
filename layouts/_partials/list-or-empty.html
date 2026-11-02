@@ -1,4 +1,4 @@
-{{- /* A front matter value that must be a list: the value as it is when it is one or is not set, or else an empty list, after raising the caller's error. errorf does not stop the template: the empty list leaves the caller's part empty, so that no template execution error buries the message. */}}
+{{- /* A front matter value that must be a list: the value as it is when it is one; an empty list when it is not set or is an empty value ('', false, 0), which says "nothing here" as an omitted key does, and which the caller's len or range would choke on; or else an empty list, after raising the caller's error. errorf does not stop the template: the empty list leaves the caller's part empty, so that no template execution error buries the message. */}}
 {{- $list := .value }}
 {{- if not $list }}{{ $list = slice }}
 {{- else if not (reflect.IsSlice $list) }}{{ errorf .error }}{{ $list = slice }}{{ end }}
