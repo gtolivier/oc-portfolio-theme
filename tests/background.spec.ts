@@ -7,6 +7,7 @@ import {
   SITE_WITH_BACKGROUND_STATS_AS_A_LIST_OF_TEXTS,
   SITE_WITH_A_KEY_FIGURE_NOT_STARTING_WITH_A_NUMBER,
   SITE_WITH_BACKGROUND_SKILLS_AS_A_SINGLE_TABLE,
+  SITE_WITH_BACKGROUND_SKILLS_AS_A_LIST_OF_TEXTS,
   SITE_WITH_A_SKILL_GROUP_WHOSE_ITEMS_ARE_A_TEXT,
   SITE_WITH_EDUCATION_AS_A_TEXT,
   SITE_WITH_A_BACKGROUND_INTRO_AS_A_TEXT,
@@ -1155,6 +1156,25 @@ test.describe('background content errors: build failure', () => {
        [[params.background.skills]], whatever the rest of the wording, and no Go template
        execution error that would follow it and bury it in technical jargon. */
     const build = tryToBuildSite(SITE_WITH_BACKGROUND_SKILLS_AS_A_SINGLE_TABLE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(
+      build.errors,
+      'the error message should say to write the skill groups as [[params.background.skills]]',
+    ).toMatch(/\bbackground:.*\[\[params\.background\.skills\]\]/);
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose skill groups are written as a list of texts rather than of tables makes the site build fail with an error message that says to write them as [[params.background.skills]], without a template execution error after it', () => {
+    /* tests/fixtures/bare-crafts/content/_index.md writes its only skill group as a bare text,
+       skills = ['Mécanique'], without a title nor items: Hugo reads the skill groups as a list,
+       but of texts rather than of tables. Rather than a Go template execution error from reading
+       the items of a text, the person building the site must get an error message that says, on
+       its own line, to write the skill groups as [[params.background.skills]], whatever the rest
+       of the wording, and no Go template execution error that would follow it and bury it in
+       technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_BACKGROUND_SKILLS_AS_A_LIST_OF_TEXTS);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(
       build.errors,

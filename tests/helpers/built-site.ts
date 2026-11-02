@@ -643,6 +643,14 @@ export const SITE_WITH_A_KEY_FIGURE_NOT_STARTING_WITH_A_NUMBER = testSite('numbe
    avoids the words background and skills, which the error-message assertion looks for. */
 export const SITE_WITH_BACKGROUND_SKILLS_AS_A_SINGLE_TABLE = testSite('lone-group-table');
 
+/* The example site's French home page writes its skill groups as a list of tables,
+   [[params.background.skills]]: this site replaces that home page with the one of
+   tests/fixtures/bare-crafts/content, without a hero, clients nor projects, whose background
+   declares a fictional mechanic's only skill group as a list of texts, skills = ['Mécanique'], a
+   bare name without a title nor items, rather than a list of tables. Its folder name avoids the
+   words background, skills, group and table, which the error-message assertion looks for. */
+export const SITE_WITH_BACKGROUND_SKILLS_AS_A_LIST_OF_TEXTS = testSite('bare-crafts');
+
 /* The example site's French home page writes each skill group's items as a list: this site
    replaces that home page with the one of tests/fixtures/know-how-as-text/content, without a hero,
    clients nor projects, which declares a fictional potter's three skill groups as a list of
