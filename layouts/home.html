@@ -129,7 +129,7 @@
     {{- end }}
     {{- $education := partial "list-or-empty.html" (dict "value" $background.education "error" "background: the education must be a list") }}
     {{- range $education }}
-    {{- if ne (printf "%T" .) "string" }}{{ errorf "background: the education entries must be texts" }}{{ $education = slice }}{{ end }}
+    {{- if eq (partial "text-problem.html" .) "not-text" }}{{ errorf "background: the education entries must be texts" }}{{ $education = slice }}{{ end }}
     {{- end }}
     {{- with $education }}
     <ul class="background-education">
