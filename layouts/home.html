@@ -146,11 +146,13 @@
       {{- range . }}
       <div class="background-skills">
         <h3>{{ .title }}</h3>
+        {{- with partial "list-or-empty.html" (dict "value" .items "error" "background: the items of a skill group must be a list") }}
         <ul>
-          {{- range .items }}
+          {{- range . }}
           <li>{{ . }}</li>
           {{- end }}
         </ul>
+        {{- end }}
       </div>
       {{- end }}
     </div>
