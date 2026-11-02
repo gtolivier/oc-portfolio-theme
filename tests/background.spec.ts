@@ -29,6 +29,7 @@ import {
 import { displayedText, textOnScreen } from './helpers/text-on-screen';
 import { type Rgb, colorComponents, contrastRatio } from './helpers/colors';
 import { stopClockBeforeLoad } from './helpers/clock';
+import { holdRequests, themeScriptUrl } from './helpers/held-requests';
 
 /* The background section of a home page, in its main content: a region named by its title, the
    French one unless another is given. */
@@ -160,6 +161,58 @@ test('with JavaScript, on the French home page, once the section "Parcours" come
   await expect
     .poll(() => textOnScreen(section), { message: 'text the background section shows on screen', timeout: 3000 })
     .toMatch(inOrder);
+});
+
+test('with JavaScript, on a home page opened at the section "Parcours" while the theme script is still on its way, as on a slow connection, no key figure shows its full value on screen, while assistive technologies still get it; once the script arrives, the figures count up to their full value within 3 s', async ({
+  page,
+}) => {
+  /* The theme's bundle is held back, as on a slow connection: the page is parsed and shown,
+     opened at the section, before the script arrives. */
+  const script = await holdRequests(page, themeScriptUrl());
+  try {
+    await page.goto('/fr/#background-heading', { waitUntil: 'commit' });
+    await script.requested;
+    const section = backgroundSection(page);
+    /* Opened at the section's heading, as the browser does with the address's fragment: Chromium
+       waits until the deferred script has run to scroll there, Firefox and Safari may not. */
+    await section.getByRole('heading', { level: 2 }).evaluate((heading) => heading.scrollIntoView());
+    await expect(section, 'the section is in view, the page opened at it').toBeInViewport();
+    const figures = KEY_FIGURES.map(({ value }) => ({
+      value,
+      figure: section.getByRole('term').filter({ hasText: value }),
+    }));
+    for (const { value, figure } of figures) {
+      await expect(figure, `the figure "${value}"`).toHaveCount(1);
+    }
+    /* Two animation frames: the section has been painted at least once, while the script is still
+       on its way. */
+    await page.evaluate(
+      () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+    );
+    /* On screen, whitespace excluded: no figure shows its full value. Text that only assistive
+       technologies get does not count: it is not what a visitor sees. */
+    for (const { value, figure } of figures) {
+      expect(
+        await textOnScreen(figure),
+        `what the figure "${value}" shows on screen before the script has run`,
+      ).not.toContain(value);
+    }
+    /* Assistive technologies get each figure, exactly: its full value as the term, then its label
+       as the definition. */
+    const expected = KEY_FIGURES.flatMap(({ value, label }) => [`term: ${value}`, `definition: ${label}`]);
+    expect(await exposedKeyFigures(section), 'what assistive technologies get before the script has run').toEqual(
+      expected,
+    );
+
+    /* The script arrives and runs: on screen, each label right after its full value, whole,
+       within 3 s. */
+    script.release();
+    await expect
+      .poll(() => textOnScreen(section), { message: 'text the background section shows on screen', timeout: 3000 })
+      .toMatch(fullValuesOnScreen(KEY_FIGURES));
+  } finally {
+    await script.end();
+  }
 });
 
 /* A window as narrow as a phone, and shorter than the section "Parcours", whose key figures sit
