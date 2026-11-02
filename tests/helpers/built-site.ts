@@ -603,6 +603,16 @@ export const SITE_WITH_A_FIRST_BUTTON_WITHOUT_LABEL = testSite('first-button-unn
 export const SITE_WITH_HERO_BUTTONS_AS_NAMED_TABLES = testSite('named-button-tables');
 export const SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE = testSite('lone-button-table');
 
+/* The example site's English home page writes its hero tagline as a list of texts and its hero
+   buttons as a list of tables, [[params.hero.actions]]: this site replaces that home page with the
+   one of tests/fixtures/english-home-text-and-table/content, whose tagline is a single text,
+   'Restoring antique clocks and watches, in Besançon.', and whose only button is written
+   [params.hero.actions], with single brackets, a table. The example site's French home page is
+   unchanged. Its folder name avoids the words hero, tagline and list, the table name and the
+   language codes, which the error-message assertions look for. */
+export const SITE_WITH_AN_ENGLISH_HOME_WITH_A_TAGLINE_AND_BUTTONS_NOT_AS_LISTS =
+  testSite('english-home-text-and-table');
+
 /* The example site's French home page declares a clockmaker's background: this site replaces that
    home page with the one of tests/fixtures/other-background/content, without a hero, clients nor
    projects, which declares a fictional luthier's background, with other numbers of entries than

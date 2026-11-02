@@ -32,6 +32,7 @@ import {
   SITE_WITH_AN_EMPTY_PAGE_REF,
   SITE_WITH_AN_ENGLISH_HOME_PAGE_REF_NOT_FOUND,
   SITE_WITH_AN_ENGLISH_HOME_WITH_BAD_BUTTONS,
+  SITE_WITH_AN_ENGLISH_HOME_WITH_A_TAGLINE_AND_BUTTONS_NOT_AS_LISTS,
   SITE_WITH_OTHER_CLIENTS,
   SITE_WITH_A_PAGE_REF_AS_TABLE_ON_THE_SECOND_BUTTON,
   SITE_WITH_AN_EMPTY_PAGE_REF_ON_THE_SECOND_BUTTON,
@@ -2576,5 +2577,54 @@ test.describe('hero content errors: build failure', () => {
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       /execute of template failed|error calling/i,
     );
+  });
+
+  test("a home page whose hero tagline or hero buttons are not a list makes the site build fail with an error message that names the home page's language, for French home pages and for an English one", () => {
+    /* A bilingual site has a home page per language, each with its own hero: a message saying the
+       tagline must be a list, or that the buttons must be written as [[params.hero.actions]],
+       that does not say which language's home page is at fault leaves the person building the
+       site to look for it in every content/_index.<language>.md file. The hero messages about a
+       button already name the home page's language by its code (fr, en); these two must name it
+       too, whatever the rest of the wording. The French home pages come from the fixtures of the
+       tests of these messages above, tests/fixtures/motto-as-text/content/_index.md (a tagline
+       written as a text) and tests/fixtures/lone-button-table/content/_index.md (a button written
+       with single brackets); the English one, from
+       tests/fixtures/english-home-text-and-table/content/_index.en.md, has both mistakes, hence
+       two messages. Every hero error message must be there and each must name, on its own line,
+       the home page's language, looked for, as in the test on the button messages, as a word that
+       no other word follows. A French home page and an English one, so that a language written in
+       the template does not pass. */
+    const cases: { name: string; site: BuiltSite; language: string; messageCount: number }[] = [
+      {
+        name: 'a French home page with a tagline written as a text',
+        site: SITE_WITH_A_HERO_TAGLINE_AS_A_TEXT,
+        language: 'fr',
+        messageCount: 1,
+      },
+      {
+        name: 'a French home page with a button written with single brackets',
+        site: SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE,
+        language: 'fr',
+        messageCount: 1,
+      },
+      {
+        name: 'an English home page with a tagline written as a text and a button written with single brackets',
+        site: SITE_WITH_AN_ENGLISH_HOME_WITH_A_TAGLINE_AND_BUTTONS_NOT_AS_LISTS,
+        language: 'en',
+        messageCount: 2,
+      },
+    ];
+    for (const { name, site, language, messageCount } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const messages = heroMessages(build.errors);
+      expect(messages, `with ${name}, hero error messages, one per mistake, in:\n${build.errors}`).toHaveLength(
+        messageCount,
+      );
+      expect(
+        messages.filter((line) => !new RegExp(languageCodePattern(language), 'u').test(line)),
+        `with ${name}, hero error messages that do not name the home page's language, ${language}`,
+      ).toEqual([]);
+    }
   });
 });
