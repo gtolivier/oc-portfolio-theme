@@ -908,6 +908,15 @@ tick-field > canvas {
    assistive technologies. Once the document is parsed, the class goes (see head/js.html). */
 .theme-script-pending .background-stats dt {
   opacity: 0;
+  /* A script that never arrives nor fails would keep them hidden for good: show them after a
+     long wait. */
+  animation: reveal-figure 0s 10s forwards;
+}
+
+@keyframes reveal-figure {
+  to {
+    opacity: 1;
+  }
 }
 
 .background-stats .figure-zero {
