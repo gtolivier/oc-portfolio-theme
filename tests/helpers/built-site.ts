@@ -610,6 +610,14 @@ export const SITE_WITH_ANOTHER_BACKGROUND = testSite('other-background');
    education entries. */
 export const SITE_WITH_A_SKILLS_ONLY_BACKGROUND = testSite('skills-only-background');
 
+/* The example site's French home page declares a background made of short words: this site
+   replaces that home page with the one of tests/fixtures/long-background-words/content, without
+   a hero, clients nor projects, whose [params.background] declares only a single education entry,
+   holding a school's name, and a single skill group, "Adresses", whose single item is a web
+   address; the name and the address are each a single word, without a hyphen nor a space, wider
+   than a phone. */
+export const SITE_WITH_LONG_BACKGROUND_WORDS = testSite('long-background-words');
+
 /* The example site's French home page writes its key figures as a list of tables,
    [[params.background.stats]]: this site replaces that home page with the one of
    tests/fixtures/lone-figure-table/content, without a hero, clients nor projects, whose only key
