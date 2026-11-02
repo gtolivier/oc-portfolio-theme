@@ -283,6 +283,13 @@ export const SITE_WITH_A_ONE_WORD_CLIENT_NAME = testSite('one-word-client-name')
    looks for. */
 export const SITE_WITH_CLIENTS_AS_TEXT = testSite('text-instead-of-list');
 
+/* The example site's English home page declares its clients as a list: this site replaces that
+   home page with the one of tests/fixtures/english-home-lone-name/content, without a hero, whose
+   params.clients is a text, 'Maison Delorme', instead of a list of names. The example site's
+   French home page is unchanged. Its folder name avoids the words clients and list and the
+   language codes, which the error-message assertions look for. */
+export const SITE_WITH_AN_ENGLISH_HOME_WITH_CLIENTS_AS_TEXT = testSite('english-home-lone-name');
+
 /* The example site's French home page declares its clients as a list of
    names: this site replaces that home page with the one of
    tests/fixtures/map-instead-of-name/content, without a hero, whose

@@ -9,7 +9,9 @@ import {
   SITE_WITH_A_CLIENT_AS_MAP,
   SITE_WITH_AN_EMPTY_CLIENT_NAME,
   SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME,
+  SITE_WITH_AN_ENGLISH_HOME_WITH_CLIENTS_AS_TEXT,
   buildSite,
+  languageCodePattern,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
   serveSite,
@@ -1712,6 +1714,42 @@ test.describe('client content errors: build failure', () => {
           position,
         );
       }
+    }
+  });
+
+  test("a home page whose clients parameter is not a list makes the site build fail with an error message that names the home page's language, for a French home page and for an English one", () => {
+    /* A bilingual site has a home page per language, each with its own clients: a message saying
+       the clients parameter must be a list that does not say which language's home page is at
+       fault leaves the person building the site to look for it in every
+       content/_index.<language>.md file. The hero's messages already name the home page's
+       language by its code (fr, en); this one must name it too, whatever the rest of the wording.
+       The French home page comes from the fixture of the test of this message above,
+       tests/fixtures/text-instead-of-list/content/_index.md; the English one, from
+       tests/fixtures/english-home-lone-name/content/_index.en.md, makes the same mistake. The
+       message, one line naming the clients parameter, must be there and name, on that line, the
+       home page's language, looked for, as in the hero's tests, as a word that no other word
+       follows. A French home page and an English one, so that a language written in the
+       template does not pass. */
+    const cases: { name: string; site: BuiltSite; language: string }[] = [
+      { name: 'a French home page with clients as a text', site: SITE_WITH_CLIENTS_AS_TEXT, language: 'fr' },
+      {
+        name: 'an English home page with clients as a text',
+        site: SITE_WITH_AN_ENGLISH_HOME_WITH_CLIENTS_AS_TEXT,
+        language: 'en',
+      },
+    ];
+    for (const { name, site, language } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const messages = build.errors.split('\n').filter((line) => /\bclients\s+parameter\b/.test(line));
+      expect(
+        messages,
+        `with ${name}, one error message naming the clients parameter, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages.filter((line) => !new RegExp(languageCodePattern(language), 'u').test(line)),
+        `with ${name}, clients error messages that do not name the home page's language, ${language}`,
+      ).toEqual([]);
     }
   });
 });
