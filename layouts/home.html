@@ -102,7 +102,8 @@
     {{- end }}
   </section>
   {{- end }}
-  {{- if .Params.background }}
+  {{- $background := .Params.background | default dict }}
+  {{- if and (reflect.IsMap $background) (or $background.stats $background.intro $background.education $background.skills) }}
   <section class="background" aria-labelledby="background-heading">
     <h2 id="background-heading">{{ i18n "background" }}</h2>
     {{- /* errorf does not stop the template: after an error, the part at fault (key figures, intro, education or skill groups) is empty, so that no template execution error buries the message. */}}
