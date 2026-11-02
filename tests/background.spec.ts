@@ -6,6 +6,7 @@ import {
   SITE_WITH_A_BACKGROUND_WITHOUT_SKILLS,
   SITE_WITH_AN_EMPTY_BACKGROUND,
   SITE_WITH_LONG_BACKGROUND_WORDS,
+  SITE_WITH_A_LONG_SKILL_GROUP_TITLE,
   SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE,
   SITE_WITH_BACKGROUND_STATS_AS_A_LIST_OF_TEXTS,
   SITE_WITH_A_KEY_FIGURE_NOT_STARTING_WITH_A_NUMBER,
@@ -1312,6 +1313,56 @@ test.describe('home page of another site, with long words in its background', ()
         .soft(text.right, `right edge of the ${part}'s text against the section's right edge (${sectionBox.right} px)`)
         .toBeLessThanOrEqual(Math.min(sectionBox.right, PHONE.width) + 1);
     }
+    const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect.soft(pageWidth, 'width of the page content').toBeLessThanOrEqual(PHONE.width);
+  });
+});
+
+test.describe('home page of another site, with a long word in a skill group title', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_LONG_SKILL_GROUP_TITLE);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a phone, a skill group title that holds a word wider than the screen wraps within the section "Parcours": its text stays inside the section, and the page does not scroll horizontally', async ({
+    page,
+    context,
+  }) => {
+    await serveSite(context, SITE_WITH_A_LONG_SKILL_GROUP_TITLE, siteDirectory);
+    await page.setViewportSize(PHONE);
+    await page.goto(`${SITE_WITH_A_LONG_SKILL_GROUP_TITLE.origin}/fr/`);
+    await page.evaluate(() => document.fonts.ready);
+    const section = backgroundSection(page);
+    await expect(section).toBeVisible();
+    /* tests/fixtures/long-skill-group-title/content/_index.md declares a skill group whose title is
+       a craft's name, a single word, without a hyphen nor a space, wider than the screen. */
+    const longTitle = 'Horlogeriemécaniqueetrestaurationdesautomatesanciensdesateliersfictifs';
+    const heading = section.getByRole('heading', { level: 3, name: longTitle, exact: true });
+    await expect(heading).toBeVisible();
+    const sectionBox = await unionBox(section);
+    /* Where its text is displayed, which can overflow the heading's box without widening it: within
+       the section, and within the screen. */
+    const text = await heading.evaluate((element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const { left, right } = range.getBoundingClientRect();
+      return { left, right };
+    });
+    expect
+      .soft(
+        text.left,
+        `left edge of the skill group title's text against the section's left edge (${sectionBox.left} px)`,
+      )
+      .toBeGreaterThanOrEqual(Math.max(sectionBox.left, 0) - 1);
+    expect
+      .soft(
+        text.right,
+        `right edge of the skill group title's text against the section's right edge (${sectionBox.right} px)`,
+      )
+      .toBeLessThanOrEqual(Math.min(sectionBox.right, PHONE.width) + 1);
     const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect.soft(pageWidth, 'width of the page content').toBeLessThanOrEqual(PHONE.width);
   });

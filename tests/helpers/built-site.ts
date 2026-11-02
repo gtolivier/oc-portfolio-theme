@@ -632,6 +632,13 @@ export const SITE_WITH_AN_EMPTY_BACKGROUND = testSite('empty-background');
    than a phone. */
 export const SITE_WITH_LONG_BACKGROUND_WORDS = testSite('long-background-words');
 
+/* The example site's French home page titles its skill groups with short words: this site
+   replaces that home page with the one of tests/fixtures/long-skill-group-title/content, without
+   a hero, clients nor projects, whose [params.background] declares only a single skill group,
+   whose title is a craft's name, a single word, without a hyphen nor a space, wider than a phone,
+   and whose single item is a short word, "Engrenages". */
+export const SITE_WITH_A_LONG_SKILL_GROUP_TITLE = testSite('long-skill-group-title');
+
 /* The example site's French home page writes its key figures as a list of tables,
    [[params.background.stats]]: this site replaces that home page with the one of
    tests/fixtures/lone-figure-table/content, without a hero, clients nor projects, whose only key
