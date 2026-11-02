@@ -137,6 +137,14 @@ export const SITE_WITH_A_HERO_WITH_LONG_WORDS = testSite('hero-with-long-words')
    with a complete hero. */
 export const SITE_WITH_A_HERO_WITHOUT_AUTHOR = testSite('authorless-hero');
 
+/* The example site's French home page writes its hero tagline as a list of texts, one per line:
+   this site replaces that home page with the one of tests/fixtures/motto-as-text/content, without
+   clients nor projects, whose hero declares a fictional gilder's title and her tagline as a single
+   text, 'Dorure à la feuille et restauration de cadres anciens, à Avignon.', rather than a list.
+   Its folder name avoids the words hero, tagline and list, which the error-message assertion
+   looks for. */
+export const SITE_WITH_A_HERO_TAGLINE_AS_A_TEXT = testSite('motto-as-text');
+
 /* The example site's French home page has a hero whose every button has a
    single destination: this site replaces that home page with the one of
    tests/fixtures/button-with-two-destinations/content, whose second button

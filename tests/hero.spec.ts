@@ -11,6 +11,7 @@ import {
   SITE_WITH_A_BUTTON_WITH_URL_AND_EMPTY_PAGE_REF,
   SITE_WITH_A_BUTTON_WITH_URL_AND_FALSE_PAGE_REF,
   SITE_WITH_A_HERO_WITHOUT_AUTHOR,
+  SITE_WITH_A_HERO_TAGLINE_AS_A_TEXT,
   SITE_WITH_A_HERO_WITH_LONG_WORDS,
   SITE_WITH_A_HERO_WITHOUT_TITLE,
   SITE_WITH_A_HERO_WITHOUT_CLIENTS,
@@ -2557,5 +2558,23 @@ test.describe('hero content errors: build failure', () => {
     const build = tryToBuildSite(SITE_WITH_A_HERO_WITHOUT_AUTHOR);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors).toMatch(/\bauthor\b/);
+  });
+
+  test('a home page whose hero tagline is written as a text rather than a list makes the site build fail, with an error message that says the tagline must be a list, without a template execution error after it', () => {
+    /* tests/fixtures/motto-as-text/content/_index.md writes its hero tagline as a single text,
+       'Dorure à la feuille et restauration de cadres anciens, à Avignon.', rather than a list of
+       lines: ranging over a text in a Go template may raise an execution error, or none, and the
+       hero would show anything but the tagline. Rather than that, the person building the site
+       must get an error message that says, on its own line, that the tagline must be a list,
+       whatever the rest of the wording, and no Go template execution error that would follow it
+       and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_A_HERO_TAGLINE_AS_A_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the error message should say the tagline must be a list').toMatch(
+      /\bhero:.*\btagline\b.*\blist\b/,
+    );
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
   });
 });
