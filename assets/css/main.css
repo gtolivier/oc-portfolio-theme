@@ -917,6 +917,7 @@ tick-field > canvas {
 
 /* On paper, the full values show, not the 0 of a count that never ran. */
 @media print {
+  .theme-script-pending .background-stats dt,
   .background-stats dt:not(.is-counted) .figure-value {
     opacity: 1;
   }
