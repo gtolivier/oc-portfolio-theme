@@ -611,6 +611,31 @@ test('with JavaScript, under prefers-reduced-motion: reduce, on the French home 
   expect(notFull, 'texts the background section showed on screen without every full value').toEqual([]);
 });
 
+test('with JavaScript, on the French home page, printing the page before the section "Parcours" has come into view shows each key figure’s full value next to its label, not 0', async ({
+  page,
+}) => {
+  await page.goto('/fr/');
+  const section = backgroundSection(page);
+  /* Below the first screen on load, so that the figures start from 0. */
+  await expect(section).toHaveCount(1);
+  await expect(section).not.toBeInViewport();
+  /* On screen, before printing: the script has taken over the figures, each one shows 0 next to
+     its label, as the test "while the section has not come into view" pins it. */
+  const zeros = new RegExp(KEY_FIGURES.map(({ label }) => `(?<!\\d)0${labelOnScreen(label)}`).join('.*'), 'u');
+  await expect
+    .poll(() => textOnScreen(section), { message: 'text the background section shows on screen before printing' })
+    .toMatch(zeros);
+  /* The visitor prints the page, the section still out of view. */
+  await page.emulateMedia({ media: 'print' });
+  await expect(section, 'the section is still out of view').not.toBeInViewport();
+  /* On the printout, in reading order, whitespace excluded: each label comes right after its full
+     value, whole (no digit before it, so that a 0 cannot pass). Text that only assistive
+     technologies get does not count: it is not what the printout shows. */
+  expect(await textOnScreen(section), 'text the background section shows when printed').toMatch(
+    fullValuesOnScreen(KEY_FIGURES),
+  );
+});
+
 test('with JavaScript, on the French home page, when the visitor turns on prefers-reduced-motion: reduce while the key figures of the section "Parcours" climb, each one shows its full value next to its label at once, rather than climbing on', async ({
   page,
 }) => {
