@@ -157,6 +157,71 @@ test('with JavaScript, on the French home page, once the section "Parcours" come
     .toMatch(inOrder);
 });
 
+/* A window as narrow as a phone, and shorter than the section "Parcours", whose key figures sit
+   at its top. */
+const SHORT_SCREEN = { width: 390, height: 400 };
+
+test('with JavaScript, on a short screen, while the section "Parcours" is in view but its key figures are not, above the screen, each figure keeps showing 0 alone next to its label, until the figures themselves come into view, then shows its full value within 3 s', async ({
+  page,
+}) => {
+  await page.setViewportSize(SHORT_SCREEN);
+  await page.goto('/fr/');
+  const section = backgroundSection(page);
+  /* Below the first screen on load, so that the figures start from 0. */
+  await expect(section).toHaveCount(1);
+  await expect(section).not.toBeInViewport();
+  const figures = KEY_FIGURES.map(({ value, label }) => ({
+    value,
+    label,
+    figure: section.getByRole('term').filter({ hasText: value }),
+    labelElement: section.getByText(label, { exact: true }),
+  }));
+  for (const { value, figure } of figures) {
+    await expect(figure, `the figure "${value}"`).toHaveCount(1);
+  }
+  /* The section is taller than the screen, so that it can be in view while its figures, at its
+     top, are not. */
+  const sectionHeight = await section.evaluate((el) => el.getBoundingClientRect().height);
+  expect(sectionHeight, `height of the section against the screen's (${SHORT_SCREEN.height} px)`).toBeGreaterThan(
+    SHORT_SCREEN.height,
+  );
+  /* The visitor lands on the end of the section, straight from the top of the page: its bottom at
+     the bottom of the screen, its top, with the figures, above the screen. */
+  await section.evaluate((el) => {
+    const bottom = el.getBoundingClientRect().bottom + window.scrollY;
+    window.scrollTo({ top: bottom - window.innerHeight, behavior: 'instant' });
+  });
+  await expect(section, 'the section is in view').toBeInViewport();
+  for (const { value, label, figure, labelElement } of figures) {
+    await expect(figure, `the figure "${value}" is above the screen`).not.toBeInViewport();
+    await expect(labelElement, `the label "${label}" is above the screen`).not.toBeInViewport();
+  }
+  /* Time passes, on the page's real clock, as the visitor lives it: long enough for a counter
+     started when the section came into view to reach its target. */
+  await page.waitForTimeout(3000);
+  await expect(section, 'the section is still in view').toBeInViewport();
+  for (const { value, figure } of figures) {
+    await expect(figure, `the figure "${value}" is still above the screen`).not.toBeInViewport();
+  }
+  /* On screen, in reading order, whitespace excluded: each label comes right after a 0 that no
+     digit precedes, so neither the full value, nor its number alone, nor 0 with the rest of the
+     value can pass. Text that only assistive technologies get does not count. */
+  const zeros = new RegExp(KEY_FIGURES.map(({ label }) => `(?<!\\d)0${labelOnScreen(label)}`).join('.*'), 'u');
+  expect(
+    await textOnScreen(section),
+    'text the background section shows while its figures are above the screen',
+  ).toMatch(zeros);
+  /* The visitor scrolls back up to the figures. */
+  await figures[0].figure.scrollIntoViewIfNeeded();
+  for (const { value, figure } of figures) {
+    await expect(figure, `the figure "${value}" has come into view`).toBeInViewport();
+  }
+  /* On screen, each label right after its full value, whole, within 3 s. */
+  await expect
+    .poll(() => textOnScreen(section), { message: 'text the background section shows on screen', timeout: 3000 })
+    .toMatch(fullValuesOnScreen(KEY_FIGURES));
+});
+
 test('with JavaScript, on the French home page, once the section "Parcours" comes into view, each key figure passes through a number between 0 and its own, shown alone without the rest of its value, before it shows its full value', async ({
   page,
 }) => {
