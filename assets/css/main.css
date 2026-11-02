@@ -904,6 +904,12 @@ tick-field > canvas {
   opacity: 0;
 }
 
+/* While the script is on its way, the full values do not show; they stay in the page for
+   assistive technologies. Once the document is parsed, the class goes (see head/js.html). */
+.theme-script-pending .background-stats dt {
+  opacity: 0;
+}
+
 .background-stats .figure-zero {
   position: absolute;
   inset: 0 auto auto 0;
