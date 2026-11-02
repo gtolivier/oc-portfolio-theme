@@ -7,6 +7,9 @@ other = 'Ils me font confiance'
 [pauseClients]
 other = 'Mettre en pause le défilement'
 
+[background]
+other = 'Parcours'
+
 [selectedProjects]
 other = 'Projets sélectionnés'
 

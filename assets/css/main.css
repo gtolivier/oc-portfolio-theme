@@ -123,6 +123,9 @@
   --tick-field-min-side-margin: 24px;
   --tick-field-min-vertical-margin: 18px;
   --tick-field-diagonal: ascending;
+  /* How long what waits for the theme script stays hidden when the script never arrives nor
+     fails, before showing anyway. */
+  --theme-script-stall-delay: 10s;
 }
 
 /* Without a language switcher, the first row is as tall as the logo on a
@@ -496,7 +499,7 @@ scramble-text {
   visibility: hidden;
   /* A script that never arrives nor fails would keep the text hidden for good:
      reveal it after a long wait. */
-  animation: reveal-undefined-text 0s 10s forwards;
+  animation: reveal-undefined-text 0s var(--theme-script-stall-delay) forwards;
 }
 
 @keyframes reveal-undefined-text {
@@ -811,28 +814,265 @@ tick-field > canvas {
   }
 }
 
+/* The frame the home page's sections share: the page gutter, wider on a
+   screen wide enough to centre the content within the sections' maximum
+   width. */
+.projects,
+.background {
+  --section-max-width: 1280px;
+  padding: 56px max(var(--page-gutter), (100% - var(--section-max-width)) / 2);
+}
+
+@media (min-width: 768px) {
+  .projects,
+  .background {
+    padding-block: 96px;
+  }
+}
+
+.projects h2,
+.background > h2 {
+  font-family: var(--font-mono);
+  font-size: clamp(28px, 3vw, 44px);
+  font-weight: 600;
+}
+
 /* The section number is decorative: its empty alternative text keeps it out
-   of the heading's accessible name, and so out of the region's. */
-.projects h2::before {
-  content: '01 // ' / '';
-  color: var(--color-accent-dark);
+   of the heading's accessible name, and so out of the region's. Each section
+   sets its number and colour. */
+.projects h2::before,
+.background > h2::before {
+  content: var(--section-number) / '';
+  color: var(--section-number-color);
+}
+
+/* Dark section, below the light projects section. Each part is a direct
+   child, spaced by its top margin, so that a part left out leaves no gap. */
+.background {
+  --section-number: '02 // ';
+  --section-number-color: var(--color-accent);
+  /* From the heading to the first part. */
+  --background-heading-space: 40px;
+  /* Between the key figures, the intro and the education. */
+  --background-part-gap: 36px;
+  /* Above the skill groups on a phone, and between two groups. */
+  --background-skills-gap: 40px;
+  border-top: 1px solid rgb(var(--color-paper-channels) / 0.12);
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.background > * {
+  margin: 0;
+}
+
+.background > :not(h2) + * {
+  margin-top: var(--background-part-gap);
+}
+
+.background > h2 {
+  margin-bottom: var(--background-heading-space);
+}
+
+.background-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px 40px;
+}
+
+.background-stats dt {
+  /* With JavaScript, a key figure shows 0 over its value, which stays in place but invisible. As
+     flex items, the value and the 0 are as tall as the line, rather than overflowing it at a line
+     height of 1. */
+  position: relative;
+  display: flex;
+  font-family: var(--font-mono);
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-accent);
+}
+
+.background-stats dd {
+  overflow-wrap: anywhere;
+  margin: 8px 0 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(var(--color-paper-channels) / 0.75);
+}
+
+.background-stats dt:not(.is-counted) .figure-value {
+  opacity: 0;
+}
+
+/* While the script is on its way, the full values do not show; they stay in the page for
+   assistive technologies. Once the document is parsed, the class goes (see head/js.html). */
+.theme-script-pending .background-stats dt {
+  opacity: 0;
+  /* A script that never arrives nor fails would keep them hidden for good: show them after a
+     long wait. */
+  animation: reveal-figure 0s var(--theme-script-stall-delay) forwards;
+}
+
+@keyframes reveal-figure {
+  to {
+    opacity: 1;
+  }
+}
+
+.background-stats .figure-zero {
+  position: absolute;
+  inset: 0 auto auto 0;
+}
+
+/* On paper, the full values show, not the 0 of a count that never ran. */
+@media print {
+  .theme-script-pending .background-stats dt,
+  .background-stats dt:not(.is-counted) .figure-value {
+    opacity: 1;
+  }
+
+  .background-stats .figure-zero {
+    display: none;
+  }
+}
+
+.background-intro {
+  overflow-wrap: anywhere;
+  font-size: 16px;
+  line-height: 1.65;
+  text-wrap: pretty;
+  color: rgb(var(--color-paper-channels) / 0.85);
+}
+
+/* The education entries and the skill items are lists whose marker, "> ",
+   is decorative: its empty alternative text keeps it from assistive
+   technologies. */
+.background-education,
+.background-skills > ul {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  list-style: none;
+}
+
+.background-education > li,
+.background-skills li {
+  display: flex;
+  overflow-wrap: anywhere;
+}
+
+.background-education > li::before,
+.background-skills li::before {
+  content: '>' / '';
+  font-family: var(--font-mono);
+  color: rgb(var(--color-paper-channels) / 0.75);
+}
+
+.background-education {
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: rgb(var(--color-paper-channels) / 0.75);
+}
+
+.background-education > li {
+  gap: 12px;
+}
+
+.background > .background-skill-groups {
+  margin-top: var(--background-skills-gap);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--background-skills-gap) 48px;
+}
+
+.background-skills > h3 {
+  margin: 0 0 16px;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.background-skills > ul {
+  gap: 8px;
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: rgb(var(--color-paper-channels) / 0.8);
+}
+
+.background-skills li {
+  gap: 10px;
+}
+
+/* From 768 px, two columns: the figures, the intro and the education on the
+   left, the skill groups on the right, two per row. The groups span every
+   row of the left column and the last row, which takes any height they need
+   beyond it: the left column's parts keep their spacing. */
+@media (min-width: 768px) {
+  .background {
+    --background-heading-space: 56px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    grid-template-rows: auto auto auto auto 1fr;
+    column-gap: 48px;
+    align-items: start;
+  }
+
+  .background > h2 {
+    grid-column: 1 / -1;
+  }
+
+  .background > :not(h2, .background-skill-groups) {
+    grid-column: 1;
+  }
+
+  .background > .background-skill-groups {
+    grid-column: 2;
+    grid-row: 2 / -1;
+    margin-top: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* No skill groups: no right column to leave empty, the other parts take the full width. */
+  .background:not(:has(> .background-skill-groups)) > * {
+    grid-column: 1 / -1;
+  }
+
+  /* Skill groups alone: no left column to leave empty, they take the full width. */
+  .background > h2 + .background-skill-groups {
+    grid-column: 1 / -1;
+  }
+}
+
+/* The mockup's gap between the columns, once the left one is wide enough
+   for the key figures side by side. */
+@media (min-width: 1024px) {
+  .background {
+    column-gap: 72px;
+  }
 }
 
 /* Light section: dark cards on the paper background. The header takes a
    line of its own, then the cards fill one line each, two from 1024 px. */
 .projects {
+  --section-number: '01 // ';
+  --section-number-color: var(--color-accent-dark);
   /* Between two cards, and between two lines of the section. */
   --projects-gap: 24px;
   /* From the header to the first card. */
   --projects-header-space: 40px;
-  --projects-max-width: 1280px;
   display: flex;
   flex-wrap: wrap;
   gap: var(--projects-gap);
   background: var(--color-paper);
   color: var(--color-ink);
-  /* The page gutter, wider on a screen wide enough to centre the content. */
-  padding: 56px max(var(--page-gutter), (100% - var(--projects-max-width)) / 2);
 }
 
 /* The heading and the link wrap like words: they share a line when there is
@@ -850,9 +1090,6 @@ tick-field > canvas {
   flex: 1 1 100%;
   align-self: baseline;
   margin: 0;
-  font-family: var(--font-mono);
-  font-size: clamp(28px, 3vw, 44px);
-  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
@@ -1009,7 +1246,6 @@ tick-field > canvas {
   .projects {
     --projects-gap: 28px;
     --projects-header-space: 56px;
-    padding-block: 96px;
   }
 
   /* The heading starts at half the line, so the link fits beside it, and

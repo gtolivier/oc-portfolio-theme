@@ -1,0 +1,2 @@
+{{- /* A list of front matter texts shown as the content of one paragraph, each on its own line. */}}
+{{- range $index, $line := . }}{{ if $index }}<br>{{ end }}{{ $line }}{{ end -}}

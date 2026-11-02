@@ -16,6 +16,33 @@ projects = [
   'projets/regulateur-noyer',
 ]
 
+[params.background]
+intro = [
+  'Formé à l’horlogerie ancienne dans le Jura.',
+  'Atelier indépendant depuis 2004.',
+  'Pendules, régulateurs et montres de poche.',
+]
+education = [
+  'CFC d’horloger rhabilleur — École d’horlogerie de Porrentruy, 2001',
+  'Brevet de restaurateur de pendules — Lycée Victor-Bérard, Morez, 2003',
+]
+
+[[params.background.stats]]
+value = '20+'
+label = 'Ans de métier'
+
+[[params.background.stats]]
+value = '350'
+label = 'Pendules restaurées'
+
+[[params.background.skills]]
+title = 'Mécanique'
+items = ['Restauration de mouvements', 'Taillage d’engrenages']
+
+[[params.background.skills]]
+title = 'Finitions'
+items = ['Anglage', 'Perlage', 'Dorure à la feuille']
+
 [params.hero]
 title = 'Horloger indépendant'
 tagline = [

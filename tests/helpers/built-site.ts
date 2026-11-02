@@ -137,6 +137,14 @@ export const SITE_WITH_A_HERO_WITH_LONG_WORDS = testSite('hero-with-long-words')
    with a complete hero. */
 export const SITE_WITH_A_HERO_WITHOUT_AUTHOR = testSite('authorless-hero');
 
+/* The example site's French home page writes its hero tagline as a list of texts, one per line:
+   this site replaces that home page with the one of tests/fixtures/motto-as-text/content, without
+   clients nor projects, whose hero declares a fictional gilder's title and her tagline as a single
+   text, 'Dorure à la feuille et restauration de cadres anciens, à Avignon.', rather than a list.
+   Its folder name avoids the words hero, tagline and list, which the error-message assertion
+   looks for. */
+export const SITE_WITH_A_HERO_TAGLINE_AS_A_TEXT = testSite('motto-as-text');
+
 /* The example site's French home page has a hero whose every button has a
    single destination: this site replaces that home page with the one of
    tests/fixtures/button-with-two-destinations/content, whose second button
@@ -594,6 +602,154 @@ export const SITE_WITH_A_FIRST_BUTTON_WITHOUT_LABEL = testSite('first-button-unn
    error-message assertion looks for. */
 export const SITE_WITH_HERO_BUTTONS_AS_NAMED_TABLES = testSite('named-button-tables');
 export const SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE = testSite('lone-button-table');
+
+/* The example site's French home page declares a clockmaker's background: this site replaces that
+   home page with the one of tests/fixtures/other-background/content, without a hero, clients nor
+   projects, which declares a fictional luthier's background, with other numbers of entries than
+   the example site's: three key figures ("15" "Ans d’établi", "120+" "Violons montés", "8"
+   "Apprentis formés"), two intro lines, a single education entry and three skill groups
+   ("Facture", "Vernis", "Réglages") of two, one and three items. */
+export const SITE_WITH_ANOTHER_BACKGROUND = testSite('other-background');
+
+/* The example site's French home page declares every part of its background: this site replaces
+   that home page with the one of tests/fixtures/skills-only-background/content, without a hero,
+   clients nor projects, whose [params.background] declares only skill groups, a fictional
+   potter's: "Tournage" of three items and "Émaillage" of one; no key figures, intro lines nor
+   education entries. */
+export const SITE_WITH_A_SKILLS_ONLY_BACKGROUND = testSite('skills-only-background');
+
+/* The example site's French home page declares every part of its background: this site replaces
+   that home page with the one of tests/fixtures/background-without-skills/content, without a hero,
+   clients nor projects, whose [params.background] declares a fictional bookbinder's four key
+   figures, two long intro lines and two long education entries, and no skill groups. */
+export const SITE_WITH_A_BACKGROUND_WITHOUT_SKILLS = testSite('background-without-skills');
+
+/* The example site's French home page declares every part of its background: this site replaces
+   that home page with the one of tests/fixtures/empty-background/content, without a hero, clients
+   nor projects, whose [params.background] declares its key figures, intro lines, education
+   entries and skill groups as empty lists, stats = [], intro = [], education = [], skills = [],
+   and one key the theme does not know, expositions, holding a single fictional entry: nothing the
+   theme displays. */
+export const SITE_WITH_AN_EMPTY_BACKGROUND = testSite('empty-background');
+
+/* The example site's French home page declares a background made of short words: this site
+   replaces that home page with the one of tests/fixtures/long-background-words/content, without
+   a hero, clients nor projects, whose [params.background] declares only a single education entry,
+   holding a school's name, and a single skill group, "Adresses", whose single item is a web
+   address; the name and the address are each a single word, without a hyphen nor a space, wider
+   than a phone. */
+export const SITE_WITH_LONG_BACKGROUND_WORDS = testSite('long-background-words');
+
+/* The example site's French home page declares a background made of short words: this site
+   replaces that home page with the one of tests/fixtures/long-intro-and-figure-words/content,
+   without a hero, clients nor projects, whose [params.background] declares only a single intro
+   line, holding a bindery's name, and a single key figure, "12", whose label is a single word; the
+   name and the label are each a single word, without a hyphen nor a space, wider than a phone. */
+export const SITE_WITH_LONG_INTRO_AND_FIGURE_WORDS = testSite('long-intro-and-figure-words');
+
+/* The example site's French home page titles its skill groups with short words: this site
+   replaces that home page with the one of tests/fixtures/long-skill-group-title/content, without
+   a hero, clients nor projects, whose [params.background] declares only a single skill group,
+   whose title is a craft's name, a single word, without a hyphen nor a space, wider than a phone,
+   and whose single item is a short word, "Engrenages". */
+export const SITE_WITH_A_LONG_SKILL_GROUP_TITLE = testSite('long-skill-group-title');
+
+/* The example site's French home page writes its key figures as a list of tables,
+   [[params.background.stats]]: this site replaces that home page with the one of
+   tests/fixtures/lone-figure-table/content, without a hero, clients nor projects, whose only key
+   figure, a fictional blacksmith's ("12" "Ans de forge"), is written [params.background.stats],
+   with single brackets, a table rather than a list. Its folder name avoids the words background
+   and stats, which the error-message assertion looks for. */
+export const SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE = testSite('lone-figure-table');
+
+/* The example site's French home page writes its key figures as a list of tables,
+   [[params.background.stats]]: this site replaces that home page with the one of
+   tests/fixtures/bare-numbers/content, without a hero, clients nor projects, whose background
+   declares a fictional cooper's only key figure as a list of texts, stats = ['20'], a bare value
+   without a label, rather than a list of tables. Its folder name avoids the words background,
+   stats, figure and table, which the error-message assertion looks for. */
+export const SITE_WITH_BACKGROUND_STATS_AS_A_LIST_OF_TEXTS = testSite('bare-numbers');
+
+/* The example site's French home page writes each key figure's value starting with a whole number:
+   this site replaces that home page with the one of tests/fixtures/number-in-words/content,
+   without a hero, clients nor projects, which declares a fictional glassblower's three key
+   figures as a list of tables, [[params.background.stats]], the second of which has the value
+   'quinze', written in words, between '9' and '300+'. Its folder name avoids the words
+   background and figure, and the words "whole number", which the error-message assertion looks
+   for. */
+export const SITE_WITH_A_KEY_FIGURE_NOT_STARTING_WITH_A_NUMBER = testSite('number-in-words');
+
+/* The example site's French home page writes its skill groups as a list of tables,
+   [[params.background.skills]]: this site replaces that home page with the one of
+   tests/fixtures/lone-group-table/content, without a hero, clients nor projects, whose only skill
+   group, a fictional bookbinder's ("Reliure", of three items), is written
+   [params.background.skills], with single brackets, a table rather than a list. Its folder name
+   avoids the words background and skills, which the error-message assertion looks for. */
+export const SITE_WITH_BACKGROUND_SKILLS_AS_A_SINGLE_TABLE = testSite('lone-group-table');
+
+/* The example site's French home page writes its skill groups as a list of tables,
+   [[params.background.skills]]: this site replaces that home page with the one of
+   tests/fixtures/bare-crafts/content, without a hero, clients nor projects, whose background
+   declares a fictional mechanic's only skill group as a list of texts, skills = ['Mécanique'], a
+   bare name without a title nor items, rather than a list of tables. Its folder name avoids the
+   words background, skills, group and table, which the error-message assertion looks for. */
+export const SITE_WITH_BACKGROUND_SKILLS_AS_A_LIST_OF_TEXTS = testSite('bare-crafts');
+
+/* The example site's French home page writes each skill group's items as a list: this site
+   replaces that home page with the one of tests/fixtures/know-how-as-text/content, without a hero,
+   clients nor projects, which declares a fictional potter's three skill groups as a list of
+   tables, [[params.background.skills]], the second of which ("Émaillage") writes its items as a
+   single text, 'Émaux de cendre', rather than a list, between two groups of three items. Its
+   folder name avoids the words background, skill, group, items and list, which the error-message
+   assertions look for. */
+export const SITE_WITH_A_SKILL_GROUP_WHOSE_ITEMS_ARE_A_TEXT = testSite('know-how-as-text');
+
+/* The example site's French home page writes its education entries as a list of texts: this site
+   replaces that home page with the one of tests/fixtures/diploma-as-text/content, without a hero,
+   clients nor projects, whose background declares a fictional luthier's only education entry as a
+   single text, 'CAP de luthier — École nationale de lutherie, Mirecourt, 2008', rather than a
+   list. Its folder name avoids the words background, education and list, which the error-message
+   assertion looks for. */
+export const SITE_WITH_EDUCATION_AS_A_TEXT = testSite('diploma-as-text');
+
+/* The example site's French home page writes its education entries as a list of texts: this site
+   replaces that home page with the one of tests/fixtures/diploma-tables/content, without a hero,
+   clients nor projects, whose background declares a fictional stonemason's only education entry
+   as a list of tables, [[params.background.education]], with a diploma and a school field, rather
+   than as a list of texts. Its folder name avoids the words background, education and text, which
+   the error-message assertion looks for. */
+export const SITE_WITH_EDUCATION_AS_A_LIST_OF_TABLES = testSite('diploma-tables');
+
+/* The example site's French home page writes its background intro as a list of texts, one per
+   line: this site replaces that home page with the one of tests/fixtures/preamble-as-text/content,
+   without a hero, clients nor projects, whose background declares a fictional clock restorer's
+   intro as a single text, 'Restauratrice de pendules comtoises depuis 2005, entre Morez et
+   Besançon.', rather than a list. Its folder name avoids the words background, intro and list,
+   which the error-message assertion looks for. */
+export const SITE_WITH_A_BACKGROUND_INTRO_AS_A_TEXT = testSite('preamble-as-text');
+
+/* The example site's French home page writes its background intro as a list of texts, one per
+   line: this site replaces that home page with the one of tests/fixtures/preamble-tables/content,
+   without a hero, clients nor projects, whose background declares a fictional bookbinder's only
+   intro line as a list of tables, [[params.background.intro]], with a phrase field, rather than as
+   a list of texts. Its folder name avoids the words background, intro and text, which the
+   error-message assertion looks for. */
+export const SITE_WITH_A_BACKGROUND_INTRO_AS_A_LIST_OF_TABLES = testSite('preamble-tables');
+
+/* The example site's French home page declares every part of its background as a list: this site
+   replaces that home page with the one of tests/fixtures/blank-background-values/content, without
+   a hero, clients nor projects, whose [params.background] writes its key figures, intro and
+   education as empty values rather than leaving them out, one of each kind, stats = '',
+   intro = false, education = 0, and declares a fictional basket weaver's two skill groups,
+   "Tressage" of two items and "Teinture" of one. */
+export const SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES = testSite('blank-background-values');
+
+/* The example site's French home page writes each skill group's items as a list: this site
+   replaces that home page with the one of tests/fixtures/blank-know-how/content, without a hero,
+   clients nor projects, whose [params.background] declares only a fictional cabinetmaker's two
+   skill groups, "Marqueterie" and "Dorure", whose items are written as empty values rather than
+   left out, items = '' and items = false. */
+export const SITE_WITH_SKILL_GROUP_ITEMS_AS_EMPTY_VALUES = testSite('blank-know-how');
 
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that

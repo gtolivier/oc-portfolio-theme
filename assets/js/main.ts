@@ -5,3 +5,4 @@ import './tick-field';
 import './header-height';
 import './clients-fit';
 import './tick-pattern';
+import './key-figures';
