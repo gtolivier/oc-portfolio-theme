@@ -225,6 +225,80 @@ test('with JavaScript, on a short screen, while the section "Parcours" is in vie
     .toMatch(fullValuesOnScreen(KEY_FIGURES));
 });
 
+/* A window as narrow as the narrowest phones, where the key figures wrap onto several lines, and
+   shorter than the section "Parcours". */
+const NARROW_SHORT_SCREEN = { width: 320, height: 400 };
+
+test('with JavaScript, when the key figures wrap onto several lines and only the first line is in view, each figure below it keeps showing 0 alone until it comes into view itself, then shows its full value within 3 s', async ({
+  page,
+}) => {
+  await page.setViewportSize(NARROW_SHORT_SCREEN);
+  await page.goto('/fr/');
+  await page.evaluate(() => document.fonts.ready);
+  const section = backgroundSection(page);
+  /* Below the first screen on load, so that the figures start from 0. */
+  await expect(section).toHaveCount(1);
+  await expect(section).not.toBeInViewport();
+  /* Each figure, with where its value and its label start and end on the page. */
+  const figures = [];
+  for (const { value, label } of KEY_FIGURES) {
+    const figure = section.getByRole('term').filter({ hasText: value });
+    const labelElement = section.getByText(label, { exact: true });
+    await expect(figure, `the figure "${value}"`).toHaveCount(1);
+    await expect(labelElement, `the label "${label}"`).toHaveCount(1);
+    const pageBox = (element: Locator) =>
+      element.evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        return { top: box.top + window.scrollY, bottom: box.bottom + window.scrollY };
+      });
+    const figureBox = await pageBox(figure);
+    const labelBox = await pageBox(labelElement);
+    figures.push({ value, figure, top: figureBox.top, bottom: Math.max(figureBox.bottom, labelBox.bottom) });
+  }
+  /* The figures wrap: the first line holds those level with the first figure; at least one figure
+     starts below the bottom of that line, values and labels included. */
+  const firstTop = Math.min(...figures.map(({ top }) => top));
+  const firstLine = figures.filter(({ top }) => Math.abs(top - firstTop) <= 1);
+  const firstLineBottom = Math.max(...firstLine.map(({ bottom }) => bottom));
+  const below = figures.filter(({ top }) => top >= firstLineBottom);
+  expect(
+    below.map(({ value }) => value),
+    `figures starting below the first line of figures (bottom at ${firstLineBottom} px), at ${NARROW_SHORT_SCREEN.width} px wide`,
+  ).not.toEqual([]);
+  /* The visitor lands on the first line, straight from the top of the page: its bottom at the
+     bottom of the screen, the figures below it under the screen. */
+  await page.evaluate((bottom) => {
+    window.scrollTo({ top: bottom - window.innerHeight, behavior: 'instant' });
+  }, firstLineBottom);
+  for (const { value, figure } of firstLine) {
+    await expect(figure, `the figure "${value}" of the first line is in view`).toBeInViewport();
+  }
+  for (const { value, figure } of below) {
+    await expect(figure, `the figure "${value}" is below the screen`).not.toBeInViewport();
+  }
+  /* Time passes, on the page's real clock, as the visitor lives it: long enough for a counter
+     started when the first line came into view to reach its target. */
+  await page.waitForTimeout(3000);
+  for (const { value, figure } of below) {
+    await expect(figure, `the figure "${value}" is still below the screen`).not.toBeInViewport();
+    /* On screen, whitespace excluded: 0 alone, so neither the full value, nor its number alone,
+       nor 0 with the rest of the value can pass. Text that only assistive technologies get does
+       not count. */
+    expect(await textOnScreen(figure), `what the figure "${value}" shows while below the screen`).toBe('0');
+  }
+  /* The visitor scrolls down to the figures below the first line. */
+  await below[below.length - 1].figure.scrollIntoViewIfNeeded();
+  for (const { value, figure } of below) {
+    await expect(figure, `the figure "${value}" has come into view`).toBeInViewport();
+  }
+  /* On screen, each of them shows its full value, whole, within 3 s. */
+  for (const { value, figure } of below) {
+    await expect
+      .poll(() => textOnScreen(figure), { message: `what the figure "${value}" shows on screen`, timeout: 3000 })
+      .toBe(value);
+  }
+});
+
 test('with JavaScript, on the French home page, once the section "Parcours" comes into view, each key figure passes through a number between 0 and its own, shown alone without the rest of its value, before it shows its full value', async ({
   page,
 }) => {
