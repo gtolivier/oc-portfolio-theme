@@ -15,6 +15,7 @@ import {
   SITE_WITH_BACKGROUND_SKILLS_AS_A_LIST_OF_TEXTS,
   SITE_WITH_A_SKILL_GROUP_WHOSE_ITEMS_ARE_A_TEXT,
   SITE_WITH_EDUCATION_AS_A_TEXT,
+  SITE_WITH_EDUCATION_AS_A_LIST_OF_TABLES,
   SITE_WITH_A_BACKGROUND_INTRO_AS_A_TEXT,
   buildSite,
   removeDirectory,
@@ -1622,6 +1623,24 @@ test.describe('background content errors: build failure', () => {
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors, 'the error message should say the education must be a list').toMatch(
       /\bbackground:.*\beducation\b.*\blist\b/,
+    );
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+  });
+
+  test('a home page whose education entries are written as tables rather than texts ([[params.background.education]]) makes the site build fail, with an error message that says the education entries must be texts, without a template execution error after it', () => {
+    /* tests/fixtures/diploma-tables/content/_index.md writes its only education entry as a table,
+       [[params.background.education]], with a diploma and a school field, rather than as a text:
+       Hugo reads the education as a list, but of tables rather than of texts, and the section
+       would show the table's raw printout rather than an entry. Rather than that, the person
+       building the site must get an error message that says, on its own line, that the education
+       entries must be texts, whatever the rest of the wording, and no Go template execution error
+       that would follow it and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_EDUCATION_AS_A_LIST_OF_TABLES);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the error message should say the education entries must be texts').toMatch(
+      /\bbackground:.*\beducation\b.*\btexts?\b/,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       /execute of template failed|error calling/i,

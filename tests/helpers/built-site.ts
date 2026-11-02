@@ -712,6 +712,14 @@ export const SITE_WITH_A_SKILL_GROUP_WHOSE_ITEMS_ARE_A_TEXT = testSite('know-how
    assertion looks for. */
 export const SITE_WITH_EDUCATION_AS_A_TEXT = testSite('diploma-as-text');
 
+/* The example site's French home page writes its education entries as a list of texts: this site
+   replaces that home page with the one of tests/fixtures/diploma-tables/content, without a hero,
+   clients nor projects, whose background declares a fictional stonemason's only education entry
+   as a list of tables, [[params.background.education]], with a diploma and a school field, rather
+   than as a list of texts. Its folder name avoids the words background, education and text, which
+   the error-message assertion looks for. */
+export const SITE_WITH_EDUCATION_AS_A_LIST_OF_TABLES = testSite('diploma-tables');
+
 /* The example site's French home page writes its background intro as a list of texts, one per
    line: this site replaces that home page with the one of tests/fixtures/preamble-as-text/content,
    without a hero, clients nor projects, whose background declares a fictional clock restorer's
