@@ -1002,6 +1002,11 @@ tick-field > canvas {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  /* No skill groups: no right column to leave empty, the other parts take the full width. */
+  .background:not(:has(> .background-skill-groups)) > * {
+    grid-column: 1 / -1;
+  }
+
   /* Skill groups alone: no left column to leave empty, they take the full width. */
   .background > h2 + .background-skill-groups {
     grid-column: 1 / -1;
