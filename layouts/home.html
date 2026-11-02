@@ -5,6 +5,7 @@
   <div class="first-screen{{ if .Params.hero }} has-hero{{ end }}">
     {{- with .Params.hero }}
     {{- if not site.Params.author }}{{ errorf "hero: the site's author parameter is not set" }}{{ end }}
+    {{- $lang := site.Language.Lang }}
     <tick-field class="hero" role="region" aria-labelledby="hero-heading">
       {{- /* The hero decodes faster than the default pace. The name and the title start decoding together. */}}
       {{- $heroLetterMs := 40 }}
@@ -14,7 +15,7 @@
         {{- end }}
       </h1>
       {{- with .tagline }}
-      {{- $tagline := partial "list-or-empty.html" (dict "value" . "error" (printf "hero: the tagline must be a list (language: %s)" site.Language.Lang)) }}
+      {{- $tagline := partial "list-or-empty.html" (dict "value" . "error" (printf "hero: the tagline must be a list (language: %s)" $lang)) }}
       <p class="hero-tagline">
         {{- partial "lines.html" $tagline -}}
       </p>
@@ -23,7 +24,7 @@
       <p class="hero-stack">{{ delimit . $stackSeparator }}</p>
       {{- end }}
       {{- with .actions }}
-      {{- $actions := partial "list-or-empty.html" (dict "value" . "error" (printf "hero: the buttons must be written as a list of tables, [[params.hero.actions]], with double brackets (language: %s)" site.Language.Lang)) }}
+      {{- $actions := partial "list-or-empty.html" (dict "value" . "error" (printf "hero: the buttons must be written as a list of tables, [[params.hero.actions]], with double brackets (language: %s)" $lang)) }}
       <p class="hero-actions">
         {{- range $index, $action := $actions }}
         {{ partial "hero/action.html" (dict "action" $action "position" (add $index 1)) }}
