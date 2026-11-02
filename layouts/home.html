@@ -2,10 +2,10 @@
   {{- /* The hero and the project cards list a stack the same way. */}}
   {{- $stackSeparator := " · " }}
   {{- if or .Params.hero .Params.clients }}
+  {{- $lang := site.Language.Lang }}
   <div class="first-screen{{ if .Params.hero }} has-hero{{ end }}">
     {{- with .Params.hero }}
     {{- if not site.Params.author }}{{ errorf "hero: the site's author parameter is not set" }}{{ end }}
-    {{- $lang := site.Language.Lang }}
     <tick-field class="hero" role="region" aria-labelledby="hero-heading">
       {{- /* The hero decodes faster than the default pace. The name and the title start decoding together. */}}
       {{- $heroLetterMs := 40 }}
@@ -35,7 +35,7 @@
     </tick-field>
     {{- end }}
     {{- with .Params.clients }}
-    {{- $clients := partial "list-or-empty.html" (dict "value" . "error" (printf "clients: the home page's clients parameter must be a list of names (language: %s)" site.Language.Lang)) }}
+    {{- $clients := partial "list-or-empty.html" (dict "value" . "error" (printf "clients: the home page's clients parameter must be a list of names (language: %s)" $lang)) }}
     {{- /* As in text-list-or-empty.html, an entry error below empties the list, so the band shows no names. */}}
     {{- range $index, $client := $clients }}
     {{- $entryNumber := add $index 1 }}
