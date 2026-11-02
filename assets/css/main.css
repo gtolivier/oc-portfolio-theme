@@ -862,6 +862,11 @@ tick-field > canvas {
 }
 
 .background-stats dt {
+  /* With JavaScript, a key figure shows 0 over its value, which stays in place but invisible. As
+     flex items, the value and the 0 are as tall as the line, rather than overflowing it at a line
+     height of 1. */
+  position: relative;
+  display: flex;
   font-family: var(--font-mono);
   font-size: 56px;
   font-weight: 700;
@@ -876,14 +881,6 @@ tick-field > canvas {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgb(var(--color-paper-channels) / 0.75);
-}
-
-/* With JavaScript, a key figure shows 0 over its value, which stays in place but invisible. As
-   flex items, the value and the 0 are as tall as the line, rather than overflowing it at a line
-   height of 1. */
-.background-stats dt {
-  position: relative;
-  display: flex;
 }
 
 .background-stats dt:not(.is-counted) .figure-value {
