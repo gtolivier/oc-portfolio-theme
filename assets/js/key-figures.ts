@@ -1,4 +1,4 @@
-/* The key figures of the background section show 0 until the figures come into view, then count
+/* The key figures of the background section show 0 until each figure comes into view, then count
    up to their value. With JavaScript, a 0 is drawn over each value, which stays in the page,
    invisible, for assistive technologies and to keep the figure's width; once counted, the 0 goes
    and the value shows. Without JavaScript, or when the visitor asks for reduced motion, at load
@@ -53,9 +53,10 @@ const countUp = (figures: KeyFigure[]): void => {
 if (terms.length > 0 && !reducedMotion.matches) {
   const figures = terms.map(prepare);
   const observer = new IntersectionObserver((entries) => {
-    if (entries.some((entry) => entry.isIntersecting)) {
-      observer.disconnect();
-      countUp(figures);
+    const visible = entries.filter((entry) => entry.isIntersecting);
+    visible.forEach((entry) => observer.unobserve(entry.target));
+    if (visible.length > 0) {
+      countUp(figures.filter(({ term }) => visible.some((entry) => entry.target === term)));
     }
   });
   terms.forEach((term) => observer.observe(term));
