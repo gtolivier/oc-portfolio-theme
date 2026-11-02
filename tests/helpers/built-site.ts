@@ -736,6 +736,14 @@ export const SITE_WITH_A_BACKGROUND_INTRO_AS_A_TEXT = testSite('preamble-as-text
    error-message assertion looks for. */
 export const SITE_WITH_A_BACKGROUND_INTRO_AS_A_LIST_OF_TABLES = testSite('preamble-tables');
 
+/* The example site's French home page declares every part of its background as a list: this site
+   replaces that home page with the one of tests/fixtures/blank-background-values/content, without
+   a hero, clients nor projects, whose [params.background] writes its key figures, intro and
+   education as empty values rather than leaving them out, one of each kind, stats = '',
+   intro = false, education = 0, and declares a fictional basket weaver's two skill groups,
+   "Tressage" of two items and "Teinture" of one. */
+export const SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES = testSite('blank-background-values');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

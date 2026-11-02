@@ -18,6 +18,7 @@ import {
   SITE_WITH_EDUCATION_AS_A_LIST_OF_TABLES,
   SITE_WITH_A_BACKGROUND_INTRO_AS_A_TEXT,
   SITE_WITH_A_BACKGROUND_INTRO_AS_A_LIST_OF_TABLES,
+  SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1337,6 +1338,67 @@ test.describe('home page of another site, with a background of skill groups only
       Math.abs(groupsLeft - heading.left),
       `left edge of the skill groups (${groupsLeft} px) against the left edge of the section heading (${heading.left} px)`,
     ).toBeLessThanOrEqual(1);
+  });
+});
+
+/* What tests/fixtures/blank-background-values/content/_index.md declares for its background: a
+   basket weaver's skill groups, of two and one items, next to key figures, intro and education
+   written as empty values, stats = '', intro = false, education = 0. */
+const SKILL_GROUPS_NEXT_TO_EMPTY_VALUES = [
+  { title: 'Tressage', items: ['Paniers d’osier', 'Clôtures de saule'] },
+  { title: 'Teinture', items: ['Brou de noix'] },
+];
+
+test.describe('home page of another site, with a background whose key figures, intro and education are empty values', () => {
+  test('a home page whose key figures, intro and education are written as empty values (\'\', false, 0) builds, and its section "Parcours" shows its skill groups, with no empty slot for key figures, intro lines or education entries', async ({
+    page,
+    context,
+  }) => {
+    /* An empty text, false or 0 says "nothing here" as an omitted key or an empty list does: the
+       person building the site must get a site, not a build error nor a template execution
+       error. */
+    const build = tryToBuildSite(SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES);
+    expect(build.succeeded, `the site build should succeed, Hugo said:\n${build.errors}`).toBe(true);
+    const siteDirectory = buildSite(SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES);
+    try {
+      await serveSite(context, SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES, siteDirectory);
+      await page.goto(`${SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES.origin}/fr/`);
+      const section = backgroundSection(page);
+      await expect(section).toBeVisible();
+      await expectSkillGroups(section, SKILL_GROUPS_NEXT_TO_EMPTY_VALUES);
+      /* No empty slot an assistive technology would announce: no paragraph, no term or definition
+         of a key figure, and no list but the groups' own, each holding its items. */
+      await expect(section.getByRole('paragraph'), 'paragraphs of the section').toHaveCount(0);
+      await expect(section.getByRole('term'), 'terms of the section').toHaveCount(0);
+      await expect(section.getByRole('definition'), 'definitions of the section').toHaveCount(0);
+      await expect(section.getByRole('list'), 'lists of the section').toHaveCount(
+        SKILL_GROUPS_NEXT_TO_EMPTY_VALUES.length,
+      );
+      /* No empty slot a visitor would see: every element of the section that takes room on screen
+         is the section heading, a group heading or a group list, holds one of them or sits inside
+         one of them. */
+      const filled = [
+        ...(await section.getByRole('heading', { level: 2 }).elementHandles()),
+        ...(await section.getByRole('heading', { level: 3 }).elementHandles()),
+        ...(await section.getByRole('list').elementHandles()),
+      ];
+      const strayElements = await section.evaluate(
+        (root, parts) =>
+          Array.from(root.querySelectorAll('*'))
+            .filter((element) => {
+              const box = element.getBoundingClientRect();
+              return box.width > 0 && box.height > 0;
+            })
+            .filter((element) => !parts.some((part) => part.contains(element) || element.contains(part)))
+            .map((element) => element.outerHTML),
+        filled,
+      );
+      expect(strayElements, 'elements of the section taking room on screen outside its headings and groups').toEqual(
+        [],
+      );
+    } finally {
+      removeDirectory(siteDirectory);
+    }
   });
 });
 
