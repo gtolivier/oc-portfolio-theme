@@ -35,7 +35,7 @@
     </tick-field>
     {{- end }}
     {{- with .Params.clients }}
-    {{- $clients := partial "list-or-empty.html" (dict "value" . "error" "clients: the home page's clients parameter must be a list of names") }}
+    {{- $clients := partial "list-or-empty.html" (dict "value" . "error" (printf "clients: the home page's clients parameter must be a list of names (language: %s)" site.Language.Lang)) }}
     {{- /* As in text-list-or-empty.html, an entry error below empties the list, so the band shows no names. */}}
     {{- range $index, $client := $clients }}
     {{- $entryNumber := add $index 1 }}
