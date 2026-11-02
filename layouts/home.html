@@ -122,6 +122,9 @@
     </dl>
     {{- end }}
     {{- $intro := partial "list-or-empty.html" (dict "value" $background.intro "error" "background: the intro must be a list") }}
+    {{- range $intro }}
+    {{- if eq (partial "text-problem.html" .) "not-text" }}{{ errorf "background: the intro lines must be texts" }}{{ $intro = slice }}{{ end }}
+    {{- end }}
     {{- with $intro }}
     <p class="background-intro">
       {{- partial "lines.html" . -}}
