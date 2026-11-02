@@ -14,8 +14,9 @@
         {{- end }}
       </h1>
       {{- with .tagline }}
+      {{- $tagline := partial "list-or-empty.html" (dict "value" . "error" "hero: the tagline must be a list") }}
       <p class="hero-tagline">
-        {{- partial "lines.html" . -}}
+        {{- partial "lines.html" $tagline -}}
       </p>
       {{- end }}
       {{- with .stack }}
