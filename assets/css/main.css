@@ -820,6 +820,13 @@ tick-field > canvas {
   padding: 56px max(var(--page-gutter), (100% - var(--section-max-width)) / 2);
 }
 
+@media (min-width: 768px) {
+  .projects,
+  .background {
+    padding-block: 96px;
+  }
+}
+
 .projects h2,
 .background > h2 {
   font-family: var(--font-mono);
@@ -828,15 +835,19 @@ tick-field > canvas {
 }
 
 /* The section number is decorative: its empty alternative text keeps it out
-   of the heading's accessible name, and so out of the region's. */
-.projects h2::before {
-  content: '01 // ' / '';
-  color: var(--color-accent-dark);
+   of the heading's accessible name, and so out of the region's. Each section
+   sets its number and colour. */
+.projects h2::before,
+.background h2::before {
+  content: var(--section-number) / '';
+  color: var(--section-number-color);
 }
 
 /* Dark section, below the light projects section. Each part is a direct
    child, spaced by its top margin, so that a part left out leaves no gap. */
 .background {
+  --section-number: '02 // ';
+  --section-number-color: var(--color-accent);
   /* From the heading to the first part. */
   --background-heading-space: 40px;
   /* Between the key figures, the intro and the education. */
@@ -858,11 +869,6 @@ tick-field > canvas {
 
 .background > h2 {
   margin-bottom: var(--background-heading-space);
-}
-
-.background h2::before {
-  content: '02 // ' / '';
-  color: var(--color-accent);
 }
 
 .background-stats {
@@ -985,7 +991,6 @@ tick-field > canvas {
     grid-template-rows: auto auto auto auto 1fr;
     column-gap: 48px;
     align-items: start;
-    padding-block: 96px;
   }
 
   .background > h2 {
@@ -1025,6 +1030,8 @@ tick-field > canvas {
 /* Light section: dark cards on the paper background. The header takes a
    line of its own, then the cards fill one line each, two from 1024 px. */
 .projects {
+  --section-number: '01 // ';
+  --section-number-color: var(--color-accent-dark);
   /* Between two cards, and between two lines of the section. */
   --projects-gap: 24px;
   /* From the header to the first card. */
@@ -1207,7 +1214,6 @@ tick-field > canvas {
   .projects {
     --projects-gap: 28px;
     --projects-header-space: 56px;
-    padding-block: 96px;
   }
 
   /* The heading starts at half the line, so the link fits beside it, and
