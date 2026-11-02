@@ -1166,6 +1166,34 @@ test.describe('home page of another site, with a background of skill groups only
     );
     expect(strayElements, 'elements of the section taking room on screen outside its headings and groups').toEqual([]);
   });
+
+  test('on a wide window, the section "Parcours" of a home page whose background declares only skill groups uses its full width: the skill groups start at the left edge of the section heading, with no empty column for key figures, intro or education entries', async ({
+    page,
+    context,
+  }) => {
+    await serveSite(context, SITE_WITH_A_SKILLS_ONLY_BACKGROUND, siteDirectory);
+    await page.setViewportSize(WIDE_WINDOW);
+    await page.goto(`${SITE_WITH_A_SKILLS_ONLY_BACKGROUND.origin}/fr/`);
+    await page.evaluate(() => document.fonts.ready);
+    const section = backgroundSection(page);
+    await expect(section).toBeVisible();
+    const heading = await unionBox(section.getByRole('heading', { level: 2 }));
+    /* Each skill group: its heading and its list. */
+    const groups: Box[] = [];
+    for (const { title, items } of SKILLS_ONLY_GROUPS) {
+      groups.push(
+        await unionBox(
+          section.getByRole('heading', { level: 3, name: title, exact: true }),
+          section.getByRole('list').filter({ has: page.getByRole('listitem').filter({ hasText: items[0] }) }),
+        ),
+      );
+    }
+    const groupsLeft = Math.min(...groups.map((box) => box.left));
+    expect(
+      Math.abs(groupsLeft - heading.left),
+      `left edge of the skill groups (${groupsLeft} px) against the left edge of the section heading (${heading.left} px)`,
+    ).toBeLessThanOrEqual(1);
+  });
 });
 
 test.describe('home page of another site, with long words in its background', () => {
