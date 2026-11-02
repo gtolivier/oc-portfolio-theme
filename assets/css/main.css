@@ -909,6 +909,17 @@ tick-field > canvas {
   inset: 0 auto auto 0;
 }
 
+/* On paper, the full values show, not the 0 of a count that never ran. */
+@media print {
+  .background-stats dt:not(.is-counted) .figure-value {
+    opacity: 1;
+  }
+
+  .background-stats .figure-zero {
+    display: none;
+  }
+}
+
 .background-intro {
   overflow-wrap: anywhere;
   font-size: 16px;
