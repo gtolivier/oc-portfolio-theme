@@ -3,6 +3,7 @@ import {
   SITE_WITHOUT_HERO,
   SITE_WITH_ANOTHER_BACKGROUND,
   SITE_WITH_A_SKILLS_ONLY_BACKGROUND,
+  SITE_WITH_A_BACKGROUND_WITHOUT_SKILLS,
   SITE_WITH_AN_EMPTY_BACKGROUND,
   SITE_WITH_LONG_BACKGROUND_WORDS,
   SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE,
@@ -1193,6 +1194,75 @@ test.describe('home page of another site, with a background of skill groups only
       Math.abs(groupsLeft - heading.left),
       `left edge of the skill groups (${groupsLeft} px) against the left edge of the section heading (${heading.left} px)`,
     ).toBeLessThanOrEqual(1);
+  });
+});
+
+/* What tests/fixtures/background-without-skills/content/_index.md declares for its background: a
+   bookbinder's four key figures, two long intro lines and two long education entries, and no skill
+   groups. Every part is wide enough to reach past the middle of the section when it has its full
+   width. */
+const BACKGROUND_WITHOUT_SKILLS = {
+  keyFigures: [
+    { value: '18', label: 'Ans de reliure à la main' },
+    { value: '900+', label: 'Ouvrages reliés et restaurés' },
+    { value: '35', label: 'Éditions numérotées' },
+    { value: '6', label: 'Apprentis accompagnés' },
+  ],
+  intro: [
+    'Relieuse d’art installée depuis 2006 dans un atelier fictif des pentes de la Croix-Rousse, entre papiers marbrés, cuirs teints à la main et presses anciennes.',
+    'Reliures de création, restauration de registres et petites éditions numérotées pour des bibliothèques et des collectionneurs.',
+  ],
+  education: [
+    'Diplôme des métiers d’art en reliure et dorure — École fictive des arts du livre de Lyon, promotion 2005',
+    'Certificat de restauration des documents graphiques — Institut fictif du patrimoine écrit, 2007',
+  ],
+};
+
+test.describe('home page of another site, with a background without skill groups', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_BACKGROUND_WITHOUT_SKILLS);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a wide window, the section "Parcours" of a home page whose background declares no skill groups uses its full width: the key figures, the intro and the education entries reach past the middle of the section, with no empty column left for skill groups', async ({
+    page,
+    context,
+  }) => {
+    await serveSite(context, SITE_WITH_A_BACKGROUND_WITHOUT_SKILLS, siteDirectory);
+    await page.setViewportSize(WIDE_WINDOW);
+    await page.goto(`${SITE_WITH_A_BACKGROUND_WITHOUT_SKILLS.origin}/fr/`);
+    await page.evaluate(() => document.fonts.ready);
+    const section = backgroundSection(page);
+    await expect(section).toBeVisible();
+    const sectionBox = await unionBox(section);
+    const middle = (sectionBox.left + sectionBox.right) / 2;
+    /* The key figures: every value and label shown. */
+    const figures = await unionBox(
+      ...BACKGROUND_WITHOUT_SKILLS.keyFigures.flatMap(({ value, label }) => [
+        section.getByText(value, { exact: true }),
+        section.getByText(label, { exact: true }),
+      ]),
+    );
+    const intro = await unionBox(
+      section.getByRole('paragraph').filter({ hasText: BACKGROUND_WITHOUT_SKILLS.intro[0] }),
+    );
+    const education = await unionBox(
+      section.getByRole('list').filter({
+        has: page.getByRole('listitem').filter({ hasText: BACKGROUND_WITHOUT_SKILLS.education[0] }),
+      }),
+    );
+    for (const [name, box] of [
+      ['the key figures', figures],
+      ['the intro', intro],
+      ['the education entries', education],
+    ] as const) {
+      expect
+        .soft(box.right, `right edge of ${name} against the middle of the section (${middle} px)`)
+        .toBeGreaterThan(middle);
+    }
   });
 });
 

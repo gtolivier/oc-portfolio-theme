@@ -611,6 +611,12 @@ export const SITE_WITH_ANOTHER_BACKGROUND = testSite('other-background');
 export const SITE_WITH_A_SKILLS_ONLY_BACKGROUND = testSite('skills-only-background');
 
 /* The example site's French home page declares every part of its background: this site replaces
+   that home page with the one of tests/fixtures/background-without-skills/content, without a hero,
+   clients nor projects, whose [params.background] declares a fictional bookbinder's four key
+   figures, two long intro lines and two long education entries, and no skill groups. */
+export const SITE_WITH_A_BACKGROUND_WITHOUT_SKILLS = testSite('background-without-skills');
+
+/* The example site's French home page declares every part of its background: this site replaces
    that home page with the one of tests/fixtures/empty-background/content, without a hero, clients
    nor projects, whose [params.background] declares its key figures, intro lines, education
    entries and skill groups as empty lists, stats = [], intro = [], education = [], skills = [],
