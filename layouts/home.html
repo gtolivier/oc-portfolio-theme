@@ -121,19 +121,13 @@
       {{- end }}
     </dl>
     {{- end }}
-    {{- $intro := partial "list-or-empty.html" (dict "value" $background.intro "error" "background: the intro must be a list") }}
-    {{- range $intro }}
-    {{- if eq (partial "text-problem.html" .) "not-text" }}{{ errorf "background: the intro lines must be texts" }}{{ $intro = slice }}{{ end }}
-    {{- end }}
+    {{- $intro := partial "text-list-or-empty.html" (dict "value" $background.intro "error" "background: the intro must be a list" "entryError" "background: the intro lines must be texts") }}
     {{- with $intro }}
     <p class="background-intro">
       {{- partial "lines.html" . -}}
     </p>
     {{- end }}
-    {{- $education := partial "list-or-empty.html" (dict "value" $background.education "error" "background: the education must be a list") }}
-    {{- range $education }}
-    {{- if eq (partial "text-problem.html" .) "not-text" }}{{ errorf "background: the education entries must be texts" }}{{ $education = slice }}{{ end }}
-    {{- end }}
+    {{- $education := partial "text-list-or-empty.html" (dict "value" $background.education "error" "background: the education must be a list" "entryError" "background: the education entries must be texts") }}
     {{- with $education }}
     <ul class="background-education">
       {{- range . }}

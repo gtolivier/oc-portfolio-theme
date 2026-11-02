@@ -1,0 +1,7 @@
+{{- /* A front matter value that must be a list of texts: the list from list-or-empty.html, or else an empty list, after raising the caller's entryError when an entry is not a text. */}}
+{{- $list := partial "list-or-empty.html" (dict "value" .value "error" .error) }}
+{{- $entryError := .entryError }}
+{{- range $list }}
+{{- if eq (partial "text-problem.html" .) "not-text" }}{{ errorf $entryError }}{{ $list = slice }}{{ end }}
+{{- end }}
+{{- return $list }}
