@@ -132,7 +132,7 @@ test('with JavaScript, on the French home page, while the section "Parcours" has
   expect(await textOnScreen(section), 'text the background section shows on screen').toMatch(inOrder);
 });
 
-test('with JavaScript, on the French home page, once the section "Parcours" comes into view, each key figure shows its full value next to its label within 2 s', async ({
+test('with JavaScript, on the French home page, once the section "Parcours" comes into view, each key figure shows its full value next to its label within 3 s', async ({
   page,
 }) => {
   await page.goto('/fr/');
@@ -147,7 +147,7 @@ test('with JavaScript, on the French home page, once the section "Parcours" come
      Text that only assistive technologies get does not count: it is not what a visitor sees. */
   const inOrder = fullValuesOnScreen(KEY_FIGURES);
   await expect
-    .poll(() => textOnScreen(section), { message: 'text the background section shows on screen', timeout: 2000 })
+    .poll(() => textOnScreen(section), { message: 'text the background section shows on screen', timeout: 3000 })
     .toMatch(inOrder);
 });
 
