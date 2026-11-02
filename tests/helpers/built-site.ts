@@ -744,6 +744,13 @@ export const SITE_WITH_A_BACKGROUND_INTRO_AS_A_LIST_OF_TABLES = testSite('preamb
    "Tressage" of two items and "Teinture" of one. */
 export const SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES = testSite('blank-background-values');
 
+/* The example site's French home page writes each skill group's items as a list: this site
+   replaces that home page with the one of tests/fixtures/blank-know-how/content, without a hero,
+   clients nor projects, whose [params.background] declares only a fictional cabinetmaker's two
+   skill groups, "Marqueterie" and "Dorure", whose items are written as empty values rather than
+   left out, items = '' and items = false. */
+export const SITE_WITH_SKILL_GROUP_ITEMS_AS_EMPTY_VALUES = testSite('blank-know-how');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

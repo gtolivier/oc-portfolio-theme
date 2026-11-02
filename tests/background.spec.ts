@@ -19,6 +19,7 @@ import {
   SITE_WITH_A_BACKGROUND_INTRO_AS_A_TEXT,
   SITE_WITH_A_BACKGROUND_INTRO_AS_A_LIST_OF_TABLES,
   SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES,
+  SITE_WITH_SKILL_GROUP_ITEMS_AS_EMPTY_VALUES,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1396,6 +1397,42 @@ test.describe('home page of another site, with a background whose key figures, i
       expect(strayElements, 'elements of the section taking room on screen outside its headings and groups').toEqual(
         [],
       );
+    } finally {
+      removeDirectory(siteDirectory);
+    }
+  });
+});
+
+/* The titles of the skill groups tests/fixtures/blank-know-how/content/_index.md declares, in
+   order: a cabinetmaker's groups whose items are written as empty values, items = '' then
+   items = false. */
+const SKILL_GROUPS_WITH_EMPTY_ITEMS = ['Marqueterie', 'Dorure'];
+
+test.describe('home page of another site, with skill groups whose items are empty values', () => {
+  test("a home page whose skill groups' items are written as empty values ('', false) builds, and its section \"Parcours\" shows each of those groups with its title and no items", async ({
+    page,
+    context,
+  }) => {
+    /* An empty text or false says "nothing here" as an omitted key or an empty list does: the
+       person building the site must get a site, not a build error nor a template execution
+       error. */
+    const build = tryToBuildSite(SITE_WITH_SKILL_GROUP_ITEMS_AS_EMPTY_VALUES);
+    expect(build.succeeded, `the site build should succeed, Hugo said:\n${build.errors}`).toBe(true);
+    const siteDirectory = buildSite(SITE_WITH_SKILL_GROUP_ITEMS_AS_EMPTY_VALUES);
+    try {
+      await serveSite(context, SITE_WITH_SKILL_GROUP_ITEMS_AS_EMPTY_VALUES, siteDirectory);
+      await page.goto(`${SITE_WITH_SKILL_GROUP_ITEMS_AS_EMPTY_VALUES.origin}/fr/`);
+      const section = backgroundSection(page);
+      await expect(section).toBeVisible();
+      /* Each group: a visible level-3 heading named by its title, in the order declared. */
+      const headings = section.getByRole('heading', { level: 3 });
+      await expect(headings, 'the headings of the skill groups, in order').toHaveText(SKILL_GROUPS_WITH_EMPTY_ITEMS);
+      for (const title of SKILL_GROUPS_WITH_EMPTY_ITEMS) {
+        await expect(section.getByRole('heading', { level: 3, name: title, exact: true })).toBeVisible();
+      }
+      /* No items, and no empty list an assistive technology would announce. */
+      await expect(section.getByRole('listitem'), 'items of the section').toHaveCount(0);
+      await expect(section.getByRole('list'), 'lists of the section').toHaveCount(0);
     } finally {
       removeDirectory(siteDirectory);
     }
