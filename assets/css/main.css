@@ -916,6 +916,7 @@ tick-field > canvas {
 .background-education > li,
 .background-skills li {
   display: flex;
+  overflow-wrap: anywhere;
 }
 
 .background-education > li::before,
