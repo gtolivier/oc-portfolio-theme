@@ -1,4 +1,4 @@
-/* The key figures of the background section show 0 until the section comes into view, then count
+/* The key figures of the background section show 0 until the figures come into view, then count
    up to their value. With JavaScript, a 0 is drawn over each value, which stays in the page,
    invisible, for assistive technologies and to keep the figure's width; once counted, the 0 goes
    and the value shows. Without JavaScript, or when the visitor asks for reduced motion, at load
@@ -8,7 +8,6 @@ import { reducedMotionQuery } from './reduced-motion';
 const COUNT_MS = 1500;
 /* Fast at first, slowing down as it nears the value. */
 const easeOut = (progress: number): number => 1 - Math.pow(1 - progress, 3);
-const section = document.querySelector<HTMLElement>('.background');
 const values = Array.from(document.querySelectorAll<HTMLElement>('.background-stats dt'));
 const reducedMotion = reducedMotionQuery();
 
@@ -51,7 +50,7 @@ const countUp = (figures: KeyFigure[]): void => {
   step(start);
 };
 
-if (section && values.length > 0 && !reducedMotion.matches) {
+if (values.length > 0 && !reducedMotion.matches) {
   const figures = values.map(prepare);
   const observer = new IntersectionObserver((entries) => {
     if (entries.some((entry) => entry.isIntersecting)) {
