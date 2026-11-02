@@ -109,7 +109,8 @@
     {{- $stats := .Params.background.stats }}
     {{- if and $stats (not (reflect.IsSlice $stats)) }}{{ errorf "background: the key figures must be written as a list of tables, [[params.background.stats]], with double brackets" }}{{ $stats = slice }}{{ end }}
     {{- range $index, $stat := $stats }}
-    {{- if not (findRE `^\s*\d` (printf "%v" $stat.value)) }}{{ errorf "background: key figure %d must start with a whole number" (add $index 1) }}{{ $stats = slice }}{{ end }}
+    {{- if not (reflect.IsMap $stat) }}{{ errorf "background: the key figures must be written as a list of tables, [[params.background.stats]], with double brackets" }}{{ $stats = slice }}
+    {{- else if not (findRE `^\s*\d` (printf "%v" $stat.value)) }}{{ errorf "background: key figure %d must start with a whole number" (add $index 1) }}{{ $stats = slice }}{{ end }}
     {{- end }}
     {{- with $stats }}
     <dl class="background-stats">
