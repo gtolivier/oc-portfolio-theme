@@ -953,6 +953,7 @@ tick-field > canvas {
 
 .background-skills > h3 {
   margin: 0 0 16px;
+  overflow-wrap: anywhere;
   font-family: var(--font-mono);
   font-size: 16px;
   font-weight: 600;
