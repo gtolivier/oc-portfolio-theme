@@ -517,6 +517,60 @@ test('with JavaScript, on the French home page, when the visitor turns on prefer
     .toMatch(inOrder);
 });
 
+test('with JavaScript, on the French home page, while the key figures of the section "Parcours" climb, none of them ever shows a number below 0, even when an animation frame carries a time from before the climb started', async ({
+  page,
+}) => {
+  /* Time stands still from before the page loads, until the test advances it, step by step, to
+     watch the figures as they climb. */
+  await stopClockBeforeLoad(page);
+  /* As browsers may do, every animation frame the page asks for gets a time 10 ms earlier than
+     the one the page read just before asking for it. */
+  await page.addInitScript(() => {
+    const requestFrame = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = (callback: FrameRequestCallback): number => {
+      const askedAt = performance.now();
+      return requestFrame((time) => callback(Math.min(time, askedAt) - 10));
+    };
+  });
+  await page.goto('/fr/');
+  const section = backgroundSection(page);
+  /* Below the first screen on load, so that the figures start from 0. */
+  await expect(section).toHaveCount(1);
+  await expect(section).not.toBeInViewport();
+  const figures = KEY_FIGURES.map(({ value }) => ({
+    value,
+    target: parseInt(value, 10),
+    figure: section.getByRole('term').filter({ hasText: value }),
+  }));
+  for (const { value, figure } of figures) {
+    await expect(figure, `the figure "${value}"`).toHaveCount(1);
+  }
+  await section.scrollIntoViewIfNeeded();
+  await expect(section, 'the section has come into view').toBeInViewport();
+  /* Every 25 ms, for at most 5 s, until every figure shows its full value: what each figure shows
+     on screen (text that only assistive technologies get does not count), kept each time it holds
+     a minus sign or a number below 0. */
+  const belowZero: string[] = [];
+  let climbing = 0;
+  let allFull = false;
+  for (let elapsed = 0; elapsed <= 5000 && !allFull; elapsed += 25) {
+    if (elapsed > 0) await page.clock.runFor(25);
+    allFull = true;
+    for (const { value, target, figure } of figures) {
+      const shown = await textOnScreen(figure);
+      const number = parseInt(/[-−]?\d+/.exec(shown)?.[0].replace('−', '-') ?? '', 10);
+      if (/[-−]/.test(shown) || number < 0) {
+        belowZero.push(`at ${elapsed} ms, the figure "${value}" shows "${shown}"`);
+      }
+      if (number > 0 && number < target) climbing += 1;
+      if (shown !== value) allFull = false;
+    }
+  }
+  expect(belowZero, 'what the figures showed during the climb, when below 0').toEqual([]);
+  expect(climbing, 'moments when a figure showed a number between 0 and its own').toBeGreaterThan(0);
+  expect(allFull, 'every figure has come to show its full value').toBe(true);
+});
+
 /* The intro lines the example site's French home page declares (exampleSite/content/_index.md,
    [params.background] block, intro key: a list of strings, one per line), in the order its front
    matter lists them. */
