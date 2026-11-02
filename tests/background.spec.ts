@@ -689,6 +689,33 @@ test('with JavaScript, on the French home page, printing the page before the sec
   );
 });
 
+test('with JavaScript, printing the home page while the theme script is still on its way, as on a slow connection, shows each key figure’s full value next to its label, not a blank', async ({
+  page,
+}) => {
+  /* The theme's bundle is held back, as on a slow connection: the page is parsed and shown
+     before the script arrives. */
+  const script = await holdRequests(page, themeScriptUrl());
+  try {
+    await page.goto('/fr/', { waitUntil: 'commit' });
+    await script.requested;
+    const section = backgroundSection(page);
+    await expect(section).toHaveCount(1);
+    for (const { value } of KEY_FIGURES) {
+      await expect(section.getByRole('term').filter({ hasText: value }), `the figure "${value}"`).toHaveCount(1);
+    }
+    /* The visitor prints the page, the script still on its way. */
+    await page.emulateMedia({ media: 'print' });
+    /* On the printout, in reading order, whitespace excluded: each label comes right after its
+       full value, whole. Text that only assistive technologies get does not count: it is not what
+       the printout shows. */
+    expect(await textOnScreen(section), 'text the background section shows when printed').toMatch(
+      fullValuesOnScreen(KEY_FIGURES),
+    );
+  } finally {
+    await script.end();
+  }
+});
+
 test('with JavaScript, on the French home page, when the visitor turns on prefers-reduced-motion: reduce while the key figures of the section "Parcours" climb, each one shows its full value next to its label at once, rather than climbing on', async ({
   page,
 }) => {
