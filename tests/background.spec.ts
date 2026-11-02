@@ -716,6 +716,37 @@ test('with JavaScript, printing the home page while the theme script is still on
   }
 });
 
+test('when the request for the theme’s script never completes, the section "Parcours" of the French home page still shows each key figure’s full value on screen after a long wait, well past the slow-load case, instead of staying hidden', async ({
+  page,
+}) => {
+  /* The theme's bundle is requested but never arrives, nor fails, as on a connection that
+     stalls: the page is never fully parsed, since a deferred script holds DOMContentLoaded,
+     so the page's check for a failed script never runs. The request stays held for the whole
+     test. */
+  const script = await holdRequests(page, themeScriptUrl());
+  try {
+    await page.goto('/fr/', { waitUntil: 'commit' });
+    await script.requested;
+    const section = backgroundSection(page);
+    await expect(section).toHaveCount(1);
+    /* The visitor scrolls to the section, the script still on its way. */
+    await section.evaluate((element) => element.scrollIntoView());
+    await expect(section, 'the section has come into view').toBeInViewport();
+    /* A generous wait, longer than the one during which a slow script keeps the figures hidden,
+       not an exact delay: the visitor sees them eventually. On screen, in reading order,
+       whitespace excluded: each label comes right after its full value, whole. Text that only
+       assistive technologies get does not count: it is not what a visitor sees. */
+    await expect
+      .poll(() => textOnScreen(section), {
+        message: 'text the background section shows on screen while the script is held',
+        timeout: 15000,
+      })
+      .toMatch(fullValuesOnScreen(KEY_FIGURES));
+  } finally {
+    await script.end();
+  }
+});
+
 test('with JavaScript, on the French home page, when the visitor turns on prefers-reduced-motion: reduce while the key figures of the section "Parcours" climb, each one shows its full value next to its label at once, rather than climbing on', async ({
   page,
 }) => {
