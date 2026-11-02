@@ -3,6 +3,7 @@ import {
   SITE_WITHOUT_HERO,
   SITE_WITH_ANOTHER_BACKGROUND,
   SITE_WITH_A_SKILLS_ONLY_BACKGROUND,
+  SITE_WITH_AN_EMPTY_BACKGROUND,
   SITE_WITH_LONG_BACKGROUND_WORDS,
   SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE,
   SITE_WITH_BACKGROUND_STATS_AS_A_LIST_OF_TEXTS,
@@ -968,6 +969,34 @@ test.describe('home page of another site, without background', () => {
        displayed… */
     const main = page.getByRole('main');
     await expect(main.getByText('Accueil fictif sans hero')).toBeVisible();
+    /* …with no background section, named or not, even empty. */
+    await expect(page.getByRole('region', { name: 'Parcours' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Parcours' })).toHaveCount(0);
+    await expect(page.getByText('Parcours', { exact: true })).toHaveCount(0);
+    await expect(main.getByRole('region')).toHaveCount(0);
+    await expect(main.getByRole('heading')).toHaveCount(0);
+  });
+});
+
+test.describe('home page of another site, with a background that declares nothing to display', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_AN_EMPTY_BACKGROUND);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('a home page whose background declares neither key figures, intro, education nor skill groups (empty lists, or only keys the theme does not know) shows no section "Parcours": no such heading, no empty region', async ({
+    page,
+    context,
+  }) => {
+    await serveSite(context, SITE_WITH_AN_EMPTY_BACKGROUND, siteDirectory);
+    await page.goto(`${SITE_WITH_AN_EMPTY_BACKGROUND.origin}/fr/`);
+    /* tests/fixtures/empty-background/content/_index.md declares a params.background of empty
+       lists and of a key the theme does not know: its text is displayed… */
+    const main = page.getByRole('main');
+    await expect(main.getByText('Accueil fictif d’un parcours laissé vide')).toBeVisible();
     /* …with no background section, named or not, even empty. */
     await expect(page.getByRole('region', { name: 'Parcours' })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Parcours' })).toHaveCount(0);
