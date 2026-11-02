@@ -13,6 +13,7 @@ import {
   SITE_WITH_AN_UNPUBLISHED_SECTION_PAGE,
   SITE_WITH_PROJECTS_IN_TWO_SECTIONS,
   SITE_WITH_PROJECTS_AS_TEXT,
+  SITE_WITH_AN_ENGLISH_HOME_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT,
   SITE_WITH_PROJECTS_AS_FALSE,
   SITE_WITH_A_FEATURED_PROJECT_AS_MAP,
@@ -2262,6 +2263,42 @@ test.describe('featured project content errors: build failure', () => {
     expect(build.errors, 'the error message should say the projects parameter must be a list').toMatch(
       /\bprojects\s+parameter\b.*\blist\b/,
     );
+  });
+
+  test("a home page whose projects parameter is not a list makes the site build fail with an error message that names the home page's language, for a French home page and for an English one", () => {
+    /* A bilingual site has a home page per language, each with its own projects: a message saying
+       the projects parameter must be a list that does not say which language's home page is at
+       fault leaves the person building the site to look for it in every
+       content/_index.<language>.md file. The messages on the entries of the list already name the
+       home page's language by its code (fr, en); this one must name it too, whatever the rest of
+       the wording. The French home page comes from the fixture of the test of this message above,
+       tests/fixtures/single-ref-instead-of-list/content/_index.md; the English one, from
+       tests/fixtures/english-home-single-ref/content/_index.en.md, makes the same mistake. The
+       message, one line naming the projects parameter, must be there and name, on that line, the
+       home page's language, looked for, as in the clients' tests, as a word that no other word
+       follows. A French home page and an English one, so that a language written in the template
+       does not pass. */
+    const cases: { name: string; site: BuiltSite; language: string }[] = [
+      { name: 'a French home page with projects as a text', site: SITE_WITH_PROJECTS_AS_TEXT, language: 'fr' },
+      {
+        name: 'an English home page with projects as a text',
+        site: SITE_WITH_AN_ENGLISH_HOME_WITH_PROJECTS_AS_TEXT,
+        language: 'en',
+      },
+    ];
+    for (const { name, site, language } of cases) {
+      const build = tryToBuildSite(site);
+      expectProjectsBuildError(build, `with ${name}`);
+      const messages = build.errors.split('\n').filter((line) => /\bprojects\s+parameter\b/.test(line));
+      expect(
+        messages,
+        `with ${name}, one error message naming the projects parameter, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages.filter((line) => !new RegExp(languageCodePattern(language), 'u').test(line)),
+        `with ${name}, projects error messages that do not name the home page's language, ${language}`,
+      ).toEqual([]);
+    }
   });
 
   test('a home page whose projects list holds tables instead of page references makes the site build fail, with an error message that names the projects parameter and the position of each table, without a template execution error after it', () => {

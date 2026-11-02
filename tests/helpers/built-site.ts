@@ -396,6 +396,13 @@ export const SITE_WITH_PROJECTS_IN_TWO_SECTIONS = testSite('projects-in-two-sect
    which the error-message assertion looks for. */
 export const SITE_WITH_PROJECTS_AS_TEXT = testSite('single-ref-instead-of-list');
 
+/* The example site's English home page features its projects as a list of page references: this
+   site replaces that home page with the one of tests/fixtures/english-home-single-ref/content,
+   without a hero nor clients, whose params.projects is a text, 'projets/restauration-pendule',
+   instead of a list. The example site's French home page is unchanged. Its folder name avoids the
+   words projects and list and the language codes, which the error-message assertions look for. */
+export const SITE_WITH_AN_ENGLISH_HOME_WITH_PROJECTS_AS_TEXT = testSite('english-home-single-ref');
+
 /* Same as SITE_WITH_PROJECTS_AS_TEXT, with the home page of
    tests/fixtures/empty-text-instead-of-list/content, whose params.projects is an empty text, '',
    instead of a list. */
