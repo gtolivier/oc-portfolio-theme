@@ -123,6 +123,9 @@
   --tick-field-min-side-margin: 24px;
   --tick-field-min-vertical-margin: 18px;
   --tick-field-diagonal: ascending;
+  /* How long what waits for the theme script stays hidden when the script never arrives nor
+     fails, before showing anyway. */
+  --theme-script-stall-delay: 10s;
 }
 
 /* Without a language switcher, the first row is as tall as the logo on a
@@ -496,7 +499,7 @@ scramble-text {
   visibility: hidden;
   /* A script that never arrives nor fails would keep the text hidden for good:
      reveal it after a long wait. */
-  animation: reveal-undefined-text 0s 10s forwards;
+  animation: reveal-undefined-text 0s var(--theme-script-stall-delay) forwards;
 }
 
 @keyframes reveal-undefined-text {
@@ -910,7 +913,7 @@ tick-field > canvas {
   opacity: 0;
   /* A script that never arrives nor fails would keep them hidden for good: show them after a
      long wait. */
-  animation: reveal-figure 0s 10s forwards;
+  animation: reveal-figure 0s var(--theme-script-stall-delay) forwards;
 }
 
 @keyframes reveal-figure {
