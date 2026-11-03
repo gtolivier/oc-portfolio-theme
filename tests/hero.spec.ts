@@ -70,6 +70,7 @@ import {
   SITE_WITH_THE_HERO_TAGLINE_UNDER_THE_LAST_HERO_BUTTON,
   SITE_WITH_THE_HERO_TITLE_UNDER_THE_LAST_HERO_BUTTON,
   SITE_WITH_HERO_BUTTON_KEYS_WRITTEN_IN_ANOTHER_CASE,
+  SITE_WITH_A_HERO_BUTTON_PAGE_REF_WRITTEN_IN_LOWERCASE,
   TEMPLATE_EXECUTION_ERROR,
   type BuildAttempt,
   type BuiltSite,
@@ -2965,6 +2966,26 @@ test.describe('hero content errors: build failure', () => {
         `the error message about button ${position}'s ${key} should name neither button 1, button ${otherPosition} nor ${otherKey}`,
       ).toEqual([]);
     }
+  });
+
+  test('a home page whose hero button holds a pageref key written all in lowercase makes the build fail, with an error message that names that button by its position and the key as written', () => {
+    /* tests/fixtures/renvoi-minuscule/content/_index.md, a French home page, has two hero buttons,
+       each with a label: the first is well filled in, with pageRef = '/projets'; the second writes
+       pageref = '/projets', all in lowercase, without a url. The theme reads pageRef in exactly
+       that case: a key written all in lowercase is neither read nor, today, reported as a key
+       written in another case. The person building the site must get an error message that says,
+       on one line, which button holds it by its position, button 2, and names that key in the case
+       written, pageref, whatever the rest of the wording; a message that names pageRef only, as
+       the theme writes it, does not tell them which key to fix. That line must not name the well
+       filled-in first button, so that a message naming both buttons at once does not pass. */
+    const build = tryToBuildSite(SITE_WITH_A_HERO_BUTTON_PAGE_REF_WRITTEN_IN_LOWERCASE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors.split('\n').filter((line) => namesButton(2).test(line) && /\bpageref\b/.test(line));
+    expect(
+      messages,
+      `one error message should name button 2 and the pageref key it holds, as written, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], 'the error message about button 2 should not name button 1').not.toMatch(namesButton(1));
   });
 
   test("a home page where a hero button is not a table but a text, in a list whose other button is a table, makes the site build fail with a single hero error message that names that button by its position, says a button must be a table and names the home page's language, without a template execution error after it", () => {
