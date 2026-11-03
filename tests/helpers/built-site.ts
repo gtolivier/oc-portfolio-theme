@@ -1303,3 +1303,12 @@ export const SITE_WITH_A_WHITESPACE_ONLY_PROJECTS_SECTION_PARAM = testSite('sect
    button, tagline, hero, params, before, the numbers and the language codes, which the
    error-message assertions look for. */
 export const SITE_WITH_THE_HERO_TAGLINE_UNDER_THE_LAST_HERO_BUTTON = testSite('devise-sous-le-dernier-lien');
+
+/* Like the site above, this one replaces the example site's French home page with the one of
+   tests/fixtures/metier-sous-le-dernier-lien/content, without clients nor projects, whose hero is
+   well filled in, with a tagline, a stack and two well filled-in buttons, but whose hero title
+   key is written under the last [[params.hero.actions]] header, so that TOML puts it in the
+   second button's table instead of params.hero.title. The page's own title, written before
+   [params], stays where it is. Its folder name avoids the words button, title, hero, params,
+   before, the numbers and the language codes, which the error-message assertions look for. */
+export const SITE_WITH_THE_HERO_TITLE_UNDER_THE_LAST_HERO_BUTTON = testSite('metier-sous-le-dernier-lien');
