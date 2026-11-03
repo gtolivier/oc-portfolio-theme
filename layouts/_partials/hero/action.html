@@ -89,7 +89,10 @@
 {{- $hasMiscasedLabel := in $miscasedFields "label" }}
 {{- $hasLabel := isset $button "label" }}
 {{- $labelProblem := partial "text-problem.html" $button.label }}
-{{- if and $hasLabel (eq $labelProblem "not-text") }}
+{{- /* A label key left without a value (YAML null) is an empty label, not a wrong type. */}}
+{{- if and $hasLabel (eq (printf "%T" $button.label) "<nil>") }}
+  {{- errorf "hero: button %d: the label field is empty: it must be a text (language: %s)" $position $lang }}
+{{- else if and $hasLabel (eq $labelProblem "not-text") }}
   {{- errorf "hero: button %d: the label field must be a text (language: %s)" $position $lang }}
 {{- else if and $hasLabel (eq $labelProblem "empty") }}
   {{- errorf "hero: button %d: the label field is empty: it must be a text (language: %s)" $position $lang }}
