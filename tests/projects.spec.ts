@@ -2771,6 +2771,24 @@ test.describe('featured project content errors: build failure', () => {
     );
   });
 
+  test('a home page whose projects list references a page that cannot be found makes the site build fail, with an error message that gives a typo in the reference as a possible cause', () => {
+    /* tests/fixtures/featured-ref-without-page/content/_index.md features
+       'projets/restauration-pendule', an existing page, then 'projets/sablier-introuvable', which
+       no page answers, in any language, published or not. A reference typed wrong is as common a
+       cause as a project that does not exist, and the hero's message for a pageRef that matches
+       no page already names it: a projects message that leaves it out would send the person
+       building the site looking for a missing project or a publishing setting, while the project
+       is right there under another name. The projects message that cites this reference must, on
+       that same line, give a typo in the reference (typo, misspelled) as a possible cause,
+       whatever the rest of the wording. */
+    const build = tryToBuildSite(SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND);
+    expectProjectsBuildError(build);
+    expect(
+      build.errors,
+      'the projects error message that cites the missing reference should give a typo as a possible cause',
+    ).toMatch(/^(?=.*\bprojects:)(?=.*projets\/sablier-introuvable)(?=.*(?:\btypo|\bmisspel)).*$/im);
+  });
+
   test('a home page whose projects key is written under [params.hero] makes the site build fail, with an error message that says the projects parameter belongs to [params], before [params.hero], without a template execution error after it', () => {
     /* tests/fixtures/featured-list-in-the-banner/content/_index.md writes projects = [...] after
        the [params.hero] header, so that TOML puts it in the hero's table (params.hero.projects)
