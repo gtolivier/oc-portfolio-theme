@@ -59,9 +59,10 @@
 {{- if and $urlIsPadded (not $pageRefIsWrong) }}{{ errorf "hero: button %d: the url %q has whitespace at its start or end (language: %s)" $position $button.url $lang }}{{ end }}
 {{- if and $hasUrl $hasPageRef (not $pageRefIsWrong) (not $urlIsNotText) (not $urlIsPadded) }}{{ errorf "hero: button %d declares both a url field and a pageRef field; it needs only one (language: %s)" $position $lang }}{{ end }}
 {{- /* A url, a pageRef or a label written in another case is reported by its own error below, not as a missing field. */}}
+{{- $buttonFields := slice "label" "url" "pageRef" }}
 {{- $miscasedFields := slice }}
 {{- range $key, $_ := $button }}
-  {{- range $field := slice "label" "pageRef" "url" }}
+  {{- range $field := $buttonFields }}
     {{- if and (eq (lower $key) (lower $field)) (ne $key $field) }}{{ $miscasedFields = $miscasedFields | append $field }}{{ end }}
   {{- end }}
 {{- end }}
@@ -78,7 +79,7 @@
   {{- if isset $button $key }}{{ errorf "hero: button %d holds a %s key, which belongs to [params.hero], written before the buttons (language: %s)" $position $key $lang }}{{ end }}
 {{- end }}
 {{- /* A misplaced [params] or [params.hero] key already has its own error above: it is not reported as unknown too. */}}
-{{- $keysAsRead := union (slice "label" "url" "pageRef") $heroParamsKeys | union $homeParamsKeys }}
+{{- $keysAsRead := union $buttonFields $heroParamsKeys | union $homeParamsKeys }}
 {{- $knownKeys := slice }}
 {{- range $keysAsRead }}{{ $knownKeys = $knownKeys | append (lower .) }}{{ end }}
 {{- range $key, $_ := $button }}
