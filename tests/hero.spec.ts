@@ -15,6 +15,7 @@ import {
   SITE_WITH_A_HERO_TAGLINE_AS_AN_EMPTY_TEXT,
   SITE_WITH_A_HERO_TAGLINE_AS_FALSE,
   SITE_WITH_A_HERO_STACK_AS_A_TEXT,
+  SITE_WITH_A_HERO_TITLE_AS_A_LIST,
   SITE_WITH_A_HERO_WITH_LONG_WORDS,
   SITE_WITH_A_HERO_WITHOUT_TITLE,
   SITE_WITH_A_HERO_WITHOUT_CLIENTS,
@@ -2717,6 +2718,25 @@ test.describe('hero content errors: build failure', () => {
     );
     expect(stackMessages[0], "the error message should name the home page's language, fr").toMatch(
       new RegExp(languageCodePattern('fr'), 'u'),
+    );
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
+  });
+
+  test('a home page whose hero title is written as a list rather than a text makes the site build fail, with an error message that says the title must be a text, without a template execution error after it', () => {
+    /* tests/fixtures/two-trades-heading/content/_index.md, a French home page, writes its hero
+       title, the professional title shown in the h1 next to the author name, as a list of two
+       texts, ['Horloger', 'Graveur'], rather than a single text: counting the letters of a list in
+       a Go template raises an execution error, or the heading would show the list as it is.
+       Rather than that, the person building the site must get an error message that says, on its
+       own line, that the hero title must be a text, whatever the rest of the wording, and no Go
+       template execution error that would follow it and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_A_HERO_TITLE_AS_A_LIST);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const titleMessages = heroMessages(build.errors).filter((line) => /\btitle\b.*\btext\b/.test(line));
+    expect(titleMessages, `one hero error message saying the title must be a text, in:\n${build.errors}`).toHaveLength(
+      1,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       TEMPLATE_EXECUTION_ERROR,

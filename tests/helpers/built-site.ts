@@ -161,6 +161,14 @@ export const SITE_WITH_A_HERO_TAGLINE_AS_FALSE = testSite('false-instead-of-mott
    language codes. */
 export const SITE_WITH_A_HERO_STACK_AS_A_TEXT = testSite('materials-as-text');
 
+/* The example site's French home page writes its hero title as a single text: this site replaces
+   that home page with the one of tests/fixtures/two-trades-heading/content, without clients nor
+   projects, whose hero declares a fictional watchmaker's title as a list of two texts,
+   ['Horloger', 'Graveur'], rather than a single text, with a valid tagline and stack. Its folder
+   name avoids the words hero, title and text, which the error-message assertion looks for, and
+   the language codes. */
+export const SITE_WITH_A_HERO_TITLE_AS_A_LIST = testSite('two-trades-heading');
+
 /* The example site's French home page has a hero whose every button has a
    single destination: this site replaces that home page with the one of
    tests/fixtures/button-with-two-destinations/content, whose second button
