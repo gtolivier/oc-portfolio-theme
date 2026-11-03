@@ -20,31 +20,28 @@
 {{- $hasPageRef := isset $button "pageRef" }}
 {{- /* A wrong pageRef is fixed first: its own error replaces the
      both-fields one. */}}
-{{- $pageRefIsWrong := false }}
+{{- $pageRefError := "" }}
 {{- if $hasPageRef }}
   {{- $pageRefProblem := partial "text-problem.html" $pageRef }}
   {{- if eq $pageRefProblem "not-text" }}
-    {{- $pageRefIsWrong = true }}
-    {{- errorf "hero: button %d: the pageRef field must be a page reference, a text (language: %s)" $position $lang }}
+    {{- $pageRefError = printf "hero: button %d: the pageRef field must be a page reference, a text (language: %s)" $position $lang }}
   {{- else if eq $pageRefProblem "empty" }}
-    {{- $pageRefIsWrong = true }}
-    {{- errorf "hero: button %d: the pageRef field is empty: it must be a page reference (language: %s)" $position $lang }}
+    {{- $pageRefError = printf "hero: button %d: the pageRef field is empty: it must be a page reference (language: %s)" $position $lang }}
   {{- else if eq $pageRefProblem "padded" }}
-    {{- $pageRefIsWrong = true }}
-    {{- errorf "hero: button %d: the pageRef %q has whitespace at its start or end, which Hugo does not trim (language: %s)" $position $pageRef $lang }}
+    {{- $pageRefError = printf "hero: button %d: the pageRef %q has whitespace at its start or end, which Hugo does not trim (language: %s)" $position $pageRef $lang }}
   {{- else }}
     {{- with site.GetPage $pageRef }}
       {{- $href = .RelPermalink }}
       {{- if not (partial "is-published.html" .) }}
-        {{- $pageRefIsWrong = true }}
-        {{- errorf "hero: button %d: the pageRef %q points to a page that is not published (language: %s)" $position $pageRef $lang }}
+        {{- $pageRefError = printf "hero: button %d: the pageRef %q points to a page that is not published (language: %s)" $position $pageRef $lang }}
       {{- end }}
     {{- else }}
-      {{- $pageRefIsWrong = true }}
-      {{- errorf "hero: button %d: the pageRef %q matches no page (language: %s): check for a page that does not exist, a typo in the reference, a missing translation, a draft, a future (scheduled) date or an expired page" $position $pageRef $lang }}
+      {{- $pageRefError = printf "hero: button %d: the pageRef %q matches no page (language: %s): check for a page that does not exist, a typo in the reference, a missing translation, a draft, a future (scheduled) date or an expired page" $position $pageRef $lang }}
     {{- end }}
   {{- end }}
 {{- end }}
+{{- with $pageRefError }}{{ errorf "%s" . }}{{ end }}
+{{- $pageRefIsWrong := ne $pageRefError "" }}
 {{- $urlIsEmpty := eq $urlProblem "empty" }}
 {{- /* An empty url text counts as declared even though Hugo reads it as
      false: next to a pageRef, it is one destination too many. */}}
