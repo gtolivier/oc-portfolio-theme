@@ -796,10 +796,11 @@ export const SITE_WITH_A_BACKGROUND_INTRO_AS_A_LIST_OF_TABLES = testSite('preamb
 
 /* The example site's French home page declares every part of its background as a list: this site
    replaces that home page with the one of tests/fixtures/blank-background-values/content, without
-   a hero, clients nor projects, whose [params.background] writes its key figures, intro and
-   education as empty values rather than leaving them out, one of each kind, stats = '',
-   intro = false, education = 0, and declares a fictional basket weaver's two skill groups,
-   "Tressage" of two items and "Teinture" of one. */
+   a hero, clients nor projects, whose [params.background], a fictional basket weaver's, writes
+   its key figures, intro, education and skill groups as empty values rather than leaving them
+   out, stats = '', intro = false, education = 0 and skills = false. Its folder name avoids the
+   words stats, intro, education, skills and list and the language codes, which the
+   error-message assertions look for. */
 export const SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES = testSite('blank-background-values');
 
 /* The example site's French home page writes each skill group's items as a list: this site
