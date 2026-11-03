@@ -1263,3 +1263,13 @@ export async function serveSite(context: BrowserContext, site: BuiltSite, direct
     await route.fulfill({ path: file });
   });
 }
+
+/* The example site's featured projects live in projets/, the section the theme expects when the
+   site does not name another: this site names realisations/ in its projectsSection site param
+   (see tests/fixtures/projects-in-the-configured-section/hugo.toml) and replaces the French home
+   page with the one of tests/fixtures/projects-in-the-configured-section/content, without a hero
+   nor clients, which features "Pendule de voyage" and "Horloge de parquet", two fictional
+   projects added in French only in realisations/, titled "Réalisations" and published at
+   /fr/realisations/. Its English home page features no projects. The example site's projets/
+   section is still built. */
+export const SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION = testSite('projects-in-the-configured-section');

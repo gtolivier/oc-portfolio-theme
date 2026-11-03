@@ -1,0 +1,6 @@
+# Configuration added to exampleSite/hugo.toml by the tests of a site whose
+# featured projects live in a section other than projets: this file names
+# that section, realisations, in the projectsSection site param, and the
+# fixture's content/ adds it and replaces both home pages.
+[params]
+  projectsSection = 'realisations'

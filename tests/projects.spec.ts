@@ -14,6 +14,7 @@ import {
   SITE_WITH_PROJECTS_IN_TWO_SECTIONS,
   SITE_WITH_PROJECTS_IN_A_SUBSECTION,
   SITE_WITH_PROJECTS_IN_THE_SECTION_AND_A_SUBSECTION,
+  SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION,
   SITE_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT,
@@ -2002,6 +2003,35 @@ test.describe('home page of another site, featuring projects of projets and of o
     /* The example site's content/projets/, titled "Projets". */
     await expect(page).toHaveURL(`${site.origin}/fr/projets/`);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Projets');
+  });
+});
+
+test.describe('home page of another site, whose projectsSection param names the section of its projects', () => {
+  test('a home page featuring projects of the section named by the projectsSection site param builds, and its "Tous les projets" link opens that section', async ({
+    page,
+    context,
+  }) => {
+    /* tests/fixtures/projects-in-the-configured-section/hugo.toml sets projectsSection =
+       'realisations'; its content/_index.md features two projects of content/realisations/ (title
+       "Réalisations", published at /fr/realisations/). The site, not the theme, says where its
+       projects live: the person building it must get a site, not a build error. */
+    const site = SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION;
+    const build = tryToBuildSite(site);
+    expect(build.succeeded, `the site build should succeed, Hugo said:\n${build.errors}`).toBe(true);
+    const siteDirectory = buildSite(site);
+    try {
+      await serveSite(context, site, siteDirectory);
+      await page.goto(`${site.origin}/fr/`);
+      const section = projectsSection(page);
+      await expect(section.getByRole('article')).toHaveCount(2);
+      const link = section.getByRole('link', { name: 'Tous les projets', exact: true });
+      await expect(link).toHaveCount(1);
+      await link.click();
+      await expect(page).toHaveURL(`${site.origin}/fr/realisations/`);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Réalisations');
+    } finally {
+      removeDirectory(siteDirectory);
+    }
   });
 });
 
