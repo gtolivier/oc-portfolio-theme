@@ -17,8 +17,11 @@
         <span class="hero-title"><scramble-text duration="{{ mul (strings.RuneCount .) $heroLetterMs }}">{{ . }}</scramble-text></span>
         {{- end }}
       </h1>
+      {{- $taglineNotListError := printf "hero: the tagline must be a list (language: %s)" $lang }}
+      {{- /* As for the buttons, an empty value ('', false) written where the list belongs is a content mistake: it raises the error a text gets. */}}
+      {{- if and (isset . "tagline") (not .tagline) (not (reflect.IsSlice .tagline)) }}{{ errorf $taglineNotListError }}{{ end }}
       {{- with .tagline }}
-      {{- $tagline := partial "list-or-empty.html" (dict "value" . "error" (printf "hero: the tagline must be a list (language: %s)" $lang)) }}
+      {{- $tagline := partial "list-or-empty.html" (dict "value" . "error" $taglineNotListError) }}
       <p class="hero-tagline">
         {{- partial "lines.html" $tagline -}}
       </p>
