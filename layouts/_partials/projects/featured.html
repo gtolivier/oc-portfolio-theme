@@ -5,6 +5,11 @@
 {{- $nonProjectKindWords := dict "home" "the home page itself" "section" "a section page" "term" "a taxonomy term page" "taxonomy" "a taxonomy page" "404" "the 404 error page" }}
 {{- /* The section featured projects must live in: the site names it in its projectsSection param, projets when it names none. */}}
 {{- $projectsSection := site.Params.projectsSection | default "projets" }}
+{{- if isset site.Params "projectssection" }}
+  {{- $sectionProblem := partial "text-problem.html" site.Params.projectsSection }}
+  {{- if eq $sectionProblem "not-text" }}{{ errorf "projects: the projectsSection site param must be a text, the name of a section" }}{{ $projectsSection = "projets" }}
+  {{- else if eq $sectionProblem "empty" }}{{ errorf "projects: the projectsSection site param is empty: it must name a section" }}{{ $projectsSection = "projets" }}{{ end }}
+{{- end }}
 {{- $projects := slice }}
 {{- range $index, $entry := $featured }}
 {{- $entryNumber := add $index 1 }}
