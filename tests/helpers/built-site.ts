@@ -145,6 +145,14 @@ export const SITE_WITH_A_HERO_WITHOUT_AUTHOR = testSite('authorless-hero');
    looks for. */
 export const SITE_WITH_A_HERO_TAGLINE_AS_A_TEXT = testSite('motto-as-text');
 
+/* Same as SITE_WITH_A_HERO_TAGLINE_AS_A_TEXT, with the home page of
+   tests/fixtures/empty-text-instead-of-motto/content, whose hero declares tagline = '', an empty
+   text, instead of a list of lines, and with that of tests/fixtures/false-instead-of-motto/content,
+   whose hero declares tagline = false. Their folder names avoid the words hero, tagline and list,
+   which the error-message assertions look for, and the language codes. */
+export const SITE_WITH_A_HERO_TAGLINE_AS_AN_EMPTY_TEXT = testSite('empty-text-instead-of-motto');
+export const SITE_WITH_A_HERO_TAGLINE_AS_FALSE = testSite('false-instead-of-motto');
+
 /* The example site's French home page has a hero whose every button has a
    single destination: this site replaces that home page with the one of
    tests/fixtures/button-with-two-destinations/content, whose second button

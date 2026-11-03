@@ -12,6 +12,8 @@ import {
   SITE_WITH_A_BUTTON_WITH_URL_AND_FALSE_PAGE_REF,
   SITE_WITH_A_HERO_WITHOUT_AUTHOR,
   SITE_WITH_A_HERO_TAGLINE_AS_A_TEXT,
+  SITE_WITH_A_HERO_TAGLINE_AS_AN_EMPTY_TEXT,
+  SITE_WITH_A_HERO_TAGLINE_AS_FALSE,
   SITE_WITH_A_HERO_WITH_LONG_WORDS,
   SITE_WITH_A_HERO_WITHOUT_TITLE,
   SITE_WITH_A_HERO_WITHOUT_CLIENTS,
@@ -2613,6 +2615,40 @@ test.describe('hero content errors: build failure', () => {
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       /execute of template failed|error calling/i,
     );
+  });
+
+  test('a home page whose hero tagline is an empty text or false instead of a list makes the site build fail with the same error message as a tagline written as a text, alone, without a template execution error after it', () => {
+    /* tests/fixtures/empty-text-instead-of-motto declares tagline = '' in its hero and
+       tests/fixtures/false-instead-of-motto tagline = false: an empty value written where a list
+       of lines belongs. Unlike a hero that leaves out the tagline key, which shows no tagline,
+       this is a content mistake: rather than a tagline that quietly disappears, the person
+       building the site must get the failure a tagline written as a text gets,
+       tests/fixtures/motto-as-text, with the same message: one hero error message, the very line
+       that tagline gets, whatever its wording, and no Go template execution error that would
+       follow it and bury it in technical jargon. All three home pages are French. Two fixtures,
+       so that rejecting only one of the two empty values does not pass. */
+    const textBuild = tryToBuildSite(SITE_WITH_A_HERO_TAGLINE_AS_A_TEXT);
+    expect(textBuild.succeeded, 'with a tagline written as a text, the site build should fail').toBe(false);
+    const expectedMessages = heroMessages(textBuild.errors);
+    expect(
+      expectedMessages,
+      `with a tagline written as a text, one hero error message, in:\n${textBuild.errors}`,
+    ).toHaveLength(1);
+    const cases: { name: string; site: BuiltSite }[] = [
+      { name: 'a tagline as an empty text', site: SITE_WITH_A_HERO_TAGLINE_AS_AN_EMPTY_TEXT },
+      { name: 'a tagline as false', site: SITE_WITH_A_HERO_TAGLINE_AS_FALSE },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(
+        heroMessages(build.errors),
+        `with ${name}, the error message of a tagline written as a text, alone, in:\n${build.errors}`,
+      ).toEqual(expectedMessages);
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
+        TEMPLATE_EXECUTION_ERROR,
+      );
+    }
   });
 
   test("a home page whose hero tagline or hero buttons are not a list makes the site build fail with an error message that names the home page's language, for French home pages and for an English one", () => {
