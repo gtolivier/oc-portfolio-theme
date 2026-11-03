@@ -1,0 +1,6 @@
+{{- /* Whether the text is the name of a section of the site, in any of its languages. Each caller words its own error. */}}
+{{- $isSectionName := false }}
+{{- range hugo.Sites }}
+  {{- with .GetPage (printf "/%s" $) }}{{ if .IsSection }}{{ $isSectionName = true }}{{ end }}{{ end }}
+{{- end }}
+{{- return $isSectionName }}
