@@ -53,7 +53,7 @@
 {{- $pageRefIsWrong := ne $pageRefError "" }}
 {{- $urlIsEmpty := eq $urlProblem "empty" }}
 {{- if and $urlIsEmpty (not $hasPageRef) }}{{ errorf "hero: button %d: the url field is empty: it must be an address (language: %s)" $position $lang }}{{ end }}
-{{- if and $hasUrl $hasPageRef (not $pageRefIsWrong) }}{{ errorf "hero: button %d declares both a url field and a pageRef field; it needs only one (language: %s)" $position $lang }}{{ end }}
+{{- if and $hasUrl $hasPageRef (not $pageRefIsWrong) (ne $urlProblem "not-text") }}{{ errorf "hero: button %d declares both a url field and a pageRef field; it needs only one (language: %s)" $position $lang }}{{ end }}
 {{- if and (not $hasUrl) (not $hasPageRef) }}{{ errorf "hero: button %d has neither a url field nor a pageRef field (language: %s)" $position $lang }}{{ end }}
 {{- range $key := partial "home-params-keys.html" }}
   {{- if isset $button $key }}{{ errorf "hero: button %d holds a %s key, which belongs to [params], written before [params.hero], not under a button (language: %s)" $position $key $lang }}{{ end }}
