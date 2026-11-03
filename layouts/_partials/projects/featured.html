@@ -11,7 +11,7 @@
   {{- $sectionProblem := partial "text-problem.html" site.Params.projectsSection }}
   {{- if eq $sectionProblem "not-text" }}{{ errorf "projects: the projectsSection site param must be a text, the name of a section" }}{{ $sectionIsKnown = false }}
   {{- else if eq $sectionProblem "empty" }}{{ errorf "projects: the projectsSection site param is empty: it must name a section" }}{{ $sectionIsKnown = false }}
-  {{- else if eq $sectionProblem "padded" }}{{ errorf "projects: the projectsSection site param %q has whitespace at its start or end: it must be the exact name of a section" site.Params.projectsSection }}
+  {{- else if eq $sectionProblem "padded" }}{{ errorf "projects: the projectsSection site param %q has whitespace at its start or end: it must be the exact name of a section" site.Params.projectsSection }}{{ $sectionIsKnown = false }}
   {{- else }}{{ $projectsSection = site.Params.projectsSection }}{{ end }}
 {{- end }}
 {{- $projects := slice }}
