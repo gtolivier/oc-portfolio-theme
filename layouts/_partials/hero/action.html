@@ -23,9 +23,9 @@
 {{- $pageRefError := "" }}
 {{- if $hasPageRef }}
   {{- $pageRefProblem := partial "text-problem.html" $pageRef }}
-  {{- if eq $pageRefProblem "not-text" }}
+  {{- if and (eq $pageRefProblem "not-text") (ne $pageRef nil) }}
     {{- $pageRefError = printf "hero: button %d: the pageRef field must be a page reference, a text (language: %s)" $position $lang }}
-  {{- else if eq $pageRefProblem "empty" }}
+  {{- else if or (eq $pageRefProblem "empty") (eq $pageRef nil) }}
     {{- $pageRefError = printf "hero: button %d: the pageRef field is empty: it must be a page reference (language: %s)" $position $lang }}
   {{- else if eq $pageRefProblem "padded" }}
     {{- $pageRefError = printf "hero: button %d: the pageRef %q has whitespace at its start or end, which Hugo does not trim (language: %s)" $position $pageRef $lang }}
