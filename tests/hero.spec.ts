@@ -56,6 +56,7 @@ import {
   SITE_WITH_HERO_BUTTON_LABELS_WITH_A_LEADING_AND_A_TRAILING_SPACE,
   SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_WHITESPACE_ONLY_LABEL,
   SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_LABEL,
+  SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_LABEL_LEFT_BLANK_IN_YAML,
   SITE_WITH_HERO_BUTTON_URLS_EMPTY_AND_WHITESPACE_ONLY,
   SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_URL_AND_A_PAGE_REF,
   SITE_WITH_HERO_BUTTONS_WITH_A_URL_NEXT_TO_A_WRONG_PAGE_REF,
@@ -3241,6 +3242,34 @@ test.describe('hero content errors: build failure', () => {
        that is right there, so that this one must be the only hero message. The language is
        looked for as a word that no other word follows. */
     const build = tryToBuildSite(SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_LABEL);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
+    const messages = heroMessages(build.errors).filter(
+      (line) => LABEL_IS_EMPTY.test(line) && namesButton(2).test(line),
+    );
+    expect(
+      messages,
+      `one hero error message should say that button 2's label is empty, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], "the error message about button 2 should name the home page's language, fr").toMatch(
+      new RegExp(languageCodePattern('fr'), 'u'),
+    );
+  });
+
+  test("a home page written with a YAML front matter where a hero button's label is left without a value makes the site build fail with a single hero error message, which names that button by its position, says its label is empty and names the home page's language, rather than saying it must be a text", () => {
+    /* tests/fixtures/intitule-sans-valeur-yaml/content/_index.md, a French home page written
+       with a YAML front matter, has two hero buttons, each with a destination that is a text: the
+       first is well filled in, with label: Voir les projets; the second declares a label: line
+       left without a value, which YAML reads as null, with a valid url: '#contact'. The person
+       building the site wrote the label field but left it unfilled, as with label = '' in TOML:
+       they must get the same error, a single hero message that says, on one line, which button
+       is at fault by its position, that its label is empty (or blank), and names the home page's
+       language, fr, whatever the rest of the wording. A message saying the label must be a text
+       would make them look for a value of the wrong type that is not there, and one saying the
+       button has no label field would send them looking for a field that is right there: this
+       one must be the only hero message. The language is looked for as a word that no other
+       word follows. */
+    const build = tryToBuildSite(SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_LABEL_LEFT_BLANK_IN_YAML);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
     const messages = heroMessages(build.errors).filter(
