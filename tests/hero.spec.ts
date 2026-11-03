@@ -64,6 +64,7 @@ import {
   SITE_WITH_HERO_BUTTON_URLS_AS_FALSE_ZERO_AND_AN_EMPTY_LIST,
   SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE_NEXT_TO_A_PAGE_REF,
   SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB,
+  SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB_NEXT_TO_A_PAGE_REF,
   TEMPLATE_EXECUTION_ERROR,
   type BuildAttempt,
   type BuiltSite,
@@ -3284,5 +3285,42 @@ test.describe('hero content errors: build failure', () => {
         `the error message about button ${position} should name the home page's language, fr`,
       ).toMatch(new RegExp(languageCodePattern('fr'), 'u'));
     }
+  });
+
+  test("a home page where a hero button's url has whitespace at its start or at its end, next to a valid pageRef, makes the site build fail with a single hero error message per such button, the one a padded url alone gets, which names that button by its position, says its url has whitespace and names the home page's language, and no message saying both fields are declared", () => {
+    /* tests/fixtures/padded-addresses-beside-targets/content/_index.md, a French home page, has
+       three hero buttons, each with a label: the first is well filled in, with
+       pageRef = '/projets'; the second declares url = ' #contact', with a leading space, and the
+       third url = "/contact/\t", with a trailing tab, each next to a valid pageRef = '/projets'.
+       The url is wrong in itself, as it is without a pageRef: the person building the site must
+       first fix it, so that they get, for each of these two buttons, the single hero message a
+       padded url alone gets, which says, on one line, which button is at fault by its position,
+       that its url has whitespace, and names the home page's language, fr, whatever the rest of
+       the wording. A message saying that both fields are declared would send them removing one
+       of the two before they know what is wrong with the url: these two messages must be the
+       only hero messages, and none must say both are declared. A leading space and a trailing
+       tab, so that checking only one end, or only the space character, does not pass. The
+       language is looked for as a word that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB_NEXT_TO_A_PAGE_REF);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(2);
+    const paddedUrlMessages = heroMessages(build.errors).filter(
+      (line) => /\burl\b/.test(line) && /\bwhitespace\b/i.test(line),
+    );
+    for (const position of [2, 3]) {
+      const messages = paddedUrlMessages.filter((line) => namesButton(position).test(line));
+      expect(
+        messages,
+        `one hero error message should say that button ${position}'s url has whitespace, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages[0],
+        `the error message about button ${position} should name the home page's language, fr`,
+      ).toMatch(new RegExp(languageCodePattern('fr'), 'u'));
+    }
+    expect(
+      heroMessages(build.errors).filter((line) => BOTH_FIELDS_DECLARED.test(line)),
+      `no hero error message should say both fields are declared, in:\n${build.errors}`,
+    ).toEqual([]);
   });
 });

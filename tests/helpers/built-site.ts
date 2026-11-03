@@ -1015,6 +1015,18 @@ export const SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB 
   'addresses-padded-at-the-edges',
 );
 
+/* The example site's French home page gives each hero button a single destination, without
+   whitespace around it: this site replaces that home page with the one of
+   tests/fixtures/padded-addresses-beside-targets/content, whose hero has three buttons, written
+   [[params.hero.actions]], each with a label: the first is well filled in, with
+   pageRef = '/projets'; the second declares url = ' #contact', with a leading space, and the
+   third url = "/contact/\t", with a trailing tab, each next to a valid pageRef = '/projets'. Its
+   folder name avoids the words button, hero, url, pageRef, whitespace, both, only, one, the
+   numbers and the language codes, which the error-message assertions look for. */
+export const SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB_NEXT_TO_A_PAGE_REF = testSite(
+  'padded-addresses-beside-targets',
+);
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
