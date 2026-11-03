@@ -4,11 +4,12 @@
 {{- /* Only regular pages are projects. The words the error uses for each other kind of page an entry may reference; a kind missing here gets the generic wording, so that it is still rejected. */}}
 {{- $nonProjectKindWords := dict "home" "the home page itself" "section" "a section page" "term" "a taxonomy term page" "taxonomy" "a taxonomy page" "404" "the 404 error page" }}
 {{- /* The section featured projects must live in: the site names it in its projectsSection param, projets when it names none. */}}
-{{- $projectsSection := site.Params.projectsSection | default "projets" }}
+{{- $defaultProjectsSection := "projets" }}
+{{- $projectsSection := site.Params.projectsSection | default $defaultProjectsSection }}
 {{- if isset site.Params "projectssection" }}
   {{- $sectionProblem := partial "text-problem.html" site.Params.projectsSection }}
-  {{- if eq $sectionProblem "not-text" }}{{ errorf "projects: the projectsSection site param must be a text, the name of a section" }}{{ $projectsSection = "projets" }}
-  {{- else if eq $sectionProblem "empty" }}{{ errorf "projects: the projectsSection site param is empty: it must name a section" }}{{ $projectsSection = "projets" }}{{ end }}
+  {{- if eq $sectionProblem "not-text" }}{{ errorf "projects: the projectsSection site param must be a text, the name of a section" }}{{ $projectsSection = $defaultProjectsSection }}
+  {{- else if eq $sectionProblem "empty" }}{{ errorf "projects: the projectsSection site param is empty: it must name a section" }}{{ $projectsSection = $defaultProjectsSection }}{{ end }}
 {{- end }}
 {{- $projects := slice }}
 {{- range $index, $entry := $featured }}
