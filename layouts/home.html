@@ -2,9 +2,7 @@
   {{- /* The hero and the project cards list a stack the same way. */}}
   {{- $stackSeparator := " · " }}
   {{- $lang := site.Language.Lang }}
-  {{- $clientsNotListError := printf "clients: the home page's clients parameter must be a list of names (language: %s)" $lang }}
-  {{- /* An empty value ('', false) written where the list belongs is a content mistake, unlike an omitted key: it raises the error a text gets. */}}
-  {{- if and (isset .Params "clients") (not .Params.clients) (not (reflect.IsSlice .Params.clients)) }}{{ errorf $clientsNotListError }}{{ end }}
+  {{- $clients := partial "param-list-or-empty.html" (dict "params" .Params "key" "clients" "error" (printf "clients: the home page's clients parameter must be a list of names (language: %s)" $lang)) }}
   {{- if or .Params.hero .Params.clients }}
   <div class="first-screen{{ if .Params.hero }} has-hero{{ end }}">
     {{- with .Params.hero }}
@@ -17,22 +15,17 @@
         <span class="hero-title"><scramble-text duration="{{ mul (strings.RuneCount .) $heroLetterMs }}">{{ . }}</scramble-text></span>
         {{- end }}
       </h1>
-      {{- $taglineNotListError := printf "hero: the tagline must be a list (language: %s)" $lang }}
-      {{- /* As for the buttons, an empty value ('', false) written where the list belongs is a content mistake: it raises the error a text gets. */}}
-      {{- if and (isset . "tagline") (not .tagline) (not (reflect.IsSlice .tagline)) }}{{ errorf $taglineNotListError }}{{ end }}
-      {{- with .tagline }}
-      {{- $tagline := partial "list-or-empty.html" (dict "value" . "error" $taglineNotListError) }}
+      {{- $tagline := partial "param-list-or-empty.html" (dict "params" . "key" "tagline" "error" (printf "hero: the tagline must be a list (language: %s)" $lang)) }}
+      {{- with $tagline }}
       <p class="hero-tagline">
-        {{- partial "lines.html" $tagline -}}
+        {{- partial "lines.html" . -}}
       </p>
       {{- end }}
       {{- with .stack }}
       <p class="hero-stack">{{ delimit . $stackSeparator }}</p>
       {{- end }}
       {{- $actionsNotTablesError := printf "hero: the buttons must be written as a list of tables, [[params.hero.actions]], with double brackets (language: %s)" $lang }}
-      {{- /* As for the clients, an empty value ('', false) written where the list belongs is a content mistake, unlike an omitted key: it raises the error a text gets. */}}
-      {{- if and (isset . "actions") (not .actions) (not (reflect.IsSlice .actions)) }}{{ errorf $actionsNotTablesError }}{{ end }}
-      {{- $actions := partial "list-or-empty.html" (dict "value" .actions "error" $actionsNotTablesError) }}
+      {{- $actions := partial "param-list-or-empty.html" (dict "params" . "key" "actions" "error" $actionsNotTablesError) }}
       {{- with $actions }}
       <p class="hero-actions">
         {{- range $index, $action := $actions }}
@@ -44,7 +37,6 @@
     </tick-field>
     {{- end }}
     {{- with .Params.clients }}
-    {{- $clients := partial "list-or-empty.html" (dict "value" . "error" $clientsNotListError) }}
     {{- /* As in text-list-or-empty.html, an entry error below empties the list, so the band shows no names. */}}
     {{- range $index, $client := $clients }}
     {{- $entryNumber := add $index 1 }}

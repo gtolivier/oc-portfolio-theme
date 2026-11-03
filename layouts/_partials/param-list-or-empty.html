@@ -1,0 +1,6 @@
+{{- /* A front matter parameter, the key of the params map, that must be a list: the list from list-or-empty.html, or else an empty list, after raising the caller's error. Unlike list-or-empty.html, an empty value ('', false) written for the key is a content mistake, unlike an omitted key: it raises the error a text gets. */}}
+{{- $value := index .params .key }}
+{{- $list := slice }}
+{{- if and (isset .params .key) (not $value) (not (reflect.IsSlice $value)) }}{{ errorf .error }}
+{{- else }}{{ $list = partial "list-or-empty.html" (dict "value" $value "error" .error) }}{{ end }}
+{{- return $list }}
