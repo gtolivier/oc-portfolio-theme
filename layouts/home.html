@@ -89,8 +89,11 @@
       {{- $isInOneSection := true }}
       {{- range $projects }}{{ if not (.Parent.Eq $firstSection) }}{{ $isInOneSection = false }}{{ end }}{{ end }}
       {{- /* No section to open when the projects sit in a section Hugo does not publish: no address, or one with no page written behind it ([build] render = 'link'), so .RelPermalink alone is not enough. Their section is never the home page: featured.html rejects a project at the content root. */}}
-      {{- if and $isInOneSection (partial "is-published.html" $firstSection) }}
-      <a class="all-projects-link" href="{{ $firstSection.RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
+      {{- /* A subsection of projets opens the top-level section, which lists its projects too. */}}
+      {{- $linkedSection := $firstSection }}
+      {{- with $firstSection.FirstSection }}{{ $linkedSection = . }}{{ end }}
+      {{- if and $isInOneSection (partial "is-published.html" $linkedSection) }}
+      <a class="all-projects-link" href="{{ $linkedSection.RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
       {{- end }}
     </div>
     {{- range $projects }}
