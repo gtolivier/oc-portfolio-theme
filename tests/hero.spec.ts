@@ -12,6 +12,10 @@ import {
   SITE_WITH_A_BUTTON_WITH_URL_AND_FALSE_PAGE_REF,
   SITE_WITH_A_HERO_WITHOUT_AUTHOR,
   SITE_WITH_A_HERO_TAGLINE_AS_A_TEXT,
+  SITE_WITH_A_HERO_TAGLINE_AS_AN_EMPTY_TEXT,
+  SITE_WITH_A_HERO_TAGLINE_AS_FALSE,
+  SITE_WITH_A_HERO_STACK_AS_A_TEXT,
+  SITE_WITH_A_HERO_TITLE_AS_A_LIST,
   SITE_WITH_A_HERO_WITH_LONG_WORDS,
   SITE_WITH_A_HERO_WITHOUT_TITLE,
   SITE_WITH_A_HERO_WITHOUT_CLIENTS,
@@ -32,6 +36,7 @@ import {
   SITE_WITH_AN_EMPTY_PAGE_REF,
   SITE_WITH_AN_ENGLISH_HOME_PAGE_REF_NOT_FOUND,
   SITE_WITH_AN_ENGLISH_HOME_WITH_BAD_BUTTONS,
+  SITE_WITH_AN_ENGLISH_HOME_WITH_A_TAGLINE_AND_BUTTONS_NOT_AS_LISTS,
   SITE_WITH_OTHER_CLIENTS,
   SITE_WITH_A_PAGE_REF_AS_TABLE_ON_THE_SECOND_BUTTON,
   SITE_WITH_AN_EMPTY_PAGE_REF_ON_THE_SECOND_BUTTON,
@@ -42,6 +47,20 @@ import {
   SITE_WITH_A_FIRST_BUTTON_WITHOUT_LABEL,
   SITE_WITH_HERO_BUTTONS_AS_NAMED_TABLES,
   SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE,
+  SITE_WITH_HERO_BUTTONS_AS_AN_EMPTY_TEXT,
+  SITE_WITH_HERO_BUTTONS_AS_FALSE,
+  SITE_WITH_CLIENTS_AND_PROJECTS_UNDER_HERO_BUTTONS,
+  SITE_WITH_A_TEXT_AS_THE_SECOND_HERO_BUTTON,
+  SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE,
+  SITE_WITH_HERO_BUTTON_LABELS_AS_A_NUMBER_AND_A_TABLE,
+  SITE_WITH_HERO_BUTTON_LABELS_WITH_A_LEADING_AND_A_TRAILING_SPACE,
+  SITE_WITH_HERO_BUTTON_URLS_EMPTY_AND_WHITESPACE_ONLY,
+  SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_URL_AND_A_PAGE_REF,
+  SITE_WITH_HERO_BUTTONS_WITH_A_URL_NEXT_TO_A_WRONG_PAGE_REF,
+  SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_PAGE_REF,
+  SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_URL,
+  SITE_WITH_A_HERO_BUTTON_TO_A_PAGE_WITH_A_BUILD_PARAM_AS_TEXT,
+  TEMPLATE_EXECUTION_ERROR,
   type BuildAttempt,
   type BuiltSite,
   buildSite,
@@ -2025,6 +2044,11 @@ function heroMessagesContaining(errors: string, text: string): string[] {
   return heroMessages(errors).filter((line) => line.includes(text));
 }
 
+/* A message naming a hero button by its position, as "button 2" or "button #2", in any case. */
+function namesButton(position: number): RegExp {
+  return new RegExp(`\\bbutton\\s+#?${position}\\b`, 'i');
+}
+
 /* A message saying a button has neither of its two destination fields, whatever the wording:
    "neither a url nor a pageRef", "no url and no pageRef", "both fields are missing"… */
 const BOTH_FIELDS_MISSING =
@@ -2045,9 +2069,8 @@ const BUTTONS_MUST_BE_WRITTEN_AS_A_LIST = /\bhero:.*\[\[params\.hero\.actions\]\
 /* A hero message saying, on its own line, that the pageRef is empty or blank. */
 const PAGE_REF_IS_EMPTY = /\bhero:.*\bpageRef\b.*\b(?:empty|blank)\b/i;
 
-/* A Go template execution error, which would follow a hero message and bury it in technical
-   jargon. */
-const TEMPLATE_EXECUTION_ERROR = /execute of template failed|error calling/i;
+/* A hero message saying, on its own line, that the url is empty or blank. */
+const URL_IS_EMPTY = /\bhero:.*\burl\b.*\b(?:empty|blank)\b/i;
 
 /* The lines of the build's errors that match this message pattern and name both of a
    button's destination fields, url and pageRef, on that same line. */
@@ -2223,27 +2246,43 @@ test.describe('hero content errors: build failure', () => {
     expect(build.errors, 'the error message should not say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
   });
 
-  test('a home page where a hero button declares a url and a pageRef that Hugo reads as false (an empty text, and false) makes the site build fail with the hero error message that cites both fields and, on that same line, says both are declared', () => {
+  test("a home page where a hero button declares a url next to a pageRef that Hugo reads as false (an empty text, and false) makes the site build fail with a single hero error message, the pageRef's own one (empty, or must be a page reference), and no message saying both fields are declared", () => {
     /* The second button of tests/fixtures/address-and-unfilled-target/content/_index.md has
        a label and declares url = '#contact' and pageRef = '', an empty text, and that of
        tests/fixtures/address-and-false-target/content/_index.md url = '#contact' and
-       pageRef = false. Hugo reads both pageRef values as false, but the button does declare
-       a pageRef next to its url: the person building the site must get the message that
-       names the url and pageRef fields of the front matter and, on that same line, says
-       that both are declared, whatever wording is chosen, so that they remove one of the
-       two rather than only fill in the pageRef. An empty text and false, so that a check
+       pageRef = false. Hugo reads both pageRef values as false, and the pageRef itself is
+       wrong: the person building the site must first fix it, so that they get only the
+       pageRef's own error, whatever the rest of the wording: for the empty text, that the
+       pageRef is empty; for false, that the pageRef must be a page reference. A message
+       saying that both fields are declared would send them removing one of the two before
+       they know what is wrong with the pageRef: this one must be the only hero message, and
+       no hero message must say both are declared. An empty text and false, so that a check
        made for a single value Hugo reads as false does not pass. */
-    const cases: { name: string; site: BuiltSite }[] = [
-      { name: 'an empty text as pageRef', site: SITE_WITH_A_BUTTON_WITH_URL_AND_EMPTY_PAGE_REF },
-      { name: 'false as pageRef', site: SITE_WITH_A_BUTTON_WITH_URL_AND_FALSE_PAGE_REF },
+    const cases: { name: string; site: BuiltSite; pageRefError: RegExp; pageRefErrorDescription: string }[] = [
+      {
+        name: 'an empty text as pageRef',
+        site: SITE_WITH_A_BUTTON_WITH_URL_AND_EMPTY_PAGE_REF,
+        pageRefError: PAGE_REF_IS_EMPTY,
+        pageRefErrorDescription: 'the pageRef is empty',
+      },
+      {
+        name: 'false as pageRef',
+        site: SITE_WITH_A_BUTTON_WITH_URL_AND_FALSE_PAGE_REF,
+        pageRefError: PAGE_REF_MUST_BE_A_PAGE_REFERENCE,
+        pageRefErrorDescription: 'the pageRef must be a page reference',
+      },
     ];
-    for (const { name, site } of cases) {
+    for (const { name, site, pageRefError, pageRefErrorDescription } of cases) {
       const build = tryToBuildSite(site);
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(heroErrorCount(build.errors), `with ${name}, number of hero error messages, in:\n${build.errors}`).toBe(1);
+      expect(build.errors, `with ${name}, the error message should say ${pageRefErrorDescription}`).toMatch(
+        pageRefError,
+      );
       expect(
-        destinationFieldMessages(build.errors, BOTH_FIELDS_DECLARED),
-        `with ${name}, error messages that name the url and pageRef fields and say both are declared, in:\n${build.errors}`,
-      ).not.toEqual([]);
+        heroMessages(build.errors).filter((line) => BOTH_FIELDS_DECLARED.test(line)),
+        `with ${name}, no hero error message should say both fields are declared, in:\n${build.errors}`,
+      ).toEqual([]);
     }
   });
 
@@ -2330,6 +2369,40 @@ test.describe('hero content errors: build failure', () => {
         build.errors,
         `with ${name}, the error message should say to write the buttons as [[params.hero.actions]]`,
       ).toMatch(BUTTONS_MUST_BE_WRITTEN_AS_A_LIST);
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
+        TEMPLATE_EXECUTION_ERROR,
+      );
+    }
+  });
+
+  test('a home page whose hero buttons are an empty text or false instead of a list makes the site build fail with the same error message as a single button written with single brackets, alone, without a template execution error after it', () => {
+    /* tests/fixtures/empty-text-instead-of-links declares actions = '' in its hero and
+       tests/fixtures/false-instead-of-links actions = false: an empty value written where a list
+       of buttons belongs. Unlike a hero that leaves out the actions key, which shows no buttons,
+       this is a content mistake: rather than buttons that quietly disappear, the person building
+       the site must get the failure a button written with single brackets gets,
+       tests/fixtures/lone-button-table, with the same message: one hero error message, the very
+       line that button gets, whatever its wording, and no Go template execution error that would
+       follow it and bury it in technical jargon. All three home pages are French. Two fixtures,
+       so that rejecting only one of the two empty values does not pass. */
+    const tableBuild = tryToBuildSite(SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE);
+    expect(tableBuild.succeeded, 'with a single button with single brackets, the site build should fail').toBe(false);
+    const expectedMessages = heroMessages(tableBuild.errors);
+    expect(
+      expectedMessages,
+      `with a single button with single brackets, one hero error message, in:\n${tableBuild.errors}`,
+    ).toHaveLength(1);
+    const cases: { name: string; site: BuiltSite }[] = [
+      { name: 'buttons as an empty text', site: SITE_WITH_HERO_BUTTONS_AS_AN_EMPTY_TEXT },
+      { name: 'buttons as false', site: SITE_WITH_HERO_BUTTONS_AS_FALSE },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(
+        heroMessages(build.errors),
+        `with ${name}, the error message of a single button with single brackets, alone, in:\n${build.errors}`,
+      ).toEqual(expectedMessages);
       expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
         TEMPLATE_EXECUTION_ERROR,
       );
@@ -2574,7 +2647,524 @@ test.describe('hero content errors: build failure', () => {
       /\bhero:.*\btagline\b.*\blist\b/,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
+    );
+  });
+
+  test('a home page whose hero tagline is an empty text or false instead of a list makes the site build fail with the same error message as a tagline written as a text, alone, without a template execution error after it', () => {
+    /* tests/fixtures/empty-text-instead-of-motto declares tagline = '' in its hero and
+       tests/fixtures/false-instead-of-motto tagline = false: an empty value written where a list
+       of lines belongs. Unlike a hero that leaves out the tagline key, which shows no tagline,
+       this is a content mistake: rather than a tagline that quietly disappears, the person
+       building the site must get the failure a tagline written as a text gets,
+       tests/fixtures/motto-as-text, with the same message: one hero error message, the very line
+       that tagline gets, whatever its wording, and no Go template execution error that would
+       follow it and bury it in technical jargon. All three home pages are French. Two fixtures,
+       so that rejecting only one of the two empty values does not pass. */
+    const textBuild = tryToBuildSite(SITE_WITH_A_HERO_TAGLINE_AS_A_TEXT);
+    expect(textBuild.succeeded, 'with a tagline written as a text, the site build should fail').toBe(false);
+    const expectedMessages = heroMessages(textBuild.errors);
+    expect(
+      expectedMessages,
+      `with a tagline written as a text, one hero error message, in:\n${textBuild.errors}`,
+    ).toHaveLength(1);
+    const cases: { name: string; site: BuiltSite }[] = [
+      { name: 'a tagline as an empty text', site: SITE_WITH_A_HERO_TAGLINE_AS_AN_EMPTY_TEXT },
+      { name: 'a tagline as false', site: SITE_WITH_A_HERO_TAGLINE_AS_FALSE },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(
+        heroMessages(build.errors),
+        `with ${name}, the error message of a tagline written as a text, alone, in:\n${build.errors}`,
+      ).toEqual(expectedMessages);
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
+        TEMPLATE_EXECUTION_ERROR,
+      );
+    }
+  });
+
+  test("a home page whose hero tagline or hero buttons are not a list makes the site build fail with an error message that names the home page's language, for French home pages and for an English one", () => {
+    /* A bilingual site has a home page per language, each with its own hero: a message saying the
+       tagline must be a list, or that the buttons must be written as [[params.hero.actions]],
+       that does not say which language's home page is at fault leaves the person building the
+       site to look for it in every content/_index.<language>.md file. The hero messages about a
+       button already name the home page's language by its code (fr, en); these two must name it
+       too, whatever the rest of the wording. The French home pages come from the fixtures of the
+       tests of these messages above, tests/fixtures/motto-as-text/content/_index.md (a tagline
+       written as a text) and tests/fixtures/lone-button-table/content/_index.md (a button written
+       with single brackets); the English one, from
+       tests/fixtures/english-home-text-and-table/content/_index.en.md, has both mistakes, hence
+       two messages. Every hero error message must be there and each must name, on its own line,
+       the home page's language, looked for, as in the test on the button messages, as a word that
+       no other word follows. A French home page and an English one, so that a language written in
+       the template does not pass. */
+    const cases: { name: string; site: BuiltSite; language: string; messageCount: number }[] = [
+      {
+        name: 'a French home page with a tagline written as a text',
+        site: SITE_WITH_A_HERO_TAGLINE_AS_A_TEXT,
+        language: 'fr',
+        messageCount: 1,
+      },
+      {
+        name: 'a French home page with a button written with single brackets',
+        site: SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE,
+        language: 'fr',
+        messageCount: 1,
+      },
+      {
+        name: 'an English home page with a tagline written as a text and a button written with single brackets',
+        site: SITE_WITH_AN_ENGLISH_HOME_WITH_A_TAGLINE_AND_BUTTONS_NOT_AS_LISTS,
+        language: 'en',
+        messageCount: 2,
+      },
+    ];
+    for (const { name, site, language, messageCount } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const messages = heroMessages(build.errors);
+      expect(messages, `with ${name}, hero error messages, one per mistake, in:\n${build.errors}`).toHaveLength(
+        messageCount,
+      );
+      expect(
+        messages.filter((line) => !new RegExp(languageCodePattern(language), 'u').test(line)),
+        `with ${name}, hero error messages that do not name the home page's language, ${language}`,
+      ).toEqual([]);
+    }
+  });
+
+  test("a home page whose hero stack is written as a text rather than a list makes the site build fail, with an error message that says the stack must be a list and names the home page's language, without a template execution error after it", () => {
+    /* tests/fixtures/materials-as-text/content/_index.md, a French home page, writes its hero
+       stack as a single text, 'Laiton, Acier', rather than a list of entries: joining a text in a
+       Go template may raise an execution error, or none, and the hero would show the text as it
+       is. Rather than that, the person building the site must get an error message that says, on
+       its own line, that the hero stack must be a list and names the home page's language, fr,
+       whatever the rest of the wording, and no Go template execution error that would follow it
+       and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_A_HERO_STACK_AS_A_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const stackMessages = heroMessages(build.errors).filter((line) => /\bstack\b.*\blist\b/.test(line));
+    expect(stackMessages, `one hero error message saying the stack must be a list, in:\n${build.errors}`).toHaveLength(
+      1,
+    );
+    expect(stackMessages[0], "the error message should name the home page's language, fr").toMatch(
+      new RegExp(languageCodePattern('fr'), 'u'),
+    );
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
+  });
+
+  test('a home page whose hero title is written as a list rather than a text makes the site build fail, with an error message that says the title must be a text, without a template execution error after it', () => {
+    /* tests/fixtures/two-trades-heading/content/_index.md, a French home page, writes its hero
+       title, the professional title shown in the h1 next to the author name, as a list of two
+       texts, ['Horloger', 'Graveur'], rather than a single text: counting the letters of a list in
+       a Go template raises an execution error, or the heading would show the list as it is.
+       Rather than that, the person building the site must get an error message that says, on its
+       own line, that the hero title must be a text, whatever the rest of the wording, and no Go
+       template execution error that would follow it and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_A_HERO_TITLE_AS_A_LIST);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const titleMessages = heroMessages(build.errors).filter((line) => /\btitle\b.*\btext\b/.test(line));
+    expect(titleMessages, `one hero error message saying the title must be a text, in:\n${build.errors}`).toHaveLength(
+      1,
+    );
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
+  });
+
+  test("a home page whose clients or projects key is written under a hero button makes the site build fail, with one error message per such key that names the button by its position, says the key belongs to [params], before [params.hero], and names the home page's language", () => {
+    /* tests/fixtures/listes-sous-les-liens/content/_index.md, a French home page, writes
+       clients = [...] after its first [[params.hero.actions]] header and projects = [...] after
+       its second one, so that TOML puts them in the first and second buttons' tables rather than
+       in params.clients and params.projects, where the theme reads them. Rather than a home page
+       whose client band and featured projects silently disappear, the person building the site
+       must get, for each such key, an error message that says, on one line, which button holds it
+       by its position (button 1, button 2), that this key belongs to [params], written before
+       [params.hero], and names the home page's language, as the other button messages do,
+       whatever the rest of the wording. Each line must name its own button and key only, so that
+       a message that names both buttons or both keys at once does not pass for either; and no Go
+       template execution error should follow them. [params] is looked for as written, so that
+       [params.hero] alone does not count for it; the language as a word that no other word
+       follows. */
+    const build = tryToBuildSite(SITE_WITH_CLIENTS_AND_PROJECTS_UNDER_HERO_BUTTONS);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const cases = [
+      { position: 1, key: 'clients', otherPosition: 2, otherKey: 'projects' },
+      { position: 2, key: 'projects', otherPosition: 1, otherKey: 'clients' },
+    ];
+    for (const { position, key, otherPosition, otherKey } of cases) {
+      const messages = build.errors
+        .split('\n')
+        .filter(
+          (line) =>
+            namesButton(position).test(line) &&
+            new RegExp(`\\b${key}\\b`).test(line) &&
+            line.includes('[params]') &&
+            /\bbefore\s+\[params\.hero\]/.test(line),
+        );
+      expect(
+        messages,
+        `one error message should say that button ${position}'s ${key} belongs to [params], before [params.hero], in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages.filter((line) => namesButton(otherPosition).test(line) || new RegExp(`\\b${otherKey}\\b`).test(line)),
+        `the error message about button ${position}'s ${key} should name neither button ${otherPosition} nor ${otherKey}`,
+      ).toEqual([]);
+      expect(
+        messages.filter((line) => !new RegExp(languageCodePattern('fr'), 'u').test(line)),
+        `the error message about button ${position}'s ${key} should name the home page's language, fr`,
+      ).toEqual([]);
+    }
+    expect(build.errors, 'no template execution error should follow the error messages').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
+  });
+
+  test("a home page where a hero button is not a table but a text, in a list whose other button is a table, makes the site build fail with a single hero error message that names that button by its position, says a button must be a table and names the home page's language, without a template execution error after it", () => {
+    /* tests/fixtures/lien-ecrit-sans-accolades/content/_index.md, a French home page, writes its
+       hero buttons as an inline TOML array whose first entry is a well filled-in button, a table,
+       and whose second entry is a mere text, 'Contact': reading the url or the label of a text in
+       a Go template raises an execution error. Rather than that, the person building the site
+       must get a single error message that says, on one line, which button is at fault by its
+       position, button 2, that a button must be a table, and names the home page's language, fr,
+       whatever the rest of the wording; and no Go template execution error that would follow it
+       and bury it in technical jargon. The language is looked for as a word that no other word
+       follows. */
+    const build = tryToBuildSite(SITE_WITH_A_TEXT_AS_THE_SECOND_HERO_BUTTON);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = heroMessages(build.errors).filter(
+      (line) => namesButton(2).test(line) && /\b(?:must|should)\s+be\b.*\btable\b/i.test(line),
+    );
+    expect(
+      messages,
+      `one hero error message should say that button 2 must be a table, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], "the error message should name the home page's language, fr").toMatch(
+      new RegExp(languageCodePattern('fr'), 'u'),
+    );
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
+  });
+
+  test("a home page where a hero button's url is not a text, a number or a table, makes the site build fail with one error message per such button, which names that button by its position, says its url must be a text and names the home page's language, without a template execution error after it", () => {
+    /* tests/fixtures/address-as-figure-or-dict/content/_index.md, a French home page, has three
+       hero buttons, each with a label: the first is well filled in, with pageRef = '/projets'; the
+       second declares a number, url = 42; the third a table, url = { href = '/contact' }. Neither
+       is an address: rather than a link to "42", or a Go template execution error on the table,
+       the person building the site must get, for each of these two buttons, a single error
+       message that says, on one line, which button is at fault by its position, that its url must
+       be a text, and names the home page's language, fr, whatever the rest of the wording; none
+       about the well filled-in first button; and no Go template execution error that would follow
+       them and bury them in technical jargon. The language is looked for as a word that no other
+       word follows. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const urlMustBeTextMessages = heroMessages(build.errors).filter(
+      (line) => /\burl\b/.test(line) && /\b(?:must|should)\s+be\b.*\btext\b/i.test(line),
+    );
+    for (const position of [2, 3]) {
+      const messages = urlMustBeTextMessages.filter((line) => namesButton(position).test(line));
+      expect(
+        messages,
+        `one hero error message should say that button ${position}'s url must be a text, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages[0],
+        `the error message about button ${position} should name the home page's language, fr`,
+      ).toMatch(new RegExp(languageCodePattern('fr'), 'u'));
+    }
+    expect(
+      urlMustBeTextMessages.filter((line) => namesButton(1).test(line)),
+      'no error message should say that the well filled-in button 1 has a url that must be a text',
+    ).toEqual([]);
+    expect(build.errors, 'no template execution error should follow the error messages').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
+  });
+
+  test("a home page where a hero button's label is not a text, a number or a table, makes the site build fail with one error message per such button, which names that button by its position, says its label must be a text and names the home page's language, without a template execution error after it", () => {
+    /* tests/fixtures/caption-as-figure-or-dict/content/_index.md, a French home page, has three
+       hero buttons, each with a destination that is a text: the first is well filled in, with
+       label = 'Voir les projets'; the second declares a number, label = 42; the third a table,
+       label = { text = 'Contact' }. Neither is a text a visitor can read: rather than a button
+       reading "42", or one showing the table's raw content, the person building the site must
+       get, for each of these two buttons, a single error message that says, on one line, which
+       button is at fault by its position, that its label must be a text, and names the home
+       page's language, fr, whatever the rest of the wording; none about the well filled-in first
+       button; and no Go template execution error that would follow them and bury them in
+       technical jargon. The language is looked for as a word that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_LABELS_AS_A_NUMBER_AND_A_TABLE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const labelMustBeTextMessages = heroMessages(build.errors).filter(
+      (line) => /\blabel\b/.test(line) && /\b(?:must|should)\s+be\b.*\btext\b/i.test(line),
+    );
+    for (const position of [2, 3]) {
+      const messages = labelMustBeTextMessages.filter((line) => namesButton(position).test(line));
+      expect(
+        messages,
+        `one hero error message should say that button ${position}'s label must be a text, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages[0],
+        `the error message about button ${position} should name the home page's language, fr`,
+      ).toMatch(new RegExp(languageCodePattern('fr'), 'u'));
+    }
+    expect(
+      labelMustBeTextMessages.filter((line) => namesButton(1).test(line)),
+      'no error message should say that the well filled-in button 1 has a label that must be a text',
+    ).toEqual([]);
+    expect(build.errors, 'no template execution error should follow the error messages').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
+  });
+
+  test("a home page where a hero button's label has whitespace at its start or at its end makes the site build fail with one error message per such button, which names that button by its position, says its label has whitespace and names the home page's language", () => {
+    /* tests/fixtures/caption-with-blank-edges/content/_index.md, a French home page, has three
+       hero buttons, each with a destination that is a text: the first is well filled in, with
+       label = 'Voir les paniers'; the second's label has a leading space, ' Voir les projets';
+       the third's a trailing space, 'Contact '. The whitespace is invisible in the front matter
+       and the visitor would see a button whose text is off-centre: the person building the site
+       must get, for each of these two buttons, a single error message that says, on one line,
+       which button is at fault by its position, that its label has whitespace, and names the
+       home page's language, fr, whatever the rest of the wording; none about the well filled-in
+       first button. A leading and a trailing space, so that checking only one end does not pass.
+       The language is looked for as a word that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_LABELS_WITH_A_LEADING_AND_A_TRAILING_SPACE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const paddedLabelMessages = heroMessages(build.errors).filter(
+      (line) => /\blabel\b/.test(line) && /\bwhitespace\b/i.test(line),
+    );
+    for (const position of [2, 3]) {
+      const messages = paddedLabelMessages.filter((line) => namesButton(position).test(line));
+      expect(
+        messages,
+        `one hero error message should say that button ${position}'s label has whitespace, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages[0],
+        `the error message about button ${position} should name the home page's language, fr`,
+      ).toMatch(new RegExp(languageCodePattern('fr'), 'u'));
+    }
+    expect(
+      paddedLabelMessages.filter((line) => namesButton(1).test(line)),
+      'no error message should say that the well filled-in button 1 has a label with whitespace',
+    ).toEqual([]);
+  });
+
+  test("a home page where a hero button's url is an empty text or made only of whitespace, without a pageRef, makes the site build fail with a single error message per such button, which names that button by its position, says its url is empty and names the home page's language, rather than saying the button has neither a url nor a pageRef", () => {
+    /* tests/fixtures/addresses-unfilled-and-of-spaces/content/_index.md, a French home page, has
+       three hero buttons, each with a label: the first is well filled in, with
+       pageRef = '/projets'; the second declares url = '', an empty text, and the third
+       url = " \t ", a space, a tab and a space, both without a pageRef. Neither is an address:
+       rather than a link that leads nowhere, the person building the site must get, for each of
+       these two buttons, a single error message that says, on one line, which button is at
+       fault by its position, that its url is empty (or blank), and names the home page's
+       language, fr, whatever the rest of the wording. The button does declare a url: a message
+       saying it has neither a url nor a pageRef, or no destination at all, would send them
+       looking for a field that is right there, so that these two messages must be the only hero
+       messages, none about the well filled-in first button, and none must say both fields are
+       missing. An empty text and one of whitespace only, a tab between two spaces, so that
+       checking only Hugo's falsy empty text, or only the space character, does not pass. The
+       language is looked for as a word that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_URLS_EMPTY_AND_WHITESPACE_ONLY);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(2);
+    const urlIsEmptyMessages = heroMessages(build.errors).filter((line) => URL_IS_EMPTY.test(line));
+    for (const position of [2, 3]) {
+      const messages = urlIsEmptyMessages.filter((line) => namesButton(position).test(line));
+      expect(
+        messages,
+        `one hero error message should say that button ${position}'s url is empty, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages[0],
+        `the error message about button ${position} should name the home page's language, fr`,
+      ).toMatch(new RegExp(languageCodePattern('fr'), 'u'));
+    }
+    expect(build.errors, 'no error message should say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
+  });
+
+  test("a home page where a hero button declares an empty url next to a valid pageRef makes the site build fail with a single hero error message, which names that button by its position, cites both fields and, on that same line, says both are declared and names the home page's language", () => {
+    /* tests/fixtures/unfilled-address-and-target/content/_index.md, a French home page, has two
+       hero buttons, each with a label: the first is well filled in, with pageRef = '/projets';
+       the second declares url = '', an empty text, next to a valid pageRef = '/projets'. Hugo
+       reads the url as false, but the button does declare a url next to its pageRef: the person
+       building the site must get a single hero error message that says, on one line, which
+       button is at fault by its position, names the url and pageRef fields of the front matter,
+       says that both are declared, whatever wording is chosen, and names the home page's
+       language, fr, so that they remove one of the two rather than fill in the url. Any other
+       hero message, such as saying the url is empty or that the button has neither field, would
+       mislead them: this one must be the only one, and must not say that both are missing. The
+       language is looked for as a word that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_URL_AND_A_PAGE_REF);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
+    const messages = destinationFieldMessages(build.errors, BOTH_FIELDS_DECLARED).filter(
+      (line) => /\bhero:/.test(line) && namesButton(2).test(line),
+    );
+    expect(
+      messages,
+      `one hero error message should name button 2's url and pageRef fields and say both are declared, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], "the error message about button 2 should name the home page's language, fr").toMatch(
+      new RegExp(languageCodePattern('fr'), 'u'),
+    );
+    expect(build.errors, 'the error message should not say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
+  });
+
+  test("a home page where hero buttons declare a url next to a wrong pageRef (with whitespace at its end, a table, a number, one that matches no page, one to a page that is not published) makes the site build fail with a single hero error message per such button, the pageRef's own one, and no message saying both fields are declared", () => {
+    /* tests/fixtures/address-next-to-broken-targets/content/_index.md, a French home page, has
+       six hero buttons, each with a label: the first is well filled in, with
+       pageRef = '/projets'; each of the others declares a valid url = '#contact' next to a wrong
+       pageRef: the second '/projets ', with a trailing space; the third { path = '/projets' }, a
+       table; the fourth 42, a number, neither of which Hugo reads as false; the fifth
+       '/page-fictive-introuvable', which matches no page; the sixth '/atelier-ferme', a page that
+       declares [build] render = 'never'. The person building the site must first fix the
+       pageRef, so that they get, for each of these five buttons, a single hero message that
+       names that button by its position and gives the pageRef's own error, whatever the rest of
+       the wording: that it has whitespace, that it must be a page reference, that it matches no
+       page (quoting it and giving a draft among the possible causes), or that its page is not
+       published (quoting it). A message saying that both fields are declared would send them
+       removing one of the two before they know what is wrong with the pageRef: these five must
+       be the only hero messages, and none must say both are declared. One button per kind of
+       wrong pageRef, so that a check made for a single kind does not pass. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTONS_WITH_A_URL_NEXT_TO_A_WRONG_PAGE_REF);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(5);
+    const cases: { position: number; isPageRefError: (line: string) => boolean; description: string }[] = [
+      {
+        position: 2,
+        isPageRefError: (line) => line.includes('"/projets "') && /\bwhitespace\b/i.test(line),
+        description: 'quote the pageRef and say it has whitespace',
+      },
+      {
+        position: 3,
+        isPageRefError: (line) => PAGE_REF_MUST_BE_A_PAGE_REFERENCE.test(line),
+        description: 'say the pageRef must be a page reference',
+      },
+      {
+        position: 4,
+        isPageRefError: (line) => PAGE_REF_MUST_BE_A_PAGE_REFERENCE.test(line),
+        description: 'say the pageRef must be a page reference',
+      },
+      {
+        position: 5,
+        isPageRefError: (line) => line.includes('"/page-fictive-introuvable"') && /\bdraft\b/i.test(line),
+        description: 'quote the pageRef and give a draft among the possible causes',
+      },
+      {
+        position: 6,
+        isPageRefError: (line) => line.includes('"/atelier-ferme"') && /\bnot\s+published\b/i.test(line),
+        description: 'quote the pageRef and say its page is not published',
+      },
+    ];
+    for (const { position, isPageRefError, description } of cases) {
+      const messages = heroMessages(build.errors).filter((line) => namesButton(position).test(line));
+      expect(messages, `one hero error message should name button ${position}, in:\n${build.errors}`).toHaveLength(1);
+      expect(
+        isPageRefError(messages[0]),
+        `the error message about button ${position} should ${description}, in:\n${messages[0]}`,
+      ).toBe(true);
+    }
+    expect(
+      heroMessages(build.errors).filter((line) => BOTH_FIELDS_DECLARED.test(line)),
+      `no hero error message should say both fields are declared, in:\n${build.errors}`,
+    ).toEqual([]);
+  });
+
+  test("a home page written with a YAML front matter where a hero button's pageRef is null, without a url, makes the site build fail with a single hero error message, which names that button by its position, says its pageRef is empty and names the home page's language, rather than saying the button has neither a url nor a pageRef", () => {
+    /* tests/fixtures/target-left-unset-in-yaml/content/_index.md, a French home page written
+       with a YAML front matter, has two hero buttons, each with a label and no url: the first is
+       well filled in, with pageRef: /projets; the second declares pageRef: null, the YAML way of
+       leaving a field without a value. The person building the site wrote the pageRef field but
+       left it unfilled, as with pageRef = '' in TOML: they must get the same error, a single hero
+       message that says, on one line, which button is at fault by its position, that its pageRef
+       is empty (or blank), and names the home page's language, fr, whatever the rest of the
+       wording. A message saying the button has neither a url nor a pageRef would send them
+       looking for a field that is right there: this one must be the only hero message, and must
+       not say both fields are missing. The language is looked for as a word that no other word
+       follows. */
+    const build = tryToBuildSite(SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_PAGE_REF);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
+    const messages = heroMessages(build.errors).filter(
+      (line) => PAGE_REF_IS_EMPTY.test(line) && namesButton(2).test(line),
+    );
+    expect(
+      messages,
+      `one hero error message should say that button 2's pageRef is empty, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], "the error message about button 2 should name the home page's language, fr").toMatch(
+      new RegExp(languageCodePattern('fr'), 'u'),
+    );
+    expect(build.errors, 'the error message should not say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
+  });
+
+  test("a home page written with a YAML front matter where a hero button's url is null, without a pageRef, makes the site build fail with a single hero error message, which names that button by its position, says its url is empty and names the home page's language, rather than saying it must be a text or that the button has neither a url nor a pageRef", () => {
+    /* tests/fixtures/address-left-unset-in-yaml/content/_index.md, a French home page written
+       with a YAML front matter, has two hero buttons, each with a label: the first is well filled
+       in, with pageRef: /projets; the second declares url: null, the YAML way of leaving a field
+       without a value, and no pageRef. The person building the site wrote the url field but left
+       it unfilled, as with url = '' in TOML: they must get the same error, a single hero message
+       that says, on one line, which button is at fault by its position, that its url is empty (or
+       blank), and names the home page's language, fr, whatever the rest of the wording. A message
+       saying the url must be a text would make them look for a value of the wrong type that is
+       not there, and one saying the button has neither a url nor a pageRef would send them
+       looking for a field that is right there: this one must be the only hero message, and must
+       not say both fields are missing. The language is looked for as a word that no other word
+       follows. */
+    const build = tryToBuildSite(SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_URL);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
+    const messages = heroMessages(build.errors).filter((line) => URL_IS_EMPTY.test(line) && namesButton(2).test(line));
+    expect(
+      messages,
+      `one hero error message should say that button 2's url is empty, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], "the error message about button 2 should name the home page's language, fr").toMatch(
+      new RegExp(languageCodePattern('fr'), 'u'),
+    );
+    expect(build.errors, 'the error message should not say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
+  });
+
+  test("a home page where a hero button's pageRef points to a page that declares a custom param build = \"2020\", a text rather than a table, makes the site build fail with a single hero error message, which names that button by its position, quotes its pageRef, says the theme reads the page's build param as Hugo's build options and to rename it, and names the home page's language, without a template execution error after it", () => {
+    /* tests/fixtures/target-with-a-year-option/content/_index.md, a French home page, has two
+       hero buttons, each with a label and no url: the first is well filled in, with
+       pageRef = '/projets'; the second declares pageRef = '/atelier-millesime', a page of the same
+       fixture that sets no [build] options but declares under [params] a custom param
+       build = '2020'. The theme reads the page's build param as Hugo's build options, the [build]
+       front matter, to know whether Hugo publishes the page: a custom build param hides them, so
+       the theme cannot tell. As for a featured project whose page makes the same mistake, the
+       person building the site must get a failure rather than a button to a page that may not be
+       published: a single hero message that says, on one line, which button is at fault by its
+       position, quotes its pageRef, names the build param, says the theme reads it as Hugo's
+       build options, tells them to rename it, and names the home page's language, fr, whatever
+       the rest of the wording, and no Go template execution error that would follow it and bury
+       it in technical jargon. The language is looked for as a word that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_A_HERO_BUTTON_TO_A_PAGE_WITH_A_BUILD_PARAM_AS_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
+    const messages = heroMessages(build.errors).filter(
+      (line) => namesButton(2).test(line) && line.includes('"/atelier-millesime"') && /\bbuild\b/.test(line),
+    );
+    expect(
+      messages,
+      `one hero error message should name button 2, quote its pageRef and name the build param, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], 'the error message should say the theme reads build as Hugo’s build options').toMatch(
+      /\btheme\b/,
+    );
+    expect(messages[0], 'the error message should name Hugo').toMatch(/\bHugo\b/);
+    expect(messages[0], 'the error message should say to rename the param').toMatch(/\brename\b/i);
+    expect(messages[0], "the error message about button 2 should name the home page's language, fr").toMatch(
+      new RegExp(languageCodePattern('fr'), 'u'),
     );
   });
 });

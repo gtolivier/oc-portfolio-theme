@@ -20,7 +20,11 @@ import {
   SITE_WITH_A_BACKGROUND_INTRO_AS_A_LIST_OF_TABLES,
   SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES,
   SITE_WITH_SKILL_GROUP_ITEMS_AS_EMPTY_VALUES,
+  SITE_WITH_AN_ENGLISH_HOME_WITH_BACKGROUND_PARTS_NOT_AS_LISTS,
+  TEMPLATE_EXECUTION_ERROR,
+  type BuiltSite,
   buildSite,
+  languageCodePattern,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
   serveSite,
@@ -787,10 +791,11 @@ test('with JavaScript, on the French home page, when the visitor turns on prefer
   expect(climbing(shown), `every figure shows a number between 0 and its own, midway (${shown})`).toBe(true);
   /* The visitor asks for reduced motion, midway through the climb. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* At most one animation frame later on the page's clock, which then stands still: the climb
-     cannot reach its end on its own. On screen, in reading order, each label comes right after its
-     full value, whole. */
-  await page.clock.runFor(16);
+  /* A few animation frames later on the page's clock (20, one at a time, so that the change has
+     time to reach the page in every browser), which then stands still, far short of the climb's
+     end: the climb cannot reach it on its own. On screen, in reading order, each label comes right
+     after its full value, whole. */
+  for (let frame = 0; frame < 20; frame++) await page.clock.runFor(16);
   const inOrder = fullValuesOnScreen(KEY_FIGURES);
   await expect
     .poll(() => textOnScreen(section), {
@@ -1478,67 +1483,6 @@ test.describe('home page of another site, with a background of skill groups only
   });
 });
 
-/* What tests/fixtures/blank-background-values/content/_index.md declares for its background: a
-   basket weaver's skill groups, of two and one items, next to key figures, intro and education
-   written as empty values, stats = '', intro = false, education = 0. */
-const SKILL_GROUPS_NEXT_TO_EMPTY_VALUES = [
-  { title: 'Tressage', items: ['Paniers d’osier', 'Clôtures de saule'] },
-  { title: 'Teinture', items: ['Brou de noix'] },
-];
-
-test.describe('home page of another site, with a background whose key figures, intro and education are empty values', () => {
-  test('a home page whose key figures, intro and education are written as empty values (\'\', false, 0) builds, and its section "Parcours" shows its skill groups, with no empty slot for key figures, intro lines or education entries', async ({
-    page,
-    context,
-  }) => {
-    /* An empty text, false or 0 says "nothing here" as an omitted key or an empty list does: the
-       person building the site must get a site, not a build error nor a template execution
-       error. */
-    const build = tryToBuildSite(SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES);
-    expect(build.succeeded, `the site build should succeed, Hugo said:\n${build.errors}`).toBe(true);
-    const siteDirectory = buildSite(SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES);
-    try {
-      await serveSite(context, SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES, siteDirectory);
-      await page.goto(`${SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES.origin}/fr/`);
-      const section = backgroundSection(page);
-      await expect(section).toBeVisible();
-      await expectSkillGroups(section, SKILL_GROUPS_NEXT_TO_EMPTY_VALUES);
-      /* No empty slot an assistive technology would announce: no paragraph, no term or definition
-         of a key figure, and no list but the groups' own, each holding its items. */
-      await expect(section.getByRole('paragraph'), 'paragraphs of the section').toHaveCount(0);
-      await expect(section.getByRole('term'), 'terms of the section').toHaveCount(0);
-      await expect(section.getByRole('definition'), 'definitions of the section').toHaveCount(0);
-      await expect(section.getByRole('list'), 'lists of the section').toHaveCount(
-        SKILL_GROUPS_NEXT_TO_EMPTY_VALUES.length,
-      );
-      /* No empty slot a visitor would see: every element of the section that takes room on screen
-         is the section heading, a group heading or a group list, holds one of them or sits inside
-         one of them. */
-      const filled = [
-        ...(await section.getByRole('heading', { level: 2 }).elementHandles()),
-        ...(await section.getByRole('heading', { level: 3 }).elementHandles()),
-        ...(await section.getByRole('list').elementHandles()),
-      ];
-      const strayElements = await section.evaluate(
-        (root, parts) =>
-          Array.from(root.querySelectorAll('*'))
-            .filter((element) => {
-              const box = element.getBoundingClientRect();
-              return box.width > 0 && box.height > 0;
-            })
-            .filter((element) => !parts.some((part) => part.contains(element) || element.contains(part)))
-            .map((element) => element.outerHTML),
-        filled,
-      );
-      expect(strayElements, 'elements of the section taking room on screen outside its headings and groups').toEqual(
-        [],
-      );
-    } finally {
-      removeDirectory(siteDirectory);
-    }
-  });
-});
-
 /* The titles of the skill groups tests/fixtures/blank-know-how/content/_index.md declares, in
    order: a cabinetmaker's groups whose items are written as empty values, items = '' then
    items = false. */
@@ -1797,6 +1741,11 @@ test.describe('home page of another site, with a long word in a skill group titl
   });
 });
 
+/* The lines of the build's errors that are background error messages. */
+function backgroundMessages(errors: string): string[] {
+  return errors.split('\n').filter((line) => /\bbackground:/.test(line));
+}
+
 test.describe('background content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
@@ -1815,7 +1764,7 @@ test.describe('background content errors: build failure', () => {
       'the error message should say to write the key figures as [[params.background.stats]]',
     ).toMatch(/\bbackground:.*\[\[params\.background\.stats\]\]/);
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1833,7 +1782,7 @@ test.describe('background content errors: build failure', () => {
       'the error message should say to write the key figures as [[params.background.stats]]',
     ).toMatch(/\bbackground:.*\[\[params\.background\.stats\]\]/);
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1856,7 +1805,7 @@ test.describe('background content errors: build failure', () => {
       /\bbackground:.*\bwhole\s+number\b/,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1875,7 +1824,7 @@ test.describe('background content errors: build failure', () => {
       'the error message should say to write the skill groups as [[params.background.skills]]',
     ).toMatch(/\bbackground:.*\[\[params\.background\.skills\]\]/);
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1894,7 +1843,7 @@ test.describe('background content errors: build failure', () => {
       'the error message should say to write the skill groups as [[params.background.skills]]',
     ).toMatch(/\bbackground:.*\[\[params\.background\.skills\]\]/);
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1917,7 +1866,7 @@ test.describe('background content errors: build failure', () => {
       /\bbackground:.*\bitems\b.*\blist\b/,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1935,7 +1884,7 @@ test.describe('background content errors: build failure', () => {
       /\bbackground:.*\beducation\b.*\blist\b/,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1953,7 +1902,7 @@ test.describe('background content errors: build failure', () => {
       /\bbackground:.*\beducation\b.*\btexts?\b/,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1971,7 +1920,7 @@ test.describe('background content errors: build failure', () => {
       /\bbackground:.*\bintro\b.*\blist\b/,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1989,7 +1938,121 @@ test.describe('background content errors: build failure', () => {
       /\bbackground:.*\bintro\b.*\btexts?\b/,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
+  });
+
+  test("a home page whose key figures, intro, education and skill groups are written as empty values ('', false, 0) makes the site build fail with, for each of them, the error message it gets when it is not written as a list, without a template execution error after them", () => {
+    /* tests/fixtures/blank-background-values declares stats = '', intro = false, education = 0
+       and skills = false in its background: empty values written where lists belong. Unlike a
+       background that leaves those keys out or writes them as empty lists, which shows no such
+       part (see the tests on tests/fixtures/empty-background), this is a content mistake: rather
+       than parts that quietly disappear, the person building the site must get, for each part,
+       the failure that part gets when it is not written as a list, with the same message, the
+       very line it gets, whatever its wording: the key figures' and the skill groups' from
+       tests/fixtures/lone-figure-table and tests/fixtures/lone-group-table, written with single
+       brackets, which raise the line a text raises; the intro's and the education's from
+       tests/fixtures/preamble-as-text and tests/fixtures/diploma-as-text, written as texts. Four
+       background error messages then, one per part, and no Go template execution error that
+       would follow them and bury them in technical jargon. All five home pages are French. One
+       part per empty value, each of '', false and 0 present, so that rejecting only one of them,
+       or only one part's, does not pass. */
+    const references = [
+      { name: 'key figures written with single brackets', site: SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE },
+      { name: 'an intro written as a text', site: SITE_WITH_A_BACKGROUND_INTRO_AS_A_TEXT },
+      { name: 'an education written as a text', site: SITE_WITH_EDUCATION_AS_A_TEXT },
+      { name: 'skill groups written with single brackets', site: SITE_WITH_BACKGROUND_SKILLS_AS_A_SINGLE_TABLE },
+    ];
+    const expectedMessages: string[] = [];
+    for (const { name, site } of references) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const messages = backgroundMessages(build.errors);
+      expect(messages, `with ${name}, one background error message, in:\n${build.errors}`).toHaveLength(1);
+      expectedMessages.push(...messages);
+    }
+    const build = tryToBuildSite(SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES);
+    expect(build.succeeded, 'with every part written as an empty value, the site build should fail').toBe(false);
+    expect(
+      backgroundMessages(build.errors).sort(),
+      `with every part written as an empty value, the error message of each part not written as a list, in:\n${build.errors}`,
+    ).toEqual(expectedMessages.sort());
+    expect(build.errors, 'no template execution error should follow the error messages').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
+  });
+
+  test("a home page whose key figures, intro, education or skill groups are not a list makes the site build fail with an error message that names the home page's language, for French home pages and for an English one", () => {
+    /* A bilingual site has a home page per language, each with its own background: a message
+       saying the key figures or the skill groups must be written as a list of tables, or that the
+       intro or the education must be a list, that does not say which language's home page is at
+       fault leaves the person building the site to look for it in every
+       content/_index.<language>.md file. The hero, clients and projects messages already name the
+       home page's language by its code (fr, en); these must name it too, whatever the rest of the
+       wording. The French home pages come from the fixtures of the tests of these messages above:
+       key figures and skill groups each written with single brackets, and each as a list of texts,
+       the two ways of raising their message, then an intro and an education each written as a
+       text; the English one, from tests/fixtures/english-home-four-slips/content/_index.en.md,
+       makes the four mistakes at once, key figures and skill groups with single brackets, hence
+       four messages. Every background error message must be there and each must name, on its own
+       line, the home page's language, looked for, as in the hero's tests, as a word that no other
+       word follows. French home pages and an English one, so that a language written in the
+       template does not pass. */
+    const cases: { name: string; site: BuiltSite; language: string; messageCount: number }[] = [
+      {
+        name: 'a French home page with key figures written with single brackets',
+        site: SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE,
+        language: 'fr',
+        messageCount: 1,
+      },
+      {
+        name: 'a French home page with key figures written as a list of texts',
+        site: SITE_WITH_BACKGROUND_STATS_AS_A_LIST_OF_TEXTS,
+        language: 'fr',
+        messageCount: 1,
+      },
+      {
+        name: 'a French home page with an intro written as a text',
+        site: SITE_WITH_A_BACKGROUND_INTRO_AS_A_TEXT,
+        language: 'fr',
+        messageCount: 1,
+      },
+      {
+        name: 'a French home page with an education written as a text',
+        site: SITE_WITH_EDUCATION_AS_A_TEXT,
+        language: 'fr',
+        messageCount: 1,
+      },
+      {
+        name: 'a French home page with skill groups written with single brackets',
+        site: SITE_WITH_BACKGROUND_SKILLS_AS_A_SINGLE_TABLE,
+        language: 'fr',
+        messageCount: 1,
+      },
+      {
+        name: 'a French home page with skill groups written as a list of texts',
+        site: SITE_WITH_BACKGROUND_SKILLS_AS_A_LIST_OF_TEXTS,
+        language: 'fr',
+        messageCount: 1,
+      },
+      {
+        name: 'an English home page with key figures and skill groups written with single brackets and an intro and an education written as texts',
+        site: SITE_WITH_AN_ENGLISH_HOME_WITH_BACKGROUND_PARTS_NOT_AS_LISTS,
+        language: 'en',
+        messageCount: 4,
+      },
+    ];
+    for (const { name, site, language, messageCount } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const messages = backgroundMessages(build.errors);
+      expect(messages, `with ${name}, background error messages, one per mistake, in:\n${build.errors}`).toHaveLength(
+        messageCount,
+      );
+      expect(
+        messages.filter((line) => !new RegExp(languageCodePattern(language), 'u').test(line)),
+        `with ${name}, background error messages that do not name the home page's language, ${language}`,
+      ).toEqual([]);
+    }
   });
 });

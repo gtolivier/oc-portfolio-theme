@@ -70,13 +70,15 @@
   /* Set on the switcher for the same reason as --header-link-line-height. */
   --header-switcher-line-height: 1.25;
   --header-switcher-entry-padding-block: 4px;
+  /* An entry's padding above and below its text, together. */
+  --header-switcher-entry-padding-block-total: calc(2 * var(--header-switcher-entry-padding-block));
   --header-switcher-entry-padding-inline: 9px;
   /* An entry is at least --min-target-size high, taller if its text and
      padding outgrow it. */
   --header-switcher-entry-height: max(
     var(--min-target-size),
-    var(--header-switcher-font-size) * var(--header-switcher-line-height) + 2 *
-      var(--header-switcher-entry-padding-block)
+    var(--header-switcher-font-size) * var(--header-switcher-line-height) +
+      var(--header-switcher-entry-padding-block-total)
   );
   --header-switcher-height: calc(
     2 * var(--header-switcher-border-width) + 2 * var(--header-switcher-padding) + var(--header-switcher-entry-height)
@@ -1156,7 +1158,6 @@ tick-field > canvas {
 /* Margins rather than a row gap, which an empty row would double. */
 .project-card > * {
   margin: var(--project-card-gap) 0 0;
-  min-width: 0;
 }
 
 /* A long unbreakable word in the content wraps rather than leaving the

@@ -6,10 +6,16 @@ import {
   SITE_WITH_A_ONE_WORD_CLIENT_NAME,
   SITE_WITH_OTHER_CLIENTS,
   SITE_WITH_CLIENTS_AS_TEXT,
+  SITE_WITH_CLIENTS_AS_AN_EMPTY_TEXT,
+  SITE_WITH_CLIENTS_AS_FALSE,
   SITE_WITH_A_CLIENT_AS_MAP,
   SITE_WITH_AN_EMPTY_CLIENT_NAME,
   SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME,
+  SITE_WITH_AN_ENGLISH_HOME_WITH_CLIENTS_AS_TEXT,
+  SITE_WITH_CLIENTS_UNDER_THE_HERO,
+  TEMPLATE_EXECUTION_ERROR,
   buildSite,
+  languageCodePattern,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
   serveSite,
@@ -1648,6 +1654,11 @@ test.describe('home page of another site, without clients', () => {
   });
 });
 
+/* The lines of the build's errors that name the clients parameter. */
+function clientsMessages(errors: string): string[] {
+  return errors.split('\n').filter((line) => /\bclients\s+parameter\b/.test(line));
+}
+
 test.describe('client content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
@@ -1705,7 +1716,7 @@ test.describe('client content errors: build failure', () => {
         /\bclients\s+parameter\b/,
       );
       expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
-        /execute of template failed|error calling/i,
+        TEMPLATE_EXECUTION_ERROR,
       );
       for (const position of positions) {
         expect(build.errors, `with ${name}, the error message should give the position of each table`).toMatch(
@@ -1713,5 +1724,107 @@ test.describe('client content errors: build failure', () => {
         );
       }
     }
+  });
+
+  test("a home page whose clients parameter is not a list makes the site build fail with an error message that names the home page's language, for a French home page and for an English one", () => {
+    /* A bilingual site has a home page per language, each with its own clients: a message saying
+       the clients parameter must be a list that does not say which language's home page is at
+       fault leaves the person building the site to look for it in every
+       content/_index.<language>.md file. The hero's messages already name the home page's
+       language by its code (fr, en); this one must name it too, whatever the rest of the wording.
+       The French home page comes from the fixture of the test of this message above,
+       tests/fixtures/text-instead-of-list/content/_index.md; the English one, from
+       tests/fixtures/english-home-lone-name/content/_index.en.md, makes the same mistake. The
+       message, one line naming the clients parameter, must be there and name, on that line, the
+       home page's language, looked for, as in the hero's tests, as a word that no other word
+       follows. A French home page and an English one, so that a language written in the
+       template does not pass. */
+    const cases: { name: string; site: BuiltSite; language: string }[] = [
+      { name: 'a French home page with clients as a text', site: SITE_WITH_CLIENTS_AS_TEXT, language: 'fr' },
+      {
+        name: 'an English home page with clients as a text',
+        site: SITE_WITH_AN_ENGLISH_HOME_WITH_CLIENTS_AS_TEXT,
+        language: 'en',
+      },
+    ];
+    for (const { name, site, language } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const messages = clientsMessages(build.errors);
+      expect(
+        messages,
+        `with ${name}, one error message naming the clients parameter, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages.filter((line) => !new RegExp(languageCodePattern(language), 'u').test(line)),
+        `with ${name}, clients error messages that do not name the home page's language, ${language}`,
+      ).toEqual([]);
+    }
+  });
+
+  test('a home page whose clients parameter is an empty text or false instead of a list makes the site build fail with the same error message as a text instead of a list, alone, without a template execution error after it', () => {
+    /* tests/fixtures/empty-text-instead-of-names declares clients = '' and
+       tests/fixtures/false-instead-of-names clients = false: an empty value written where a list
+       of names belongs. Unlike a home page that leaves out the clients key, which shows no client
+       band (see the test above, on tests/fixtures/without-hero), this is a content mistake: rather
+       than a band that quietly disappears, the person building the site must get the failure a
+       text instead of a list gets, tests/fixtures/text-instead-of-list, with the same message: one
+       line naming the clients parameter, the very line the text gets, whatever its wording, and no
+       Go template execution error that would follow it and bury it in technical jargon. Both
+       home pages are French, as that fixture's is. Two fixtures, so that rejecting only one of
+       the two empty values does not pass. */
+    const textBuild = tryToBuildSite(SITE_WITH_CLIENTS_AS_TEXT);
+    expect(textBuild.succeeded, 'with clients as a text, the site build should fail').toBe(false);
+    const expectedMessages = clientsMessages(textBuild.errors);
+    expect(
+      expectedMessages,
+      `with clients as a text, one error message naming the clients parameter, in:\n${textBuild.errors}`,
+    ).toHaveLength(1);
+    const cases = [
+      { name: 'clients as an empty text', site: SITE_WITH_CLIENTS_AS_AN_EMPTY_TEXT },
+      { name: 'clients as false', site: SITE_WITH_CLIENTS_AS_FALSE },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(
+        clientsMessages(build.errors),
+        `with ${name}, the error message of a text instead of a list, alone, in:\n${build.errors}`,
+      ).toEqual(expectedMessages);
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
+        TEMPLATE_EXECUTION_ERROR,
+      );
+    }
+  });
+
+  test("a home page whose clients key is written under [params.hero] makes the site build fail, with an error message that says the clients parameter belongs to [params], before [params.hero], and names the home page's language, without a template execution error after it", () => {
+    /* tests/fixtures/clientele-dans-la-banniere/content/_index.md writes clients = [...] after the
+       [params.hero] header, under a well filled-in hero, so that TOML puts it in the hero's table
+       (params.hero.clients) rather than in params.clients, where the theme reads the clients.
+       Rather than a home page whose client band silently disappears, the person building the site
+       must get a failure whose message says, on one line, that clients belongs to [params],
+       written before [params.hero], and names the home page's language, as the other clients
+       messages do, whatever the rest of the wording, and no Go template execution error that
+       would follow it and bury it in technical jargon. [params] is looked for as written, so that
+       [params.hero] alone does not count for it; the language, as in the tests above, as a word
+       that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_CLIENTS_UNDER_THE_HERO);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors
+      .split('\n')
+      .filter(
+        (line) => /\bclients\b/.test(line) && line.includes('[params]') && /\bbefore\s+\[params\.hero\]/.test(line),
+      );
+    expect(
+      messages,
+      `one error message should say that clients belongs to [params], before [params.hero], in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(
+      messages.filter((line) => !new RegExp(languageCodePattern('fr'), 'u').test(line)),
+      "the error message should name the home page's language, fr",
+    ).toEqual([]);
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
   });
 });

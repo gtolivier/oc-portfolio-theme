@@ -1,7 +1,6 @@
-{{- /* The home page's featured projects: the pages its params.projects references, each entry checked and its page looked up once, for both the all-projects link and the cards. errorf does not stop the template: after an error, only the bad entry is skipped (a list that is not one counts as empty), so that no template execution error buries the error message. */}}
+{{- /* The home page's featured projects: the pages its params.projects references, each entry checked and its page looked up once, for both the all-projects link and the cards. errorf does not stop the template: after an error, only the bad entry is skipped (param-list-or-empty.html turns a list that is not one into an empty list), so that no template execution error buries the error message. */}}
 {{- $lang := site.Language.Lang }}
-{{- $featured := .Params.projects }}
-{{- if and (isset .Params "projects") (not (reflect.IsSlice $featured)) }}{{ errorf "projects: the home page's projects parameter must be a list of pages" }}{{ $featured = slice }}{{ end }}
+{{- $featured := partial "param-list-or-empty.html" (dict "params" .Params "key" "projects" "error" (printf "projects: the home page's projects parameter must be a list of pages (language: %s)" $lang)) }}
 {{- /* Only regular pages are projects. The words the error uses for each other kind of page an entry may reference; a kind missing here gets the generic wording, so that it is still rejected. */}}
 {{- $nonProjectKindWords := dict "home" "the home page itself" "section" "a section page" "term" "a taxonomy term page" "taxonomy" "a taxonomy page" "404" "the 404 error page" }}
 {{- $projects := slice }}
@@ -12,9 +11,11 @@
 {{- if eq $entryProblem "empty" }}{{ errorf "projects: entry %d of the home page's projects parameter must be a non-empty page reference (language: %s)" $entryNumber $lang }}{{ continue }}{{ end }}
 {{- if eq $entryProblem "padded" }}{{ errorf "projects: entry %d of the home page's projects parameter has a page reference with whitespace at its start or end, which Hugo does not trim (language: %s): %q" $entryNumber $lang $entry }}{{ continue }}{{ end }}
 {{- $page := $.GetPage $entry }}
-{{- if not $page }}{{ errorf "projects: the home page's projects parameter references a page that cannot be found (language: %s): %q. The project may not exist, the page may not be translated into this language, or not published: a draft, a future (scheduled) date or an expired page" $lang $entry }}{{ continue }}{{ end }}
+{{- if not $page }}{{ errorf "projects: the home page's projects parameter references a page that cannot be found (language: %s): %q. Possible causes: %s" $lang $entry (partial "page-not-found-causes.html") }}{{ continue }}{{ end }}
 {{- if not $page.IsPage }}{{ errorf "projects: the home page's projects parameter references %s, which is not a project (language: %s): %q" (index $nonProjectKindWords $page.Kind | default "a page of another type") $lang $entry }}{{ continue }}{{ end }}
-{{- if and (isset $page.Params "build") (not (reflect.IsMap $page.Params.build)) }}{{ errorf "projects: the project %q declares a custom parameter named build, which the theme reads as Hugo's build options (the [build] front matter): rename this parameter" $entry }}{{ continue }}{{ end }}
+{{- if and (ne $page.Section "projets") (partial "is-published.html" $page.Parent) }}{{ errorf "projects: the project %q does not live in the projets section, which the home page's projects parameter requires (language: %s)" $entry $lang }}{{ continue }}{{ end }}
+{{- if partial "has-custom-build-param.html" $page }}{{ errorf "projects: the project %q declares a custom parameter named build, which the theme reads as Hugo's build options (the [build] front matter): rename this parameter (language: %s)" $entry $lang }}{{ continue }}{{ end }}
+{{- if and $page.Params.stack (not (reflect.IsSlice $page.Params.stack)) }}{{ errorf "projects: the stack of the project %q must be a list (language: %s)" $entry $lang }}{{ continue }}{{ end }}
 {{- $projects = $projects | append $page }}
 {{- end }}
 {{- return $projects }}

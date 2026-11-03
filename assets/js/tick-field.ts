@@ -347,12 +347,16 @@ class TickField extends HTMLElement {
     const left = Math.round((width - span) / 2);
     const verticalMargin = variant.minVerticalMargin;
     let rows = Math.max(1, Math.floor((height - 2 * verticalMargin) / FIELD_ROW_SPACING_PX) + 1);
-    for (; ; rows -= 1) {
-      /* The tallest tick of the last row is the one in the last column. */
-      const bottom = (rows - 1) * FIELD_ROW_SPACING_PX + this.tickHeight(1, 1);
-      const top = Math.round((height - bottom) / 2);
-      if (top >= verticalMargin || rows <= 1) return { columns, rows, left, top };
-    }
+    /* The last row's ticks overhang its spacing: drop rows until the top margin fits, keeping at least one. */
+    while (rows > 1 && this.gridTop(height, rows) < verticalMargin) rows -= 1;
+    return { columns, rows, left, top: this.gridTop(height, rows) };
+  }
+
+  /* The top of a grid of this many rows, centred in the box, on a whole pixel. */
+  private gridTop(height: number, rows: number): number {
+    /* The tallest tick of the last row is the one in the last column. */
+    const bottom = (rows - 1) * FIELD_ROW_SPACING_PX + this.tickHeight(1, 1);
+    return Math.round((height - bottom) / 2);
   }
 
   /* The stylesheet sets them, and can change them at a breakpoint: on a phone, the hero's field gives

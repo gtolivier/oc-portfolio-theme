@@ -1,0 +1,3 @@
+{{- /* Whether a front matter parameter, the key of the params map, is written with an empty value ('', false, 0) that is not a list: a content mistake, unlike an omitted key or an empty list, which say "nothing here". */}}
+{{- $value := index .params .key }}
+{{- return (and (isset .params .key) (not $value) (not (reflect.IsSlice $value))) }}

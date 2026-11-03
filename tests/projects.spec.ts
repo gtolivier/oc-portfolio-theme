@@ -13,6 +13,7 @@ import {
   SITE_WITH_AN_UNPUBLISHED_SECTION_PAGE,
   SITE_WITH_PROJECTS_IN_TWO_SECTIONS,
   SITE_WITH_PROJECTS_AS_TEXT,
+  SITE_WITH_AN_ENGLISH_HOME_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT,
   SITE_WITH_PROJECTS_AS_FALSE,
   SITE_WITH_A_FEATURED_PROJECT_AS_MAP,
@@ -31,7 +32,11 @@ import {
   SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS,
   SITE_WITH_UNUSUAL_RENDER_VALUES,
   SITE_WITH_A_BUILD_PARAM_AS_TEXT,
+  SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_BUILD_PARAM_AS_TEXT,
+  SITE_WITH_A_PROJECT_STACK_AS_A_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
+  SITE_WITH_PROJECTS_UNDER_THE_HERO,
+  TEMPLATE_EXECUTION_ERROR,
   type BuiltSite,
   buildSite,
   languageCodePattern,
@@ -1795,40 +1800,98 @@ test.describe('featured project whose page declares a custom param named build: 
     expect(build.errors, 'the error message should name Hugo').toMatch(/\bHugo\b/);
     expect(build.errors, 'the error message should name the project').toContain('projets/pendule-squelette');
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
+    );
+  });
+
+  test("a featured project whose page declares a custom param build that is not a table makes the site build fail with an error message that names the home page's language, for a French home page and for an English one", () => {
+    /* A bilingual site has a home page per language, each with its own featured projects, and a
+       project page per language: a message saying a featured project declares a custom build
+       param that does not say which language's home page features it leaves the person building
+       the site to look for it in every content/_index.<language>.md file and every translation of
+       that project. The other messages on the entries of the projects list already name the home
+       page's language by its code (fr, en); this one must name it too, whatever the rest of the
+       wording. The French home page comes from the fixture of the test of this message above,
+       tests/fixtures/build-param-as-text/content; the English one, from
+       tests/fixtures/english-home-year-param/content, features an English-only project whose
+       page makes the same mistake. The message, one line naming the build param and the project,
+       must be there and name, on that line, the home page's language, looked for, as in the
+       other projects' tests, as a word that no other word follows. A French home page and an
+       English one, so that a language written in the template does not pass. */
+    const cases: { name: string; site: BuiltSite; language: string }[] = [
+      {
+        name: 'a French home page featuring a project with a build param as a text',
+        site: SITE_WITH_A_BUILD_PARAM_AS_TEXT,
+        language: 'fr',
+      },
+      {
+        name: 'an English home page featuring a project with a build param as a text',
+        site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_BUILD_PARAM_AS_TEXT,
+        language: 'en',
+      },
+    ];
+    for (const { name, site, language } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
+        TEMPLATE_EXECUTION_ERROR,
+      );
+      const messages = build.errors
+        .split('\n')
+        .filter((line) => /\bbuild\b/.test(line) && line.includes('projets/pendule-squelette'));
+      expect(
+        messages,
+        `with ${name}, one error message naming the build param and the project, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages.filter((line) => !new RegExp(languageCodePattern(language), 'u').test(line)),
+        `with ${name}, build param error messages that do not name the home page's language, ${language}`,
+      ).toEqual([]);
+    }
+  });
+});
+
+test.describe('featured project whose page writes its stack as a text: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a featured project whose page writes its stack as a text rather than a list makes the site build fail, with an error message that names that project and says its stack must be a list, without a template execution error after it', () => {
+    /* tests/fixtures/card-materials-as-text/content/projets/lanterne-forgee.md, a project the
+       French home page features, writes its stack under [params] as a single text,
+       'Laiton, Acier', rather than a list of entries: joining a text in a Go template may raise
+       an execution error, or none, and the card would show the text as it is. Rather than that,
+       the person building the site must get a failure whose message, on one line, is about the
+       featured projects, names that project by its reference and says its stack must be a list,
+       whatever the rest of the wording, and no Go template execution error that would follow it
+       and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_A_PROJECT_STACK_AS_A_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors
+      .split('\n')
+      .filter((line) => line.includes('projets/lanterne-forgee') && /\bstack\b.*\blist\b/.test(line));
+    expect(
+      messages,
+      `one error message naming the project and saying its stack must be a list, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], 'the error message should be about the featured projects').toMatch(/\bprojects\b/);
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 });
 
-test.describe('home pages whose featured projects live in sections of different names', () => {
-  let siteDirectory: string;
-  test.beforeAll(() => {
-    siteDirectory = buildSite(SITE_WITH_PROJECTS_IN_ANOTHER_SECTION);
-  });
-  test.afterAll(() => {
-    removeDirectory(siteDirectory);
-  });
-
+test.describe('home pages of the example site, served at the site root and under /portfolio/', () => {
   test('the section "Projets sélectionnés" has, once and outside the cards, a "Tous les projets" link that opens the section holding the featured projects, at the site root and under /portfolio/', async ({
     page,
-    context,
   }) => {
-    await serveSite(context, SITE_WITH_PROJECTS_IN_ANOTHER_SECTION, siteDirectory);
+    /* The example site, whose featured projects are in content/projets/ (title "Projets"),
+       served at the root of its origin, then under a subpath (playwright.config.ts), so that an
+       address written from the root cannot pass. */
     const sites = [
-      /* The example site, whose featured projects are in content/projets/ (title "Projets"),
-         served at the root of its origin, then under a subpath (playwright.config.ts)… */
       { home: '/fr/', sectionAddress: '/fr/projets/', sectionTitle: 'Projets' },
       {
         home: `${EXAMPLE_SITE_UNDER_PORTFOLIO}fr/`,
         sectionAddress: `${EXAMPLE_SITE_UNDER_PORTFOLIO}fr/projets/`,
         sectionTitle: 'Projets',
-      },
-      /* …and a site whose featured project is in content/realisations/, while projets/ still
-         exists: a hard-coded /projets/ address cannot pass. */
-      {
-        home: `${SITE_WITH_PROJECTS_IN_ANOTHER_SECTION.origin}/fr/`,
-        sectionAddress: `${SITE_WITH_PROJECTS_IN_ANOTHER_SECTION.origin}/fr/realisations/`,
-        sectionTitle: 'Réalisations',
       },
     ];
     for (const site of sites) {
@@ -1846,68 +1909,6 @@ test.describe('home pages whose featured projects live in sections of different 
       await expect(page).toHaveURL(site.sectionAddress);
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(site.sectionTitle);
     }
-  });
-});
-
-test.describe('home page of another site, featuring a project at the content root', () => {
-  let siteDirectory: string;
-  test.beforeAll(() => {
-    siteDirectory = buildSite(SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT);
-  });
-  test.afterAll(() => {
-    removeDirectory(siteDirectory);
-  });
-
-  test('the section "Projets sélectionnés" shows the card of a featured project that lives at the content root, outside any section, but no "Tous les projets" link, since no section holds that project', async ({
-    page,
-    context,
-  }) => {
-    await serveSite(context, SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT, siteDirectory);
-    await page.goto(`${SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT.origin}/fr/`);
-    const section = projectsSection(page);
-    /* tests/fixtures/project-at-the-root/content/_index.md features 'pendule-murale', a page at the
-       root of the content: the section and its card are still shown… */
-    const card = cardTitled(section, 'Pendule murale');
-    await expect(card).toHaveCount(1);
-    await expect(card).toBeVisible();
-    await expect(card.getByRole('link', { name: 'Voir le détail' })).toHaveCount(1);
-    /* …but no link claims to list all the projects: there is no projects section to open, and the
-       home page the visitor is on is not one. */
-    await expect(section.getByRole('link', { name: 'Tous les projets' })).toHaveCount(0);
-    await expect(section.getByText('Tous les projets')).toHaveCount(0);
-  });
-
-  test('on a phone, without the "Tous les projets" link, the first card of the section "Projets sélectionnés" is as far below the heading as it is below the link on a home page that has it', async ({
-    page,
-    context,
-  }) => {
-    await serveSite(context, SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT, siteDirectory);
-    await page.setViewportSize(PHONE);
-    /* From the bottom of an element's box (the link's ends with its underline) to the top of the
-       first card's. */
-    const spaceAboveFirstCard = async (element: Locator, firstCard: Locator) => {
-      const [above, card] = await Promise.all([elementBox(element), elementBox(firstCard)]);
-      return card.top - above.bottom;
-    };
-    /* The example site's home page has the link, below the heading and above the first card. */
-    await page.goto('/fr/');
-    await page.evaluate(() => document.fonts.ready);
-    const sectionWithLink = projectsSection(page);
-    const link = sectionWithLink.getByRole('link', { name: 'Tous les projets', exact: true });
-    await expect(link).toBeVisible();
-    const belowLink = await spaceAboveFirstCard(link, sectionWithLink.getByRole('article').first());
-    /* This site's home page has no link: the first card comes right after the heading. */
-    await page.goto(`${SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT.origin}/fr/`);
-    await page.evaluate(() => document.fonts.ready);
-    const section = projectsSection(page);
-    await expect(section.getByRole('link', { name: 'Tous les projets' })).toHaveCount(0);
-    const firstCard = section.getByRole('article').first();
-    await expect(firstCard).toBeVisible();
-    const belowHeading = await spaceAboveFirstCard(section.getByRole('heading', { level: 2 }), firstCard);
-    expect(
-      Math.abs(belowHeading - belowLink),
-      `space from the heading to the first card without the link (${belowHeading.toFixed(1)} px) against the space from the link to the first card with it (${belowLink.toFixed(1)} px)`,
-    ).toBeLessThanOrEqual(2);
   });
 });
 
@@ -1967,45 +1968,40 @@ test.describe('home pages of other sites, featuring a project whose section has 
         .toHaveCount(0);
     }
   });
-});
 
-test.describe('home page of another site, featuring projects from two published sections', () => {
-  let siteDirectory: string;
-  test.beforeAll(() => {
-    siteDirectory = buildSite(SITE_WITH_PROJECTS_IN_TWO_SECTIONS);
-  });
-  test.afterAll(() => {
-    removeDirectory(siteDirectory);
-  });
-
-  test('the section "Projets sélectionnés" shows the cards of featured projects from two different published sections, but no "Tous les projets" link, since no single section holds them all', async ({
+  test('on a phone, without the "Tous les projets" link, the first card of the section "Projets sélectionnés" is as far below the heading as it is below the link on a home page that has it', async ({
     page,
     context,
   }) => {
-    await serveSite(context, SITE_WITH_PROJECTS_IN_TWO_SECTIONS, siteDirectory);
-    const origin = SITE_WITH_PROJECTS_IN_TWO_SECTIONS.origin;
-    /* tests/fixtures/projects-in-two-sections/content/_index.md features a project of projets/,
-       then one of realisations/: both sections are published… */
-    for (const sectionPath of ['/fr/projets/', '/fr/realisations/']) {
-      const sectionResponse = await page.goto(`${origin}${sectionPath}`);
-      expect(sectionResponse?.status(), `status of ${origin}${sectionPath}`).toBe(200);
-    }
-    await page.goto(`${origin}/fr/`);
+    const siteWithoutLink = SITE_WITH_AN_UNPUBLISHED_PROJECTS_SECTION;
+    await serveSite(context, siteWithoutLink, siteDirectories[sites.findIndex(({ site }) => site === siteWithoutLink)]);
+    await page.setViewportSize(PHONE);
+    /* From the bottom of an element's box (the link's ends with its underline) to the top of the
+       first card's. */
+    const spaceAboveFirstCard = async (element: Locator, firstCard: Locator) => {
+      const [above, card] = await Promise.all([elementBox(element), elementBox(firstCard)]);
+      return card.top - above.bottom;
+    };
+    /* The example site's home page has the link, below the heading and above the first card. */
+    await page.goto('/fr/');
+    await page.evaluate(() => document.fonts.ready);
+    const sectionWithLink = projectsSection(page);
+    const link = sectionWithLink.getByRole('link', { name: 'Tous les projets', exact: true });
+    await expect(link).toBeVisible();
+    const belowLink = await spaceAboveFirstCard(link, sectionWithLink.getByRole('article').first());
+    /* The home page of the site whose carnets/ section has no published page has no link: the
+       first card comes right after the heading. */
+    await page.goto(`${siteWithoutLink.origin}/fr/`);
+    await page.evaluate(() => document.fonts.ready);
     const section = projectsSection(page);
-    /* …and the home page shows the card of each featured project… */
-    for (const title of ['Restauration d’une pendule de cheminée', 'Coucou de chalet']) {
-      const card = cardTitled(section, title);
-      await expect(card).toHaveCount(1);
-      await expect(card).toBeVisible();
-    }
-    /* …but no link claims to list all the projects, not even an empty one: either section would
-       list only some of them. */
-    await expect
-      .soft(section.getByRole('link', { name: 'Tous les projets' }), `"Tous les projets" links on ${origin}/fr/`)
-      .toHaveCount(0);
-    await expect
-      .soft(section.getByText('Tous les projets'), `"Tous les projets" texts on ${origin}/fr/`)
-      .toHaveCount(0);
+    await expect(section.getByRole('link', { name: 'Tous les projets' })).toHaveCount(0);
+    const firstCard = section.getByRole('article').first();
+    await expect(firstCard).toBeVisible();
+    const belowHeading = await spaceAboveFirstCard(section.getByRole('heading', { level: 2 }), firstCard);
+    expect(
+      Math.abs(belowHeading - belowLink),
+      `space from the heading to the first card without the link (${belowHeading.toFixed(1)} px) against the space from the link to the first card with it (${belowLink.toFixed(1)} px)`,
+    ).toBeLessThanOrEqual(2);
   });
 });
 
@@ -2196,9 +2192,14 @@ function expectProjectsBuildError(build: BuildAttempt, context = ''): void {
     /\bprojects\s+parameter\b/,
   );
   expect(build.errors, `${prefix}no template execution error should follow the error message`).not.toMatch(
-    /execute of template failed|error calling/i,
+    TEMPLATE_EXECUTION_ERROR,
   );
 }
+
+/* A message naming, on its own line, the projets section: the word "section" and the token
+   projets, which neither a word nor a page path under projets/ continues, so that a reference
+   such as 'projets/restauration-pendule' does not pass for it. */
+const NAMES_THE_PROJETS_SECTION = /^(?=.*\bsection\b)(?=.*(?<![\w-])projets(?![\w-]|\/[\w-])).*$/u;
 
 test.describe('featured project content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
@@ -2262,6 +2263,42 @@ test.describe('featured project content errors: build failure', () => {
     expect(build.errors, 'the error message should say the projects parameter must be a list').toMatch(
       /\bprojects\s+parameter\b.*\blist\b/,
     );
+  });
+
+  test("a home page whose projects parameter is not a list makes the site build fail with an error message that names the home page's language, for a French home page and for an English one", () => {
+    /* A bilingual site has a home page per language, each with its own projects: a message saying
+       the projects parameter must be a list that does not say which language's home page is at
+       fault leaves the person building the site to look for it in every
+       content/_index.<language>.md file. The messages on the entries of the list already name the
+       home page's language by its code (fr, en); this one must name it too, whatever the rest of
+       the wording. The French home page comes from the fixture of the test of this message above,
+       tests/fixtures/single-ref-instead-of-list/content/_index.md; the English one, from
+       tests/fixtures/english-home-single-ref/content/_index.en.md, makes the same mistake. The
+       message, one line naming the projects parameter, must be there and name, on that line, the
+       home page's language, looked for, as in the clients' tests, as a word that no other word
+       follows. A French home page and an English one, so that a language written in the template
+       does not pass. */
+    const cases: { name: string; site: BuiltSite; language: string }[] = [
+      { name: 'a French home page with projects as a text', site: SITE_WITH_PROJECTS_AS_TEXT, language: 'fr' },
+      {
+        name: 'an English home page with projects as a text',
+        site: SITE_WITH_AN_ENGLISH_HOME_WITH_PROJECTS_AS_TEXT,
+        language: 'en',
+      },
+    ];
+    for (const { name, site, language } of cases) {
+      const build = tryToBuildSite(site);
+      expectProjectsBuildError(build, `with ${name}`);
+      const messages = build.errors.split('\n').filter((line) => /\bprojects\s+parameter\b/.test(line));
+      expect(
+        messages,
+        `with ${name}, one error message naming the projects parameter, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages.filter((line) => !new RegExp(languageCodePattern(language), 'u').test(line)),
+        `with ${name}, projects error messages that do not name the home page's language, ${language}`,
+      ).toEqual([]);
+    }
   });
 
   test('a home page whose projects list holds tables instead of page references makes the site build fail, with an error message that names the projects parameter and the position of each table, without a template execution error after it', () => {
@@ -2483,6 +2520,84 @@ test.describe('featured project content errors: build failure', () => {
     );
   });
 
+  test("a home page that features a project living in a top-level section other than projets makes the site build fail, with an error message that names that entry, the projets section and the home page's language, without a template execution error after it", () => {
+    /* Featured projects must live in the projets section, the one the "Tous les projets" link
+       opens. tests/fixtures/projects-in-another-section/content/_index.md features a single
+       project, 'realisations/pendule-de-voyage', of another published section, realisations/;
+       tests/fixtures/projects-in-two-sections/content/_index.md features
+       'projets/restauration-pendule', then 'realisations/coucou-de-chalet', of that same other
+       section. Rather than a section whose cards come from anywhere, the person building the site
+       must get a failure whose message, on one line, names the entry as written in the front
+       matter, the section the project must live in, projets, and the home page's language by its
+       code, whatever the rest of the wording, and no Go template execution error that would
+       follow it and bury it in technical jargon. Two sites whose entries differ, so that an entry
+       written in the template does not pass; the second also features a project of projets/,
+       which must not be reported. The section is looked for as the word "section" and the token
+       projets, which neither a word nor a page path under projets/ continues, so that the
+       reference 'projets/restauration-pendule' does not pass for it; the language code, as in
+       the other projects' tests, as a word that no other word follows. */
+    const cases: { name: string; site: BuiltSite; entry: string; language: string }[] = [
+      {
+        name: 'a French home page featuring a project of realisations/ alone',
+        site: SITE_WITH_PROJECTS_IN_ANOTHER_SECTION,
+        entry: 'realisations/pendule-de-voyage',
+        language: 'fr',
+      },
+      {
+        name: 'a French home page featuring a project of projets/, then one of realisations/',
+        site: SITE_WITH_PROJECTS_IN_TWO_SECTIONS,
+        entry: 'realisations/coucou-de-chalet',
+        language: 'fr',
+      },
+    ];
+    for (const { name, site, entry, language } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
+        TEMPLATE_EXECUTION_ERROR,
+      );
+      expect(build.errors, `with ${name}, no error message should name the featured project of projets/`).not.toContain(
+        'projets/restauration-pendule',
+      );
+      const messages = build.errors.split('\n').filter((line) => line.includes(entry));
+      expect(messages, `with ${name}, one error message naming the entry ${entry}, in:\n${build.errors}`).toHaveLength(
+        1,
+      );
+      expect(messages[0], `with ${name}, the error message should name the projets section`).toMatch(
+        NAMES_THE_PROJETS_SECTION,
+      );
+      expect(messages[0], `with ${name}, the error message should name the home page's language, ${language}`).toMatch(
+        new RegExp(languageCodePattern(language), 'u'),
+      );
+    }
+  });
+
+  test("a home page that features a project living at the content root, outside any section, makes the site build fail, with an error message that names that entry, the projets section and the home page's language, without a template execution error after it", () => {
+    /* Featured projects must live in the projets section, the one the "Tous les projets" link
+       opens: a page at the root of the content, in no section at all, does not either.
+       tests/fixtures/project-at-the-root/content/_index.md features a single project,
+       'pendule-murale', a page at the root of the content. Rather than a section with a card of
+       that page, the person building the site must get the same failure as for a project of
+       another section: a message that, on one line, names the entry as written in the front
+       matter, the section the project must live in, projets, and the home page's language by its
+       code, whatever the rest of the wording, and no Go template execution error that would
+       follow it and bury it in technical jargon. The section and the language are looked for as
+       in the test above. */
+    const entry = 'pendule-murale';
+    const language = 'fr';
+    const build = tryToBuildSite(SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
+    const messages = build.errors.split('\n').filter((line) => line.includes(entry));
+    expect(messages, `one error message naming the entry ${entry}, in:\n${build.errors}`).toHaveLength(1);
+    expect(messages[0], 'the error message should name the projets section').toMatch(NAMES_THE_PROJETS_SECTION);
+    expect(messages[0], `the error message should name the home page's language, ${language}`).toMatch(
+      new RegExp(languageCodePattern(language), 'u'),
+    );
+  });
+
   /* Both directions, each with the code of the home page's language: a French home page featuring
      a project that only has an English page, and the other way round. */
   const HOME_PAGES_FEATURING_AN_UNTRANSLATED_PROJECT = [
@@ -2657,6 +2772,44 @@ test.describe('featured project content errors: build failure', () => {
     expectProjectsBuildError(build);
     expect(build.errors, 'the error message should give a project that does not exist as a possible cause').toMatch(
       /\b(?:not|n['’]t)\s+exist|\bnon-?existent\b|\bno\s+such\b/i,
+    );
+  });
+
+  test('a home page whose projects list references a page that cannot be found makes the site build fail, with an error message that gives a typo in the reference as a possible cause', () => {
+    /* tests/fixtures/featured-ref-without-page/content/_index.md features
+       'projets/restauration-pendule', an existing page, then 'projets/sablier-introuvable', which
+       no page answers, in any language, published or not. A reference typed wrong is as common a
+       cause as a project that does not exist, and the hero's message for a pageRef that matches
+       no page already names it: a projects message that leaves it out would send the person
+       building the site looking for a missing project or a publishing setting, while the project
+       is right there under another name. The projects message that cites this reference must, on
+       that same line, give a typo in the reference (typo, misspelled) as a possible cause,
+       whatever the rest of the wording. */
+    const build = tryToBuildSite(SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND);
+    expectProjectsBuildError(build);
+    expect(
+      build.errors,
+      'the projects error message that cites the missing reference should give a typo as a possible cause',
+    ).toMatch(/^(?=.*\bprojects:)(?=.*projets\/sablier-introuvable)(?=.*(?:\btypo|\bmisspel)).*$/im);
+  });
+
+  test('a home page whose projects key is written under [params.hero] makes the site build fail, with an error message that says the projects parameter belongs to [params], before [params.hero], without a template execution error after it', () => {
+    /* tests/fixtures/featured-list-in-the-banner/content/_index.md writes projects = [...] after
+       the [params.hero] header, so that TOML puts it in the hero's table (params.hero.projects)
+       rather than in params.projects, where the theme reads the featured projects. Rather than a
+       home page whose projects silently disappear, the person building the site must get a
+       failure whose message says, on one line, that projects belongs to [params], written before
+       [params.hero], whatever the rest of the wording, and no Go template execution error that
+       would follow it and bury it in technical jargon. [params] is looked for as written, so that
+       [params.hero] alone does not count for it. */
+    const build = tryToBuildSite(SITE_WITH_PROJECTS_UNDER_THE_HERO);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(
+      build.errors,
+      'one error message should say that projects belongs to [params], before [params.hero]',
+    ).toMatch(/^(?=.*\bprojects\b)(?=.*\[params\])(?=.*\bbefore\s+\[params\.hero\]).*$/im);
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 });

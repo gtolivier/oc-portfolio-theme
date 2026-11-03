@@ -5,15 +5,8 @@ title = 'Accueil'
 stats = ''
 intro = false
 education = 0
-
-[[params.background.skills]]
-title = 'Tressage'
-items = ['Paniers d’osier', 'Clôtures de saule']
-
-[[params.background.skills]]
-title = 'Teinture'
-items = ['Brou de noix']
+skills = false
 +++
 
-Accueil fictif d’une vannière dont le parcours laisse ses chiffres clés, son texte d’ouverture et
-sa formation à des valeurs vides plutôt que de les omettre.
+Accueil fictif d’une vannière dont le parcours laisse ses chiffres clés, son texte d’ouverture, sa
+formation et ses groupes de compétences à des valeurs vides plutôt que de les omettre.

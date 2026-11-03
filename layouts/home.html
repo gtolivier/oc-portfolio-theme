@@ -1,6 +1,13 @@
 {{ define "main" }}
   {{- /* The hero and the project cards list a stack the same way. */}}
   {{- $stackSeparator := " · " }}
+  {{- $lang := site.Language.Lang }}
+  {{- $clients := partial "param-list-or-empty.html" (dict "params" .Params "key" "clients" "error" (printf "clients: the home page's clients parameter must be a list of names (language: %s)" $lang)) }}
+  {{- if reflect.IsMap .Params.hero }}
+  {{- range $key := partial "home-params-keys.html" }}
+  {{- if isset $.Params.hero $key }}{{ errorf "%s: the %s parameter belongs to [params], written before [params.hero], not under the hero (language: %s)" $key $key $lang }}{{ end }}
+  {{- end }}
+  {{- end }}
   {{- if or .Params.hero .Params.clients }}
   <div class="first-screen{{ if .Params.hero }} has-hero{{ end }}">
     {{- with .Params.hero }}
@@ -9,24 +16,32 @@
       {{- /* The hero decodes faster than the default pace. The name and the title start decoding together. */}}
       {{- $heroLetterMs := 40 }}
       <h1 id="hero-heading"><scramble-text duration="{{ mul (strings.RuneCount site.Params.author) $heroLetterMs }}">{{ site.Params.author }}</scramble-text>
-        {{- with .title }}
+        {{- $title := .title }}
+        {{- if and $title (eq (partial "text-problem.html" $title) "not-text") }}{{ errorf "hero: the title must be a text (language: %s)" $lang }}{{ $title = "" }}{{ end }}
+        {{- with $title }}
         <span class="hero-title"><scramble-text duration="{{ mul (strings.RuneCount .) $heroLetterMs }}">{{ . }}</scramble-text></span>
         {{- end }}
       </h1>
-      {{- with .tagline }}
-      {{- $tagline := partial "list-or-empty.html" (dict "value" . "error" "hero: the tagline must be a list") }}
+      {{- $tagline := partial "param-list-or-empty.html" (dict "params" . "key" "tagline" "error" (printf "hero: the tagline must be a list (language: %s)" $lang)) }}
+      {{- with $tagline }}
       <p class="hero-tagline">
-        {{- partial "lines.html" $tagline -}}
+        {{- partial "lines.html" . -}}
       </p>
       {{- end }}
-      {{- with .stack }}
+      {{- $stack := partial "param-list-or-empty.html" (dict "params" . "key" "stack" "error" (printf "hero: the stack must be a list (language: %s)" $lang)) }}
+      {{- with $stack }}
       <p class="hero-stack">{{ delimit . $stackSeparator }}</p>
       {{- end }}
-      {{- with .actions }}
-      {{- $actions := partial "list-or-empty.html" (dict "value" . "error" "hero: the buttons must be written as a list of tables, [[params.hero.actions]], with double brackets") }}
+      {{- $actionsNotTablesError := printf "hero: the buttons must be written as a list of tables, [[params.hero.actions]], with double brackets (language: %s)" $lang }}
+      {{- $actions := partial "param-list-or-empty.html" (dict "params" . "key" "actions" "error" $actionsNotTablesError) }}
+      {{- with $actions }}
       <p class="hero-actions">
         {{- range $index, $action := $actions }}
-        {{ partial "hero/action.html" (dict "action" $action "position" (add $index 1)) }}
+        {{- $position := add $index 1 }}
+        {{- if reflect.IsMap $action }}
+        {{ partial "hero/action.html" (dict "action" $action "position" $position) }}
+        {{- else }}{{ errorf "hero: button %d must be a table, not a text or another value (language: %s)" $position $lang }}
+        {{- end }}
         {{- end }}
       </p>
       {{- end }}
@@ -34,7 +49,6 @@
     </tick-field>
     {{- end }}
     {{- with .Params.clients }}
-    {{- $clients := partial "list-or-empty.html" (dict "value" . "error" "clients: the home page's clients parameter must be a list of names") }}
     {{- /* As in text-list-or-empty.html, an entry error below empties the list, so the band shows no names. */}}
     {{- range $index, $client := $clients }}
     {{- $entryNumber := add $index 1 }}
@@ -70,12 +84,12 @@
   <section class="projects" aria-labelledby="projects-heading">
     <div class="projects-header">
       <h2 id="projects-heading">{{ i18n "selectedProjects" }}</h2>
-      {{- /* The all-projects link goes to the section holding every featured project: with projects in several sections, no section lists them all. */}}
+      {{- /* The all-projects link goes to the section holding every featured project: with projects in several sections (subsections of projets, or a section Hugo does not publish, which featured.html lets through), no section lists them all. */}}
       {{- $firstSection := (index $projects 0).Parent }}
       {{- $isInOneSection := true }}
       {{- range $projects }}{{ if not (.Parent.Eq $firstSection) }}{{ $isInOneSection = false }}{{ end }}{{ end }}
-      {{- /* No section to open when the projects sit at the content root (their parent is the home page) or in a section Hugo does not publish: no address, or one with no page written behind it ([build] render = 'link'), so .RelPermalink alone is not enough. */}}
-      {{- if and $isInOneSection (not $firstSection.IsHome) (partial "is-published.html" $firstSection) }}
+      {{- /* No section to open when the projects sit in a section Hugo does not publish: no address, or one with no page written behind it ([build] render = 'link'), so .RelPermalink alone is not enough. Their section is never the home page: featured.html rejects a project at the content root. */}}
+      {{- if and $isInOneSection (partial "is-published.html" $firstSection) }}
       <a class="all-projects-link" href="{{ $firstSection.RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
       {{- end }}
     </div>
@@ -101,12 +115,18 @@
   </section>
   {{- end }}
   {{- $background := .Params.background | default dict }}
-  {{- if and (reflect.IsMap $background) (or $background.stats $background.intro $background.education $background.skills) }}
+  {{- $hasBackground := false }}
+  {{- if reflect.IsMap $background }}
+  {{- range slice "stats" "intro" "education" "skills" }}
+  {{- if or (index $background .) (partial "is-blank-param.html" (dict "params" $background "key" .)) }}{{ $hasBackground = true }}{{ end }}
+  {{- end }}
+  {{- end }}
+  {{- if $hasBackground }}
   <section class="background" aria-labelledby="background-heading">
     <h2 id="background-heading">{{ i18n "background" }}</h2>
     {{- /* errorf does not stop the template: after an error, the part at fault (key figures, intro, education or skill groups) is empty, so that no template execution error buries the message. */}}
-    {{- $statsNotTablesError := "background: the key figures must be written as a list of tables, [[params.background.stats]], with double brackets" }}
-    {{- $stats := partial "list-or-empty.html" (dict "value" $background.stats "error" $statsNotTablesError) }}
+    {{- $statsNotTablesError := printf "background: the key figures must be written as a list of tables, [[params.background.stats]], with double brackets (language: %s)" $lang }}
+    {{- $stats := partial "param-list-or-empty.html" (dict "params" $background "key" "stats" "error" $statsNotTablesError) }}
     {{- range $index, $stat := $stats }}
     {{- if not (reflect.IsMap $stat) }}{{ errorf $statsNotTablesError }}{{ $stats = slice }}
     {{- else if not (findRE `^\s*\d` (printf "%v" $stat.value)) }}{{ errorf "background: key figure %d must start with a whole number" (add $index 1) }}{{ $stats = slice }}{{ end }}
@@ -121,13 +141,13 @@
       {{- end }}
     </dl>
     {{- end }}
-    {{- $intro := partial "text-list-or-empty.html" (dict "value" $background.intro "error" "background: the intro must be a list" "entryError" "background: the intro lines must be texts") }}
+    {{- $intro := partial "text-list-or-empty.html" (dict "params" $background "key" "intro" "error" (printf "background: the intro must be a list (language: %s)" $lang) "entryError" "background: the intro lines must be texts") }}
     {{- with $intro }}
     <p class="background-intro">
       {{- partial "lines.html" . -}}
     </p>
     {{- end }}
-    {{- $education := partial "text-list-or-empty.html" (dict "value" $background.education "error" "background: the education must be a list" "entryError" "background: the education entries must be texts") }}
+    {{- $education := partial "text-list-or-empty.html" (dict "params" $background "key" "education" "error" (printf "background: the education must be a list (language: %s)" $lang) "entryError" "background: the education entries must be texts") }}
     {{- with $education }}
     <ul class="background-education">
       {{- range . }}
@@ -135,8 +155,8 @@
       {{- end }}
     </ul>
     {{- end }}
-    {{- $skillsNotTablesError := "background: the skill groups must be written as a list of tables, [[params.background.skills]], with double brackets" }}
-    {{- $skills := partial "list-or-empty.html" (dict "value" $background.skills "error" $skillsNotTablesError) }}
+    {{- $skillsNotTablesError := printf "background: the skill groups must be written as a list of tables, [[params.background.skills]], with double brackets (language: %s)" $lang }}
+    {{- $skills := partial "param-list-or-empty.html" (dict "params" $background "key" "skills" "error" $skillsNotTablesError) }}
     {{- range $index, $group := $skills }}
     {{- if not (reflect.IsMap $group) }}{{ errorf $skillsNotTablesError }}{{ $skills = slice }}
     {{- else if and $group.items (not (reflect.IsSlice $group.items)) }}{{ errorf "background: the items of skill group %d must be a list" (add $index 1) }}{{ $skills = slice }}{{ end }}
