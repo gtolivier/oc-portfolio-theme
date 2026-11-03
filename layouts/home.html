@@ -103,12 +103,19 @@
   </section>
   {{- end }}
   {{- $background := .Params.background | default dict }}
-  {{- if and (reflect.IsMap $background) (or $background.stats $background.intro $background.education $background.skills) }}
+  {{- $hasBackground := false }}
+  {{- if reflect.IsMap $background }}
+  {{- range slice "stats" "intro" "education" "skills" }}
+  {{- $value := index $background . }}
+  {{- if or $value (and (isset $background .) (not (reflect.IsSlice $value))) }}{{ $hasBackground = true }}{{ end }}
+  {{- end }}
+  {{- end }}
+  {{- if $hasBackground }}
   <section class="background" aria-labelledby="background-heading">
     <h2 id="background-heading">{{ i18n "background" }}</h2>
     {{- /* errorf does not stop the template: after an error, the part at fault (key figures, intro, education or skill groups) is empty, so that no template execution error buries the message. */}}
     {{- $statsNotTablesError := printf "background: the key figures must be written as a list of tables, [[params.background.stats]], with double brackets (language: %s)" $lang }}
-    {{- $stats := partial "list-or-empty.html" (dict "value" $background.stats "error" $statsNotTablesError) }}
+    {{- $stats := partial "param-list-or-empty.html" (dict "params" $background "key" "stats" "error" $statsNotTablesError) }}
     {{- range $index, $stat := $stats }}
     {{- if not (reflect.IsMap $stat) }}{{ errorf $statsNotTablesError }}{{ $stats = slice }}
     {{- else if not (findRE `^\s*\d` (printf "%v" $stat.value)) }}{{ errorf "background: key figure %d must start with a whole number" (add $index 1) }}{{ $stats = slice }}{{ end }}
@@ -123,13 +130,13 @@
       {{- end }}
     </dl>
     {{- end }}
-    {{- $intro := partial "text-list-or-empty.html" (dict "value" $background.intro "error" (printf "background: the intro must be a list (language: %s)" $lang) "entryError" "background: the intro lines must be texts") }}
+    {{- $intro := partial "text-list-or-empty.html" (dict "params" $background "key" "intro" "error" (printf "background: the intro must be a list (language: %s)" $lang) "entryError" "background: the intro lines must be texts") }}
     {{- with $intro }}
     <p class="background-intro">
       {{- partial "lines.html" . -}}
     </p>
     {{- end }}
-    {{- $education := partial "text-list-or-empty.html" (dict "value" $background.education "error" (printf "background: the education must be a list (language: %s)" $lang) "entryError" "background: the education entries must be texts") }}
+    {{- $education := partial "text-list-or-empty.html" (dict "params" $background "key" "education" "error" (printf "background: the education must be a list (language: %s)" $lang) "entryError" "background: the education entries must be texts") }}
     {{- with $education }}
     <ul class="background-education">
       {{- range . }}
@@ -138,7 +145,7 @@
     </ul>
     {{- end }}
     {{- $skillsNotTablesError := printf "background: the skill groups must be written as a list of tables, [[params.background.skills]], with double brackets (language: %s)" $lang }}
-    {{- $skills := partial "list-or-empty.html" (dict "value" $background.skills "error" $skillsNotTablesError) }}
+    {{- $skills := partial "param-list-or-empty.html" (dict "params" $background "key" "skills" "error" $skillsNotTablesError) }}
     {{- range $index, $group := $skills }}
     {{- if not (reflect.IsMap $group) }}{{ errorf $skillsNotTablesError }}{{ $skills = slice }}
     {{- else if and $group.items (not (reflect.IsSlice $group.items)) }}{{ errorf "background: the items of skill group %d must be a list" (add $index 1) }}{{ $skills = slice }}{{ end }}
