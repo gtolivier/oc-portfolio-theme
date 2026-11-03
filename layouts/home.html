@@ -21,7 +21,8 @@
         {{- partial "lines.html" . -}}
       </p>
       {{- end }}
-      {{- with .stack }}
+      {{- $stack := partial "param-list-or-empty.html" (dict "params" . "key" "stack" "error" (printf "hero: the stack must be a list (language: %s)" $lang)) }}
+      {{- with $stack }}
       <p class="hero-stack">{{ delimit . $stackSeparator }}</p>
       {{- end }}
       {{- $actionsNotTablesError := printf "hero: the buttons must be written as a list of tables, [[params.hero.actions]], with double brackets (language: %s)" $lang }}
