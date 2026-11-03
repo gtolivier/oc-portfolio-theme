@@ -1,6 +1,8 @@
 {{- /* Whether the text is the name of a section of the site, in any of its languages. Each caller words its own error. */}}
+{{- $sectionPath := printf "/%s" $ }}
 {{- $isSectionName := false }}
 {{- range hugo.Sites }}
-  {{- with .GetPage (printf "/%s" $) }}{{ if and .IsSection (eq (lower .Path) (lower (printf "/%s" $))) }}{{ $isSectionName = true }}{{ end }}{{ end }}
+  {{- /* GetPage also finds a section through a text that is not its name, such as one of its file names (projets.md): only a section whose own path is that text counts. */}}
+  {{- with .GetPage $sectionPath }}{{ if and .IsSection (eq (lower .Path) (lower $sectionPath)) }}{{ $isSectionName = true }}{{ end }}{{ end }}
 {{- end }}
 {{- return $isSectionName }}
