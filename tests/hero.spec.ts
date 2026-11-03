@@ -73,6 +73,7 @@ import {
   SITE_WITH_HERO_BUTTON_KEYS_WRITTEN_IN_ANOTHER_CASE,
   SITE_WITH_A_HERO_BUTTON_PAGE_REF_WRITTEN_IN_LOWERCASE,
   SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_PAGE_REF,
+  SITE_WITH_A_HERO_BUTTON_LABEL_WRITTEN_CAPITALIZED,
   TEMPLATE_EXECUTION_ERROR,
   type BuildAttempt,
   type BuiltSite,
@@ -3009,6 +3010,40 @@ test.describe('hero content errors: build failure', () => {
     ).toHaveLength(1);
     expect(messages[0], 'the error message about button 2 should not name button 1').not.toMatch(namesButton(1));
     expect(build.errors, 'no error message should say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
+  });
+
+  test('a home page whose hero button writes its label under a Label key, in another case than the one the theme reads, with a well filled-in url, makes the build fail with an error message that names that button by its position and the key as written, and no error message saying the button has no label field', () => {
+    /* tests/fixtures/intitule-capitale/content/_index.md, a French home page, has two hero
+       buttons: the first is well filled in, with label = 'Voir les projets' and
+       pageRef = '/projets'; the second writes Label = 'Contact', capitalized, next to a well
+       filled-in url = '#contact'. The person building the site must get an error message that
+       says, on one line, which button holds that key by its position, button 2, and names it in
+       the case written, Label, whatever the rest of the wording, and that line must not name the
+       well filled-in first button. The button does declare a label, only in the wrong case: a
+       message saying it has no label field, or that its label is missing, would contradict that
+       one and send them adding a field rather than fixing the key's case, so that no error
+       message about button 2 must say so. The label field is looked for in lowercase, as the
+       theme writes it, so that the line naming the Label key does not count. */
+    const build = tryToBuildSite(SITE_WITH_A_HERO_BUTTON_LABEL_WRITTEN_CAPITALIZED);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors.split('\n').filter((line) => namesButton(2).test(line) && /\bLabel\b/.test(line));
+    expect(
+      messages,
+      `one error message should name button 2 and the Label key it holds, as written, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], 'the error message about button 2 should not name button 1').not.toMatch(namesButton(1));
+    expect(
+      build.errors
+        .split('\n')
+        .filter(
+          (line) =>
+            namesButton(2).test(line) &&
+            /\bno\s+label\b|\blabel\b.*\b(?:missing|absent)\b|\b(?:missing|lacks|lacking|without)\b.*\blabel\b/.test(
+              line,
+            ),
+        ),
+      `no error message should say that button 2 has no label field, in:\n${build.errors}`,
+    ).toEqual([]);
   });
 
   test("a home page where a hero button is not a table but a text, in a list whose other button is a table, makes the site build fail with a single hero error message that names that button by its position, says a button must be a table and names the home page's language, without a template execution error after it", () => {

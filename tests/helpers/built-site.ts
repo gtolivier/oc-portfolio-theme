@@ -1240,6 +1240,14 @@ export const SITE_WITH_A_CAPITALIZED_PROJECTS_SECTION_PARAM_AND_ITS_PROJECTS = t
    assertions look for. */
 export const SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_PAGE_REF = testSite('renvoi-capitale-seul');
 
+/* Like SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_PAGE_REF, this site replaces the example
+   site's French home page with the one of tests/fixtures/intitule-capitale/content, without clients
+   nor projects, whose hero is well filled in, with a tagline, a stack and a well filled-in first
+   button, but whose second button, with a well filled-in url, writes its text under Label instead
+   of label. Its folder name avoids the words button, label, Label, hero, params, url, no, field,
+   missing, the numbers and the language codes, which the error-message assertions look for. */
+export const SITE_WITH_A_HERO_BUTTON_LABEL_WRITTEN_CAPITALIZED = testSite('intitule-capitale');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
