@@ -1218,6 +1218,19 @@ export const SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_A_SUBSECTION_AND_ITS_PROJ
   'nested-param-with-its-projects',
 );
 
+/* Like SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION, this site replaces both home pages with those
+   of tests/fixtures/capitalized-param-with-its-projects/content, without a hero nor clients, whose
+   French one features "Realisations/pendule-de-voyage" and "Realisations/horloge-de-parquet", two
+   fictional projects added in French only in a section whose folder is written with a capital,
+   Realisations/, titled "Réalisations" and published at /fr/realisations/, Hugo lowercasing its
+   address. Its projectsSection site param names that section with the same capital,
+   projectsSection = 'Realisations' (see tests/fixtures/capitalized-param-with-its-projects/hugo.toml).
+   Its English home page features no projects. Its folder name avoids the words realisations,
+   Réalisations and projets, which the assertions look for. */
+export const SITE_WITH_A_CAPITALIZED_PROJECTS_SECTION_PARAM_AND_ITS_PROJECTS = testSite(
+  'capitalized-param-with-its-projects',
+);
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

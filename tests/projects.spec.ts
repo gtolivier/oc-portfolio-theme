@@ -27,6 +27,7 @@ import {
   SITE_WITH_A_PADDED_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_A_SUBSECTION_AND_ITS_PROJECTS,
+  SITE_WITH_A_CAPITALIZED_PROJECTS_SECTION_PARAM_AND_ITS_PROJECTS,
   SITE_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT,
@@ -2029,6 +2030,34 @@ test.describe('home page of another site, whose projectsSection param names the 
        "Réalisations", published at /fr/realisations/). The site, not the theme, says where its
        projects live: the person building it must get a site, not a build error. */
     const site = SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION;
+    const build = tryToBuildSite(site);
+    expect(build.succeeded, `the site build should succeed, Hugo said:\n${build.errors}`).toBe(true);
+    const siteDirectory = buildSite(site);
+    try {
+      await serveSite(context, site, siteDirectory);
+      await page.goto(`${site.origin}/fr/`);
+      const section = projectsSection(page);
+      await expect(section.getByRole('article')).toHaveCount(2);
+      const link = section.getByRole('link', { name: 'Tous les projets', exact: true });
+      await expect(link).toHaveCount(1);
+      await link.click();
+      await expect(page).toHaveURL(`${site.origin}/fr/realisations/`);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Réalisations');
+    } finally {
+      removeDirectory(siteDirectory);
+    }
+  });
+
+  test('a projectsSection site param written with capitals, naming a section whose folder has the same capitals, lets the home page featuring projects of that section build, and its "Tous les projets" link opens that section', async ({
+    page,
+    context,
+  }) => {
+    /* tests/fixtures/capitalized-param-with-its-projects/hugo.toml sets projectsSection =
+       'Realisations'; its content/_index.md features two projects of content/Realisations/ (title
+       "Réalisations", published at /fr/realisations/, Hugo lowercasing the address). The param is
+       written as the folder is: the person building the site must get a site, not an error message
+       per featured project saying it does not live in the section where it does live. */
+    const site = SITE_WITH_A_CAPITALIZED_PROJECTS_SECTION_PARAM_AND_ITS_PROJECTS;
     const build = tryToBuildSite(site);
     expect(build.succeeded, `the site build should succeed, Hugo said:\n${build.errors}`).toBe(true);
     const siteDirectory = buildSite(site);
