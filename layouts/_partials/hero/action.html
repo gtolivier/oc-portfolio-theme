@@ -63,6 +63,7 @@
 {{- range $key := $homeParamsKeys }}
   {{- if isset $button $key }}{{ errorf "hero: button %d holds a %s key, which belongs to [params], written before [params.hero], not under a button (language: %s)" $position $key $lang }}{{ end }}
 {{- end }}
+{{- /* The keys home.html reads under [params.hero], besides actions: a new one goes here too. */}}
 {{- $heroParamsKeys := slice "stack" "tagline" "title" }}
 {{- range $key := $heroParamsKeys }}
   {{- if isset $button $key }}{{ errorf "hero: button %d holds a %s key, which belongs to [params.hero], written before the buttons (language: %s)" $position $key $lang }}{{ end }}
