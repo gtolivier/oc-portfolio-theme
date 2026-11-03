@@ -49,6 +49,7 @@ import {
   SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE,
   SITE_WITH_HERO_BUTTONS_AS_AN_EMPTY_TEXT,
   SITE_WITH_HERO_BUTTONS_AS_FALSE,
+  SITE_WITH_CLIENTS_AND_PROJECTS_UNDER_HERO_BUTTONS,
   type BuildAttempt,
   type BuiltSite,
   buildSite,
@@ -2739,6 +2740,58 @@ test.describe('hero content errors: build failure', () => {
       1,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
+  });
+
+  test("a home page whose clients or projects key is written under a hero button makes the site build fail, with one error message per such key that names the button by its position, says the key belongs to [params], before [params.hero], and names the home page's language", () => {
+    /* tests/fixtures/listes-sous-les-liens/content/_index.md, a French home page, writes
+       clients = [...] after its first [[params.hero.actions]] header and projects = [...] after
+       its second one, so that TOML puts them in the first and second buttons' tables rather than
+       in params.clients and params.projects, where the theme reads them. Rather than a home page
+       whose client band and featured projects silently disappear, the person building the site
+       must get, for each such key, an error message that says, on one line, which button holds it
+       by its position (button 1, button 2), that this key belongs to [params], written before
+       [params.hero], and names the home page's language, as the other button messages do,
+       whatever the rest of the wording. Each line must name its own button and key only, so that
+       a message that names both buttons or both keys at once does not pass for either; and no Go
+       template execution error should follow them. [params] is looked for as written, so that
+       [params.hero] alone does not count for it; the language as a word that no other word
+       follows. */
+    const build = tryToBuildSite(SITE_WITH_CLIENTS_AND_PROJECTS_UNDER_HERO_BUTTONS);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const cases = [
+      { position: 1, key: 'clients', otherPosition: 2, otherKey: 'projects' },
+      { position: 2, key: 'projects', otherPosition: 1, otherKey: 'clients' },
+    ];
+    for (const { position, key, otherPosition, otherKey } of cases) {
+      const messages = build.errors
+        .split('\n')
+        .filter(
+          (line) =>
+            new RegExp(`\\bbutton\\s+#?${position}\\b`, 'i').test(line) &&
+            new RegExp(`\\b${key}\\b`).test(line) &&
+            line.includes('[params]') &&
+            /\bbefore\s+\[params\.hero\]/.test(line),
+        );
+      expect(
+        messages,
+        `one error message should say that button ${position}'s ${key} belongs to [params], before [params.hero], in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages.filter(
+          (line) =>
+            new RegExp(`\\bbutton\\s+#?${otherPosition}\\b`, 'i').test(line) ||
+            new RegExp(`\\b${otherKey}\\b`).test(line),
+        ),
+        `the error message about button ${position}'s ${key} should name neither button ${otherPosition} nor ${otherKey}`,
+      ).toEqual([]);
+      expect(
+        messages.filter((line) => !new RegExp(languageCodePattern('fr'), 'u').test(line)),
+        `the error message about button ${position}'s ${key} should name the home page's language, fr`,
+      ).toEqual([]);
+    }
+    expect(build.errors, 'no template execution error should follow the error messages').not.toMatch(
       TEMPLATE_EXECUTION_ERROR,
     );
   });

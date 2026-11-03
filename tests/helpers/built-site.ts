@@ -691,6 +691,16 @@ export const SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE = testSite('lone-button-t
 export const SITE_WITH_HERO_BUTTONS_AS_AN_EMPTY_TEXT = testSite('empty-text-instead-of-links');
 export const SITE_WITH_HERO_BUTTONS_AS_FALSE = testSite('false-instead-of-links');
 
+/* The example site's French home page declares its clients and projects under [params]: this site
+   replaces that home page with the one of tests/fixtures/listes-sous-les-liens/content, without
+   [params] table, whose hero is well filled in, with two well filled-in buttons, but whose
+   clients key, a list of two names, is written under the first [[params.hero.actions]] header,
+   and whose projects key, a list of two of the example site's projects, under the second one, so
+   that TOML puts them in the first and second buttons' tables instead of params.clients and
+   params.projects. Its folder name avoids the words button, clients, projects, params, hero and
+   before and the language codes, which the error-message assertions look for. */
+export const SITE_WITH_CLIENTS_AND_PROJECTS_UNDER_HERO_BUTTONS = testSite('listes-sous-les-liens');
+
 /* The example site's English home page writes its hero tagline as a list of texts and its hero
    buttons as a list of tables, [[params.hero.actions]]: this site replaces that home page with the
    one of tests/fixtures/english-home-text-and-table/content, whose tagline is a single text,
