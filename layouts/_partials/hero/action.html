@@ -62,6 +62,7 @@
 {{- range $key := partial "home-params-keys.html" }}
   {{- if isset $button $key }}{{ errorf "hero: button %d holds a %s key, which belongs to [params], written before [params.hero], not under a button (language: %s)" $position $key $lang }}{{ end }}
 {{- end }}
+{{- if isset $button "stack" }}{{ errorf "hero: button %d holds a stack key, which belongs to [params.hero], written before the buttons (language: %s)" $position $lang }}{{ end }}
 {{- $labelProblem := partial "text-problem.html" $button.label }}
 {{- if and (isset $button "label") (eq $labelProblem "not-text") }}
   {{- errorf "hero: button %d: the label field must be a text (language: %s)" $position $lang }}
