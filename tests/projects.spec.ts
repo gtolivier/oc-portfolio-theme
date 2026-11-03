@@ -27,6 +27,7 @@ import {
   SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE,
   SITE_WITH_A_PADDED_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_WITHOUT_NAMING_IT,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_A_SUBSECTION_AND_ITS_PROJECTS,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_SLASH,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SLASH,
@@ -2335,6 +2336,38 @@ test.describe('projectsSection site param that names no section: build failure',
     expect(
       paramMessages,
       `error messages that name projectsSection and quote its value as ${quoted}, in:\n${build.errors}`,
+    ).not.toEqual([]);
+    for (const entry of entries) {
+      const messages = build.errors.split('\n').filter((line) => line.includes(entry));
+      expect(messages, `no error message should name the featured project ${entry}, in:\n${build.errors}`).toEqual([]);
+    }
+  });
+
+  test('a projectsSection site param that leads to a section without being its name, on a site whose featured projects live in that section, makes the site build fail with the error message that it names no section and quotes its value, without an error message per featured project', () => {
+    /* tests/fixtures/extension-param-with-its-projects/hugo.toml sets projectsSection =
+       'projets.md', the file name of a page rather than the name of a section; its
+       content/_index.md features 'projets/horloge-astronomique' and 'projets/regulateur-noyer',
+       two projects of the example site's projets/ section. Hugo's GetPage resolves '/projets.md'
+       to the projets section, but the param is not that section's name, and featured projects are
+       compared with the param through their section's name: the person building the site must get
+       the error message that names the projectsSection param, quotes its value as Go's %q does
+       ("projets.md") and says it names no section, whatever the rest of the wording, and no error
+       message per featured project saying it does not live in a section it does live in. The
+       param's message is looked for as the lines naming projectsSection, quoting its value and
+       saying "names no section", the others as the lines naming an entry, as written in the front
+       matter. */
+    const entries = ['projets/horloge-astronomique', 'projets/regulateur-noyer'];
+    const quoted = '"projets.md"';
+    const build = tryToBuildSite(SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_WITHOUT_NAMING_IT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const paramMessages = build.errors
+      .split('\n')
+      .filter(
+        (line) => line.includes(quoted) && /\bprojectsSection\b/.test(line) && /\bnames no section\b/i.test(line),
+      );
+    expect(
+      paramMessages,
+      `error messages that name projectsSection, quote its value as ${quoted} and say it names no section, in:\n${build.errors}`,
     ).not.toEqual([]);
     for (const entry of entries) {
       const messages = build.errors.split('\n').filter((line) => line.includes(entry));

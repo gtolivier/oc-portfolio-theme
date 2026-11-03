@@ -1297,6 +1297,19 @@ export const SITE_WITH_A_PROJECT_STACK_LEFT_BLANK_IN_YAML = testSite('materials-
    look for. */
 export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_LABEL_LEFT_BLANK_IN_YAML = testSite('intitule-sans-valeur-yaml');
 
+/* Like SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE, this site
+   replaces both home pages with those of tests/fixtures/extension-param-with-its-projects/content,
+   whose French one features "projets/horloge-astronomique" and "projets/regulateur-noyer", two
+   projects of the example site's projets/ section, but its projectsSection site param is the file
+   name of a page rather than a section's name, projectsSection = 'projets.md' (see
+   tests/fixtures/extension-param-with-its-projects/hugo.toml), which Hugo's GetPage still
+   resolves to the projets section. Its English home page features no projects. Its folder name
+   avoids the words projectsSection, projets, md and section, which the error-message assertions
+   look for. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_WITHOUT_NAMING_IT = testSite(
+  'extension-param-with-its-projects',
+);
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
