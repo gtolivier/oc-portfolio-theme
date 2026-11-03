@@ -742,6 +742,15 @@ export const SITE_WITH_HERO_BUTTON_LABELS_AS_A_NUMBER_AND_A_TABLE = testSite('ca
    end, the numbers and the language codes, which the error-message assertions look for. */
 export const SITE_WITH_HERO_BUTTON_LABELS_WITH_A_LEADING_AND_A_TRAILING_SPACE = testSite('caption-with-blank-edges');
 
+/* The example site's French home page gives each hero button a label a visitor can read: this
+   site replaces that home page with the one of tests/fixtures/caption-of-spaces-only/content,
+   whose hero has two buttons, written [[params.hero.actions]], each with a destination that is a
+   text: the first is well filled in, with label = 'Voir les projets' and pageRef = '/projets';
+   the second declares label = " \t ", a space, a tab and a space, with url = '#contact'. Its
+   folder name avoids the words button, hero, label, empty, blank, whitespace, the numbers and the
+   language codes, which the error-message assertions look for. */
+export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_WHITESPACE_ONLY_LABEL = testSite('caption-of-spaces-only');
+
 /* The example site's English home page writes its hero tagline as a list of texts and its hero
    buttons as a list of tables, [[params.hero.actions]]: this site replaces that home page with the
    one of tests/fixtures/english-home-text-and-table/content, whose tagline is a single text,
