@@ -1064,6 +1064,14 @@ export const SITE_WITH_PROJECT_STACKS_AS_AN_EMPTY_TEXT_AND_FALSE = testSite('mat
    /fr/projets/horlogerie/. */
 export const SITE_WITH_PROJECTS_IN_A_SUBSECTION = testSite('projects-in-a-subsection');
 
+/* This site replaces the example site's French home page with the one of
+   tests/fixtures/projects-in-the-section-and-a-subsection/content, without a hero nor clients,
+   which features two projects: "Régulateur de parquet en noyer", one of the example site's projects, which
+   sits directly in projets/, and "Chronomètre de marine", a fictional project added in French
+   only in one subsection of projets/, marine/, titled "Marine" and published at
+   /fr/projets/marine/. */
+export const SITE_WITH_PROJECTS_IN_THE_SECTION_AND_A_SUBSECTION = testSite('projects-in-the-section-and-a-subsection');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
