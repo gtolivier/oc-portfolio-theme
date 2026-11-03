@@ -1,0 +1,2 @@
+{{- /* The possible causes of a page reference that finds no page, kept in one place so that every error about such a reference gives the same ones. Hugo's GetPage finds nothing for a page that does not exist, a reference typed wrong, a page without a translation into the current language, or a page it does not publish. Each caller words the rest of its own error. */}}
+{{- return "a page that does not exist, a typo in the reference, a missing translation into this language, or a page not published: a draft, a future (scheduled) date or an expired page" }}

@@ -46,7 +46,7 @@
         {{- $pageRefError = printf "hero: button %d: the pageRef %q points to a page that is not published (language: %s)" $position $pageRef $lang }}
       {{- end }}
     {{- else }}
-      {{- $pageRefError = printf "hero: button %d: the pageRef %q matches no page (language: %s): check for a page that does not exist, a typo in the reference, a missing translation, a draft, a future (scheduled) date or an expired page" $position $pageRef $lang }}
+      {{- $pageRefError = printf "hero: button %d: the pageRef %q matches no page (language: %s). Possible causes: %s" $position $pageRef $lang (partial "page-not-found-causes.html") }}
     {{- end }}
   {{- end }}
 {{- end }}
