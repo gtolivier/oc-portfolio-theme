@@ -12,7 +12,17 @@
   {{- if eq $sectionProblem "not-text" }}{{ errorf "projects: the projectsSection site param must be a text, the name of a section" }}
   {{- else if eq $sectionProblem "empty" }}{{ errorf "projects: the projectsSection site param is empty: it must name a section" }}
   {{- else if eq $sectionProblem "padded" }}{{ errorf "projects: the projectsSection site param %q has whitespace at its start or end: it must be the exact name of a section" site.Params.projectsSection }}
-  {{- else }}{{ $projectsSection = site.Params.projectsSection }}{{ end }}
+  {{- else }}
+    {{- $projectsSection = site.Params.projectsSection }}
+    {{- $sectionExists := false }}
+    {{- range hugo.Sites }}
+      {{- with .GetPage (printf "/%s" $projectsSection) }}{{ if .IsSection }}{{ $sectionExists = true }}{{ end }}{{ end }}
+    {{- end }}
+    {{- if not $sectionExists }}
+      {{- errorf "projects: the projectsSection site param %q names no section of the site: it must be the exact name of a section (language: %s)" $projectsSection $lang }}
+      {{- $sectionProblem = "unknown" }}
+    {{- end }}
+  {{- end }}
   {{- /* A bad param names no section the theme can check against: no error per featured project then, which would send the person moving projects that may be where they meant them. */}}
   {{- $sectionIsKnown = eq $sectionProblem "" }}
 {{- end }}
