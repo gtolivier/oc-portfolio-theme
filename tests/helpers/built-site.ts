@@ -1037,6 +1037,15 @@ export const SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB_
    look for. */
 export const SITE_WITH_THE_HERO_STACK_UNDER_THE_LAST_HERO_BUTTON = testSite('materiaux-sous-le-dernier-lien');
 
+/* The example site's French home page writes its hero buttons with label, url and pageRef keys
+   only: this site replaces that home page with the one of
+   tests/fixtures/intitule-mal-ecrit/content, without clients nor projects, whose hero is well
+   filled in, with a well filled-in first button, but whose second button writes its label under
+   the misspelled key lable, next to a well filled-in url. Its folder name avoids the words
+   button, lable, label, hero, the numbers and the language codes, which the error-message
+   assertions look for. */
+export const SITE_WITH_A_MISSPELLED_KEY_IN_THE_SECOND_HERO_BUTTON = testSite('intitule-mal-ecrit');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

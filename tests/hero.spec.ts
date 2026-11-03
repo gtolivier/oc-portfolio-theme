@@ -66,6 +66,7 @@ import {
   SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB,
   SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB_NEXT_TO_A_PAGE_REF,
   SITE_WITH_THE_HERO_STACK_UNDER_THE_LAST_HERO_BUTTON,
+  SITE_WITH_A_MISSPELLED_KEY_IN_THE_SECOND_HERO_BUTTON,
   TEMPLATE_EXECUTION_ERROR,
   type BuildAttempt,
   type BuiltSite,
@@ -2844,6 +2845,24 @@ test.describe('hero content errors: build failure', () => {
     expect(
       messages,
       `one error message should name button 2 and the stack key it holds, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], 'the error message about button 2 should not name button 1').not.toMatch(namesButton(1));
+  });
+
+  test('a home page whose hero button holds a misspelled key makes the site build fail, with an error message that names that button by its position and the misspelled key', () => {
+    /* tests/fixtures/intitule-mal-ecrit/content/_index.md, a French home page, writes its second
+       hero button's label under the key lable, misspelled, next to a well filled-in url. A button
+       may only hold label, url and pageRef: rather than a lone missing-label error that leaves the
+       person building the site to guess why, that person must get an error message that says, on
+       one line, which button holds the unknown key by its position, button 2, and names that key,
+       lable, whatever the rest of the wording; that line must not name the well filled-in first
+       button, so that a message naming both buttons at once does not pass. */
+    const build = tryToBuildSite(SITE_WITH_A_MISSPELLED_KEY_IN_THE_SECOND_HERO_BUTTON);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors.split('\n').filter((line) => namesButton(2).test(line) && /\blable\b/.test(line));
+    expect(
+      messages,
+      `one error message should name button 2 and the misspelled key lable it holds, in:\n${build.errors}`,
     ).toHaveLength(1);
     expect(messages[0], 'the error message about button 2 should not name button 1').not.toMatch(namesButton(1));
   });
