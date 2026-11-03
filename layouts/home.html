@@ -4,7 +4,7 @@
   {{- $lang := site.Language.Lang }}
   {{- $clients := partial "param-list-or-empty.html" (dict "params" .Params "key" "clients" "error" (printf "clients: the home page's clients parameter must be a list of names (language: %s)" $lang)) }}
   {{- if reflect.IsMap .Params.hero }}
-  {{- range $key := slice "clients" "projects" }}
+  {{- range $key := partial "home-params-keys.html" }}
   {{- if isset $.Params.hero $key }}{{ errorf "%s: the %s parameter belongs to [params], written before [params.hero], not under the hero (language: %s)" $key $key $lang }}{{ end }}
   {{- end }}
   {{- end }}
@@ -84,12 +84,12 @@
   <section class="projects" aria-labelledby="projects-heading">
     <div class="projects-header">
       <h2 id="projects-heading">{{ i18n "selectedProjects" }}</h2>
-      {{- /* The all-projects link goes to the section holding every featured project: with projects in several sections, no section lists them all. */}}
+      {{- /* The all-projects link goes to the section holding every featured project: with projects in several sections (subsections of projets, or a section Hugo does not publish, which featured.html lets through), no section lists them all. */}}
       {{- $firstSection := (index $projects 0).Parent }}
       {{- $isInOneSection := true }}
       {{- range $projects }}{{ if not (.Parent.Eq $firstSection) }}{{ $isInOneSection = false }}{{ end }}{{ end }}
-      {{- /* No section to open when the projects sit at the content root (their parent is the home page) or in a section Hugo does not publish: no address, or one with no page written behind it ([build] render = 'link'), so .RelPermalink alone is not enough. */}}
-      {{- if and $isInOneSection (not $firstSection.IsHome) (partial "is-published.html" $firstSection) }}
+      {{- /* No section to open when the projects sit in a section Hugo does not publish: no address, or one with no page written behind it ([build] render = 'link'), so .RelPermalink alone is not enough. Their section is never the home page: featured.html rejects a project at the content root. */}}
+      {{- if and $isInOneSection (partial "is-published.html" $firstSection) }}
       <a class="all-projects-link" href="{{ $firstSection.RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
       {{- end }}
     </div>
