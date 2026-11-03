@@ -12,7 +12,7 @@
       {{- $heroLetterMs := 40 }}
       <h1 id="hero-heading"><scramble-text duration="{{ mul (strings.RuneCount site.Params.author) $heroLetterMs }}">{{ site.Params.author }}</scramble-text>
         {{- $title := .title }}
-        {{- if and $title (ne (printf "%T" $title) "string") }}{{ errorf "hero: the title must be a text (language: %s)" $lang }}{{ $title = "" }}{{ end }}
+        {{- if and $title (eq (partial "text-problem.html" $title) "not-text") }}{{ errorf "hero: the title must be a text (language: %s)" $lang }}{{ $title = "" }}{{ end }}
         {{- with $title }}
         <span class="hero-title"><scramble-text duration="{{ mul (strings.RuneCount .) $heroLetterMs }}">{{ . }}</scramble-text></span>
         {{- end }}
