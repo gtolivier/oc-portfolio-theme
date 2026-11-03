@@ -1003,6 +1003,18 @@ export const SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE_NEXT_TO_A_PAGE_R
   'figure-or-dict-address-and-target',
 );
 
+/* The example site's French home page gives each hero button a url or a pageRef without
+   whitespace around it: this site replaces that home page with the one of
+   tests/fixtures/addresses-padded-at-the-edges/content, whose hero has three buttons, written
+   [[params.hero.actions]], each with a label and no pageRef but the first: the first is well
+   filled in, with pageRef = '/projets'; the second declares url = ' #contact', with a leading
+   space; the third url = "/contact/\t", with a trailing tab. Its folder name avoids the words
+   button, hero, url, whitespace, empty, blank, the numbers and the language codes, which the
+   error-message assertions look for. */
+export const SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB = testSite(
+  'addresses-padded-at-the-edges',
+);
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

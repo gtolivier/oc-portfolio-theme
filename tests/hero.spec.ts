@@ -63,6 +63,7 @@ import {
   SITE_WITH_A_HERO_BUTTON_TO_A_PAGE_WITH_A_BUILD_PARAM_AS_TEXT,
   SITE_WITH_HERO_BUTTON_URLS_AS_FALSE_ZERO_AND_AN_EMPTY_LIST,
   SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE_NEXT_TO_A_PAGE_REF,
+  SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB,
   TEMPLATE_EXECUTION_ERROR,
   type BuildAttempt,
   type BuiltSite,
@@ -3251,5 +3252,37 @@ test.describe('hero content errors: build failure', () => {
       heroMessages(build.errors).filter((line) => BOTH_FIELDS_DECLARED.test(line)),
       `no hero error message should say both fields are declared, in:\n${build.errors}`,
     ).toEqual([]);
+  });
+
+  test("a home page where a hero button's url has whitespace at its start or at its end, without a pageRef, makes the site build fail with a single error message per such button, which names that button by its position, says its url has whitespace and names the home page's language", () => {
+    /* tests/fixtures/addresses-padded-at-the-edges/content/_index.md, a French home page, has
+       three hero buttons, each with a label: the first is well filled in, with
+       pageRef = '/projets'; the second declares url = ' #contact', with a leading space, and the
+       third url = "/contact/\t", with a trailing tab, both without a pageRef. Hugo does not trim
+       the whitespace, which ends up in the link's address, and it is invisible in the front
+       matter: rather than a link that may lead elsewhere, the person building the site must get,
+       for each of these two buttons, a single error message that says, on one line, which button
+       is at fault by its position, that its url has whitespace, and names the home page's
+       language, fr, whatever the rest of the wording. These two messages must be the only hero
+       messages, none about the well filled-in first button. A leading space and a trailing tab,
+       so that checking only one end, or only the space character, does not pass. The language is
+       looked for as a word that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(2);
+    const paddedUrlMessages = heroMessages(build.errors).filter(
+      (line) => /\burl\b/.test(line) && /\bwhitespace\b/i.test(line),
+    );
+    for (const position of [2, 3]) {
+      const messages = paddedUrlMessages.filter((line) => namesButton(position).test(line));
+      expect(
+        messages,
+        `one hero error message should say that button ${position}'s url has whitespace, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages[0],
+        `the error message about button ${position} should name the home page's language, fr`,
+      ).toMatch(new RegExp(languageCodePattern('fr'), 'u'));
+    }
   });
 });
