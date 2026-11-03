@@ -2,15 +2,14 @@
 {{- $position := .position }}
 {{- $lang := site.Language.Lang }}
 {{- $href := $button.url }}
-{{- /* "//host/…" points to another site: only a url relative to this
-     site's root gets the baseURL prefix. */}}
-{{- if and (isset $button "url") (ne (partial "text-problem.html" $button.url) "not-text") }}
-{{- else if isset $button "url" }}
+{{- if and (isset $button "url") (eq (partial "text-problem.html" $button.url) "not-text") }}
   {{- errorf "hero: button %d: the url field must be a text (language: %s)" $position $lang }}
   {{- $href = "" }}
 {{- end }}
-{{- if and (isset $button "url") (eq (printf "%T" $button.url) "string") $button.url (hasPrefix $button.url "/") (not (hasPrefix $button.url "//")) }}
-  {{- $href = relURL (strings.TrimPrefix "/" $button.url) }}
+{{- /* "//host/…" points to another site: only a url relative to this
+     site's root gets the baseURL prefix. */}}
+{{- if and $href (hasPrefix $href "/") (not (hasPrefix $href "//")) }}
+  {{- $href = relURL (strings.TrimPrefix "/" $href) }}
 {{- end }}
 {{- $pageRef := $button.pageRef }}
 {{- /* A declared pageRef counts even when Hugo reads it as false (an empty
