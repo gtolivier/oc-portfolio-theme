@@ -345,6 +345,14 @@ export const SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME = testSite('whitespace-only
 export const SITE_WITH_CLIENTS_AS_AN_EMPTY_TEXT = testSite('empty-text-instead-of-names');
 export const SITE_WITH_CLIENTS_AS_FALSE = testSite('false-instead-of-names');
 
+/* The example site's French home page declares its clients under [params]: this site replaces
+   that home page with the one of tests/fixtures/clientele-dans-la-banniere/content, whose hero is
+   well filled in but whose clients key, a list of two names, is written after the [params.hero]
+   header, under the hero's stack, so that TOML puts it in params.hero.clients instead of
+   params.clients. Its folder name avoids the words clients, params, hero and before and the
+   language codes, which the error-message assertions look for. */
+export const SITE_WITH_CLIENTS_UNDER_THE_HERO = testSite('clientele-dans-la-banniere');
+
 /* The example site's French home page features four projects: this site
    replaces that home page with the one of
    tests/fixtures/other-projects/content, without a hero nor clients, which

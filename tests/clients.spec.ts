@@ -12,6 +12,7 @@ import {
   SITE_WITH_AN_EMPTY_CLIENT_NAME,
   SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME,
   SITE_WITH_AN_ENGLISH_HOME_WITH_CLIENTS_AS_TEXT,
+  SITE_WITH_CLIENTS_UNDER_THE_HERO,
   buildSite,
   languageCodePattern,
   removeDirectory,
@@ -1790,5 +1791,36 @@ test.describe('client content errors: build failure', () => {
         /execute of template failed|error calling/i,
       );
     }
+  });
+
+  test("a home page whose clients key is written under [params.hero] makes the site build fail, with an error message that says the clients parameter belongs to [params], before [params.hero], and names the home page's language, without a template execution error after it", () => {
+    /* tests/fixtures/clientele-dans-la-banniere/content/_index.md writes clients = [...] after the
+       [params.hero] header, under a well filled-in hero, so that TOML puts it in the hero's table
+       (params.hero.clients) rather than in params.clients, where the theme reads the clients.
+       Rather than a home page whose client band silently disappears, the person building the site
+       must get a failure whose message says, on one line, that clients belongs to [params],
+       written before [params.hero], and names the home page's language, as the other clients
+       messages do, whatever the rest of the wording, and no Go template execution error that
+       would follow it and bury it in technical jargon. [params] is looked for as written, so that
+       [params.hero] alone does not count for it; the language, as in the tests above, as a word
+       that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_CLIENTS_UNDER_THE_HERO);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors
+      .split('\n')
+      .filter(
+        (line) => /\bclients\b/.test(line) && line.includes('[params]') && /\bbefore\s+\[params\.hero\]/.test(line),
+      );
+    expect(
+      messages,
+      `one error message should say that clients belongs to [params], before [params.hero], in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(
+      messages.filter((line) => !new RegExp(languageCodePattern('fr'), 'u').test(line)),
+      "the error message should name the home page's language, fr",
+    ).toEqual([]);
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
   });
 });
