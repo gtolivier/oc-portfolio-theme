@@ -1878,35 +1878,19 @@ test.describe('featured project whose page writes its stack as a text: build fai
   });
 });
 
-test.describe('home pages whose featured projects live in sections of different names', () => {
-  let siteDirectory: string;
-  test.beforeAll(() => {
-    siteDirectory = buildSite(SITE_WITH_PROJECTS_IN_ANOTHER_SECTION);
-  });
-  test.afterAll(() => {
-    removeDirectory(siteDirectory);
-  });
-
+test.describe('home pages of the example site, served at the site root and under /portfolio/', () => {
   test('the section "Projets sélectionnés" has, once and outside the cards, a "Tous les projets" link that opens the section holding the featured projects, at the site root and under /portfolio/', async ({
     page,
-    context,
   }) => {
-    await serveSite(context, SITE_WITH_PROJECTS_IN_ANOTHER_SECTION, siteDirectory);
+    /* The example site, whose featured projects are in content/projets/ (title "Projets"),
+       served at the root of its origin, then under a subpath (playwright.config.ts), so that an
+       address written from the root cannot pass. */
     const sites = [
-      /* The example site, whose featured projects are in content/projets/ (title "Projets"),
-         served at the root of its origin, then under a subpath (playwright.config.ts)… */
       { home: '/fr/', sectionAddress: '/fr/projets/', sectionTitle: 'Projets' },
       {
         home: `${EXAMPLE_SITE_UNDER_PORTFOLIO}fr/`,
         sectionAddress: `${EXAMPLE_SITE_UNDER_PORTFOLIO}fr/projets/`,
         sectionTitle: 'Projets',
-      },
-      /* …and a site whose featured project is in content/realisations/, while projets/ still
-         exists: a hard-coded /projets/ address cannot pass. */
-      {
-        home: `${SITE_WITH_PROJECTS_IN_ANOTHER_SECTION.origin}/fr/`,
-        sectionAddress: `${SITE_WITH_PROJECTS_IN_ANOTHER_SECTION.origin}/fr/realisations/`,
-        sectionTitle: 'Réalisations',
       },
     ];
     for (const site of sites) {
@@ -2044,46 +2028,6 @@ test.describe('home pages of other sites, featuring a project whose section has 
         .soft(section.getByText('Tous les projets'), `"Tous les projets" texts on ${site.origin}/fr/`)
         .toHaveCount(0);
     }
-  });
-});
-
-test.describe('home page of another site, featuring projects from two published sections', () => {
-  let siteDirectory: string;
-  test.beforeAll(() => {
-    siteDirectory = buildSite(SITE_WITH_PROJECTS_IN_TWO_SECTIONS);
-  });
-  test.afterAll(() => {
-    removeDirectory(siteDirectory);
-  });
-
-  test('the section "Projets sélectionnés" shows the cards of featured projects from two different published sections, but no "Tous les projets" link, since no single section holds them all', async ({
-    page,
-    context,
-  }) => {
-    await serveSite(context, SITE_WITH_PROJECTS_IN_TWO_SECTIONS, siteDirectory);
-    const origin = SITE_WITH_PROJECTS_IN_TWO_SECTIONS.origin;
-    /* tests/fixtures/projects-in-two-sections/content/_index.md features a project of projets/,
-       then one of realisations/: both sections are published… */
-    for (const sectionPath of ['/fr/projets/', '/fr/realisations/']) {
-      const sectionResponse = await page.goto(`${origin}${sectionPath}`);
-      expect(sectionResponse?.status(), `status of ${origin}${sectionPath}`).toBe(200);
-    }
-    await page.goto(`${origin}/fr/`);
-    const section = projectsSection(page);
-    /* …and the home page shows the card of each featured project… */
-    for (const title of ['Restauration d’une pendule de cheminée', 'Coucou de chalet']) {
-      const card = cardTitled(section, title);
-      await expect(card).toHaveCount(1);
-      await expect(card).toBeVisible();
-    }
-    /* …but no link claims to list all the projects, not even an empty one: either section would
-       list only some of them. */
-    await expect
-      .soft(section.getByRole('link', { name: 'Tous les projets' }), `"Tous les projets" links on ${origin}/fr/`)
-      .toHaveCount(0);
-    await expect
-      .soft(section.getByText('Tous les projets'), `"Tous les projets" texts on ${origin}/fr/`)
-      .toHaveCount(0);
   });
 });
 
@@ -2595,6 +2539,58 @@ test.describe('featured project content errors: build failure', () => {
     expect(build.errors, 'the error message should say that entry is not a project').toMatch(
       /\bprojects\s+parameter\b.*\bnot\s+a\s+project\b/im,
     );
+  });
+
+  test("a home page that features a project living in a top-level section other than projets makes the site build fail, with an error message that names that entry, the projets section and the home page's language, without a template execution error after it", () => {
+    /* Featured projects must live in the projets section, the one the "Tous les projets" link
+       opens. tests/fixtures/projects-in-another-section/content/_index.md features a single
+       project, 'realisations/pendule-de-voyage', of another published section, realisations/;
+       tests/fixtures/projects-in-two-sections/content/_index.md features
+       'projets/restauration-pendule', then 'realisations/coucou-de-chalet', of that same other
+       section. Rather than a section whose cards come from anywhere, the person building the site
+       must get a failure whose message, on one line, names the entry as written in the front
+       matter, the section the project must live in, projets, and the home page's language by its
+       code, whatever the rest of the wording, and no Go template execution error that would
+       follow it and bury it in technical jargon. Two sites whose entries differ, so that an entry
+       written in the template does not pass; the second also features a project of projets/,
+       which must not be reported. The section is looked for as the word "section" and the token
+       projets, which neither a word nor a page path under projets/ continues, so that the
+       reference 'projets/restauration-pendule' does not pass for it; the language code, as in
+       the other projects' tests, as a word that no other word follows. */
+    const cases: { name: string; site: BuiltSite; entry: string; language: string }[] = [
+      {
+        name: 'a French home page featuring a project of realisations/ alone',
+        site: SITE_WITH_PROJECTS_IN_ANOTHER_SECTION,
+        entry: 'realisations/pendule-de-voyage',
+        language: 'fr',
+      },
+      {
+        name: 'a French home page featuring a project of projets/, then one of realisations/',
+        site: SITE_WITH_PROJECTS_IN_TWO_SECTIONS,
+        entry: 'realisations/coucou-de-chalet',
+        language: 'fr',
+      },
+    ];
+    for (const { name, site, entry, language } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
+        /execute of template failed|error calling/i,
+      );
+      expect(build.errors, `with ${name}, no error message should name the featured project of projets/`).not.toContain(
+        'projets/restauration-pendule',
+      );
+      const messages = build.errors.split('\n').filter((line) => line.includes(entry));
+      expect(messages, `with ${name}, one error message naming the entry ${entry}, in:\n${build.errors}`).toHaveLength(
+        1,
+      );
+      expect(messages[0], `with ${name}, the error message should name the projets section`).toMatch(
+        /^(?=.*\bsection\b)(?=.*(?<![\w-])projets(?![\w-]|\/[\w-])).*$/u,
+      );
+      expect(messages[0], `with ${name}, the error message should name the home page's language, ${language}`).toMatch(
+        new RegExp(languageCodePattern(language), 'u'),
+      );
+    }
   });
 
   /* Both directions, each with the code of the home page's language: a French home page featuring

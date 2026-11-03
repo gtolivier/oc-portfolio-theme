@@ -366,12 +366,12 @@ export const SITE_WITH_CLIENTS_UNDER_THE_HERO = testSite('clientele-dans-la-bann
 export const SITE_WITH_OTHER_PROJECTS = testSite('other-projects');
 
 /* The example site's French home page features projects of the projets/
-   section: this site replaces that home page with the one of
-   tests/fixtures/projects-in-another-section/content, without a hero nor
-   clients, which features a single fictional project, "Pendule de voyage",
-   added in another section, realisations/, titled "Réalisations" and
-   published at /fr/realisations/. The example site's projets/ section is
-   still built. */
+   section, where featured projects must live: this site replaces that home
+   page with the one of tests/fixtures/projects-in-another-section/content,
+   without a hero nor clients, which features a single fictional project,
+   'realisations/pendule-de-voyage', added in another section, realisations/,
+   titled "Réalisations" and published at /fr/realisations/. The example
+   site's projets/ section is still built. */
 export const SITE_WITH_PROJECTS_IN_ANOTHER_SECTION = testSite('projects-in-another-section');
 
 /* The example site's French home page features only projects whose pages
@@ -422,11 +422,12 @@ export const SITE_WITH_AN_UNPUBLISHED_PROJECTS_SECTION = testSite('unpublished-p
    project's own page is still published, at /fr/ebauches/horloge-de-gare/. */
 export const SITE_WITH_AN_UNPUBLISHED_SECTION_PAGE = testSite('unpublished-section-page');
 
-/* The example site's French home page features projects of a single section, projets/: this site
-   replaces that home page with the one of tests/fixtures/projects-in-two-sections/content, without
-   a hero nor clients, which features the example site's 'projets/restauration-pendule', then
-   "Coucou de chalet", added in another section, realisations/, titled "Réalisations". Both
-   sections are published, at /fr/projets/ and /fr/realisations/. */
+/* The example site's French home page features projects of the projets/ section alone, where
+   featured projects must live: this site replaces that home page with the one of
+   tests/fixtures/projects-in-two-sections/content, without a hero nor clients, which features the
+   example site's 'projets/restauration-pendule', then 'realisations/coucou-de-chalet', added in
+   another section, realisations/, titled "Réalisations". Both sections are published, at
+   /fr/projets/ and /fr/realisations/. */
 export const SITE_WITH_PROJECTS_IN_TWO_SECTIONS = testSite('projects-in-two-sections');
 
 /* The example site's French home page features its projects as a list of page references: this
