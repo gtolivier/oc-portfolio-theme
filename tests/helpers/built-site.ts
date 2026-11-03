@@ -1269,6 +1269,16 @@ export const SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SLASH = testSite
   'section-param-with-trailing-separator',
 );
 
+/* The example site's featured projects live in its section of projects, projets/: this site
+   replaces the French home page with the one of
+   tests/fixtures/unpublished-subsection-of-another-section/content, without a hero nor clients,
+   which features a single fictional project, "Carillon de beffroi", added in archives/brouillons/,
+   a subsection whose _index.md declares a plain [build] render = 'never', of another section,
+   archives/, which is published, at /fr/archives/. */
+export const SITE_WITH_A_PROJECT_IN_AN_UNPUBLISHED_SUBSECTION_OF_ANOTHER_SECTION = testSite(
+  'unpublished-subsection-of-another-section',
+);
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

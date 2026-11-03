@@ -11,6 +11,7 @@ import {
   SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES,
   SITE_WITH_AN_UNPUBLISHED_PROJECTS_SECTION,
   SITE_WITH_AN_UNPUBLISHED_SECTION_PAGE,
+  SITE_WITH_A_PROJECT_IN_AN_UNPUBLISHED_SUBSECTION_OF_ANOTHER_SECTION,
   SITE_WITH_PROJECTS_IN_TWO_SECTIONS,
   SITE_WITH_PROJECTS_IN_A_SUBSECTION,
   SITE_WITH_PROJECTS_IN_THE_SECTION_AND_A_SUBSECTION,
@@ -2469,6 +2470,43 @@ test.describe('home pages of other sites, featuring a project whose section has 
       Math.abs(belowHeading - belowLink),
       `space from the heading to the first card without the link (${belowHeading.toFixed(1)} px) against the space from the link to the first card with it (${belowLink.toFixed(1)} px)`,
     ).toBeLessThanOrEqual(2);
+  });
+});
+
+test.describe('home page of another site, featuring a project of an unpublished subsection of a section other than the projects section', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_PROJECT_IN_AN_UNPUBLISHED_SUBSECTION_OF_ANOTHER_SECTION);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('the section "Projets sélectionnés" shows the card of the project but no "Tous les projets" link, since the published section above its subsection is not the projects section', async ({
+    page,
+    context,
+  }) => {
+    const site = SITE_WITH_A_PROJECT_IN_AN_UNPUBLISHED_SUBSECTION_OF_ANOTHER_SECTION;
+    await serveSite(context, site, siteDirectory);
+    /* In tests/fixtures/unpublished-subsection-of-another-section/content/, archives/_index.md is
+       published, while archives/brouillons/_index.md declares [build] render = 'never'. */
+    const sectionResponse = await page.goto(`${site.origin}/fr/archives/`);
+    expect(sectionResponse?.status(), 'status of the archives section page').toBe(200);
+    const subsectionResponse = await page.goto(`${site.origin}/fr/archives/brouillons/`);
+    expect(subsectionResponse?.status(), 'status of the brouillons subsection page').toBe(404);
+    await page.goto(`${site.origin}/fr/`);
+    const section = projectsSection(page);
+    const card = cardTitled(section, 'Carillon de beffroi');
+    await expect(card).toHaveCount(1);
+    await expect(card).toBeVisible();
+    /* archives/ holds the featured project, but it is not the projects section, projets/: no link
+       claims it lists all the projects. */
+    await expect
+      .soft(section.getByRole('link', { name: 'Tous les projets' }), `"Tous les projets" links on ${site.origin}/fr/`)
+      .toHaveCount(0);
+    await expect
+      .soft(section.getByText('Tous les projets'), `"Tous les projets" texts on ${site.origin}/fr/`)
+      .toHaveCount(0);
   });
 });
 
