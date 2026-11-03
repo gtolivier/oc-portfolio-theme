@@ -38,9 +38,12 @@
   {{- end }}
 {{- end }}
 {{- $urlIsEmpty := eq $urlProblem "empty" }}
+{{- /* An empty url text counts as declared even though Hugo reads it as
+     false: next to a pageRef, it is one destination too many. */}}
+{{- $hasUrl := or $button.url $urlIsEmpty }}
 {{- if and $urlIsEmpty (not $hasPageRef) }}{{ errorf "hero: button %d: the url field is empty: it must be an address (language: %s)" $position $lang }}{{ end }}
-{{- if and (or $button.url $urlIsEmpty) $hasPageRef }}{{ errorf "hero: button %d declares both a url field and a pageRef field; it needs only one (language: %s)" $position $lang }}{{ end }}
-{{- if and (not $button.url) (not $urlIsEmpty) (not $hasPageRef) }}{{ errorf "hero: button %d has neither a url field nor a pageRef field (language: %s)" $position $lang }}{{ end }}
+{{- if and $hasUrl $hasPageRef }}{{ errorf "hero: button %d declares both a url field and a pageRef field; it needs only one (language: %s)" $position $lang }}{{ end }}
+{{- if and (not $hasUrl) (not $hasPageRef) }}{{ errorf "hero: button %d has neither a url field nor a pageRef field (language: %s)" $position $lang }}{{ end }}
 {{- range $key := slice "clients" "projects" }}
   {{- if isset $button $key }}{{ errorf "hero: button %d holds a %s key, which belongs to [params], written before [params.hero], not under a button (language: %s)" $position $key $lang }}{{ end }}
 {{- end }}
