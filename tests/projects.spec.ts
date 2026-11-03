@@ -32,6 +32,7 @@ import {
   SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS,
   SITE_WITH_UNUSUAL_RENDER_VALUES,
   SITE_WITH_A_BUILD_PARAM_AS_TEXT,
+  SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_BUILD_PARAM_AS_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
   type BuiltSite,
   buildSite,
@@ -1798,6 +1799,52 @@ test.describe('featured project whose page declares a custom param named build: 
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       /execute of template failed|error calling/i,
     );
+  });
+
+  test("a featured project whose page declares a custom param build that is not a table makes the site build fail with an error message that names the home page's language, for a French home page and for an English one", () => {
+    /* A bilingual site has a home page per language, each with its own featured projects, and a
+       project page per language: a message saying a featured project declares a custom build
+       param that does not say which language's home page features it leaves the person building
+       the site to look for it in every content/_index.<language>.md file and every translation of
+       that project. The other messages on the entries of the projects list already name the home
+       page's language by its code (fr, en); this one must name it too, whatever the rest of the
+       wording. The French home page comes from the fixture of the test of this message above,
+       tests/fixtures/build-param-as-text/content; the English one, from
+       tests/fixtures/english-home-year-param/content, features an English-only project whose
+       page makes the same mistake. The message, one line naming the build param and the project,
+       must be there and name, on that line, the home page's language, looked for, as in the
+       other projects' tests, as a word that no other word follows. A French home page and an
+       English one, so that a language written in the template does not pass. */
+    const cases: { name: string; site: BuiltSite; language: string }[] = [
+      {
+        name: 'a French home page featuring a project with a build param as a text',
+        site: SITE_WITH_A_BUILD_PARAM_AS_TEXT,
+        language: 'fr',
+      },
+      {
+        name: 'an English home page featuring a project with a build param as a text',
+        site: SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_BUILD_PARAM_AS_TEXT,
+        language: 'en',
+      },
+    ];
+    for (const { name, site, language } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
+        /execute of template failed|error calling/i,
+      );
+      const messages = build.errors
+        .split('\n')
+        .filter((line) => /\bbuild\b/.test(line) && line.includes('projets/pendule-squelette'));
+      expect(
+        messages,
+        `with ${name}, one error message naming the build param and the project, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages.filter((line) => !new RegExp(languageCodePattern(language), 'u').test(line)),
+        `with ${name}, build param error messages that do not name the home page's language, ${language}`,
+      ).toEqual([]);
+    }
   });
 });
 

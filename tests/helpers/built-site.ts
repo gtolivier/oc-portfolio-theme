@@ -503,6 +503,15 @@ export const SITE_WITH_UNUSUAL_RENDER_VALUES = testSite('unusual-render-values')
    page as any other, at /fr/projets/pendule-squelette/. */
 export const SITE_WITH_A_BUILD_PARAM_AS_TEXT = testSite('build-param-as-text');
 
+/* Same as SITE_WITH_A_BUILD_PARAM_AS_TEXT, for the English home page: this site replaces that home
+   page with the one of tests/fixtures/english-home-year-param/content, without a hero nor clients,
+   which features the example site's 'projets/restauration-pendule', then "Skeleton clock", a
+   fictional project added under projets/ in English only, whose page sets no [build] options but
+   declares, under [params], a custom param build = '2020', a text. The example site's French home
+   page is unchanged. Its folder name avoids the word build and the language codes, which the
+   error-message assertions look for. */
+export const SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_BUILD_PARAM_AS_TEXT = testSite('english-home-year-param');
+
 /* The example site's French home page features only project pages: this site replaces that home
    page with the one of tests/fixtures/self-ref/content, without a hero nor clients, whose
    params.projects is a list of texts, as expected, of 'projets/restauration-pendule', then '/', a
