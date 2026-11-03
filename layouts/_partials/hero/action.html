@@ -75,10 +75,11 @@
   {{- if not (in $knownKeys (lower $key)) }}{{ errorf "hero: button %d holds an unknown %s key: a button only holds label, url and pageRef (language: %s)" $position $key $lang }}
   {{- else if not (in $keysAsRead $key) }}{{ errorf "hero: button %d holds a %s key written in another case than the one the theme reads (language: %s)" $position $key $lang }}{{ end }}
 {{- end }}
+{{- $hasLabel := isset $button "label" }}
 {{- $labelProblem := partial "text-problem.html" $button.label }}
-{{- if and (isset $button "label") (eq $labelProblem "not-text") }}
+{{- if and $hasLabel (eq $labelProblem "not-text") }}
   {{- errorf "hero: button %d: the label field must be a text (language: %s)" $position $lang }}
-{{- else if and (isset $button "label") (eq $labelProblem "empty") }}
+{{- else if and $hasLabel (eq $labelProblem "empty") }}
   {{- errorf "hero: button %d: the label field is empty: it must be a text (language: %s)" $position $lang }}
 {{- else if not $button.label }}
   {{- errorf "hero: button %d has no label field (language: %s)" $position $lang }}
