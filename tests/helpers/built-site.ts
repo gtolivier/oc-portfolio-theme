@@ -961,6 +961,17 @@ export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_PAGE_REF = testSite('tar
    which the error-message assertions look for. */
 export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_URL = testSite('address-left-unset-in-yaml');
 
+/* The example site's French home page gives each hero button a pageRef to a page without a custom
+   build param: this site replaces that home page with the one of
+   tests/fixtures/target-with-a-year-option/content, whose hero has two buttons, written
+   [[params.hero.actions]], each with a label and no url: the first is well filled in, with
+   pageRef = '/projets'; the second declares pageRef = '/atelier-millesime', a page of the same
+   fixture that sets no [build] options but declares under [params] a custom param
+   build = '2020', a text rather than a table. Its folder name avoids the words build, param,
+   table, text, theme, Hugo, button, hero, url, pageRef, the numbers and the language codes,
+   which the error-message assertions look for. */
+export const SITE_WITH_A_HERO_BUTTON_TO_A_PAGE_WITH_A_BUILD_PARAM_AS_TEXT = testSite('target-with-a-year-option');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

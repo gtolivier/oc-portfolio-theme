@@ -59,6 +59,7 @@ import {
   SITE_WITH_HERO_BUTTONS_WITH_A_URL_NEXT_TO_A_WRONG_PAGE_REF,
   SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_PAGE_REF,
   SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_URL,
+  SITE_WITH_A_HERO_BUTTON_TO_A_PAGE_WITH_A_BUILD_PARAM_AS_TEXT,
   type BuildAttempt,
   type BuiltSite,
   buildSite,
@@ -3140,5 +3141,42 @@ test.describe('hero content errors: build failure', () => {
       new RegExp(languageCodePattern('fr'), 'u'),
     );
     expect(build.errors, 'the error message should not say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
+  });
+
+  test("a home page where a hero button's pageRef points to a page that declares a custom param build = \"2020\", a text rather than a table, makes the site build fail with a single hero error message, which names that button by its position, quotes its pageRef, says the theme reads the page's build param as Hugo's build options and to rename it, and names the home page's language, without a template execution error after it", () => {
+    /* tests/fixtures/target-with-a-year-option/content/_index.md, a French home page, has two
+       hero buttons, each with a label and no url: the first is well filled in, with
+       pageRef = '/projets'; the second declares pageRef = '/atelier-millesime', a page of the same
+       fixture that sets no [build] options but declares under [params] a custom param
+       build = '2020'. The theme reads the page's build param as Hugo's build options, the [build]
+       front matter, to know whether Hugo publishes the page: a custom build param hides them, so
+       the theme cannot tell. As for a featured project whose page makes the same mistake, the
+       person building the site must get a failure rather than a button to a page that may not be
+       published: a single hero message that says, on one line, which button is at fault by its
+       position, quotes its pageRef, names the build param, says the theme reads it as Hugo's
+       build options, tells them to rename it, and names the home page's language, fr, whatever
+       the rest of the wording, and no Go template execution error that would follow it and bury
+       it in technical jargon. The language is looked for as a word that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_A_HERO_BUTTON_TO_A_PAGE_WITH_A_BUILD_PARAM_AS_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
+    const messages = heroMessages(build.errors).filter(
+      (line) => /\bbutton\s+#?2\b/i.test(line) && line.includes('"/atelier-millesime"') && /\bbuild\b/.test(line),
+    );
+    expect(
+      messages,
+      `one hero error message should name button 2, quote its pageRef and name the build param, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], 'the error message should say the theme reads build as Hugo’s build options').toMatch(
+      /\btheme\b/,
+    );
+    expect(messages[0], 'the error message should name Hugo').toMatch(/\bHugo\b/);
+    expect(messages[0], 'the error message should say to rename the param').toMatch(/\brename\b/i);
+    expect(messages[0], "the error message about button 2 should name the home page's language, fr").toMatch(
+      new RegExp(languageCodePattern('fr'), 'u'),
+    );
   });
 });
