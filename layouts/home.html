@@ -2,6 +2,8 @@
   {{- /* The hero and the project cards list a stack the same way. */}}
   {{- $stackSeparator := " · " }}
   {{- $lang := site.Language.Lang }}
+  {{- /* An empty value ('', false) written where the list belongs is a content mistake, unlike an omitted key: it raises the error a text gets. */}}
+  {{- if and (isset .Params "clients") (not .Params.clients) (not (reflect.IsSlice .Params.clients)) }}{{ errorf "clients: the home page's clients parameter must be a list of names (language: %s)" $lang }}{{ end }}
   {{- if or .Params.hero .Params.clients }}
   <div class="first-screen{{ if .Params.hero }} has-hero{{ end }}">
     {{- with .Params.hero }}
