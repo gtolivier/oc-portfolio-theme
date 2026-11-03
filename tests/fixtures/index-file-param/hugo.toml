@@ -1,0 +1,7 @@
+# Configuration added to exampleSite/hugo.toml by the tests of a site that
+# keeps the example site's content, whose featured projects live in its projets
+# section, but whose projectsSection site param is 'projets/_index.md', the
+# path of that section's own page rather than the section's name, which Hugo's
+# GetPage still resolves to that top-level section.
+[params]
+  projectsSection = 'projets/_index.md'

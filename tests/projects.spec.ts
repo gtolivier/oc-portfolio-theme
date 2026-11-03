@@ -28,6 +28,7 @@ import {
   SITE_WITH_A_PADDED_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_WITHOUT_NAMING_IT,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_THROUGH_A_PATH,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_A_SUBSECTION_AND_ITS_PROJECTS,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_SLASH,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SLASH,
@@ -2373,6 +2374,34 @@ test.describe('projectsSection site param that names no section: build failure',
       const messages = build.errors.split('\n').filter((line) => line.includes(entry));
       expect(messages, `no error message should name the featured project ${entry}, in:\n${build.errors}`).toEqual([]);
     }
+  });
+
+  test('a projectsSection site param that leads to a top-level section through a path makes the site build fail with the error message that it names no section and quotes its value, and no error message saying it names a subsection', () => {
+    /* tests/fixtures/index-file-param/hugo.toml sets projectsSection = 'projets/_index.md', the
+       path of the projets section's own page rather than the name of a section, and keeps the
+       example site's home pages, which feature projects of projets/. Hugo's GetPage resolves
+       '/projets/_index.md' to the top-level projets section, so the value holds a slash without
+       naming a subsection: telling the person building the site that it names one, and that it
+       must name a top-level section, would leave them puzzled, since projets is one. The message
+       must name the projectsSection param, quote its value as Go's %q does ("projets/_index.md")
+       and say, on that same line, that it names no section, whatever the rest of the wording; no
+       error line may say the param names a subsection. */
+    const quoted = '"projets/_index.md"';
+    const build = tryToBuildSite(SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_THROUGH_A_PATH);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const lines = build.errors.split('\n');
+    const paramMessages = lines.filter(
+      (line) => line.includes(quoted) && /\bprojectsSection\b/.test(line) && /\bnames no section\b/i.test(line),
+    );
+    expect(
+      paramMessages,
+      `error messages that name projectsSection, quote its value as ${quoted} and say it names no section, in:\n${build.errors}`,
+    ).not.toEqual([]);
+    const subsectionMessages = lines.filter((line) => /\bsubsections?\b/i.test(line));
+    expect(
+      subsectionMessages,
+      `no error message should say the param names a subsection, in:\n${build.errors}`,
+    ).toEqual([]);
   });
 });
 

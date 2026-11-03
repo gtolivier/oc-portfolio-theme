@@ -1310,6 +1310,14 @@ export const SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_WITHOUT_NAM
   'extension-param-with-its-projects',
 );
 
+/* The example site leaves out the projectsSection site param: this site keeps its content, whose
+   featured projects live in projets/, and sets that param to the path of that section's own page,
+   projectsSection = 'projets/_index.md' (see tests/fixtures/index-file-param/hugo.toml), which
+   holds a slash without naming a subsection: Hugo's GetPage resolves it to the top-level projets
+   section. Its folder name avoids the words projectsSection, projets, md, section and subsection,
+   which the error-message assertions look for. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_THROUGH_A_PATH = testSite('index-file-param');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
