@@ -24,6 +24,7 @@ import {
   SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_TAB,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER_AND_PROJECTS_ELSEWHERE,
   SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE,
+  SITE_WITH_A_PADDED_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE,
   SITE_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT,
@@ -2203,6 +2204,34 @@ test.describe('projectsSection site param with whitespace at its start or end: b
         messages,
         `with ${name}, error messages that name projectsSection, quote its value as ${quoted} and say it has whitespace, in:\n${build.errors}`,
       ).not.toEqual([]);
+    }
+  });
+
+  test('a projectsSection site param with whitespace at its start or end, on a site whose featured projects live in the section it names, makes the site build fail with the error message about the param alone, without an error message per featured project', () => {
+    /* tests/fixtures/padded-param-with-projects-elsewhere/hugo.toml sets projectsSection =
+       'realisations ', with a trailing space; its content/_index.md features
+       'realisations/pendule-de-voyage' and 'realisations/horloge-de-parquet', two projects of
+       content/realisations/, the section the person building the site meant to name. Hugo does
+       not trim the whitespace, so the param names no section exactly and the theme cannot tell
+       where featured projects must live: the person must get the error message saying the param
+       has whitespace, and no error message per featured project saying it does not live in a
+       section, the padded one or projets, that they never chose and that would send them moving
+       projects that are where they should be. The param's message is looked for as in the test
+       above, the others as the lines naming an entry, as written in the front matter. */
+    const entries = ['realisations/pendule-de-voyage', 'realisations/horloge-de-parquet'];
+    const quoted = '"realisations "';
+    const build = tryToBuildSite(SITE_WITH_A_PADDED_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const paramMessages = build.errors
+      .split('\n')
+      .filter((line) => line.includes(quoted) && /\bprojectsSection\b/.test(line) && /\bwhitespace\b/i.test(line));
+    expect(
+      paramMessages,
+      `error messages that name projectsSection, quote its value as ${quoted} and say it has whitespace, in:\n${build.errors}`,
+    ).not.toEqual([]);
+    for (const entry of entries) {
+      const messages = build.errors.split('\n').filter((line) => line.includes(entry));
+      expect(messages, `no error message should name the featured project ${entry}, in:\n${build.errors}`).toEqual([]);
     }
   });
 });

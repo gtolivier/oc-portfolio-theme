@@ -1182,6 +1182,18 @@ export const SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE = 
   'unfilled-param-with-projects-elsewhere',
 );
 
+/* Like the two sites above, this one replaces both home pages with those of
+   tests/fixtures/padded-param-with-projects-elsewhere/content, whose French one features
+   "realisations/pendule-de-voyage" and "realisations/horloge-de-parquet", two fictional projects
+   added in French only in realisations/, but its projectsSection site param names that section
+   with a trailing space, projectsSection = 'realisations ' (see
+   tests/fixtures/padded-param-with-projects-elsewhere/hugo.toml), which Hugo does not trim. Its
+   English home page features no projects. Its folder name avoids the words projectsSection,
+   whitespace, realisations and projets, which the error-message assertions look for. */
+export const SITE_WITH_A_PADDED_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE = testSite(
+  'padded-param-with-projects-elsewhere',
+);
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

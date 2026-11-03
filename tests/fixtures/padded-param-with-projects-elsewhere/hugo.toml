@@ -1,0 +1,7 @@
+# Configuration added to exampleSite/hugo.toml by the tests of a site whose
+# featured projects live in a section other than projets, realisations, and
+# whose projectsSection site param names that section with a trailing space,
+# 'realisations ', which Hugo does not trim. The fixture's content/ adds that
+# section and replaces both home pages.
+[params]
+  projectsSection = 'realisations '
