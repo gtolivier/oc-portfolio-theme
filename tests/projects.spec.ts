@@ -33,6 +33,7 @@ import {
   SITE_WITH_UNUSUAL_RENDER_VALUES,
   SITE_WITH_A_BUILD_PARAM_AS_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_BUILD_PARAM_AS_TEXT,
+  SITE_WITH_A_PROJECT_STACK_AS_A_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
   type BuiltSite,
   buildSite,
@@ -1845,6 +1846,34 @@ test.describe('featured project whose page declares a custom param named build: 
         `with ${name}, build param error messages that do not name the home page's language, ${language}`,
       ).toEqual([]);
     }
+  });
+});
+
+test.describe('featured project whose page writes its stack as a text: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a featured project whose page writes its stack as a text rather than a list makes the site build fail, with an error message that names that project and says its stack must be a list, without a template execution error after it', () => {
+    /* tests/fixtures/card-materials-as-text/content/projets/lanterne-forgee.md, a project the
+       French home page features, writes its stack under [params] as a single text,
+       'Laiton, Acier', rather than a list of entries: joining a text in a Go template may raise
+       an execution error, or none, and the card would show the text as it is. Rather than that,
+       the person building the site must get a failure whose message, on one line, is about the
+       featured projects, names that project by its reference and says its stack must be a list,
+       whatever the rest of the wording, and no Go template execution error that would follow it
+       and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_A_PROJECT_STACK_AS_A_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors
+      .split('\n')
+      .filter((line) => line.includes('projets/lanterne-forgee') && /\bstack\b.*\blist\b/.test(line));
+    expect(
+      messages,
+      `one error message naming the project and saying its stack must be a list, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], 'the error message should be about the featured projects').toMatch(/\bprojects\b/);
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
   });
 });
 

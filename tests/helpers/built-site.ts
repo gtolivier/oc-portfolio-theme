@@ -536,6 +536,15 @@ export const SITE_WITH_A_BUILD_PARAM_AS_TEXT = testSite('build-param-as-text');
    error-message assertions look for. */
 export const SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_BUILD_PARAM_AS_TEXT = testSite('english-home-year-param');
 
+/* The example site's featured projects declare their stack as a list: this site replaces the
+   French home page with the one of tests/fixtures/card-materials-as-text/content, without a hero
+   nor clients, which features the example site's 'projets/restauration-pendule', then "Lanterne
+   forgée", a fictional project added under projets/ in French only, whose page writes, under
+   [params], its stack as a single text, stack = 'Laiton, Acier', rather than a list. Its folder
+   name avoids the words stack, list and projects, and the language codes, which the
+   error-message assertions look for. */
+export const SITE_WITH_A_PROJECT_STACK_AS_A_TEXT = testSite('card-materials-as-text');
+
 /* The example site's French home page features only project pages: this site replaces that home
    page with the one of tests/fixtures/self-ref/content, without a hero nor clients, whose
    params.projects is a list of texts, as expected, of 'projets/restauration-pendule', then '/', a
