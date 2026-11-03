@@ -61,6 +61,7 @@ import {
   SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_PAGE_REF,
   SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_URL,
   SITE_WITH_A_HERO_BUTTON_TO_A_PAGE_WITH_A_BUILD_PARAM_AS_TEXT,
+  SITE_WITH_HERO_BUTTON_URLS_AS_FALSE_ZERO_AND_AN_EMPTY_LIST,
   TEMPLATE_EXECUTION_ERROR,
   type BuildAttempt,
   type BuiltSite,
@@ -3193,5 +3194,31 @@ test.describe('hero content errors: build failure', () => {
     expect(messages[0], "the error message about button 2 should name the home page's language, fr").toMatch(
       new RegExp(languageCodePattern('fr'), 'u'),
     );
+  });
+
+  test("a home page where a hero button's url is a value Hugo reads as false (false, 0, an empty list), without a pageRef, makes the site build fail with a single hero error message per such button, which names that button by its position and says its url must be a text, rather than saying the button has neither a url nor a pageRef", () => {
+    /* tests/fixtures/addresses-read-as-false/content/_index.md, a French home page, has four hero
+       buttons, each with a label: the first is well filled in, with pageRef = '/projets'; the
+       others declare no pageRef and a url Hugo reads as false: the second false, the third 0, the
+       fourth [], an empty list. None is an address, but each button does declare a url: the person
+       building the site must get, for each of these three buttons, a single hero message that
+       says, on one line, which button is at fault by its position and that its url must be a text,
+       whatever the rest of the wording. A message saying the button has neither a url nor a
+       pageRef would send them looking for a field that is right there: these three messages must
+       be the only hero messages, and none must say both fields are missing. False, 0 and an empty
+       list, so that a check made for a single value Hugo reads as false does not pass. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_URLS_AS_FALSE_ZERO_AND_AN_EMPTY_LIST);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(3);
+    const urlMustBeTextMessages = heroMessages(build.errors).filter(
+      (line) => /\burl\b/.test(line) && /\b(?:must|should)\s+be\b.*\btext\b/i.test(line),
+    );
+    for (const position of [2, 3, 4]) {
+      expect(
+        urlMustBeTextMessages.filter((line) => namesButton(position).test(line)),
+        `one hero error message should say that button ${position}'s url must be a text, in:\n${build.errors}`,
+      ).toHaveLength(1);
+    }
+    expect(build.errors, 'no error message should say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
   });
 });
