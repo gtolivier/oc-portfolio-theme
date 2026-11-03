@@ -2,8 +2,13 @@
 {{- $position := .position }}
 {{- $lang := site.Language.Lang }}
 {{- $href := $button.url }}
+{{- /* A declared url counts even when Hugo reads it as false (an empty
+     text, 0, false, an empty list): its own error says what is wrong with
+     it, not the missing-field one, and next to a pageRef, it is one
+     destination too many. */}}
+{{- $hasUrl := isset $button "url" }}
 {{- $urlProblem := "" }}
-{{- if isset $button "url" }}
+{{- if $hasUrl }}
   {{- $urlProblem = partial "hero/destination-problem.html" $button.url }}
 {{- end }}
 {{- if eq $urlProblem "not-text" }}
@@ -47,9 +52,6 @@
 {{- with $pageRefError }}{{ errorf "%s" . }}{{ end }}
 {{- $pageRefIsWrong := ne $pageRefError "" }}
 {{- $urlIsEmpty := eq $urlProblem "empty" }}
-{{- /* An empty url text counts as declared even though Hugo reads it as
-     false: next to a pageRef, it is one destination too many. */}}
-{{- $hasUrl := or $button.url $urlIsEmpty (eq $urlProblem "not-text") }}
 {{- if and $urlIsEmpty (not $hasPageRef) }}{{ errorf "hero: button %d: the url field is empty: it must be an address (language: %s)" $position $lang }}{{ end }}
 {{- if and $hasUrl $hasPageRef (not $pageRefIsWrong) }}{{ errorf "hero: button %d declares both a url field and a pageRef field; it needs only one (language: %s)" $position $lang }}{{ end }}
 {{- if and (not $hasUrl) (not $hasPageRef) }}{{ errorf "hero: button %d has neither a url field nor a pageRef field (language: %s)" $position $lang }}{{ end }}
