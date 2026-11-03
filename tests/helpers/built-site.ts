@@ -313,6 +313,14 @@ export const SITE_WITH_AN_EMPTY_CLIENT_NAME = testSite('empty-name');
    name. */
 export const SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME = testSite('whitespace-only-name');
 
+/* Same as SITE_WITH_CLIENTS_AS_TEXT, with the home page of
+   tests/fixtures/empty-text-instead-of-names/content, whose params.clients is an empty text, '',
+   instead of a list of names, and with that of tests/fixtures/false-instead-of-names/content,
+   whose params.clients is the boolean false. Their folder names avoid the words clients and list
+   and the language codes, which the error-message assertions look for. */
+export const SITE_WITH_CLIENTS_AS_AN_EMPTY_TEXT = testSite('empty-text-instead-of-names');
+export const SITE_WITH_CLIENTS_AS_FALSE = testSite('false-instead-of-names');
+
 /* The example site's French home page features four projects: this site
    replaces that home page with the one of
    tests/fixtures/other-projects/content, without a hero nor clients, which

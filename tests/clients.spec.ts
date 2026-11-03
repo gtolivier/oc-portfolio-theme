@@ -6,6 +6,8 @@ import {
   SITE_WITH_A_ONE_WORD_CLIENT_NAME,
   SITE_WITH_OTHER_CLIENTS,
   SITE_WITH_CLIENTS_AS_TEXT,
+  SITE_WITH_CLIENTS_AS_AN_EMPTY_TEXT,
+  SITE_WITH_CLIENTS_AS_FALSE,
   SITE_WITH_A_CLIENT_AS_MAP,
   SITE_WITH_AN_EMPTY_CLIENT_NAME,
   SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME,
@@ -1750,6 +1752,43 @@ test.describe('client content errors: build failure', () => {
         messages.filter((line) => !new RegExp(languageCodePattern(language), 'u').test(line)),
         `with ${name}, clients error messages that do not name the home page's language, ${language}`,
       ).toEqual([]);
+    }
+  });
+
+  test('a home page whose clients parameter is an empty text or false instead of a list makes the site build fail with the same error message as a text instead of a list, alone, without a template execution error after it', () => {
+    /* tests/fixtures/empty-text-instead-of-names declares clients = '' and
+       tests/fixtures/false-instead-of-names clients = false: an empty value written where a list
+       of names belongs. Unlike a home page that leaves out the clients key, which shows no client
+       band (see the test above, on tests/fixtures/without-hero), this is a content mistake: rather
+       than a band that quietly disappears, the person building the site must get the failure a
+       text instead of a list gets, tests/fixtures/text-instead-of-list, with the same message: one
+       line naming the clients parameter, the very line the text gets, whatever its wording, and no
+       Go template execution error that would follow it and bury it in technical jargon. Both
+       home pages are French, as that fixture's is. Two fixtures, so that rejecting only one of
+       the two empty values does not pass. */
+    const clientsMessages = (errors: string) =>
+      errors.split('\n').filter((line) => /\bclients\s+parameter\b/.test(line));
+    const textBuild = tryToBuildSite(SITE_WITH_CLIENTS_AS_TEXT);
+    expect(textBuild.succeeded, 'with clients as a text, the site build should fail').toBe(false);
+    const expectedMessages = clientsMessages(textBuild.errors);
+    expect(
+      expectedMessages,
+      `with clients as a text, one error message naming the clients parameter, in:\n${textBuild.errors}`,
+    ).toHaveLength(1);
+    const cases = [
+      { name: 'clients as an empty text', site: SITE_WITH_CLIENTS_AS_AN_EMPTY_TEXT },
+      { name: 'clients as false', site: SITE_WITH_CLIENTS_AS_FALSE },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(
+        clientsMessages(build.errors),
+        `with ${name}, the error message of a text instead of a list, alone, in:\n${build.errors}`,
+      ).toEqual(expectedMessages);
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
+        /execute of template failed|error calling/i,
+      );
     }
   });
 });
