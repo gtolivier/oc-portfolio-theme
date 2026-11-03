@@ -84,8 +84,7 @@
   <section class="projects" aria-labelledby="projects-heading">
     <div class="projects-header">
       <h2 id="projects-heading">{{ i18n "selectedProjects" }}</h2>
-      {{- /* The all-projects link goes to the section holding every featured project: with projects in several sections (subsections of projets, or a section Hugo does not publish, which featured.html lets through), no section lists them all. */}}
-      {{- /* A subsection of projets counts as its top-level section, which lists its projects too. */}}
+      {{- /* The all-projects link goes to the top-level section holding every featured project: a subsection of projets counts as projets, which lists its projects too, but with projects in several top-level sections (a section Hugo does not publish, which featured.html lets through), no section lists them all. */}}
       {{- $linkedSection := (index $projects 0).Parent.FirstSection }}
       {{- $isInOneSection := true }}
       {{- range $projects }}{{ if not (.Parent.FirstSection.Eq $linkedSection) }}{{ $isInOneSection = false }}{{ end }}{{ end }}
