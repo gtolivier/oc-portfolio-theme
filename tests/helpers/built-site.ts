@@ -922,6 +922,15 @@ export const SITE_WITH_AN_ENGLISH_HOME_WITH_BACKGROUND_PARTS_NOT_AS_LISTS = test
    the error-message assertions look for. */
 export const SITE_WITH_HERO_BUTTON_URLS_EMPTY_AND_WHITESPACE_ONLY = testSite('addresses-unfilled-and-of-spaces');
 
+/* The example site's French home page gives each hero button a single destination: this site
+   replaces that home page with the one of tests/fixtures/unfilled-address-and-target/content,
+   whose hero has two buttons, written [[params.hero.actions]], each with a label: the first is
+   well filled in, with pageRef = '/projets'; the second declares url = '', an empty text, next to
+   a valid pageRef = '/projets'. Its folder name avoids the words button, hero, url, pageRef,
+   both, only, one, empty, the numbers and the language codes, which the error-message assertions
+   look for. */
+export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_URL_AND_A_PAGE_REF = testSite('unfilled-address-and-target');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

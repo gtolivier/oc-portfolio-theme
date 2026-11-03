@@ -55,6 +55,7 @@ import {
   SITE_WITH_HERO_BUTTON_LABELS_AS_A_NUMBER_AND_A_TABLE,
   SITE_WITH_HERO_BUTTON_LABELS_WITH_A_LEADING_AND_A_TRAILING_SPACE,
   SITE_WITH_HERO_BUTTON_URLS_EMPTY_AND_WHITESPACE_ONLY,
+  SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_URL_AND_A_PAGE_REF,
   type BuildAttempt,
   type BuiltSite,
   buildSite,
@@ -2973,5 +2974,33 @@ test.describe('hero content errors: build failure', () => {
       ).toMatch(new RegExp(languageCodePattern('fr'), 'u'));
     }
     expect(build.errors, 'no error message should say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
+  });
+
+  test("a home page where a hero button declares an empty url next to a valid pageRef makes the site build fail with a single hero error message, which names that button by its position, cites both fields and, on that same line, says both are declared and names the home page's language", () => {
+    /* tests/fixtures/unfilled-address-and-target/content/_index.md, a French home page, has two
+       hero buttons, each with a label: the first is well filled in, with pageRef = '/projets';
+       the second declares url = '', an empty text, next to a valid pageRef = '/projets'. Hugo
+       reads the url as false, but the button does declare a url next to its pageRef: the person
+       building the site must get a single hero error message that says, on one line, which
+       button is at fault by its position, names the url and pageRef fields of the front matter,
+       says that both are declared, whatever wording is chosen, and names the home page's
+       language, fr, so that they remove one of the two rather than fill in the url. Any other
+       hero message, such as saying the url is empty or that the button has neither field, would
+       mislead them: this one must be the only one, and must not say that both are missing. The
+       language is looked for as a word that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_URL_AND_A_PAGE_REF);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
+    const messages = destinationFieldMessages(build.errors, BOTH_FIELDS_DECLARED).filter(
+      (line) => /\bhero:/.test(line) && /\bbutton\s+#?2\b/i.test(line),
+    );
+    expect(
+      messages,
+      `one hero error message should name button 2's url and pageRef fields and say both are declared, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], "the error message about button 2 should name the home page's language, fr").toMatch(
+      new RegExp(languageCodePattern('fr'), 'u'),
+    );
+    expect(build.errors, 'the error message should not say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
   });
 });
