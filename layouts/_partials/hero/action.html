@@ -78,10 +78,10 @@
 {{- $labelProblem := partial "text-problem.html" $button.label }}
 {{- if and (isset $button "label") (eq $labelProblem "not-text") }}
   {{- errorf "hero: button %d: the label field must be a text (language: %s)" $position $lang }}
+{{- else if and (isset $button "label") (eq $labelProblem "empty") }}
+  {{- errorf "hero: button %d: the label field is empty: it must be a text (language: %s)" $position $lang }}
 {{- else if not $button.label }}
   {{- errorf "hero: button %d has no label field (language: %s)" $position $lang }}
-{{- else if eq $labelProblem "empty" }}
-  {{- errorf "hero: button %d: the label field is empty: it must be a text (language: %s)" $position $lang }}
 {{- else if eq $labelProblem "padded" }}
   {{- errorf "hero: button %d: the label %q has whitespace at its start or end (language: %s)" $position $button.label $lang }}
 {{- end -}}
