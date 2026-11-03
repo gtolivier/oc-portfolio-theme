@@ -57,6 +57,7 @@ import {
   SITE_WITH_HERO_BUTTON_URLS_EMPTY_AND_WHITESPACE_ONLY,
   SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_URL_AND_A_PAGE_REF,
   SITE_WITH_HERO_BUTTONS_WITH_A_URL_NEXT_TO_A_WRONG_PAGE_REF,
+  SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_PAGE_REF,
   type BuildAttempt,
   type BuiltSite,
   buildSite,
@@ -3081,5 +3082,33 @@ test.describe('hero content errors: build failure', () => {
       heroMessages(build.errors).filter((line) => BOTH_FIELDS_DECLARED.test(line)),
       `no hero error message should say both fields are declared, in:\n${build.errors}`,
     ).toEqual([]);
+  });
+
+  test("a home page written with a YAML front matter where a hero button's pageRef is null, without a url, makes the site build fail with a single hero error message, which names that button by its position, says its pageRef is empty and names the home page's language, rather than saying the button has neither a url nor a pageRef", () => {
+    /* tests/fixtures/target-left-unset-in-yaml/content/_index.md, a French home page written
+       with a YAML front matter, has two hero buttons, each with a label and no url: the first is
+       well filled in, with pageRef: /projets; the second declares pageRef: null, the YAML way of
+       leaving a field without a value. The person building the site wrote the pageRef field but
+       left it unfilled, as with pageRef = '' in TOML: they must get the same error, a single hero
+       message that says, on one line, which button is at fault by its position, that its pageRef
+       is empty (or blank), and names the home page's language, fr, whatever the rest of the
+       wording. A message saying the button has neither a url nor a pageRef would send them
+       looking for a field that is right there: this one must be the only hero message, and must
+       not say both fields are missing. The language is looked for as a word that no other word
+       follows. */
+    const build = tryToBuildSite(SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_PAGE_REF);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
+    const messages = heroMessages(build.errors).filter(
+      (line) => PAGE_REF_IS_EMPTY.test(line) && /\bbutton\s+#?2\b/i.test(line),
+    );
+    expect(
+      messages,
+      `one hero error message should say that button 2's pageRef is empty, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], "the error message about button 2 should name the home page's language, fr").toMatch(
+      new RegExp(languageCodePattern('fr'), 'u'),
+    );
+    expect(build.errors, 'the error message should not say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
   });
 });
