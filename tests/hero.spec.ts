@@ -2053,6 +2053,20 @@ function heroMessagesContaining(errors: string, text: string): string[] {
   return heroMessages(errors).filter((line) => line.includes(text));
 }
 
+/* The lines of the build's errors that are hero error messages saying a url must be a text,
+   whatever the rest of the wording. */
+function heroMessagesSayingUrlMustBeAText(errors: string): string[] {
+  return heroMessages(errors).filter(
+    (line) => /\burl\b/.test(line) && /\b(?:must|should)\s+be\b.*\btext\b/i.test(line),
+  );
+}
+
+/* The lines of the build's errors that are hero error messages saying a url has whitespace,
+   whatever the rest of the wording. */
+function heroMessagesSayingUrlHasWhitespace(errors: string): string[] {
+  return heroMessages(errors).filter((line) => /\burl\b/.test(line) && /\bwhitespace\b/i.test(line));
+}
+
 /* A message naming a hero button by its position, as "button 2" or "button #2", in any case. */
 function namesButton(position: number): RegExp {
   return new RegExp(`\\bbutton\\s+#?${position}\\b`, 'i');
@@ -3298,9 +3312,7 @@ test.describe('hero content errors: build failure', () => {
     const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_URLS_AS_FALSE_ZERO_AND_AN_EMPTY_LIST);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(3);
-    const urlMustBeTextMessages = heroMessages(build.errors).filter(
-      (line) => /\burl\b/.test(line) && /\b(?:must|should)\s+be\b.*\btext\b/i.test(line),
-    );
+    const urlMustBeTextMessages = heroMessagesSayingUrlMustBeAText(build.errors);
     for (const position of [2, 3, 4]) {
       expect(
         urlMustBeTextMessages.filter((line) => namesButton(position).test(line)),
@@ -3325,9 +3337,7 @@ test.describe('hero content errors: build failure', () => {
     const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE_NEXT_TO_A_PAGE_REF);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(2);
-    const urlMustBeTextMessages = heroMessages(build.errors).filter(
-      (line) => /\burl\b/.test(line) && /\b(?:must|should)\s+be\b.*\btext\b/i.test(line),
-    );
+    const urlMustBeTextMessages = heroMessagesSayingUrlMustBeAText(build.errors);
     for (const position of [2, 3]) {
       expect(
         urlMustBeTextMessages.filter((line) => namesButton(position).test(line)),
@@ -3356,9 +3366,7 @@ test.describe('hero content errors: build failure', () => {
     const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(2);
-    const paddedUrlMessages = heroMessages(build.errors).filter(
-      (line) => /\burl\b/.test(line) && /\bwhitespace\b/i.test(line),
-    );
+    const paddedUrlMessages = heroMessagesSayingUrlHasWhitespace(build.errors);
     for (const position of [2, 3]) {
       const messages = paddedUrlMessages.filter((line) => namesButton(position).test(line));
       expect(
@@ -3389,9 +3397,7 @@ test.describe('hero content errors: build failure', () => {
     const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB_NEXT_TO_A_PAGE_REF);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(2);
-    const paddedUrlMessages = heroMessages(build.errors).filter(
-      (line) => /\burl\b/.test(line) && /\bwhitespace\b/i.test(line),
-    );
+    const paddedUrlMessages = heroMessagesSayingUrlHasWhitespace(build.errors);
     for (const position of [2, 3]) {
       const messages = paddedUrlMessages.filter((line) => namesButton(position).test(line));
       expect(

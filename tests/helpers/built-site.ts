@@ -1066,11 +1066,60 @@ export const SITE_WITH_PROJECTS_IN_A_SUBSECTION = testSite('projects-in-a-subsec
 
 /* This site replaces the example site's French home page with the one of
    tests/fixtures/projects-in-the-section-and-a-subsection/content, without a hero nor clients,
-   which features two projects: "Régulateur de parquet en noyer", one of the example site's projects, which
-   sits directly in projets/, and "Chronomètre de marine", a fictional project added in French
-   only in one subsection of projets/, marine/, titled "Marine" and published at
+   which features two projects: "Régulateur de parquet en noyer", one of the example site's
+   projects, which sits directly in projets/, and "Chronomètre de marine", a fictional project
+   added in French only in one subsection of projets/, marine/, titled "Marine" and published at
    /fr/projets/marine/. */
 export const SITE_WITH_PROJECTS_IN_THE_SECTION_AND_A_SUBSECTION = testSite('projects-in-the-section-and-a-subsection');
+
+/* The example site's featured projects live in projets/, the section the theme expects when the
+   site does not name another: this site names realisations/ in its projectsSection site param
+   (see tests/fixtures/projects-in-the-configured-section/hugo.toml) and replaces the French home
+   page with the one of tests/fixtures/projects-in-the-configured-section/content, without a hero
+   nor clients, which features "Pendule de voyage" and "Horloge de parquet", two fictional
+   projects added in French only in realisations/, titled "Réalisations" and published at
+   /fr/realisations/. Its English home page features no projects. The example site's projets/
+   section is still built. */
+export const SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION = testSite('projects-in-the-configured-section');
+
+/* Like the site above, this one names realisations/ in its projectsSection site param (see
+   tests/fixtures/project-outside-the-configured-section/hugo.toml), but its French home page
+   features "Pendule de voyage", a fictional project of realisations/, then the example site's
+   'projets/restauration-pendule', which lives outside the configured section. Its English home
+   page features no projects. */
+export const SITE_WITH_A_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION = testSite('project-outside-the-configured-section');
+
+/* The example site leaves out the projectsSection site param: these sites keep its content and set
+   that param to a value that names no section: a number, projectsSection = 42 (see
+   tests/fixtures/section-param-as-a-number/hugo.toml), a list, projectsSection = ['realisations']
+   (tests/fixtures/section-param-as-a-list/hugo.toml), an empty text, projectsSection = ''
+   (tests/fixtures/unfilled-section-param/hugo.toml), and a text of spaces only,
+   projectsSection = '   ' (tests/fixtures/section-param-of-spaces/hugo.toml). Their folder names
+   avoid the words projectsSection, text, empty and blank, which the error-message assertions look
+   for. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER = testSite('section-param-as-a-number');
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_LIST = testSite('section-param-as-a-list');
+export const SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM = testSite('unfilled-section-param');
+export const SITE_WITH_A_WHITESPACE_ONLY_PROJECTS_SECTION_PARAM = testSite('section-param-of-spaces');
+
+/* The example site's French home page writes its hero tagline under [params.hero], before its
+   buttons: this site replaces that home page with the one of
+   tests/fixtures/devise-sous-le-dernier-lien/content, without clients nor projects, whose hero is
+   well filled in, with a stack and two well filled-in buttons, but whose tagline key, a list of
+   two lines, is written under the last [[params.hero.actions]] header, so that TOML puts it in
+   the second button's table instead of params.hero.tagline. Its folder name avoids the words
+   button, tagline, hero, params, before, the numbers and the language codes, which the
+   error-message assertions look for. */
+export const SITE_WITH_THE_HERO_TAGLINE_UNDER_THE_LAST_HERO_BUTTON = testSite('devise-sous-le-dernier-lien');
+
+/* Like the site above, this one replaces the example site's French home page with the one of
+   tests/fixtures/metier-sous-le-dernier-lien/content, without clients nor projects, whose hero is
+   well filled in, with a tagline, a stack and two well filled-in buttons, but whose hero title
+   key is written under the last [[params.hero.actions]] header, so that TOML puts it in the
+   second button's table instead of params.hero.title. The page's own title, written before
+   [params], stays where it is. Its folder name avoids the words button, title, hero, params,
+   before, the numbers and the language codes, which the error-message assertions look for. */
+export const SITE_WITH_THE_HERO_TITLE_UNDER_THE_LAST_HERO_BUTTON = testSite('metier-sous-le-dernier-lien');
 
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
@@ -1263,52 +1312,3 @@ export async function serveSite(context: BrowserContext, site: BuiltSite, direct
     await route.fulfill({ path: file });
   });
 }
-
-/* The example site's featured projects live in projets/, the section the theme expects when the
-   site does not name another: this site names realisations/ in its projectsSection site param
-   (see tests/fixtures/projects-in-the-configured-section/hugo.toml) and replaces the French home
-   page with the one of tests/fixtures/projects-in-the-configured-section/content, without a hero
-   nor clients, which features "Pendule de voyage" and "Horloge de parquet", two fictional
-   projects added in French only in realisations/, titled "Réalisations" and published at
-   /fr/realisations/. Its English home page features no projects. The example site's projets/
-   section is still built. */
-export const SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION = testSite('projects-in-the-configured-section');
-
-/* Like the site above, this one names realisations/ in its projectsSection site param (see
-   tests/fixtures/project-outside-the-configured-section/hugo.toml), but its French home page
-   features "Pendule de voyage", a fictional project of realisations/, then the example site's
-   'projets/restauration-pendule', which lives outside the configured section. Its English home
-   page features no projects. */
-export const SITE_WITH_A_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION = testSite('project-outside-the-configured-section');
-
-/* The example site leaves out the projectsSection site param: these sites keep its content and set
-   that param to a value that names no section: a number, projectsSection = 42 (see
-   tests/fixtures/section-param-as-a-number/hugo.toml), a list, projectsSection = ['realisations']
-   (tests/fixtures/section-param-as-a-list/hugo.toml), an empty text, projectsSection = ''
-   (tests/fixtures/unfilled-section-param/hugo.toml), and a text of spaces only,
-   projectsSection = '   ' (tests/fixtures/section-param-of-spaces/hugo.toml). Their folder names
-   avoid the words projectsSection, text, empty and blank, which the error-message assertions look
-   for. */
-export const SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER = testSite('section-param-as-a-number');
-export const SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_LIST = testSite('section-param-as-a-list');
-export const SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM = testSite('unfilled-section-param');
-export const SITE_WITH_A_WHITESPACE_ONLY_PROJECTS_SECTION_PARAM = testSite('section-param-of-spaces');
-
-/* The example site's French home page writes its hero tagline under [params.hero], before its
-   buttons: this site replaces that home page with the one of
-   tests/fixtures/devise-sous-le-dernier-lien/content, without clients nor projects, whose hero is
-   well filled in, with a stack and two well filled-in buttons, but whose tagline key, a list of
-   two lines, is written under the last [[params.hero.actions]] header, so that TOML puts it in
-   the second button's table instead of params.hero.tagline. Its folder name avoids the words
-   button, tagline, hero, params, before, the numbers and the language codes, which the
-   error-message assertions look for. */
-export const SITE_WITH_THE_HERO_TAGLINE_UNDER_THE_LAST_HERO_BUTTON = testSite('devise-sous-le-dernier-lien');
-
-/* Like the site above, this one replaces the example site's French home page with the one of
-   tests/fixtures/metier-sous-le-dernier-lien/content, without clients nor projects, whose hero is
-   well filled in, with a tagline, a stack and two well filled-in buttons, but whose hero title
-   key is written under the last [[params.hero.actions]] header, so that TOML puts it in the
-   second button's table instead of params.hero.title. The page's own title, written before
-   [params], stays where it is. Its folder name avoids the words button, title, hero, params,
-   before, the numbers and the language codes, which the error-message assertions look for. */
-export const SITE_WITH_THE_HERO_TITLE_UNDER_THE_LAST_HERO_BUTTON = testSite('metier-sous-le-dernier-lien');

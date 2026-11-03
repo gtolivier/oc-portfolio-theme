@@ -1962,19 +1962,20 @@ test.describe('home page of another site, featuring only projects of one subsect
     page,
     context,
   }) => {
-    await serveSite(context, SITE_WITH_PROJECTS_IN_A_SUBSECTION, siteDirectory);
+    const site = SITE_WITH_PROJECTS_IN_A_SUBSECTION;
+    await serveSite(context, site, siteDirectory);
     /* tests/fixtures/projects-in-a-subsection/content/_index.md features two projects, both in
        content/projets/horlogerie/ (title "Horlogerie", published at /fr/projets/horlogerie/). */
-    const subsectionResponse = await page.goto(`${SITE_WITH_PROJECTS_IN_A_SUBSECTION.origin}/fr/projets/horlogerie/`);
+    const subsectionResponse = await page.goto(`${site.origin}/fr/projets/horlogerie/`);
     expect(subsectionResponse?.status(), 'status of the subsection page').toBe(200);
-    await page.goto(`${SITE_WITH_PROJECTS_IN_A_SUBSECTION.origin}/fr/`);
+    await page.goto(`${site.origin}/fr/`);
     const section = projectsSection(page);
     await expect(section.getByRole('article')).toHaveCount(2);
     const link = section.getByRole('link', { name: 'Tous les projets', exact: true });
     await expect(link).toHaveCount(1);
     await link.click();
     /* The example site's content/projets/, titled "Projets". */
-    await expect(page).toHaveURL(`${SITE_WITH_PROJECTS_IN_A_SUBSECTION.origin}/fr/projets/`);
+    await expect(page).toHaveURL(`${site.origin}/fr/projets/`);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Projets');
   });
 });
