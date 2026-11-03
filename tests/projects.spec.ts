@@ -35,6 +35,7 @@ import {
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_BUILD_PARAM_AS_TEXT,
   SITE_WITH_A_PROJECT_STACK_AS_A_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
+  SITE_WITH_PROJECTS_UNDER_THE_HERO,
   type BuiltSite,
   buildSite,
   languageCodePattern,
@@ -2770,6 +2771,26 @@ test.describe('featured project content errors: build failure', () => {
     expectProjectsBuildError(build);
     expect(build.errors, 'the error message should give a project that does not exist as a possible cause').toMatch(
       /\b(?:not|n['’]t)\s+exist|\bnon-?existent\b|\bno\s+such\b/i,
+    );
+  });
+
+  test('a home page whose projects key is written under [params.hero] makes the site build fail, with an error message that says the projects parameter belongs to [params], before [params.hero], without a template execution error after it', () => {
+    /* tests/fixtures/featured-list-in-the-banner/content/_index.md writes projects = [...] after
+       the [params.hero] header, so that TOML puts it in the hero's table (params.hero.projects)
+       rather than in params.projects, where the theme reads the featured projects. Rather than a
+       home page whose projects silently disappear, the person building the site must get a
+       failure whose message says, on one line, that projects belongs to [params], written before
+       [params.hero], whatever the rest of the wording, and no Go template execution error that
+       would follow it and bury it in technical jargon. [params] is looked for as written, so that
+       [params.hero] alone does not count for it. */
+    const build = tryToBuildSite(SITE_WITH_PROJECTS_UNDER_THE_HERO);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(
+      build.errors,
+      'one error message should say that projects belongs to [params], before [params.hero]',
+    ).toMatch(/^(?=.*\bprojects\b)(?=.*\[params\])(?=.*\bbefore\s+\[params\.hero\]).*$/im);
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      /execute of template failed|error calling/i,
     );
   });
 });

@@ -619,6 +619,13 @@ export const SITE_WITH_A_PAGE_REF_TO_A_LINK_ONLY_PAGE = testSite('link-rendered-
    assertions look for. */
 export const SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES = testSite('english-home-bad-entries');
 
+/* The example site's French home page features its projects under [params]: this site replaces
+   that home page with the one of tests/fixtures/featured-list-in-the-banner/content, without
+   clients, whose projects key is written after the [params.hero] header, under the hero's title,
+   so that TOML puts it in params.hero.projects instead of params.projects. Its folder name avoids
+   the words projects, params, hero and before, which the error-message assertions look for. */
+export const SITE_WITH_PROJECTS_UNDER_THE_HERO = testSite('featured-list-in-the-banner');
+
 /* The example site's English home page has a hero whose every button is well filled in: this site
    replaces that home page with the one of tests/fixtures/english-home-bad-buttons/content, whose
    seven hero buttons are each filled in wrong, one of each kind: a pageRef that is a table,
