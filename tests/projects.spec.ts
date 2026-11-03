@@ -22,6 +22,7 @@ import {
   SITE_WITH_A_WHITESPACE_ONLY_PROJECTS_SECTION_PARAM,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SPACE,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_TAB,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER_AND_PROJECTS_ELSEWHERE,
   SITE_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT,
@@ -2121,6 +2122,28 @@ test.describe('projectsSection site param that is not a text or is empty: build 
       expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
         TEMPLATE_EXECUTION_ERROR,
       );
+    }
+  });
+
+  test('a projectsSection site param that is not a text, on a site whose featured projects live in another section than projets, makes the site build fail with the error message about the param alone, without an error message per featured project', () => {
+    /* tests/fixtures/number-param-with-projects-elsewhere/hugo.toml sets projectsSection = 42; its
+       content/_index.md features 'realisations/pendule-de-voyage' and
+       'realisations/horloge-de-parquet', two projects of content/realisations/, the section the
+       person building the site meant to name. The param names no section, so the theme cannot
+       tell where featured projects must live: the person must get the error message saying
+       projectsSection must be a text, and no error message per featured project saying it does
+       not live in projets, a section they never chose and that would send them moving projects
+       that are where they should be. The messages are looked for as the lines naming an entry, as
+       written in the front matter. */
+    const entries = ['realisations/pendule-de-voyage', 'realisations/horloge-de-parquet'];
+    const build = tryToBuildSite(SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER_AND_PROJECTS_ELSEWHERE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the error message should say projectsSection must be a text').toMatch(
+      /\bprojectsSection\b.*\b(?:must|should)\s+be\b.*\btext\b/i,
+    );
+    for (const entry of entries) {
+      const messages = build.errors.split('\n').filter((line) => line.includes(entry));
+      expect(messages, `no error message should name the featured project ${entry}, in:\n${build.errors}`).toEqual([]);
     }
   });
 });

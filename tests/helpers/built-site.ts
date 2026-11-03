@@ -1158,6 +1158,18 @@ export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_LABEL = testSite('inti
 export const SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SPACE = testSite('section-param-with-trailing-space');
 export const SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_TAB = testSite('section-param-with-leading-tab');
 
+/* Like SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION, this site replaces both home pages with those
+   of tests/fixtures/number-param-with-projects-elsewhere/content, whose French one features
+   "realisations/pendule-de-voyage" and "realisations/horloge-de-parquet", two fictional projects
+   added in French only in realisations/, but its projectsSection site param is a number,
+   projectsSection = 42 (see tests/fixtures/number-param-with-projects-elsewhere/hugo.toml), rather
+   than the name of that section. Its English home page features no projects. Its folder name
+   avoids the words projectsSection, text, realisations and projets, which the error-message
+   assertions look for. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER_AND_PROJECTS_ELSEWHERE = testSite(
+  'number-param-with-projects-elsewhere',
+);
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
