@@ -1257,6 +1257,18 @@ export const SITE_WITH_A_HERO_BUTTON_LABEL_WRITTEN_CAPITALIZED = testSite('intit
    assertions look for. */
 export const SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_URL = testSite('adresse-capitale-seule');
 
+/* The example site leaves out the projectsSection site param: these sites keep its content and set
+   that param to the name of its section of projects with a slash at one end: at its start,
+   projectsSection = '/projets', as a path from the content root (see
+   tests/fixtures/section-param-with-leading-separator/hugo.toml), and at its end,
+   projectsSection = 'projets/', as a folder (tests/fixtures/section-param-with-trailing-separator/hugo.toml).
+   Their folder names avoid the words projectsSection, slash, subsection and projets, which the
+   error-message assertions look for. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_SLASH = testSite('section-param-with-leading-separator');
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SLASH = testSite(
+  'section-param-with-trailing-separator',
+);
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
