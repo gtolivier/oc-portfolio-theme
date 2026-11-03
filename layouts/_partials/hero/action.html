@@ -2,7 +2,9 @@
 {{- $position := .position }}
 {{- $lang := site.Language.Lang }}
 {{- $href := $button.url }}
-{{- if and (isset $button "url") (eq (partial "text-problem.html" $button.url) "not-text") }}
+{{- $urlProblem := "" }}
+{{- if isset $button "url" }}{{ $urlProblem = partial "text-problem.html" $button.url }}{{ end }}
+{{- if eq $urlProblem "not-text" }}
   {{- errorf "hero: button %d: the url field must be a text (language: %s)" $position $lang }}
   {{- $href = "" }}
 {{- end }}
@@ -35,7 +37,7 @@
     {{- end }}
   {{- end }}
 {{- end }}
-{{- $urlIsEmpty := and (isset $button "url") (eq (partial "text-problem.html" $button.url) "empty") }}
+{{- $urlIsEmpty := eq $urlProblem "empty" }}
 {{- if and $urlIsEmpty (not $hasPageRef) }}{{ errorf "hero: button %d: the url field is empty: it must be an address (language: %s)" $position $lang }}{{ end }}
 {{- if and $button.url $hasPageRef }}{{ errorf "hero: button %d declares both a url field and a pageRef field; it needs only one (language: %s)" $position $lang }}{{ end }}
 {{- if and (not $button.url) (not $urlIsEmpty) (not $hasPageRef) }}{{ errorf "hero: button %d has neither a url field nor a pageRef field (language: %s)" $position $lang }}{{ end }}
