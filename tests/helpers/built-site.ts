@@ -703,6 +703,15 @@ export const SITE_WITH_HERO_BUTTONS_AS_FALSE = testSite('false-instead-of-links'
    before and the language codes, which the error-message assertions look for. */
 export const SITE_WITH_CLIENTS_AND_PROJECTS_UNDER_HERO_BUTTONS = testSite('listes-sous-les-liens');
 
+/* The example site's French home page writes its hero buttons as a list of tables: this site
+   replaces that home page with the one of tests/fixtures/lien-ecrit-sans-accolades/content,
+   without clients nor projects, whose hero buttons are a TOML array written inline, actions = [...],
+   whose first entry is a well filled-in button, an inline table with a label and
+   pageRef = '/projets', and whose second entry is a mere text, 'Contact', rather than a table. Its
+   folder name avoids the words button, hero, table, must and be, the numbers and the language
+   codes, which the error-message assertions look for. */
+export const SITE_WITH_A_TEXT_AS_THE_SECOND_HERO_BUTTON = testSite('lien-ecrit-sans-accolades');
+
 /* The example site's English home page writes its hero tagline as a list of texts and its hero
    buttons as a list of tables, [[params.hero.actions]]: this site replaces that home page with the
    one of tests/fixtures/english-home-text-and-table/content, whose tagline is a single text,

@@ -50,6 +50,7 @@ import {
   SITE_WITH_HERO_BUTTONS_AS_AN_EMPTY_TEXT,
   SITE_WITH_HERO_BUTTONS_AS_FALSE,
   SITE_WITH_CLIENTS_AND_PROJECTS_UNDER_HERO_BUTTONS,
+  SITE_WITH_A_TEXT_AS_THE_SECOND_HERO_BUTTON,
   type BuildAttempt,
   type BuiltSite,
   buildSite,
@@ -2792,6 +2793,33 @@ test.describe('hero content errors: build failure', () => {
       ).toEqual([]);
     }
     expect(build.errors, 'no template execution error should follow the error messages').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
+  });
+
+  test("a home page where a hero button is not a table but a text, in a list whose other button is a table, makes the site build fail with a single hero error message that names that button by its position, says a button must be a table and names the home page's language, without a template execution error after it", () => {
+    /* tests/fixtures/lien-ecrit-sans-accolades/content/_index.md, a French home page, writes its
+       hero buttons as an inline TOML array whose first entry is a well filled-in button, a table,
+       and whose second entry is a mere text, 'Contact': reading the url or the label of a text in
+       a Go template raises an execution error. Rather than that, the person building the site
+       must get a single error message that says, on one line, which button is at fault by its
+       position, button 2, that a button must be a table, and names the home page's language, fr,
+       whatever the rest of the wording; and no Go template execution error that would follow it
+       and bury it in technical jargon. The language is looked for as a word that no other word
+       follows. */
+    const build = tryToBuildSite(SITE_WITH_A_TEXT_AS_THE_SECOND_HERO_BUTTON);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = heroMessages(build.errors).filter(
+      (line) => /\bbutton\s+#?2\b/i.test(line) && /\b(?:must|should)\s+be\b.*\btable\b/i.test(line),
+    );
+    expect(
+      messages,
+      `one hero error message should say that button 2 must be a table, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], "the error message should name the home page's language, fr").toMatch(
+      new RegExp(languageCodePattern('fr'), 'u'),
+    );
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       TEMPLATE_EXECUTION_ERROR,
     );
   });
