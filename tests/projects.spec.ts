@@ -2380,6 +2380,63 @@ test.describe('projectsSection site param with a slash at its start or end: buil
   });
 });
 
+test.describe('projectsSection site param that names no section, a subsection or has a slash at one end: one error message on a bilingual site', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a projectsSection site param that names no section, names a subsection, or has a slash at its start or end makes the site build fail with a single error message about the param, that names no language, as the other projectsSection error messages do', () => {
+    /* The projectsSection param is a site param, the same for every language, but its checks run
+       once per home page, and the example site is bilingual (fr, en). Hugo prints an identical
+       error line only once: the messages saying the param is not a text, is empty or has
+       whitespace name no language and show once, while a message that names the language of the
+       home page being built shows once per language, a repetition that suggests to the person
+       building the site that each language has its own mistake to fix, and a language that the
+       param, written once for the whole site, does not have. The sites are those of the tests
+       above: tests/fixtures/misspelled-param-with-projects-elsewhere ('realisatons', no section),
+       tests/fixtures/nested-param-with-its-projects ('projets/horlogerie', a subsection),
+       tests/fixtures/section-param-with-leading-separator ('/projets') and
+       tests/fixtures/section-param-with-trailing-separator ('projets/'). The param's message is
+       looked for as the lines naming projectsSection and quoting its value as Go's %q does: there
+       must be exactly one, and it must name no language code (fr, en), looked for as a word that
+       no other word follows. Each of the three checks, so that fixing only one of them does not
+       pass. */
+    const cases: { name: string; site: BuiltSite; quoted: string }[] = [
+      {
+        name: 'a param that names no section',
+        site: SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE,
+        quoted: '"realisatons"',
+      },
+      {
+        name: 'a param that names a subsection',
+        site: SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_A_SUBSECTION_AND_ITS_PROJECTS,
+        quoted: '"projets/horlogerie"',
+      },
+      { name: 'a leading slash', site: SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_SLASH, quoted: '"/projets"' },
+      {
+        name: 'a trailing slash',
+        site: SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SLASH,
+        quoted: '"projets/"',
+      },
+    ];
+    for (const { name, site, quoted } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const messages = build.errors
+        .split('\n')
+        .filter((line) => line.includes(quoted) && /\bprojectsSection\b/.test(line));
+      expect(
+        messages,
+        `with ${name}, one error message naming projectsSection and quoting its value as ${quoted}, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages.filter((line) =>
+          ['fr', 'en'].some((language) => new RegExp(languageCodePattern(language), 'u').test(line)),
+        ),
+        `with ${name}, projectsSection error messages that name a language`,
+      ).toEqual([]);
+    }
+  });
+});
+
 test.describe('home pages of other sites, featuring a project whose section has no published page', () => {
   /* Two ways for a section to have no published page: its _index.md declares render = 'never' in
      its cascade, so that its projects have no page either, or under a plain [build], so that its
