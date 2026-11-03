@@ -634,6 +634,15 @@ export const SITE_WITH_A_FIRST_BUTTON_WITHOUT_LABEL = testSite('first-button-unn
 export const SITE_WITH_HERO_BUTTONS_AS_NAMED_TABLES = testSite('named-button-tables');
 export const SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE = testSite('lone-button-table');
 
+/* Same as SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE, with the home page of
+   tests/fixtures/empty-text-instead-of-links/content, whose hero declares actions = '', an empty
+   text, instead of a list of tables, and with that of
+   tests/fixtures/false-instead-of-links/content, whose hero declares actions = false. Their
+   folder names avoid the word hero, whose error messages are counted, the table name the
+   error-message assertion looks for and the language codes. */
+export const SITE_WITH_HERO_BUTTONS_AS_AN_EMPTY_TEXT = testSite('empty-text-instead-of-links');
+export const SITE_WITH_HERO_BUTTONS_AS_FALSE = testSite('false-instead-of-links');
+
 /* The example site's English home page writes its hero tagline as a list of texts and its hero
    buttons as a list of tables, [[params.hero.actions]]: this site replaces that home page with the
    one of tests/fixtures/english-home-text-and-table/content, whose tagline is a single text,

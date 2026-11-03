@@ -43,6 +43,8 @@ import {
   SITE_WITH_A_FIRST_BUTTON_WITHOUT_LABEL,
   SITE_WITH_HERO_BUTTONS_AS_NAMED_TABLES,
   SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE,
+  SITE_WITH_HERO_BUTTONS_AS_AN_EMPTY_TEXT,
+  SITE_WITH_HERO_BUTTONS_AS_FALSE,
   type BuildAttempt,
   type BuiltSite,
   buildSite,
@@ -2331,6 +2333,40 @@ test.describe('hero content errors: build failure', () => {
         build.errors,
         `with ${name}, the error message should say to write the buttons as [[params.hero.actions]]`,
       ).toMatch(BUTTONS_MUST_BE_WRITTEN_AS_A_LIST);
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
+        TEMPLATE_EXECUTION_ERROR,
+      );
+    }
+  });
+
+  test('a home page whose hero buttons are an empty text or false instead of a list makes the site build fail with the same error message as a single button written with single brackets, alone, without a template execution error after it', () => {
+    /* tests/fixtures/empty-text-instead-of-links declares actions = '' in its hero and
+       tests/fixtures/false-instead-of-links actions = false: an empty value written where a list
+       of buttons belongs. Unlike a hero that leaves out the actions key, which shows no buttons,
+       this is a content mistake: rather than buttons that quietly disappear, the person building
+       the site must get the failure a button written with single brackets gets,
+       tests/fixtures/lone-button-table, with the same message: one hero error message, the very
+       line that button gets, whatever its wording, and no Go template execution error that would
+       follow it and bury it in technical jargon. All three home pages are French. Two fixtures,
+       so that rejecting only one of the two empty values does not pass. */
+    const tableBuild = tryToBuildSite(SITE_WITH_A_HERO_BUTTON_AS_A_SINGLE_TABLE);
+    expect(tableBuild.succeeded, 'with a single button with single brackets, the site build should fail').toBe(false);
+    const expectedMessages = heroMessages(tableBuild.errors);
+    expect(
+      expectedMessages,
+      `with a single button with single brackets, one hero error message, in:\n${tableBuild.errors}`,
+    ).toHaveLength(1);
+    const cases: { name: string; site: BuiltSite }[] = [
+      { name: 'buttons as an empty text', site: SITE_WITH_HERO_BUTTONS_AS_AN_EMPTY_TEXT },
+      { name: 'buttons as false', site: SITE_WITH_HERO_BUTTONS_AS_FALSE },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(
+        heroMessages(build.errors),
+        `with ${name}, the error message of a single button with single brackets, alone, in:\n${build.errors}`,
+      ).toEqual(expectedMessages);
       expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
         TEMPLATE_EXECUTION_ERROR,
       );
