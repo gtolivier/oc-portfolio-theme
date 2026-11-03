@@ -1027,6 +1027,16 @@ export const SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB_
   'padded-addresses-beside-targets',
 );
 
+/* The example site's French home page writes its hero stack under [params.hero], before its
+   buttons: this site replaces that home page with the one of
+   tests/fixtures/materiaux-sous-le-dernier-lien/content, without clients nor projects, whose hero
+   is well filled in, with two well filled-in buttons, but whose stack key, a list of three
+   materials, is written under the last [[params.hero.actions]] header, so that TOML puts it in the
+   second button's table instead of params.hero.stack. Its folder name avoids the words button,
+   stack, hero, params, the numbers and the language codes, which the error-message assertions
+   look for. */
+export const SITE_WITH_THE_HERO_STACK_UNDER_THE_LAST_HERO_BUTTON = testSite('materiaux-sous-le-dernier-lien');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
