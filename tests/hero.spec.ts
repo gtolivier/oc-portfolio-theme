@@ -62,6 +62,7 @@ import {
   SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_URL,
   SITE_WITH_A_HERO_BUTTON_TO_A_PAGE_WITH_A_BUILD_PARAM_AS_TEXT,
   SITE_WITH_HERO_BUTTON_URLS_AS_FALSE_ZERO_AND_AN_EMPTY_LIST,
+  SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE_NEXT_TO_A_PAGE_REF,
   TEMPLATE_EXECUTION_ERROR,
   type BuildAttempt,
   type BuiltSite,
@@ -3220,5 +3221,35 @@ test.describe('hero content errors: build failure', () => {
       ).toHaveLength(1);
     }
     expect(build.errors, 'no error message should say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
+  });
+
+  test("a home page where a hero button's url is not a text, a number or a table, next to a valid pageRef, makes the site build fail with a single hero error message per such button, which names that button by its position and says its url must be a text, and no message saying both fields are declared", () => {
+    /* tests/fixtures/figure-or-dict-address-and-target/content/_index.md, a French home page, has
+       three hero buttons, each with a label: the first is well filled in, with
+       pageRef = '/projets'; the second declares a number, url = 42, and the third a table,
+       url = { href = '/contact' }, each next to a valid pageRef = '/projets'. The url is wrong in
+       itself: the person building the site must first fix it, so that they get, for each of these
+       two buttons, a single hero message that says, on one line, which button is at fault by its
+       position and that its url must be a text, whatever the rest of the wording. A message
+       saying that both fields are declared would send them removing one of the two before they
+       know what is wrong with the url: these two messages must be the only hero messages, and
+       none must say both are declared. A number and a table, so that a check made for a single
+       type does not pass. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE_NEXT_TO_A_PAGE_REF);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(2);
+    const urlMustBeTextMessages = heroMessages(build.errors).filter(
+      (line) => /\burl\b/.test(line) && /\b(?:must|should)\s+be\b.*\btext\b/i.test(line),
+    );
+    for (const position of [2, 3]) {
+      expect(
+        urlMustBeTextMessages.filter((line) => namesButton(position).test(line)),
+        `one hero error message should say that button ${position}'s url must be a text, in:\n${build.errors}`,
+      ).toHaveLength(1);
+    }
+    expect(
+      heroMessages(build.errors).filter((line) => BOTH_FIELDS_DECLARED.test(line)),
+      `no hero error message should say both fields are declared, in:\n${build.errors}`,
+    ).toEqual([]);
   });
 });

@@ -991,6 +991,18 @@ export const SITE_WITH_A_HERO_BUTTON_TO_A_PAGE_WITH_A_BUILD_PARAM_AS_TEXT = test
    for. */
 export const SITE_WITH_HERO_BUTTON_URLS_AS_FALSE_ZERO_AND_AN_EMPTY_LIST = testSite('addresses-read-as-false');
 
+/* The example site's French home page gives each hero button a single destination, a text: this
+   site replaces that home page with the one of
+   tests/fixtures/figure-or-dict-address-and-target/content, without clients nor projects, whose
+   hero has three buttons, written [[params.hero.actions]], each with a label: the first is well
+   filled in, with pageRef = '/projets'; the second declares a number, url = 42, and the third a
+   table, url = { href = '/contact' }, each next to a valid pageRef = '/projets'. Its folder name
+   avoids the words button, hero, url, pageRef, text, must, be, both, only, one, the numbers and
+   the language codes, which the error-message assertions look for. */
+export const SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE_NEXT_TO_A_PAGE_REF = testSite(
+  'figure-or-dict-address-and-target',
+);
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
