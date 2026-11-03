@@ -2104,6 +2104,13 @@ test.describe('featured project outside the section named by the projectsSection
   });
 });
 
+/* A message saying, on one line, that the projectsSection param must be a text, whatever the rest
+   of the wording. */
+const PROJECTS_SECTION_MUST_BE_A_TEXT = /\bprojectsSection\b.*\b(?:must|should)\s+be\b.*\btext\b/i;
+
+/* A message saying, on one line, that the projectsSection param is empty or blank. */
+const PROJECTS_SECTION_IS_EMPTY = /\bprojectsSection\b.*\b(?:empty|blank)\b/i;
+
 test.describe('projectsSection site param that is not a text or is empty: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
@@ -2120,31 +2127,29 @@ test.describe('projectsSection site param that is not a text or is empty: build 
        whatever the rest of the wording, and no Go template execution error that would follow it
        and bury it in technical jargon. Two values of each kind, so that a check, or a message,
        made for a single type or a single empty value does not pass. */
-    const MUST_BE_A_TEXT = /\bprojectsSection\b.*\b(?:must|should)\s+be\b.*\btext\b/i;
-    const IS_EMPTY = /\bprojectsSection\b.*\b(?:empty|blank)\b/i;
     const cases: { name: string; site: BuiltSite; message: RegExp; description: string }[] = [
       {
         name: 'a number as projectsSection',
         site: SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER,
-        message: MUST_BE_A_TEXT,
+        message: PROJECTS_SECTION_MUST_BE_A_TEXT,
         description: 'projectsSection must be a text',
       },
       {
         name: 'a list as projectsSection',
         site: SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_LIST,
-        message: MUST_BE_A_TEXT,
+        message: PROJECTS_SECTION_MUST_BE_A_TEXT,
         description: 'projectsSection must be a text',
       },
       {
         name: 'an empty text as projectsSection',
         site: SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM,
-        message: IS_EMPTY,
+        message: PROJECTS_SECTION_IS_EMPTY,
         description: 'projectsSection is empty',
       },
       {
         name: 'spaces only as projectsSection',
         site: SITE_WITH_A_WHITESPACE_ONLY_PROJECTS_SECTION_PARAM,
-        message: IS_EMPTY,
+        message: PROJECTS_SECTION_IS_EMPTY,
         description: 'projectsSection is empty',
       },
     ];
@@ -2172,7 +2177,7 @@ test.describe('projectsSection site param that is not a text or is empty: build 
     const build = tryToBuildSite(SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER_AND_PROJECTS_ELSEWHERE);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors, 'the error message should say projectsSection must be a text').toMatch(
-      /\bprojectsSection\b.*\b(?:must|should)\s+be\b.*\btext\b/i,
+      PROJECTS_SECTION_MUST_BE_A_TEXT,
     );
     for (const entry of entries) {
       const messages = build.errors.split('\n').filter((line) => line.includes(entry));
@@ -2193,9 +2198,7 @@ test.describe('projectsSection site param that is not a text or is empty: build 
     const entries = ['realisations/pendule-de-voyage', 'realisations/horloge-de-parquet'];
     const build = tryToBuildSite(SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE);
     expect(build.succeeded, 'the site build should fail').toBe(false);
-    expect(build.errors, 'the error message should say projectsSection is empty').toMatch(
-      /\bprojectsSection\b.*\b(?:empty|blank)\b/i,
-    );
+    expect(build.errors, 'the error message should say projectsSection is empty').toMatch(PROJECTS_SECTION_IS_EMPTY);
     for (const entry of entries) {
       const messages = build.errors.split('\n').filter((line) => line.includes(entry));
       expect(messages, `no error message should name the featured project ${entry}, in:\n${build.errors}`).toEqual([]);

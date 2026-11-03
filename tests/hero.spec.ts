@@ -2101,6 +2101,9 @@ const PAGE_REF_IS_EMPTY = /\bhero:.*\bpageRef\b.*\b(?:empty|blank)\b/i;
 /* A hero message saying, on its own line, that the url is empty or blank. */
 const URL_IS_EMPTY = /\bhero:.*\burl\b.*\b(?:empty|blank)\b/i;
 
+/* A message saying that the label is empty or blank, whatever the rest of the wording. */
+const LABEL_IS_EMPTY = /\blabel\b.*\b(?:empty|blank)\b/i;
+
 /* The lines of the build's errors that match this message pattern and name both of a
    button's destination fields, url and pageRef, on that same line. */
 function destinationFieldMessages(errors: string, message: RegExp): string[] {
@@ -3215,7 +3218,7 @@ test.describe('hero content errors: build failure', () => {
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
     const messages = heroMessages(build.errors).filter(
-      (line) => /\blabel\b.*\b(?:empty|blank)\b/i.test(line) && namesButton(2).test(line),
+      (line) => LABEL_IS_EMPTY.test(line) && namesButton(2).test(line),
     );
     expect(
       messages,
@@ -3241,7 +3244,7 @@ test.describe('hero content errors: build failure', () => {
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
     const messages = heroMessages(build.errors).filter(
-      (line) => /\blabel\b.*\b(?:empty|blank)\b/i.test(line) && namesButton(2).test(line),
+      (line) => LABEL_IS_EMPTY.test(line) && namesButton(2).test(line),
     );
     expect(
       messages,
