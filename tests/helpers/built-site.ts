@@ -952,6 +952,15 @@ export const SITE_WITH_HERO_BUTTONS_WITH_A_URL_NEXT_TO_A_WRONG_PAGE_REF = testSi
    which the error-message assertions look for. */
 export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_PAGE_REF = testSite('target-left-unset-in-yaml');
 
+/* The example site's French home page gives each hero button a single destination: this site
+   replaces that home page with the one of tests/fixtures/address-left-unset-in-yaml/content,
+   written with a YAML front matter, whose hero has two buttons, each with a label: the first is
+   well filled in, with pageRef: /projets; the second declares url: null, the YAML way of leaving
+   a field without a value, and no pageRef. Its folder name avoids the words button, hero, url,
+   pageRef, both, empty, blank, null, text, neither, nor, the numbers and the language codes,
+   which the error-message assertions look for. */
+export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_URL = testSite('address-left-unset-in-yaml');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
