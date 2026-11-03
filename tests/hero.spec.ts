@@ -54,6 +54,7 @@ import {
   SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE,
   SITE_WITH_HERO_BUTTON_LABELS_AS_A_NUMBER_AND_A_TABLE,
   SITE_WITH_HERO_BUTTON_LABELS_WITH_A_LEADING_AND_A_TRAILING_SPACE,
+  SITE_WITH_HERO_BUTTON_URLS_EMPTY_AND_WHITESPACE_ONLY,
   type BuildAttempt,
   type BuiltSite,
   buildSite,
@@ -2057,6 +2058,9 @@ const BUTTONS_MUST_BE_WRITTEN_AS_A_LIST = /\bhero:.*\[\[params\.hero\.actions\]\
 /* A hero message saying, on its own line, that the pageRef is empty or blank. */
 const PAGE_REF_IS_EMPTY = /\bhero:.*\bpageRef\b.*\b(?:empty|blank)\b/i;
 
+/* A hero message saying, on its own line, that the url is empty or blank. */
+const URL_IS_EMPTY = /\bhero:.*\burl\b.*\b(?:empty|blank)\b/i;
+
 /* A Go template execution error, which would follow a hero message and bury it in technical
    jargon. */
 const TEMPLATE_EXECUTION_ERROR = /execute of template failed|error calling/i;
@@ -2936,5 +2940,38 @@ test.describe('hero content errors: build failure', () => {
       paddedLabelMessages.filter((line) => /\bbutton\s+#?1\b/i.test(line)),
       'no error message should say that the well filled-in button 1 has a label with whitespace',
     ).toEqual([]);
+  });
+
+  test("a home page where a hero button's url is an empty text or made only of whitespace, without a pageRef, makes the site build fail with a single error message per such button, which names that button by its position, says its url is empty and names the home page's language, rather than saying the button has neither a url nor a pageRef", () => {
+    /* tests/fixtures/addresses-unfilled-and-of-spaces/content/_index.md, a French home page, has
+       three hero buttons, each with a label: the first is well filled in, with
+       pageRef = '/projets'; the second declares url = '', an empty text, and the third
+       url = " \t ", a space, a tab and a space, both without a pageRef. Neither is an address:
+       rather than a link that leads nowhere, the person building the site must get, for each of
+       these two buttons, a single error message that says, on one line, which button is at
+       fault by its position, that its url is empty (or blank), and names the home page's
+       language, fr, whatever the rest of the wording. The button does declare a url: a message
+       saying it has neither a url nor a pageRef, or no destination at all, would send them
+       looking for a field that is right there, so that these two messages must be the only hero
+       messages, none about the well filled-in first button, and none must say both fields are
+       missing. An empty text and one of whitespace only, a tab between two spaces, so that
+       checking only Hugo's falsy empty text, or only the space character, does not pass. The
+       language is looked for as a word that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_URLS_EMPTY_AND_WHITESPACE_ONLY);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(2);
+    const urlIsEmptyMessages = heroMessages(build.errors).filter((line) => URL_IS_EMPTY.test(line));
+    for (const position of [2, 3]) {
+      const messages = urlIsEmptyMessages.filter((line) => new RegExp(`\\bbutton\\s+#?${position}\\b`, 'i').test(line));
+      expect(
+        messages,
+        `one hero error message should say that button ${position}'s url is empty, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages[0],
+        `the error message about button ${position} should name the home page's language, fr`,
+      ).toMatch(new RegExp(languageCodePattern('fr'), 'u'));
+    }
+    expect(build.errors, 'no error message should say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
   });
 });
