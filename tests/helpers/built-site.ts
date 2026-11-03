@@ -1293,3 +1293,13 @@ export const SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER = testSite('section-
 export const SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_LIST = testSite('section-param-as-a-list');
 export const SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM = testSite('unfilled-section-param');
 export const SITE_WITH_A_WHITESPACE_ONLY_PROJECTS_SECTION_PARAM = testSite('section-param-of-spaces');
+
+/* The example site's French home page writes its hero tagline under [params.hero], before its
+   buttons: this site replaces that home page with the one of
+   tests/fixtures/devise-sous-le-dernier-lien/content, without clients nor projects, whose hero is
+   well filled in, with a stack and two well filled-in buttons, but whose tagline key, a list of
+   two lines, is written under the last [[params.hero.actions]] header, so that TOML puts it in
+   the second button's table instead of params.hero.tagline. Its folder name avoids the words
+   button, tagline, hero, params, before, the numbers and the language codes, which the
+   error-message assertions look for. */
+export const SITE_WITH_THE_HERO_TAGLINE_UNDER_THE_LAST_HERO_BUTTON = testSite('devise-sous-le-dernier-lien');

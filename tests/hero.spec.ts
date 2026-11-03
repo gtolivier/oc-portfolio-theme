@@ -67,6 +67,7 @@ import {
   SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB_NEXT_TO_A_PAGE_REF,
   SITE_WITH_THE_HERO_STACK_UNDER_THE_LAST_HERO_BUTTON,
   SITE_WITH_A_MISSPELLED_KEY_IN_THE_SECOND_HERO_BUTTON,
+  SITE_WITH_THE_HERO_TAGLINE_UNDER_THE_LAST_HERO_BUTTON,
   TEMPLATE_EXECUTION_ERROR,
   type BuildAttempt,
   type BuiltSite,
@@ -2845,6 +2846,28 @@ test.describe('hero content errors: build failure', () => {
     expect(
       messages,
       `one error message should name button 2 and the stack key it holds, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], 'the error message about button 2 should not name button 1').not.toMatch(namesButton(1));
+  });
+
+  test('a home page whose hero tagline key is written under the last hero button makes the site build fail, with an error message that names that button by its position, the tagline key and the [params.hero] table it belongs to', () => {
+    /* tests/fixtures/devise-sous-le-dernier-lien/content/_index.md, a French home page, writes
+       tagline = [...] after its last [[params.hero.actions]] header rather than under
+       [params.hero], so that TOML puts it in the second button's table rather than in
+       params.hero.tagline, where the theme reads it. Rather than a mere unknown-key error that
+       leaves the person building the site to guess where the key goes, that person must get an
+       error message that says, on one line, which button holds it by its position, button 2,
+       names the tagline key and the table it belongs to, [params.hero], whatever the rest of the
+       wording; that line must not name the well filled-in first button, so that a message naming
+       both buttons at once does not pass. */
+    const build = tryToBuildSite(SITE_WITH_THE_HERO_TAGLINE_UNDER_THE_LAST_HERO_BUTTON);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors
+      .split('\n')
+      .filter((line) => namesButton(2).test(line) && /\btagline\b/.test(line) && line.includes('[params.hero]'));
+    expect(
+      messages,
+      `one error message should name button 2, the tagline key it holds and the [params.hero] table it belongs to, in:\n${build.errors}`,
     ).toHaveLength(1);
     expect(messages[0], 'the error message about button 2 should not name button 1').not.toMatch(namesButton(1));
   });
