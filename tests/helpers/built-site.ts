@@ -1273,3 +1273,10 @@ export async function serveSite(context: BrowserContext, site: BuiltSite, direct
    /fr/realisations/. Its English home page features no projects. The example site's projets/
    section is still built. */
 export const SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION = testSite('projects-in-the-configured-section');
+
+/* Like the site above, this one names realisations/ in its projectsSection site param (see
+   tests/fixtures/project-outside-the-configured-section/hugo.toml), but its French home page
+   features "Pendule de voyage", a fictional project of realisations/, then the example site's
+   'projets/restauration-pendule', which lives outside the configured section. Its English home
+   page features no projects. */
+export const SITE_WITH_A_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION = testSite('project-outside-the-configured-section');

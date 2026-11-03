@@ -15,6 +15,7 @@ import {
   SITE_WITH_PROJECTS_IN_A_SUBSECTION,
   SITE_WITH_PROJECTS_IN_THE_SECTION_AND_A_SUBSECTION,
   SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION,
+  SITE_WITH_A_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION,
   SITE_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT,
@@ -2032,6 +2033,33 @@ test.describe('home page of another site, whose projectsSection param names the 
     } finally {
       removeDirectory(siteDirectory);
     }
+  });
+});
+
+test.describe('featured project outside the section named by the projectsSection param: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('with the projectsSection site param set to realisations, a home page that features a project of projets makes the site build fail, with an error message that names that entry and the configured section, realisations', () => {
+    /* tests/fixtures/project-outside-the-configured-section/hugo.toml sets projectsSection =
+       'realisations'; its content/_index.md features 'realisations/pendule-de-voyage', then the
+       example site's 'projets/restauration-pendule'. The site said its projects live in
+       realisations: the person building it must be told that section, the one the project should
+       move to, not the theme's default, projets. The message is the one line naming the entry, as
+       written in the front matter; the section is looked for as the word "section" and the token
+       realisations, which neither a word nor a page path under realisations/ continues, so that
+       the reference 'realisations/pendule-de-voyage' does not pass for it. That project of the
+       configured section must not be reported. */
+    const entry = 'projets/restauration-pendule';
+    const build = tryToBuildSite(SITE_WITH_A_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'no error message should name the featured project of realisations/').not.toContain(
+      'realisations/pendule-de-voyage',
+    );
+    const messages = build.errors.split('\n').filter((line) => line.includes(entry));
+    expect(messages, `one error message naming the entry ${entry}, in:\n${build.errors}`).toHaveLength(1);
+    expect(messages[0], 'the error message should name the configured section, realisations').toMatch(
+      /^(?=.*\bsection\b)(?=.*(?<![\w-])realisations(?![\w-]|\/[\w-])).*$/u,
+    );
   });
 });
 
