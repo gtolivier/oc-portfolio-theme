@@ -52,6 +52,7 @@ import {
   SITE_WITH_CLIENTS_AND_PROJECTS_UNDER_HERO_BUTTONS,
   SITE_WITH_A_TEXT_AS_THE_SECOND_HERO_BUTTON,
   SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE,
+  SITE_WITH_HERO_BUTTON_LABELS_AS_A_NUMBER_AND_A_TABLE,
   type BuildAttempt,
   type BuiltSite,
   buildSite,
@@ -2857,6 +2858,44 @@ test.describe('hero content errors: build failure', () => {
     expect(
       urlMustBeTextMessages.filter((line) => /\bbutton\s+#?1\b/i.test(line)),
       'no error message should say that the well filled-in button 1 has a url that must be a text',
+    ).toEqual([]);
+    expect(build.errors, 'no template execution error should follow the error messages').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
+  });
+
+  test("a home page where a hero button's label is not a text, a number or a table, makes the site build fail with one error message per such button, which names that button by its position, says its label must be a text and names the home page's language, without a template execution error after it", () => {
+    /* tests/fixtures/caption-as-figure-or-dict/content/_index.md, a French home page, has three
+       hero buttons, each with a destination that is a text: the first is well filled in, with
+       label = 'Voir les projets'; the second declares a number, label = 42; the third a table,
+       label = { text = 'Contact' }. Neither is a text a visitor can read: rather than a button
+       reading "42", or one showing the table's raw content, the person building the site must
+       get, for each of these two buttons, a single error message that says, on one line, which
+       button is at fault by its position, that its label must be a text, and names the home
+       page's language, fr, whatever the rest of the wording; none about the well filled-in first
+       button; and no Go template execution error that would follow them and bury them in
+       technical jargon. The language is looked for as a word that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_LABELS_AS_A_NUMBER_AND_A_TABLE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const labelMustBeTextMessages = heroMessages(build.errors).filter(
+      (line) => /\blabel\b/.test(line) && /\b(?:must|should)\s+be\b.*\btext\b/i.test(line),
+    );
+    for (const position of [2, 3]) {
+      const messages = labelMustBeTextMessages.filter((line) =>
+        new RegExp(`\\bbutton\\s+#?${position}\\b`, 'i').test(line),
+      );
+      expect(
+        messages,
+        `one hero error message should say that button ${position}'s label must be a text, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages[0],
+        `the error message about button ${position} should name the home page's language, fr`,
+      ).toMatch(new RegExp(languageCodePattern('fr'), 'u'));
+    }
+    expect(
+      labelMustBeTextMessages.filter((line) => /\bbutton\s+#?1\b/i.test(line)),
+      'no error message should say that the well filled-in button 1 has a label that must be a text',
     ).toEqual([]);
     expect(build.errors, 'no template execution error should follow the error messages').not.toMatch(
       TEMPLATE_EXECUTION_ERROR,

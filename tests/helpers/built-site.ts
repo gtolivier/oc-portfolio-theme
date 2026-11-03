@@ -721,6 +721,16 @@ export const SITE_WITH_A_TEXT_AS_THE_SECOND_HERO_BUTTON = testSite('lien-ecrit-s
    error-message assertions look for. */
 export const SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE = testSite('address-as-figure-or-dict');
 
+/* The example site's French home page gives each hero button a label that is a text: this site
+   replaces that home page with the one of tests/fixtures/caption-as-figure-or-dict/content,
+   without clients nor projects, whose hero has three buttons, written [[params.hero.actions]],
+   each with a destination that is a text: the first is well filled in, with label = 'Voir les
+   projets' and pageRef = '/projets'; the second declares a number, label = 42, with
+   url = 'tel:+33100000000'; the third a table, label = { text = 'Contact' }, with
+   url = '/contact/'. Its folder name avoids the words button, hero, label, text, must and be, the
+   numbers and the language codes, which the error-message assertions look for. */
+export const SITE_WITH_HERO_BUTTON_LABELS_AS_A_NUMBER_AND_A_TABLE = testSite('caption-as-figure-or-dict');
+
 /* The example site's English home page writes its hero tagline as a list of texts and its hero
    buttons as a list of tables, [[params.hero.actions]]: this site replaces that home page with the
    one of tests/fixtures/english-home-text-and-table/content, whose tagline is a single text,
