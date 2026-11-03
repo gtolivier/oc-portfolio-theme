@@ -153,6 +153,14 @@ export const SITE_WITH_A_HERO_TAGLINE_AS_A_TEXT = testSite('motto-as-text');
 export const SITE_WITH_A_HERO_TAGLINE_AS_AN_EMPTY_TEXT = testSite('empty-text-instead-of-motto');
 export const SITE_WITH_A_HERO_TAGLINE_AS_FALSE = testSite('false-instead-of-motto');
 
+/* The example site's French home page writes its hero stack as a list of texts: this site
+   replaces that home page with the one of tests/fixtures/materials-as-text/content, without
+   clients nor projects, whose hero declares a fictional ironworker's title, a one-line tagline
+   and her stack as a single text, 'Laiton, Acier', rather than a list. Its folder name avoids
+   the words hero, stack and list, which the error-message assertion looks for, and the
+   language codes. */
+export const SITE_WITH_A_HERO_STACK_AS_A_TEXT = testSite('materials-as-text');
+
 /* The example site's French home page has a hero whose every button has a
    single destination: this site replaces that home page with the one of
    tests/fixtures/button-with-two-destinations/content, whose second button

@@ -14,6 +14,7 @@ import {
   SITE_WITH_A_HERO_TAGLINE_AS_A_TEXT,
   SITE_WITH_A_HERO_TAGLINE_AS_AN_EMPTY_TEXT,
   SITE_WITH_A_HERO_TAGLINE_AS_FALSE,
+  SITE_WITH_A_HERO_STACK_AS_A_TEXT,
   SITE_WITH_A_HERO_WITH_LONG_WORDS,
   SITE_WITH_A_HERO_WITHOUT_TITLE,
   SITE_WITH_A_HERO_WITHOUT_CLIENTS,
@@ -2698,5 +2699,27 @@ test.describe('hero content errors: build failure', () => {
         `with ${name}, hero error messages that do not name the home page's language, ${language}`,
       ).toEqual([]);
     }
+  });
+
+  test("a home page whose hero stack is written as a text rather than a list makes the site build fail, with an error message that says the stack must be a list and names the home page's language, without a template execution error after it", () => {
+    /* tests/fixtures/materials-as-text/content/_index.md, a French home page, writes its hero
+       stack as a single text, 'Laiton, Acier', rather than a list of entries: joining a text in a
+       Go template may raise an execution error, or none, and the hero would show the text as it
+       is. Rather than that, the person building the site must get an error message that says, on
+       its own line, that the hero stack must be a list and names the home page's language, fr,
+       whatever the rest of the wording, and no Go template execution error that would follow it
+       and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_A_HERO_STACK_AS_A_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const stackMessages = heroMessages(build.errors).filter((line) => /\bstack\b.*\blist\b/.test(line));
+    expect(stackMessages, `one hero error message saying the stack must be a list, in:\n${build.errors}`).toHaveLength(
+      1,
+    );
+    expect(stackMessages[0], "the error message should name the home page's language, fr").toMatch(
+      new RegExp(languageCodePattern('fr'), 'u'),
+    );
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
   });
 });
