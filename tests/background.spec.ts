@@ -790,10 +790,11 @@ test('with JavaScript, on the French home page, when the visitor turns on prefer
   expect(climbing(shown), `every figure shows a number between 0 and its own, midway (${shown})`).toBe(true);
   /* The visitor asks for reduced motion, midway through the climb. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* At most one animation frame later on the page's clock, which then stands still: the climb
-     cannot reach its end on its own. On screen, in reading order, each label comes right after its
-     full value, whole. */
-  await page.clock.runFor(16);
+  /* A few animation frames later on the page's clock (20, one at a time, so that the change has time
+     to reach the page in every browser), which then stands still, far short of the climb's end:
+     the climb cannot reach it on its own. On screen, in reading order, each label comes right after its full
+     value, whole. */
+  for (let frame = 0; frame < 20; frame++) await page.clock.runFor(16);
   const inOrder = fullValuesOnScreen(KEY_FIGURES);
   await expect
     .poll(() => textOnScreen(section), {
