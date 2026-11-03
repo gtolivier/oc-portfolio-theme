@@ -15,6 +15,9 @@
   {{- else if not (partial "is-section-name.html" site.Params.projectsSection) }}
     {{- errorf "projects: the projectsSection site param %q names no section of the site: it must be the exact name of a section (language: %s)" site.Params.projectsSection $lang }}
     {{- $sectionProblem = "names-no-section" }}
+  {{- else if strings.Contains site.Params.projectsSection "/" }}
+    {{- errorf "projects: the projectsSection site param %q names a subsection: it must be the name of a top-level section (language: %s)" site.Params.projectsSection $lang }}
+    {{- $sectionProblem = "names-subsection" }}
   {{- else }}{{ $projectsSection = site.Params.projectsSection }}{{ end }}
   {{- /* A bad param names no section the theme can check against: no error per featured project then, which would send the person moving projects that may be where they meant them. */}}
   {{- $sectionIsKnown = eq $sectionProblem "" }}
