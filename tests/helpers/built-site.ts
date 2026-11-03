@@ -931,6 +931,18 @@ export const SITE_WITH_HERO_BUTTON_URLS_EMPTY_AND_WHITESPACE_ONLY = testSite('ad
    look for. */
 export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_URL_AND_A_PAGE_REF = testSite('unfilled-address-and-target');
 
+/* The example site's French home page gives each hero button a single destination: this site
+   replaces that home page with the one of tests/fixtures/address-next-to-broken-targets/content,
+   whose hero has six buttons, written [[params.hero.actions]], each with a label: the first is
+   well filled in, with pageRef = '/projets'; each of the others declares a valid url = '#contact'
+   next to a wrong pageRef: the second '/projets ', with a trailing space; the third
+   { path = '/projets' }, a table; the fourth 42, a number; the fifth '/page-fictive-introuvable',
+   which matches no page; the sixth '/atelier-ferme', a page of the same fixture that declares
+   [build] render = 'never', so that Hugo publishes nothing for it. Its folder name avoids the
+   words button, hero, url, pageRef, both, only, one, empty, whitespace, published, the numbers
+   and the language codes, which the error-message assertions look for. */
+export const SITE_WITH_HERO_BUTTONS_WITH_A_URL_NEXT_TO_A_WRONG_PAGE_REF = testSite('address-next-to-broken-targets');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

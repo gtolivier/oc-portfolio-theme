@@ -56,6 +56,7 @@ import {
   SITE_WITH_HERO_BUTTON_LABELS_WITH_A_LEADING_AND_A_TRAILING_SPACE,
   SITE_WITH_HERO_BUTTON_URLS_EMPTY_AND_WHITESPACE_ONLY,
   SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_URL_AND_A_PAGE_REF,
+  SITE_WITH_HERO_BUTTONS_WITH_A_URL_NEXT_TO_A_WRONG_PAGE_REF,
   type BuildAttempt,
   type BuiltSite,
   buildSite,
@@ -2240,27 +2241,43 @@ test.describe('hero content errors: build failure', () => {
     expect(build.errors, 'the error message should not say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
   });
 
-  test('a home page where a hero button declares a url and a pageRef that Hugo reads as false (an empty text, and false) makes the site build fail with the hero error message that cites both fields and, on that same line, says both are declared', () => {
+  test("a home page where a hero button declares a url next to a pageRef that Hugo reads as false (an empty text, and false) makes the site build fail with a single hero error message, the pageRef's own one (empty, or must be a page reference), and no message saying both fields are declared", () => {
     /* The second button of tests/fixtures/address-and-unfilled-target/content/_index.md has
        a label and declares url = '#contact' and pageRef = '', an empty text, and that of
        tests/fixtures/address-and-false-target/content/_index.md url = '#contact' and
-       pageRef = false. Hugo reads both pageRef values as false, but the button does declare
-       a pageRef next to its url: the person building the site must get the message that
-       names the url and pageRef fields of the front matter and, on that same line, says
-       that both are declared, whatever wording is chosen, so that they remove one of the
-       two rather than only fill in the pageRef. An empty text and false, so that a check
+       pageRef = false. Hugo reads both pageRef values as false, and the pageRef itself is
+       wrong: the person building the site must first fix it, so that they get only the
+       pageRef's own error, whatever the rest of the wording: for the empty text, that the
+       pageRef is empty; for false, that the pageRef must be a page reference. A message
+       saying that both fields are declared would send them removing one of the two before
+       they know what is wrong with the pageRef: this one must be the only hero message, and
+       no hero message must say both are declared. An empty text and false, so that a check
        made for a single value Hugo reads as false does not pass. */
-    const cases: { name: string; site: BuiltSite }[] = [
-      { name: 'an empty text as pageRef', site: SITE_WITH_A_BUTTON_WITH_URL_AND_EMPTY_PAGE_REF },
-      { name: 'false as pageRef', site: SITE_WITH_A_BUTTON_WITH_URL_AND_FALSE_PAGE_REF },
+    const cases: { name: string; site: BuiltSite; pageRefError: RegExp; pageRefErrorDescription: string }[] = [
+      {
+        name: 'an empty text as pageRef',
+        site: SITE_WITH_A_BUTTON_WITH_URL_AND_EMPTY_PAGE_REF,
+        pageRefError: PAGE_REF_IS_EMPTY,
+        pageRefErrorDescription: 'the pageRef is empty',
+      },
+      {
+        name: 'false as pageRef',
+        site: SITE_WITH_A_BUTTON_WITH_URL_AND_FALSE_PAGE_REF,
+        pageRefError: PAGE_REF_MUST_BE_A_PAGE_REFERENCE,
+        pageRefErrorDescription: 'the pageRef must be a page reference',
+      },
     ];
-    for (const { name, site } of cases) {
+    for (const { name, site, pageRefError, pageRefErrorDescription } of cases) {
       const build = tryToBuildSite(site);
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(heroErrorCount(build.errors), `with ${name}, number of hero error messages, in:\n${build.errors}`).toBe(1);
+      expect(build.errors, `with ${name}, the error message should say ${pageRefErrorDescription}`).toMatch(
+        pageRefError,
+      );
       expect(
-        destinationFieldMessages(build.errors, BOTH_FIELDS_DECLARED),
-        `with ${name}, error messages that name the url and pageRef fields and say both are declared, in:\n${build.errors}`,
-      ).not.toEqual([]);
+        heroMessages(build.errors).filter((line) => BOTH_FIELDS_DECLARED.test(line)),
+        `with ${name}, no hero error message should say both fields are declared, in:\n${build.errors}`,
+      ).toEqual([]);
     }
   });
 
@@ -3002,5 +3019,67 @@ test.describe('hero content errors: build failure', () => {
       new RegExp(languageCodePattern('fr'), 'u'),
     );
     expect(build.errors, 'the error message should not say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
+  });
+
+  test("a home page where hero buttons declare a url next to a wrong pageRef (with whitespace at its end, a table, a number, one that matches no page, one to a page that is not published) makes the site build fail with a single hero error message per such button, the pageRef's own one, and no message saying both fields are declared", () => {
+    /* tests/fixtures/address-next-to-broken-targets/content/_index.md, a French home page, has
+       six hero buttons, each with a label: the first is well filled in, with
+       pageRef = '/projets'; each of the others declares a valid url = '#contact' next to a wrong
+       pageRef: the second '/projets ', with a trailing space; the third { path = '/projets' }, a
+       table; the fourth 42, a number, neither of which Hugo reads as false; the fifth
+       '/page-fictive-introuvable', which matches no page; the sixth '/atelier-ferme', a page that
+       declares [build] render = 'never'. The person building the site must first fix the
+       pageRef, so that they get, for each of these five buttons, a single hero message that
+       names that button by its position and gives the pageRef's own error, whatever the rest of
+       the wording: that it has whitespace, that it must be a page reference, that it matches no
+       page (quoting it and giving a draft among the possible causes), or that its page is not
+       published (quoting it). A message saying that both fields are declared would send them
+       removing one of the two before they know what is wrong with the pageRef: these five must
+       be the only hero messages, and none must say both are declared. One button per kind of
+       wrong pageRef, so that a check made for a single kind does not pass. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTONS_WITH_A_URL_NEXT_TO_A_WRONG_PAGE_REF);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(5);
+    const cases: { position: number; isPageRefError: (line: string) => boolean; description: string }[] = [
+      {
+        position: 2,
+        isPageRefError: (line) => line.includes('"/projets "') && /\bwhitespace\b/i.test(line),
+        description: 'quote the pageRef and say it has whitespace',
+      },
+      {
+        position: 3,
+        isPageRefError: (line) => PAGE_REF_MUST_BE_A_PAGE_REFERENCE.test(line),
+        description: 'say the pageRef must be a page reference',
+      },
+      {
+        position: 4,
+        isPageRefError: (line) => PAGE_REF_MUST_BE_A_PAGE_REFERENCE.test(line),
+        description: 'say the pageRef must be a page reference',
+      },
+      {
+        position: 5,
+        isPageRefError: (line) => line.includes('"/page-fictive-introuvable"') && /\bdraft\b/i.test(line),
+        description: 'quote the pageRef and give a draft among the possible causes',
+      },
+      {
+        position: 6,
+        isPageRefError: (line) => line.includes('"/atelier-ferme"') && /\bnot\s+published\b/i.test(line),
+        description: 'quote the pageRef and say its page is not published',
+      },
+    ];
+    for (const { position, isPageRefError, description } of cases) {
+      const messages = heroMessages(build.errors).filter((line) =>
+        new RegExp(`\\bbutton\\s+#?${position}\\b`, 'i').test(line),
+      );
+      expect(messages, `one hero error message should name button ${position}, in:\n${build.errors}`).toHaveLength(1);
+      expect(
+        isPageRefError(messages[0]),
+        `the error message about button ${position} should ${description}, in:\n${messages[0]}`,
+      ).toBe(true);
+    }
+    expect(
+      heroMessages(build.errors).filter((line) => BOTH_FIELDS_DECLARED.test(line)),
+      `no hero error message should say both fields are declared, in:\n${build.errors}`,
+    ).toEqual([]);
   });
 });
