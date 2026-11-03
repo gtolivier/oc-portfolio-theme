@@ -20,7 +20,10 @@ import {
   SITE_WITH_A_BACKGROUND_INTRO_AS_A_LIST_OF_TABLES,
   SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES,
   SITE_WITH_SKILL_GROUP_ITEMS_AS_EMPTY_VALUES,
+  SITE_WITH_AN_ENGLISH_HOME_WITH_BACKGROUND_PARTS_NOT_AS_LISTS,
+  type BuiltSite,
   buildSite,
+  languageCodePattern,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
   serveSite,
@@ -1991,5 +1994,79 @@ test.describe('background content errors: build failure', () => {
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       /execute of template failed|error calling/i,
     );
+  });
+
+  test("a home page whose key figures, intro, education or skill groups are not a list makes the site build fail with an error message that names the home page's language, for French home pages and for an English one", () => {
+    /* A bilingual site has a home page per language, each with its own background: a message
+       saying the key figures or the skill groups must be written as a list of tables, or that the
+       intro or the education must be a list, that does not say which language's home page is at
+       fault leaves the person building the site to look for it in every
+       content/_index.<language>.md file. The hero, clients and projects messages already name the
+       home page's language by its code (fr, en); these must name it too, whatever the rest of the
+       wording. The French home pages come from the fixtures of the tests of these messages above:
+       key figures and skill groups each written with single brackets, and each as a list of texts,
+       the two ways of raising their message, then an intro and an education each written as a
+       text; the English one, from tests/fixtures/english-home-four-slips/content/_index.en.md,
+       makes the four mistakes at once, key figures and skill groups with single brackets, hence
+       four messages. Every background error message must be there and each must name, on its own
+       line, the home page's language, looked for, as in the hero's tests, as a word that no other
+       word follows. French home pages and an English one, so that a language written in the
+       template does not pass. */
+    const cases: { name: string; site: BuiltSite; language: string; messageCount: number }[] = [
+      {
+        name: 'a French home page with key figures written with single brackets',
+        site: SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE,
+        language: 'fr',
+        messageCount: 1,
+      },
+      {
+        name: 'a French home page with key figures written as a list of texts',
+        site: SITE_WITH_BACKGROUND_STATS_AS_A_LIST_OF_TEXTS,
+        language: 'fr',
+        messageCount: 1,
+      },
+      {
+        name: 'a French home page with an intro written as a text',
+        site: SITE_WITH_A_BACKGROUND_INTRO_AS_A_TEXT,
+        language: 'fr',
+        messageCount: 1,
+      },
+      {
+        name: 'a French home page with an education written as a text',
+        site: SITE_WITH_EDUCATION_AS_A_TEXT,
+        language: 'fr',
+        messageCount: 1,
+      },
+      {
+        name: 'a French home page with skill groups written with single brackets',
+        site: SITE_WITH_BACKGROUND_SKILLS_AS_A_SINGLE_TABLE,
+        language: 'fr',
+        messageCount: 1,
+      },
+      {
+        name: 'a French home page with skill groups written as a list of texts',
+        site: SITE_WITH_BACKGROUND_SKILLS_AS_A_LIST_OF_TEXTS,
+        language: 'fr',
+        messageCount: 1,
+      },
+      {
+        name: 'an English home page with key figures and skill groups written with single brackets and an intro and an education written as texts',
+        site: SITE_WITH_AN_ENGLISH_HOME_WITH_BACKGROUND_PARTS_NOT_AS_LISTS,
+        language: 'en',
+        messageCount: 4,
+      },
+    ];
+    for (const { name, site, language, messageCount } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const messages = build.errors.split('\n').filter((line) => /\bbackground:/.test(line));
+      expect(messages, `with ${name}, background error messages, one per mistake, in:\n${build.errors}`).toHaveLength(
+        messageCount,
+      );
+      expect(
+        messages.filter((line) => !new RegExp(languageCodePattern(language), 'u').test(line)),
+        `with ${name}, background error messages that do not name the home page's language, ${language}`,
+      ).toEqual([]);
+    }
   });
 });

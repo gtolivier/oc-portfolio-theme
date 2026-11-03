@@ -775,6 +775,17 @@ export const SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES = testSite('blank-backgr
    left out, items = '' and items = false. */
 export const SITE_WITH_SKILL_GROUP_ITEMS_AS_EMPTY_VALUES = testSite('blank-know-how');
 
+/* The example site's English home page writes its key figures and skill groups as lists of tables
+   and its intro and education as lists of texts: this site replaces that home page with the one of
+   tests/fixtures/english-home-four-slips/content, without a hero, clients nor projects, whose
+   background writes its intro and its only education entry as single texts rather than lists, and
+   its only key figure, "12" "Years at the bench", and its only skill group, "Restoration" of three
+   items, [params.background.stats] and [params.background.skills], with single brackets, tables
+   rather than lists. The example site's French home page is unchanged. Its folder name avoids the
+   words background, stats, skills, intro, education, list and table and the language codes, which
+   the error-message assertions look for. */
+export const SITE_WITH_AN_ENGLISH_HOME_WITH_BACKGROUND_PARTS_NOT_AS_LISTS = testSite('english-home-four-slips');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
