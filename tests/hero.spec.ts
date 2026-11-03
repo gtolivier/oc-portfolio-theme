@@ -55,6 +55,7 @@ import {
   SITE_WITH_HERO_BUTTON_LABELS_AS_A_NUMBER_AND_A_TABLE,
   SITE_WITH_HERO_BUTTON_LABELS_WITH_A_LEADING_AND_A_TRAILING_SPACE,
   SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_WHITESPACE_ONLY_LABEL,
+  SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_LABEL,
   SITE_WITH_HERO_BUTTON_URLS_EMPTY_AND_WHITESPACE_ONLY,
   SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_URL_AND_A_PAGE_REF,
   SITE_WITH_HERO_BUTTONS_WITH_A_URL_NEXT_TO_A_WRONG_PAGE_REF,
@@ -3132,6 +3133,32 @@ test.describe('hero content errors: build failure', () => {
        must be the only hero message. A tab between two spaces, so that checking only the space
        character does not pass. The language is looked for as a word that no other word follows. */
     const build = tryToBuildSite(SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_WHITESPACE_ONLY_LABEL);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
+    const messages = heroMessages(build.errors).filter(
+      (line) => /\blabel\b.*\b(?:empty|blank)\b/i.test(line) && namesButton(2).test(line),
+    );
+    expect(
+      messages,
+      `one hero error message should say that button 2's label is empty, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], "the error message about button 2 should name the home page's language, fr").toMatch(
+      new RegExp(languageCodePattern('fr'), 'u'),
+    );
+  });
+
+  test("a home page where a hero button's label is an empty text makes the site build fail with a single hero error message, which names that button by its position, says its label is empty and names the home page's language, rather than saying the button has no label field", () => {
+    /* tests/fixtures/intitule-laisse-vide/content/_index.md, a French home page, has two hero
+       buttons, each with a destination that is a text: the first is well filled in, with
+       label = 'Voir les projets'; the second declares label = '', an empty text, with a valid
+       url = '#contact'. A visitor would see a button with no text to read: the person building
+       the site must get a single hero error message that says, on one line, which button is at
+       fault by its position, that its label is empty (or blank), and names the home page's
+       language, fr, whatever the rest of the wording. The button does declare a label field: a
+       message saying it has none, or that it is missing, would send them looking for a field
+       that is right there, so that this one must be the only hero message. The language is
+       looked for as a word that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_LABEL);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
     const messages = heroMessages(build.errors).filter(

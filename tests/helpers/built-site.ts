@@ -1139,6 +1139,15 @@ export const SITE_WITH_HERO_BUTTON_KEYS_WRITTEN_IN_ANOTHER_CASE = testSite('maju
    codes, which the error-message assertions look for. */
 export const SITE_WITH_A_HERO_BUTTON_PAGE_REF_WRITTEN_IN_LOWERCASE = testSite('renvoi-minuscule');
 
+/* The example site's French home page gives each hero button a label a visitor can read: this
+   site replaces that home page with the one of tests/fixtures/intitule-laisse-vide/content,
+   whose hero has two buttons, written [[params.hero.actions]], each with a destination that is a
+   text: the first is well filled in, with label = 'Voir les projets' and pageRef = '/projets';
+   the second declares label = '', an empty text, with url = '#contact'. Its folder name avoids
+   the words button, hero, label, empty, blank, missing, the numbers and the language codes,
+   which the error-message assertions look for. */
+export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_LABEL = testSite('intitule-laisse-vide');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
