@@ -78,7 +78,8 @@
     {{- end }}
   </div>
   {{- end }}
-  {{- $projects := partial "projects/featured.html" . }}
+  {{- $featured := partial "projects/featured.html" . }}
+  {{- $projects := $featured.projects }}
   {{- /* The section is left out when no featured page is left, after an error too, so that no template execution error buries the message. */}}
   {{- if $projects }}
   <section class="projects" aria-labelledby="projects-heading">
@@ -90,7 +91,7 @@
       {{- range $projects }}{{ if not (.FirstSection.Eq $linkedSection) }}{{ $isInOneSection = false }}{{ end }}{{ end }}
       {{- /* No section to open when the projects sit in a section Hugo does not publish: no address, or one with no page written behind it ([build] render = 'link'), so .RelPermalink alone is not enough. Their section is the home page only when the build already fails: featured.html rejects a project at the content root, unless the projectsSection site param is invalid, which leaves no section to check projects against and has its own error. */}}
       {{- /* The link claims to list all the projects: the section it opens must be the projects section. */}}
-      {{- $isProjectsSection := eq $linkedSection.Section (printf "%v" (site.Params.projectsSection | default "projets") | lower) }}
+      {{- $isProjectsSection := eq $linkedSection.Section $featured.section }}
       {{- if and $isInOneSection $isProjectsSection (partial "is-published.html" $linkedSection) }}
       <a class="all-projects-link" href="{{ $linkedSection.RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
       {{- end }}
