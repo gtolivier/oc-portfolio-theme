@@ -60,6 +60,7 @@ import {
   SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_PAGE_REF,
   SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_URL,
   SITE_WITH_A_HERO_BUTTON_TO_A_PAGE_WITH_A_BUILD_PARAM_AS_TEXT,
+  TEMPLATE_EXECUTION_ERROR,
   type BuildAttempt,
   type BuiltSite,
   buildSite,
@@ -2043,6 +2044,11 @@ function heroMessagesContaining(errors: string, text: string): string[] {
   return heroMessages(errors).filter((line) => line.includes(text));
 }
 
+/* A message naming a hero button by its position, as "button 2" or "button #2", in any case. */
+function namesButton(position: number): RegExp {
+  return new RegExp(`\\bbutton\\s+#?${position}\\b`, 'i');
+}
+
 /* A message saying a button has neither of its two destination fields, whatever the wording:
    "neither a url nor a pageRef", "no url and no pageRef", "both fields are missing"… */
 const BOTH_FIELDS_MISSING =
@@ -2065,10 +2071,6 @@ const PAGE_REF_IS_EMPTY = /\bhero:.*\bpageRef\b.*\b(?:empty|blank)\b/i;
 
 /* A hero message saying, on its own line, that the url is empty or blank. */
 const URL_IS_EMPTY = /\bhero:.*\burl\b.*\b(?:empty|blank)\b/i;
-
-/* A Go template execution error, which would follow a hero message and bury it in technical
-   jargon. */
-const TEMPLATE_EXECUTION_ERROR = /execute of template failed|error calling/i;
 
 /* The lines of the build's errors that match this message pattern and name both of a
    button's destination fields, url and pageRef, on that same line. */
@@ -2645,7 +2647,7 @@ test.describe('hero content errors: build failure', () => {
       /\bhero:.*\btagline\b.*\blist\b/,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -2798,7 +2800,7 @@ test.describe('hero content errors: build failure', () => {
         .split('\n')
         .filter(
           (line) =>
-            new RegExp(`\\bbutton\\s+#?${position}\\b`, 'i').test(line) &&
+            namesButton(position).test(line) &&
             new RegExp(`\\b${key}\\b`).test(line) &&
             line.includes('[params]') &&
             /\bbefore\s+\[params\.hero\]/.test(line),
@@ -2808,11 +2810,7 @@ test.describe('hero content errors: build failure', () => {
         `one error message should say that button ${position}'s ${key} belongs to [params], before [params.hero], in:\n${build.errors}`,
       ).toHaveLength(1);
       expect(
-        messages.filter(
-          (line) =>
-            new RegExp(`\\bbutton\\s+#?${otherPosition}\\b`, 'i').test(line) ||
-            new RegExp(`\\b${otherKey}\\b`).test(line),
-        ),
+        messages.filter((line) => namesButton(otherPosition).test(line) || new RegExp(`\\b${otherKey}\\b`).test(line)),
         `the error message about button ${position}'s ${key} should name neither button ${otherPosition} nor ${otherKey}`,
       ).toEqual([]);
       expect(
@@ -2838,7 +2836,7 @@ test.describe('hero content errors: build failure', () => {
     const build = tryToBuildSite(SITE_WITH_A_TEXT_AS_THE_SECOND_HERO_BUTTON);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     const messages = heroMessages(build.errors).filter(
-      (line) => /\bbutton\s+#?2\b/i.test(line) && /\b(?:must|should)\s+be\b.*\btable\b/i.test(line),
+      (line) => namesButton(2).test(line) && /\b(?:must|should)\s+be\b.*\btable\b/i.test(line),
     );
     expect(
       messages,
@@ -2869,9 +2867,7 @@ test.describe('hero content errors: build failure', () => {
       (line) => /\burl\b/.test(line) && /\b(?:must|should)\s+be\b.*\btext\b/i.test(line),
     );
     for (const position of [2, 3]) {
-      const messages = urlMustBeTextMessages.filter((line) =>
-        new RegExp(`\\bbutton\\s+#?${position}\\b`, 'i').test(line),
-      );
+      const messages = urlMustBeTextMessages.filter((line) => namesButton(position).test(line));
       expect(
         messages,
         `one hero error message should say that button ${position}'s url must be a text, in:\n${build.errors}`,
@@ -2882,7 +2878,7 @@ test.describe('hero content errors: build failure', () => {
       ).toMatch(new RegExp(languageCodePattern('fr'), 'u'));
     }
     expect(
-      urlMustBeTextMessages.filter((line) => /\bbutton\s+#?1\b/i.test(line)),
+      urlMustBeTextMessages.filter((line) => namesButton(1).test(line)),
       'no error message should say that the well filled-in button 1 has a url that must be a text',
     ).toEqual([]);
     expect(build.errors, 'no template execution error should follow the error messages').not.toMatch(
@@ -2907,9 +2903,7 @@ test.describe('hero content errors: build failure', () => {
       (line) => /\blabel\b/.test(line) && /\b(?:must|should)\s+be\b.*\btext\b/i.test(line),
     );
     for (const position of [2, 3]) {
-      const messages = labelMustBeTextMessages.filter((line) =>
-        new RegExp(`\\bbutton\\s+#?${position}\\b`, 'i').test(line),
-      );
+      const messages = labelMustBeTextMessages.filter((line) => namesButton(position).test(line));
       expect(
         messages,
         `one hero error message should say that button ${position}'s label must be a text, in:\n${build.errors}`,
@@ -2920,7 +2914,7 @@ test.describe('hero content errors: build failure', () => {
       ).toMatch(new RegExp(languageCodePattern('fr'), 'u'));
     }
     expect(
-      labelMustBeTextMessages.filter((line) => /\bbutton\s+#?1\b/i.test(line)),
+      labelMustBeTextMessages.filter((line) => namesButton(1).test(line)),
       'no error message should say that the well filled-in button 1 has a label that must be a text',
     ).toEqual([]);
     expect(build.errors, 'no template execution error should follow the error messages').not.toMatch(
@@ -2945,9 +2939,7 @@ test.describe('hero content errors: build failure', () => {
       (line) => /\blabel\b/.test(line) && /\bwhitespace\b/i.test(line),
     );
     for (const position of [2, 3]) {
-      const messages = paddedLabelMessages.filter((line) =>
-        new RegExp(`\\bbutton\\s+#?${position}\\b`, 'i').test(line),
-      );
+      const messages = paddedLabelMessages.filter((line) => namesButton(position).test(line));
       expect(
         messages,
         `one hero error message should say that button ${position}'s label has whitespace, in:\n${build.errors}`,
@@ -2958,7 +2950,7 @@ test.describe('hero content errors: build failure', () => {
       ).toMatch(new RegExp(languageCodePattern('fr'), 'u'));
     }
     expect(
-      paddedLabelMessages.filter((line) => /\bbutton\s+#?1\b/i.test(line)),
+      paddedLabelMessages.filter((line) => namesButton(1).test(line)),
       'no error message should say that the well filled-in button 1 has a label with whitespace',
     ).toEqual([]);
   });
@@ -2983,7 +2975,7 @@ test.describe('hero content errors: build failure', () => {
     expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(2);
     const urlIsEmptyMessages = heroMessages(build.errors).filter((line) => URL_IS_EMPTY.test(line));
     for (const position of [2, 3]) {
-      const messages = urlIsEmptyMessages.filter((line) => new RegExp(`\\bbutton\\s+#?${position}\\b`, 'i').test(line));
+      const messages = urlIsEmptyMessages.filter((line) => namesButton(position).test(line));
       expect(
         messages,
         `one hero error message should say that button ${position}'s url is empty, in:\n${build.errors}`,
@@ -3012,7 +3004,7 @@ test.describe('hero content errors: build failure', () => {
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
     const messages = destinationFieldMessages(build.errors, BOTH_FIELDS_DECLARED).filter(
-      (line) => /\bhero:/.test(line) && /\bbutton\s+#?2\b/i.test(line),
+      (line) => /\bhero:/.test(line) && namesButton(2).test(line),
     );
     expect(
       messages,
@@ -3071,9 +3063,7 @@ test.describe('hero content errors: build failure', () => {
       },
     ];
     for (const { position, isPageRefError, description } of cases) {
-      const messages = heroMessages(build.errors).filter((line) =>
-        new RegExp(`\\bbutton\\s+#?${position}\\b`, 'i').test(line),
-      );
+      const messages = heroMessages(build.errors).filter((line) => namesButton(position).test(line));
       expect(messages, `one hero error message should name button ${position}, in:\n${build.errors}`).toHaveLength(1);
       expect(
         isPageRefError(messages[0]),
@@ -3102,7 +3092,7 @@ test.describe('hero content errors: build failure', () => {
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
     const messages = heroMessages(build.errors).filter(
-      (line) => PAGE_REF_IS_EMPTY.test(line) && /\bbutton\s+#?2\b/i.test(line),
+      (line) => PAGE_REF_IS_EMPTY.test(line) && namesButton(2).test(line),
     );
     expect(
       messages,
@@ -3130,9 +3120,7 @@ test.describe('hero content errors: build failure', () => {
     const build = tryToBuildSite(SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_URL);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
-    const messages = heroMessages(build.errors).filter(
-      (line) => URL_IS_EMPTY.test(line) && /\bbutton\s+#?2\b/i.test(line),
-    );
+    const messages = heroMessages(build.errors).filter((line) => URL_IS_EMPTY.test(line) && namesButton(2).test(line));
     expect(
       messages,
       `one hero error message should say that button 2's url is empty, in:\n${build.errors}`,
@@ -3164,7 +3152,7 @@ test.describe('hero content errors: build failure', () => {
     );
     expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
     const messages = heroMessages(build.errors).filter(
-      (line) => /\bbutton\s+#?2\b/i.test(line) && line.includes('"/atelier-millesime"') && /\bbuild\b/.test(line),
+      (line) => namesButton(2).test(line) && line.includes('"/atelier-millesime"') && /\bbuild\b/.test(line),
     );
     expect(
       messages,

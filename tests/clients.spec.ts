@@ -13,6 +13,7 @@ import {
   SITE_WITH_A_WHITESPACE_ONLY_CLIENT_NAME,
   SITE_WITH_AN_ENGLISH_HOME_WITH_CLIENTS_AS_TEXT,
   SITE_WITH_CLIENTS_UNDER_THE_HERO,
+  TEMPLATE_EXECUTION_ERROR,
   buildSite,
   languageCodePattern,
   removeDirectory,
@@ -1653,6 +1654,11 @@ test.describe('home page of another site, without clients', () => {
   });
 });
 
+/* The lines of the build's errors that name the clients parameter. */
+function clientsMessages(errors: string): string[] {
+  return errors.split('\n').filter((line) => /\bclients\s+parameter\b/.test(line));
+}
+
 test.describe('client content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
@@ -1710,7 +1716,7 @@ test.describe('client content errors: build failure', () => {
         /\bclients\s+parameter\b/,
       );
       expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
-        /execute of template failed|error calling/i,
+        TEMPLATE_EXECUTION_ERROR,
       );
       for (const position of positions) {
         expect(build.errors, `with ${name}, the error message should give the position of each table`).toMatch(
@@ -1744,7 +1750,7 @@ test.describe('client content errors: build failure', () => {
     for (const { name, site, language } of cases) {
       const build = tryToBuildSite(site);
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
-      const messages = build.errors.split('\n').filter((line) => /\bclients\s+parameter\b/.test(line));
+      const messages = clientsMessages(build.errors);
       expect(
         messages,
         `with ${name}, one error message naming the clients parameter, in:\n${build.errors}`,
@@ -1767,8 +1773,6 @@ test.describe('client content errors: build failure', () => {
        Go template execution error that would follow it and bury it in technical jargon. Both
        home pages are French, as that fixture's is. Two fixtures, so that rejecting only one of
        the two empty values does not pass. */
-    const clientsMessages = (errors: string) =>
-      errors.split('\n').filter((line) => /\bclients\s+parameter\b/.test(line));
     const textBuild = tryToBuildSite(SITE_WITH_CLIENTS_AS_TEXT);
     expect(textBuild.succeeded, 'with clients as a text, the site build should fail').toBe(false);
     const expectedMessages = clientsMessages(textBuild.errors);
@@ -1788,7 +1792,7 @@ test.describe('client content errors: build failure', () => {
         `with ${name}, the error message of a text instead of a list, alone, in:\n${build.errors}`,
       ).toEqual(expectedMessages);
       expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
-        /execute of template failed|error calling/i,
+        TEMPLATE_EXECUTION_ERROR,
       );
     }
   });
@@ -1820,7 +1824,7 @@ test.describe('client content errors: build failure', () => {
       "the error message should name the home page's language, fr",
     ).toEqual([]);
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 });

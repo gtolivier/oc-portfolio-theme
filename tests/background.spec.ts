@@ -21,6 +21,7 @@ import {
   SITE_WITH_BACKGROUND_PARTS_AS_EMPTY_VALUES,
   SITE_WITH_SKILL_GROUP_ITEMS_AS_EMPTY_VALUES,
   SITE_WITH_AN_ENGLISH_HOME_WITH_BACKGROUND_PARTS_NOT_AS_LISTS,
+  TEMPLATE_EXECUTION_ERROR,
   type BuiltSite,
   buildSite,
   languageCodePattern,
@@ -790,10 +791,10 @@ test('with JavaScript, on the French home page, when the visitor turns on prefer
   expect(climbing(shown), `every figure shows a number between 0 and its own, midway (${shown})`).toBe(true);
   /* The visitor asks for reduced motion, midway through the climb. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  /* A few animation frames later on the page's clock (20, one at a time, so that the change has time
-     to reach the page in every browser), which then stands still, far short of the climb's end:
-     the climb cannot reach it on its own. On screen, in reading order, each label comes right after its full
-     value, whole. */
+  /* A few animation frames later on the page's clock (20, one at a time, so that the change has
+     time to reach the page in every browser), which then stands still, far short of the climb's
+     end: the climb cannot reach it on its own. On screen, in reading order, each label comes right
+     after its full value, whole. */
   for (let frame = 0; frame < 20; frame++) await page.clock.runFor(16);
   const inOrder = fullValuesOnScreen(KEY_FIGURES);
   await expect
@@ -1740,6 +1741,11 @@ test.describe('home page of another site, with a long word in a skill group titl
   });
 });
 
+/* The lines of the build's errors that are background error messages. */
+function backgroundMessages(errors: string): string[] {
+  return errors.split('\n').filter((line) => /\bbackground:/.test(line));
+}
+
 test.describe('background content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
@@ -1758,7 +1764,7 @@ test.describe('background content errors: build failure', () => {
       'the error message should say to write the key figures as [[params.background.stats]]',
     ).toMatch(/\bbackground:.*\[\[params\.background\.stats\]\]/);
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1776,7 +1782,7 @@ test.describe('background content errors: build failure', () => {
       'the error message should say to write the key figures as [[params.background.stats]]',
     ).toMatch(/\bbackground:.*\[\[params\.background\.stats\]\]/);
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1799,7 +1805,7 @@ test.describe('background content errors: build failure', () => {
       /\bbackground:.*\bwhole\s+number\b/,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1818,7 +1824,7 @@ test.describe('background content errors: build failure', () => {
       'the error message should say to write the skill groups as [[params.background.skills]]',
     ).toMatch(/\bbackground:.*\[\[params\.background\.skills\]\]/);
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1837,7 +1843,7 @@ test.describe('background content errors: build failure', () => {
       'the error message should say to write the skill groups as [[params.background.skills]]',
     ).toMatch(/\bbackground:.*\[\[params\.background\.skills\]\]/);
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1860,7 +1866,7 @@ test.describe('background content errors: build failure', () => {
       /\bbackground:.*\bitems\b.*\blist\b/,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1878,7 +1884,7 @@ test.describe('background content errors: build failure', () => {
       /\bbackground:.*\beducation\b.*\blist\b/,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1896,7 +1902,7 @@ test.describe('background content errors: build failure', () => {
       /\bbackground:.*\beducation\b.*\btexts?\b/,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1914,7 +1920,7 @@ test.describe('background content errors: build failure', () => {
       /\bbackground:.*\bintro\b.*\blist\b/,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1932,7 +1938,7 @@ test.describe('background content errors: build failure', () => {
       /\bbackground:.*\bintro\b.*\btexts?\b/,
     );
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1951,7 +1957,6 @@ test.describe('background content errors: build failure', () => {
        would follow them and bury them in technical jargon. All five home pages are French. One
        part per empty value, each of '', false and 0 present, so that rejecting only one of them,
        or only one part's, does not pass. */
-    const backgroundMessages = (errors: string) => errors.split('\n').filter((line) => /\bbackground:/.test(line));
     const references = [
       { name: 'key figures written with single brackets', site: SITE_WITH_BACKGROUND_STATS_AS_A_SINGLE_TABLE },
       { name: 'an intro written as a text', site: SITE_WITH_A_BACKGROUND_INTRO_AS_A_TEXT },
@@ -1973,7 +1978,7 @@ test.describe('background content errors: build failure', () => {
       `with every part written as an empty value, the error message of each part not written as a list, in:\n${build.errors}`,
     ).toEqual(expectedMessages.sort());
     expect(build.errors, 'no template execution error should follow the error messages').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -2040,7 +2045,7 @@ test.describe('background content errors: build failure', () => {
     for (const { name, site, language, messageCount } of cases) {
       const build = tryToBuildSite(site);
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
-      const messages = build.errors.split('\n').filter((line) => /\bbackground:/.test(line));
+      const messages = backgroundMessages(build.errors);
       expect(messages, `with ${name}, background error messages, one per mistake, in:\n${build.errors}`).toHaveLength(
         messageCount,
       );

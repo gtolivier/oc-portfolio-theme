@@ -1103,6 +1103,10 @@ export function languageCodePattern(language: string): string {
   return `\\b${language}\\b(?!\\s+\\p{L})`;
 }
 
+/* A Go template execution error, which would follow a theme's build error message and bury it in
+   technical jargon. */
+export const TEMPLATE_EXECUTION_ERROR = /execute of template failed|error calling/i;
+
 /* Builds the example site as it is, without a fixture, asking Hugo to warn
    about every translation key a page uses that a language lacks
    (--printI18nWarnings), and returns those warnings, one per missing key and

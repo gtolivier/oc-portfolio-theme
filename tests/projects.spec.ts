@@ -36,6 +36,7 @@ import {
   SITE_WITH_A_PROJECT_STACK_AS_A_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
   SITE_WITH_PROJECTS_UNDER_THE_HERO,
+  TEMPLATE_EXECUTION_ERROR,
   type BuiltSite,
   buildSite,
   languageCodePattern,
@@ -1799,7 +1800,7 @@ test.describe('featured project whose page declares a custom param named build: 
     expect(build.errors, 'the error message should name Hugo').toMatch(/\bHugo\b/);
     expect(build.errors, 'the error message should name the project').toContain('projets/pendule-squelette');
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 
@@ -1833,7 +1834,7 @@ test.describe('featured project whose page declares a custom param named build: 
       const build = tryToBuildSite(site);
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
       expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
-        /execute of template failed|error calling/i,
+        TEMPLATE_EXECUTION_ERROR,
       );
       const messages = build.errors
         .split('\n')
@@ -1873,7 +1874,7 @@ test.describe('featured project whose page writes its stack as a text: build fai
     ).toHaveLength(1);
     expect(messages[0], 'the error message should be about the featured projects').toMatch(/\bprojects\b/);
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 });
@@ -2191,9 +2192,14 @@ function expectProjectsBuildError(build: BuildAttempt, context = ''): void {
     /\bprojects\s+parameter\b/,
   );
   expect(build.errors, `${prefix}no template execution error should follow the error message`).not.toMatch(
-    /execute of template failed|error calling/i,
+    TEMPLATE_EXECUTION_ERROR,
   );
 }
+
+/* A message naming, on its own line, the projets section: the word "section" and the token
+   projets, which neither a word nor a page path under projets/ continues, so that a reference
+   such as 'projets/restauration-pendule' does not pass for it. */
+const NAMES_THE_PROJETS_SECTION = /^(?=.*\bsection\b)(?=.*(?<![\w-])projets(?![\w-]|\/[\w-])).*$/u;
 
 test.describe('featured project content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
@@ -2548,7 +2554,7 @@ test.describe('featured project content errors: build failure', () => {
       const build = tryToBuildSite(site);
       expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
       expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
-        /execute of template failed|error calling/i,
+        TEMPLATE_EXECUTION_ERROR,
       );
       expect(build.errors, `with ${name}, no error message should name the featured project of projets/`).not.toContain(
         'projets/restauration-pendule',
@@ -2558,7 +2564,7 @@ test.describe('featured project content errors: build failure', () => {
         1,
       );
       expect(messages[0], `with ${name}, the error message should name the projets section`).toMatch(
-        /^(?=.*\bsection\b)(?=.*(?<![\w-])projets(?![\w-]|\/[\w-])).*$/u,
+        NAMES_THE_PROJETS_SECTION,
       );
       expect(messages[0], `with ${name}, the error message should name the home page's language, ${language}`).toMatch(
         new RegExp(languageCodePattern(language), 'u'),
@@ -2582,13 +2588,11 @@ test.describe('featured project content errors: build failure', () => {
     const build = tryToBuildSite(SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT);
     expect(build.succeeded, 'the site build should fail').toBe(false);
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
     const messages = build.errors.split('\n').filter((line) => line.includes(entry));
     expect(messages, `one error message naming the entry ${entry}, in:\n${build.errors}`).toHaveLength(1);
-    expect(messages[0], 'the error message should name the projets section').toMatch(
-      /^(?=.*\bsection\b)(?=.*(?<![\w-])projets(?![\w-]|\/[\w-])).*$/u,
-    );
+    expect(messages[0], 'the error message should name the projets section').toMatch(NAMES_THE_PROJETS_SECTION);
     expect(messages[0], `the error message should name the home page's language, ${language}`).toMatch(
       new RegExp(languageCodePattern(language), 'u'),
     );
@@ -2805,7 +2809,7 @@ test.describe('featured project content errors: build failure', () => {
       'one error message should say that projects belongs to [params], before [params.hero]',
     ).toMatch(/^(?=.*\bprojects\b)(?=.*\[params\])(?=.*\bbefore\s+\[params\.hero\]).*$/im);
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
-      /execute of template failed|error calling/i,
+      TEMPLATE_EXECUTION_ERROR,
     );
   });
 });
