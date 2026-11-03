@@ -69,6 +69,7 @@ import {
   SITE_WITH_A_MISSPELLED_KEY_IN_THE_SECOND_HERO_BUTTON,
   SITE_WITH_THE_HERO_TAGLINE_UNDER_THE_LAST_HERO_BUTTON,
   SITE_WITH_THE_HERO_TITLE_UNDER_THE_LAST_HERO_BUTTON,
+  SITE_WITH_HERO_BUTTON_KEYS_WRITTEN_IN_ANOTHER_CASE,
   TEMPLATE_EXECUTION_ERROR,
   type BuildAttempt,
   type BuiltSite,
@@ -2925,6 +2926,45 @@ test.describe('hero content errors: build failure', () => {
       `one error message should name button 2 and the misspelled key lable it holds, in:\n${build.errors}`,
     ).toHaveLength(1);
     expect(messages[0], 'the error message about button 2 should not name button 1').not.toMatch(namesButton(1));
+  });
+
+  test('a home page whose hero buttons hold a key written in another case than the one the theme reads (PageRef, Tagline) makes the build fail, with one error message per such key that names its button by its position and the key as written', () => {
+    /* tests/fixtures/majuscules-mal-placees/content/_index.md, a French home page, has three hero
+       buttons, each with a label: the first is well filled in, with pageRef = '/projets'; the
+       second writes PageRef = '/projets', capitalized, without a url; the third, well filled in
+       with a url, holds Tagline = [...], capitalized. The theme reads label, url and pageRef in
+       exactly that case, and the hero's tagline under [params.hero]: a key written in another case
+       is neither read nor, today, reported as a wrong key. The person building the site must get,
+       for each such key, an error message that says, on one line, which button holds it by its
+       position (button 2, button 3) and names that key in the case written (PageRef, Tagline),
+       whatever the rest of the wording; a message that names pageRef or tagline only, as the
+       theme writes them, does not tell them which key to fix. Each line must name its own button
+       and key only, so that a message that names both buttons or both keys at once does not pass
+       for either. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_KEYS_WRITTEN_IN_ANOTHER_CASE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const cases = [
+      { position: 2, key: 'PageRef', otherPosition: 3, otherKey: 'Tagline' },
+      { position: 3, key: 'Tagline', otherPosition: 2, otherKey: 'PageRef' },
+    ];
+    for (const { position, key, otherPosition, otherKey } of cases) {
+      const messages = build.errors
+        .split('\n')
+        .filter((line) => namesButton(position).test(line) && new RegExp(`\\b${key}\\b`).test(line));
+      expect(
+        messages,
+        `one error message should name button ${position} and the ${key} key it holds, as written, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages.filter(
+          (line) =>
+            namesButton(1).test(line) ||
+            namesButton(otherPosition).test(line) ||
+            new RegExp(`\\b${otherKey}\\b`).test(line),
+        ),
+        `the error message about button ${position}'s ${key} should name neither button 1, button ${otherPosition} nor ${otherKey}`,
+      ).toEqual([]);
+    }
   });
 
   test("a home page where a hero button is not a table but a text, in a list whose other button is a table, makes the site build fail with a single hero error message that names that button by its position, says a button must be a table and names the home page's language, without a template execution error after it", () => {

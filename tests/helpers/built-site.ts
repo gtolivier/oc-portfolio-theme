@@ -1121,6 +1121,16 @@ export const SITE_WITH_THE_HERO_TAGLINE_UNDER_THE_LAST_HERO_BUTTON = testSite('d
    before, the numbers and the language codes, which the error-message assertions look for. */
 export const SITE_WITH_THE_HERO_TITLE_UNDER_THE_LAST_HERO_BUTTON = testSite('metier-sous-le-dernier-lien');
 
+/* The example site's French home page writes its hero buttons' keys in the case the theme reads:
+   this site replaces that home page with the one of
+   tests/fixtures/majuscules-mal-placees/content, without clients nor projects, whose hero is well
+   filled in, with a tagline, a stack and a well filled-in first button, but whose second button
+   writes its page reference under PageRef instead of pageRef, without a url, and whose third
+   button, well filled in with a label and a url, holds a Tagline key, capitalized. Its folder name
+   avoids the words button, pageRef, tagline, hero, params, the numbers and the language codes,
+   which the error-message assertions look for. */
+export const SITE_WITH_HERO_BUTTON_KEYS_WRITTEN_IN_ANOTHER_CASE = testSite('majuscules-mal-placees');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
