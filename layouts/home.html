@@ -3,7 +3,11 @@
   {{- $stackSeparator := " · " }}
   {{- $lang := site.Language.Lang }}
   {{- $clients := partial "param-list-or-empty.html" (dict "params" .Params "key" "clients" "error" (printf "clients: the home page's clients parameter must be a list of names (language: %s)" $lang)) }}
-  {{- if and (reflect.IsMap .Params.hero) (isset .Params.hero "clients") }}{{ errorf "clients: the clients parameter belongs to [params], written before [params.hero], not under the hero (language: %s)" $lang }}{{ end }}
+  {{- if reflect.IsMap .Params.hero }}
+  {{- range $key := slice "clients" "projects" }}
+  {{- if isset $.Params.hero $key }}{{ errorf "%s: the %s parameter belongs to [params], written before [params.hero], not under the hero (language: %s)" $key $key $lang }}{{ end }}
+  {{- end }}
+  {{- end }}
   {{- if or .Params.hero .Params.clients }}
   <div class="first-screen{{ if .Params.hero }} has-hero{{ end }}">
     {{- with .Params.hero }}

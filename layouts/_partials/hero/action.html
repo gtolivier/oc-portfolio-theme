@@ -4,10 +4,7 @@
 {{- $href := $button.url }}
 {{- $urlProblem := "" }}
 {{- if isset $button "url" }}
-  {{- $urlProblem = partial "text-problem.html" $button.url }}
-  {{- /* YAML reads a url key left without a value as null: it is an empty
-       url, not a value of another type. */}}
-  {{- if eq $button.url nil }}{{ $urlProblem = "empty" }}{{ end }}
+  {{- $urlProblem = partial "hero/destination-problem.html" $button.url }}
 {{- end }}
 {{- if eq $urlProblem "not-text" }}
   {{- errorf "hero: button %d: the url field must be a text (language: %s)" $position $lang }}
@@ -27,10 +24,7 @@
      both-fields one. */}}
 {{- $pageRefError := "" }}
 {{- if $hasPageRef }}
-  {{- $pageRefProblem := partial "text-problem.html" $pageRef }}
-  {{- /* YAML reads a pageRef key left without a value as null: it is an
-       empty pageRef, not a value of another type. */}}
-  {{- if eq $pageRef nil }}{{ $pageRefProblem = "empty" }}{{ end }}
+  {{- $pageRefProblem := partial "hero/destination-problem.html" $pageRef }}
   {{- if eq $pageRefProblem "not-text" }}
     {{- $pageRefError = printf "hero: button %d: the pageRef field must be a page reference, a text (language: %s)" $position $lang }}
   {{- else if eq $pageRefProblem "empty" }}
