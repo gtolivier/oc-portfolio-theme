@@ -40,11 +40,12 @@
 {{- range $key := slice "clients" "projects" }}
   {{- if isset $button $key }}{{ errorf "hero: button %d holds a %s key, which belongs to [params], written before [params.hero], not under a button (language: %s)" $position $key $lang }}{{ end }}
 {{- end }}
-{{- if and (isset $button "label") (eq (partial "text-problem.html" $button.label) "not-text") }}
+{{- $labelProblem := partial "text-problem.html" $button.label }}
+{{- if and (isset $button "label") (eq $labelProblem "not-text") }}
   {{- errorf "hero: button %d: the label field must be a text (language: %s)" $position $lang }}
 {{- else if not $button.label }}
   {{- errorf "hero: button %d has no label field (language: %s)" $position $lang }}
-{{- else if eq (partial "text-problem.html" $button.label) "padded" }}
+{{- else if eq $labelProblem "padded" }}
   {{- errorf "hero: button %d: the label %q has whitespace at its start or end (language: %s)" $position $button.label $lang }}
 {{- end -}}
 <a href="{{ $href }}">{{ $button.label }}</a>
