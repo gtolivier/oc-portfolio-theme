@@ -1231,6 +1231,15 @@ export const SITE_WITH_A_CAPITALIZED_PROJECTS_SECTION_PARAM_AND_ITS_PROJECTS = t
   'capitalized-param-with-its-projects',
 );
 
+/* Like SITE_WITH_A_HERO_BUTTON_PAGE_REF_WRITTEN_IN_LOWERCASE, this site replaces the example site's
+   French home page with the one of tests/fixtures/renvoi-capitale-seul/content, without clients
+   nor projects, whose hero is well filled in, with a tagline, a stack and a well filled-in first
+   button, but whose second button, with a label, writes its page reference under PageRef instead
+   of pageRef, and declares no url. Its folder name avoids the words button, pageRef, hero, params,
+   url, neither, nor, both, missing, the numbers and the language codes, which the error-message
+   assertions look for. */
+export const SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_PAGE_REF = testSite('renvoi-capitale-seul');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

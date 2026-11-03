@@ -72,6 +72,7 @@ import {
   SITE_WITH_THE_HERO_TITLE_UNDER_THE_LAST_HERO_BUTTON,
   SITE_WITH_HERO_BUTTON_KEYS_WRITTEN_IN_ANOTHER_CASE,
   SITE_WITH_A_HERO_BUTTON_PAGE_REF_WRITTEN_IN_LOWERCASE,
+  SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_PAGE_REF,
   TEMPLATE_EXECUTION_ERROR,
   type BuildAttempt,
   type BuiltSite,
@@ -2987,6 +2988,27 @@ test.describe('hero content errors: build failure', () => {
       `one error message should name button 2 and the pageref key it holds, as written, in:\n${build.errors}`,
     ).toHaveLength(1);
     expect(messages[0], 'the error message about button 2 should not name button 1').not.toMatch(namesButton(1));
+  });
+
+  test('a home page whose hero button is linked only by a PageRef key, written in another case than the one the theme reads, without a url, makes the build fail with an error message that names that button by its position and the key as written, and no error message saying the button has neither a url nor a pageRef', () => {
+    /* tests/fixtures/renvoi-capitale-seul/content/_index.md, a French home page, has two hero
+       buttons, each with a label: the first is well filled in, with pageRef = '/projets'; the
+       second writes PageRef = '/projets', capitalized, and declares no url. The person building
+       the site must get an error message that says, on one line, which button holds that key by
+       its position, button 2, and names it in the case written, PageRef, whatever the rest of the
+       wording, and that line must not name the well filled-in first button. The button does
+       declare a page reference, only in the wrong case: a message saying it has neither a url nor
+       a pageRef would contradict that one and send them adding a field rather than fixing the
+       key's case, so that no error message must say both fields are missing. */
+    const build = tryToBuildSite(SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_PAGE_REF);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors.split('\n').filter((line) => namesButton(2).test(line) && /\bPageRef\b/.test(line));
+    expect(
+      messages,
+      `one error message should name button 2 and the PageRef key it holds, as written, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], 'the error message about button 2 should not name button 1').not.toMatch(namesButton(1));
+    expect(build.errors, 'no error message should say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
   });
 
   test("a home page where a hero button is not a table but a text, in a list whose other button is a table, makes the site build fail with a single hero error message that names that button by its position, says a button must be a table and names the home page's language, without a template execution error after it", () => {
