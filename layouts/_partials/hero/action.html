@@ -33,6 +33,9 @@
 {{- end }}
 {{- if and $button.url $hasPageRef }}{{ errorf "hero: button %d declares both a url field and a pageRef field; it needs only one (language: %s)" $position $lang }}{{ end }}
 {{- if and (not $button.url) (not $hasPageRef) }}{{ errorf "hero: button %d has neither a url field nor a pageRef field (language: %s)" $position $lang }}{{ end }}
+{{- range $key := slice "clients" "projects" }}
+  {{- if isset $button $key }}{{ errorf "hero: button %d holds a %s key, which belongs to [params], written before [params.hero], not under a button (language: %s)" $position $key $lang }}{{ end }}
+{{- end }}
 {{- if not $button.label }}{{ errorf "hero: button %d has no label field (language: %s)" $position $lang }}{{ end -}}
 <a href="{{ $href }}">{{ $button.label }}</a>
 {{- /* Nothing after the link, not even the file's trailing newline:
