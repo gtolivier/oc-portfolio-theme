@@ -106,8 +106,7 @@
   {{- $hasBackground := false }}
   {{- if reflect.IsMap $background }}
   {{- range slice "stats" "intro" "education" "skills" }}
-  {{- $value := index $background . }}
-  {{- if or $value (and (isset $background .) (not (reflect.IsSlice $value))) }}{{ $hasBackground = true }}{{ end }}
+  {{- if or (index $background .) (partial "is-blank-param.html" (dict "params" $background "key" .)) }}{{ $hasBackground = true }}{{ end }}
   {{- end }}
   {{- end }}
   {{- if $hasBackground }}
