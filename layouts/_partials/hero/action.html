@@ -3,10 +3,12 @@
 {{- $lang := site.Language.Lang }}
 {{- $href := $button.url }}
 {{- $urlProblem := "" }}
-{{- if isset $button "url" }}{{ $urlProblem = partial "text-problem.html" $button.url }}{{ end }}
-{{- /* YAML reads a url key left without a value as null: it is an empty
-     url, not a value of another type. */}}
-{{- if and (isset $button "url") (eq $button.url nil) }}{{ $urlProblem = "empty" }}{{ end }}
+{{- if isset $button "url" }}
+  {{- $urlProblem = partial "text-problem.html" $button.url }}
+  {{- /* YAML reads a url key left without a value as null: it is an empty
+       url, not a value of another type. */}}
+  {{- if eq $button.url nil }}{{ $urlProblem = "empty" }}{{ end }}
+{{- end }}
 {{- if eq $urlProblem "not-text" }}
   {{- errorf "hero: button %d: the url field must be a text (language: %s)" $position $lang }}
   {{- $href = "" }}
