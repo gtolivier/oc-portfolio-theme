@@ -712,6 +712,15 @@ export const SITE_WITH_CLIENTS_AND_PROJECTS_UNDER_HERO_BUTTONS = testSite('liste
    codes, which the error-message assertions look for. */
 export const SITE_WITH_A_TEXT_AS_THE_SECOND_HERO_BUTTON = testSite('lien-ecrit-sans-accolades');
 
+/* The example site's French home page gives each hero button a url or a pageRef that is a text:
+   this site replaces that home page with the one of tests/fixtures/address-as-figure-or-dict/content,
+   without clients nor projects, whose hero has three buttons, written [[params.hero.actions]], each
+   with a label: the first is well filled in, with pageRef = '/projets'; the second declares a
+   number, url = 42; the third a table, url = { href = '/contact' }. Its folder name avoids the
+   words button, hero, url, text, must and be, the numbers and the language codes, which the
+   error-message assertions look for. */
+export const SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE = testSite('address-as-figure-or-dict');
+
 /* The example site's English home page writes its hero tagline as a list of texts and its hero
    buttons as a list of tables, [[params.hero.actions]]: this site replaces that home page with the
    one of tests/fixtures/english-home-text-and-table/content, whose tagline is a single text,
