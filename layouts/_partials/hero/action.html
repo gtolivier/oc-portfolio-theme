@@ -58,11 +58,14 @@
 {{- $urlIsPadded := eq $urlProblem "padded" }}
 {{- if and $urlIsPadded (not $pageRefIsWrong) }}{{ errorf "hero: button %d: the url %q has whitespace at its start or end (language: %s)" $position $button.url $lang }}{{ end }}
 {{- if and $hasUrl $hasPageRef (not $pageRefIsWrong) (not $urlIsNotText) (not $urlIsPadded) }}{{ errorf "hero: button %d declares both a url field and a pageRef field; it needs only one (language: %s)" $position $lang }}{{ end }}
-{{- /* A pageRef written in another case is reported by its own error below, not as a missing field. */}}
-{{- $hasMiscasedPageRef := false }}
+{{- /* A pageRef or a label written in another case is reported by its own error below, not as a missing field. */}}
+{{- $miscasedFields := slice }}
 {{- range $key, $_ := $button }}
-  {{- if and (eq (lower $key) "pageref") (ne $key "pageRef") }}{{ $hasMiscasedPageRef = true }}{{ end }}
+  {{- range $field := slice "label" "pageRef" }}
+    {{- if and (eq (lower $key) (lower $field)) (ne $key $field) }}{{ $miscasedFields = $miscasedFields | append $field }}{{ end }}
+  {{- end }}
 {{- end }}
+{{- $hasMiscasedPageRef := in $miscasedFields "pageRef" }}
 {{- if and (not $hasUrl) (not $hasPageRef) (not $hasMiscasedPageRef) }}{{ errorf "hero: button %d has neither a url field nor a pageRef field (language: %s)" $position $lang }}{{ end }}
 {{- $homeParamsKeys := partial "home-params-keys.html" }}
 {{- range $key := $homeParamsKeys }}
@@ -81,11 +84,7 @@
   {{- if not (in $knownKeys (lower $key)) }}{{ errorf "hero: button %d holds an unknown %s key: a button only holds label, url and pageRef (language: %s)" $position $key $lang }}
   {{- else if not (in $keysAsRead $key) }}{{ errorf "hero: button %d holds a %s key written in another case than the one the theme reads (language: %s)" $position $key $lang }}{{ end }}
 {{- end }}
-{{- /* A label written in another case is reported by its own error above, not as a missing field. */}}
-{{- $hasMiscasedLabel := false }}
-{{- range $key, $_ := $button }}
-  {{- if and (eq (lower $key) "label") (ne $key "label") }}{{ $hasMiscasedLabel = true }}{{ end }}
-{{- end }}
+{{- $hasMiscasedLabel := in $miscasedFields "label" }}
 {{- $hasLabel := isset $button "label" }}
 {{- $labelProblem := partial "text-problem.html" $button.label }}
 {{- if and $hasLabel (eq $labelProblem "not-text") }}
