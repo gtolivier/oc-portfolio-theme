@@ -40,8 +40,11 @@
 {{- range $key := slice "clients" "projects" }}
   {{- if isset $button $key }}{{ errorf "hero: button %d holds a %s key, which belongs to [params], written before [params.hero], not under a button (language: %s)" $position $key $lang }}{{ end }}
 {{- end }}
-{{- if and (isset $button "label") (eq (partial "text-problem.html" $button.label) "not-text") }}{{ errorf "hero: button %d: the label field must be a text (language: %s)" $position $lang }}
-{{- else if not $button.label }}{{ errorf "hero: button %d has no label field (language: %s)" $position $lang }}{{ end -}}
+{{- if and (isset $button "label") (eq (partial "text-problem.html" $button.label) "not-text") }}
+  {{- errorf "hero: button %d: the label field must be a text (language: %s)" $position $lang }}
+{{- else if not $button.label }}
+  {{- errorf "hero: button %d has no label field (language: %s)" $position $lang }}
+{{- end -}}
 <a href="{{ $href }}">{{ $button.label }}</a>
 {{- /* Nothing after the link, not even the file's trailing newline:
      spacing between buttons belongs to the page that places them. */ -}}
