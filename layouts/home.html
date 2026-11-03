@@ -85,11 +85,10 @@
     <div class="projects-header">
       <h2 id="projects-heading">{{ i18n "selectedProjects" }}</h2>
       {{- /* The all-projects link goes to the section holding every featured project: with projects in several sections (subsections of projets, or a section Hugo does not publish, which featured.html lets through), no section lists them all. */}}
-      {{- $firstSection := (index $projects 0).Parent }}
+      {{- /* A subsection of projets counts as its top-level section, which lists its projects too. */}}
+      {{- $linkedSection := (index $projects 0).Parent.FirstSection }}
       {{- $isInOneSection := true }}
-      {{- range $projects }}{{ if not (.Parent.Eq $firstSection) }}{{ $isInOneSection = false }}{{ end }}{{ end }}
-      {{- /* A subsection of projets opens the top-level section, which lists its projects too. */}}
-      {{- $linkedSection := $firstSection.FirstSection }}
+      {{- range $projects }}{{ if not (.Parent.FirstSection.Eq $linkedSection) }}{{ $isInOneSection = false }}{{ end }}{{ end }}
       {{- /* No section to open when the projects sit in a section Hugo does not publish: no address, or one with no page written behind it ([build] render = 'link'), so .RelPermalink alone is not enough. Their section is never the home page: featured.html rejects a project at the content root. */}}
       {{- if and $isInOneSection (partial "is-published.html" $linkedSection) }}
       <a class="all-projects-link" href="{{ $linkedSection.RelPermalink }}">{{ i18n "allProjects" }} <span aria-hidden="true">→</span></a>
