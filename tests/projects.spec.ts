@@ -1989,7 +1989,7 @@ test.describe('home page of another site, featuring projects of projets and of o
     removeDirectory(siteDirectory);
   });
 
-  test('the "Tous les projets" link shows and opens the projects section, which lists the projects of its subsections too', async ({
+  test('with featured projects in the projects section and in one of its subsections, the "Tous les projets" link shows and opens the projects section', async ({
     page,
     context,
   }) => {
