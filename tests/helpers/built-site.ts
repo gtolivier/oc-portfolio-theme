@@ -1148,6 +1148,16 @@ export const SITE_WITH_A_HERO_BUTTON_PAGE_REF_WRITTEN_IN_LOWERCASE = testSite('r
    which the error-message assertions look for. */
 export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_LABEL = testSite('intitule-laisse-vide');
 
+/* The example site leaves out the projectsSection site param: these sites keep its content and set
+   that param to the name of its section of projects with whitespace around it, which Hugo does not
+   trim: a trailing space, projectsSection = 'projets ' (see
+   tests/fixtures/section-param-with-trailing-space/hugo.toml), and a leading tab,
+   projectsSection = "\tprojets" (tests/fixtures/section-param-with-leading-tab/hugo.toml). Their
+   folder names avoid the words projectsSection, whitespace and projets, which the error-message
+   assertions look for. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SPACE = testSite('section-param-with-trailing-space');
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_TAB = testSite('section-param-with-leading-tab');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

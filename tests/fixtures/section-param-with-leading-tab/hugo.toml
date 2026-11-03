@@ -1,0 +1,7 @@
+# Configuration added to exampleSite/hugo.toml by the tests of a site whose
+# projectsSection site param names the example site's section of projects
+# with a leading tab, "\tprojets". The fixture has no content/: the example
+# site's home pages, which feature projects of projets/, are built as they
+# are.
+[params]
+  projectsSection = "\tprojets"

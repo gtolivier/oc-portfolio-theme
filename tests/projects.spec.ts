@@ -20,6 +20,8 @@ import {
   SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_LIST,
   SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM,
   SITE_WITH_A_WHITESPACE_ONLY_PROJECTS_SECTION_PARAM,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SPACE,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_TAB,
   SITE_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT,
@@ -2119,6 +2121,42 @@ test.describe('projectsSection site param that is not a text or is empty: build 
       expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
         TEMPLATE_EXECUTION_ERROR,
       );
+    }
+  });
+});
+
+test.describe('projectsSection site param with whitespace at its start or end: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a projectsSection site param with whitespace at its start or end makes the site build fail, with an error message that names the param, quotes its value and says it has whitespace', () => {
+    /* tests/fixtures/section-param-with-trailing-space/hugo.toml sets projectsSection =
+       'projets ', with a trailing space, and tests/fixtures/section-param-with-leading-tab/hugo.toml
+       projectsSection = "\tprojets", with a leading tab; both keep the example site's home pages,
+       which feature projects of projets/. Hugo does not trim the whitespace: a message saying every
+       featured project does not live in that section would show the person building the site a
+       section name that looks right, the whitespace being invisible in it. The message must name the
+       projectsSection param, quote its value as Go's %q does, which shows the whitespace
+       ("projets ", "\tprojets"), and say, on that same line, that it has whitespace, whatever the
+       rest of the wording. A trailing space and a leading tab, so that checking only one end, or
+       only the space character, does not pass. */
+    const cases: { name: string; site: BuiltSite; quoted: string }[] = [
+      {
+        name: 'a trailing space',
+        site: SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SPACE,
+        quoted: '"projets "',
+      },
+      { name: 'a leading tab', site: SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_TAB, quoted: '"\\tprojets"' },
+    ];
+    for (const { name, site, quoted } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const messages = build.errors
+        .split('\n')
+        .filter((line) => line.includes(quoted) && /\bprojectsSection\b/.test(line) && /\bwhitespace\b/i.test(line));
+      expect(
+        messages,
+        `with ${name}, error messages that name projectsSection, quote its value as ${quoted} and say it has whitespace, in:\n${build.errors}`,
+      ).not.toEqual([]);
     }
   });
 });
