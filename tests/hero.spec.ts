@@ -53,6 +53,7 @@ import {
   SITE_WITH_A_TEXT_AS_THE_SECOND_HERO_BUTTON,
   SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE,
   SITE_WITH_HERO_BUTTON_LABELS_AS_A_NUMBER_AND_A_TABLE,
+  SITE_WITH_HERO_BUTTON_LABELS_WITH_A_LEADING_AND_A_TRAILING_SPACE,
   type BuildAttempt,
   type BuiltSite,
   buildSite,
@@ -2900,5 +2901,40 @@ test.describe('hero content errors: build failure', () => {
     expect(build.errors, 'no template execution error should follow the error messages').not.toMatch(
       TEMPLATE_EXECUTION_ERROR,
     );
+  });
+
+  test("a home page where a hero button's label has whitespace at its start or at its end makes the site build fail with one error message per such button, which names that button by its position, says its label has whitespace and names the home page's language", () => {
+    /* tests/fixtures/caption-with-blank-edges/content/_index.md, a French home page, has three
+       hero buttons, each with a destination that is a text: the first is well filled in, with
+       label = 'Voir les paniers'; the second's label has a leading space, ' Voir les projets';
+       the third's a trailing space, 'Contact '. The whitespace is invisible in the front matter
+       and the visitor would see a button whose text is off-centre: the person building the site
+       must get, for each of these two buttons, a single error message that says, on one line,
+       which button is at fault by its position, that its label has whitespace, and names the
+       home page's language, fr, whatever the rest of the wording; none about the well filled-in
+       first button. A leading and a trailing space, so that checking only one end does not pass.
+       The language is looked for as a word that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_LABELS_WITH_A_LEADING_AND_A_TRAILING_SPACE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const paddedLabelMessages = heroMessages(build.errors).filter(
+      (line) => /\blabel\b/.test(line) && /\bwhitespace\b/i.test(line),
+    );
+    for (const position of [2, 3]) {
+      const messages = paddedLabelMessages.filter((line) =>
+        new RegExp(`\\bbutton\\s+#?${position}\\b`, 'i').test(line),
+      );
+      expect(
+        messages,
+        `one hero error message should say that button ${position}'s label has whitespace, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages[0],
+        `the error message about button ${position} should name the home page's language, fr`,
+      ).toMatch(new RegExp(languageCodePattern('fr'), 'u'));
+    }
+    expect(
+      paddedLabelMessages.filter((line) => /\bbutton\s+#?1\b/i.test(line)),
+      'no error message should say that the well filled-in button 1 has a label with whitespace',
+    ).toEqual([]);
   });
 });
