@@ -68,10 +68,12 @@
   {{- if isset $button $key }}{{ errorf "hero: button %d holds a %s key, which belongs to [params.hero], written before the buttons (language: %s)" $position $key $lang }}{{ end }}
 {{- end }}
 {{- /* A misplaced [params] or [params.hero] key already has its own error above: it is not reported as unknown too. */}}
-{{- $knownKeys := union (slice "label" "url" "pageref") $heroParamsKeys | union $homeParamsKeys }}
+{{- $keysAsRead := union (slice "label" "url" "pageRef") $heroParamsKeys | union $homeParamsKeys }}
+{{- $knownKeys := slice }}
+{{- range $keysAsRead }}{{ $knownKeys = $knownKeys | append (lower .) }}{{ end }}
 {{- range $key, $_ := $button }}
   {{- if not (in $knownKeys (lower $key)) }}{{ errorf "hero: button %d holds an unknown %s key: a button only holds label, url and pageRef (language: %s)" $position $key $lang }}
-  {{- else if and (ne $key (lower $key)) (ne $key "pageRef") (not (in $homeParamsKeys $key)) }}{{ errorf "hero: button %d holds a %s key written in another case than the one the theme reads (language: %s)" $position $key $lang }}{{ end }}
+  {{- else if and (ne $key (lower $key)) (not (in $keysAsRead $key)) }}{{ errorf "hero: button %d holds a %s key written in another case than the one the theme reads (language: %s)" $position $key $lang }}{{ end }}
 {{- end }}
 {{- $labelProblem := partial "text-problem.html" $button.label }}
 {{- if and (isset $button "label") (eq $labelProblem "not-text") }}
