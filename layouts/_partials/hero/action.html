@@ -44,6 +44,8 @@
   {{- errorf "hero: button %d: the label field must be a text (language: %s)" $position $lang }}
 {{- else if not $button.label }}
   {{- errorf "hero: button %d has no label field (language: %s)" $position $lang }}
+{{- else if eq (partial "text-problem.html" $button.label) "padded" }}
+  {{- errorf "hero: button %d: the label %q has whitespace at its start or end (language: %s)" $position $button.label $lang }}
 {{- end -}}
 <a href="{{ $href }}">{{ $button.label }}</a>
 {{- /* Nothing after the link, not even the file's trailing newline:
