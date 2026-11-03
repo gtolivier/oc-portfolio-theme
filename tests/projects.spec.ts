@@ -16,6 +16,10 @@ import {
   SITE_WITH_PROJECTS_IN_THE_SECTION_AND_A_SUBSECTION,
   SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION,
   SITE_WITH_A_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_LIST,
+  SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM,
+  SITE_WITH_A_WHITESPACE_ONLY_PROJECTS_SECTION_PARAM,
   SITE_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT,
@@ -2060,6 +2064,61 @@ test.describe('featured project outside the section named by the projectsSection
     expect(messages[0], 'the error message should name the configured section, realisations').toMatch(
       /^(?=.*\bsection\b)(?=.*(?<![\w-])realisations(?![\w-]|\/[\w-])).*$/u,
     );
+  });
+});
+
+test.describe('projectsSection site param that is not a text or is empty: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a projectsSection site param that is not a text (a number, a list) or is empty (an empty text, spaces only) makes the site build fail, with an error message that names the param and says it must be a text, or that it is empty, without a template execution error after it', () => {
+    /* tests/fixtures/section-param-as-a-number/hugo.toml sets projectsSection = 42,
+       tests/fixtures/section-param-as-a-list/hugo.toml projectsSection = ['realisations'],
+       tests/fixtures/unfilled-section-param/hugo.toml projectsSection = '' and
+       tests/fixtures/section-param-of-spaces/hugo.toml projectsSection = '   '; all four keep the
+       example site's home pages, which feature projects of projets/. None names a section: rather
+       than a site that quietly falls back to projets, a message saying every project lives outside
+       a section "42" or "   ", or a Go template execution error, the person building the site must
+       get an error message that names the projectsSection param and says, on that same line, that
+       it must be a text (for a number or a list) or that it is empty (for an empty text or spaces),
+       whatever the rest of the wording, and no Go template execution error that would follow it
+       and bury it in technical jargon. Two values of each kind, so that a check, or a message,
+       made for a single type or a single empty value does not pass. */
+    const MUST_BE_A_TEXT = /\bprojectsSection\b.*\b(?:must|should)\s+be\b.*\btext\b/i;
+    const IS_EMPTY = /\bprojectsSection\b.*\b(?:empty|blank)\b/i;
+    const cases: { name: string; site: BuiltSite; message: RegExp; description: string }[] = [
+      {
+        name: 'a number as projectsSection',
+        site: SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER,
+        message: MUST_BE_A_TEXT,
+        description: 'projectsSection must be a text',
+      },
+      {
+        name: 'a list as projectsSection',
+        site: SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_LIST,
+        message: MUST_BE_A_TEXT,
+        description: 'projectsSection must be a text',
+      },
+      {
+        name: 'an empty text as projectsSection',
+        site: SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM,
+        message: IS_EMPTY,
+        description: 'projectsSection is empty',
+      },
+      {
+        name: 'spaces only as projectsSection',
+        site: SITE_WITH_A_WHITESPACE_ONLY_PROJECTS_SECTION_PARAM,
+        message: IS_EMPTY,
+        description: 'projectsSection is empty',
+      },
+    ];
+    for (const { name, site, message, description } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(build.errors, `with ${name}, the error message should say ${description}`).toMatch(message);
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
+        TEMPLATE_EXECUTION_ERROR,
+      );
+    }
   });
 });
 

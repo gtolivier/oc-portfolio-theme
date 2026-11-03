@@ -1280,3 +1280,16 @@ export const SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION = testSite('projects-i
    'projets/restauration-pendule', which lives outside the configured section. Its English home
    page features no projects. */
 export const SITE_WITH_A_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION = testSite('project-outside-the-configured-section');
+
+/* The example site leaves out the projectsSection site param: these sites keep its content and set
+   that param to a value that names no section: a number, projectsSection = 42 (see
+   tests/fixtures/section-param-as-a-number/hugo.toml), a list, projectsSection = ['realisations']
+   (tests/fixtures/section-param-as-a-list/hugo.toml), an empty text, projectsSection = ''
+   (tests/fixtures/unfilled-section-param/hugo.toml), and a text of spaces only,
+   projectsSection = '   ' (tests/fixtures/section-param-of-spaces/hugo.toml). Their folder names
+   avoid the words projectsSection, text, empty and blank, which the error-message assertions look
+   for. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER = testSite('section-param-as-a-number');
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_LIST = testSite('section-param-as-a-list');
+export const SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM = testSite('unfilled-section-param');
+export const SITE_WITH_A_WHITESPACE_ONLY_PROJECTS_SECTION_PARAM = testSite('section-param-of-spaces');
