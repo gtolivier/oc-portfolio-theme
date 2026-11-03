@@ -34,6 +34,7 @@ import {
   SITE_WITH_A_BUILD_PARAM_AS_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_BUILD_PARAM_AS_TEXT,
   SITE_WITH_A_PROJECT_STACK_AS_A_TEXT,
+  SITE_WITH_PROJECT_STACKS_AS_AN_EMPTY_TEXT_AND_FALSE,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
   SITE_WITH_PROJECTS_UNDER_THE_HERO,
   TEMPLATE_EXECUTION_ERROR,
@@ -1876,6 +1877,34 @@ test.describe('featured project whose page writes its stack as a text: build fai
     expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
       TEMPLATE_EXECUTION_ERROR,
     );
+  });
+});
+
+test.describe('featured projects whose pages write their stack as an empty text or as false: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('featured projects whose pages write their stack as an empty text or as the boolean false rather than a list make the site build fail, with, for each, an error message that names that project and says its stack must be a list', () => {
+    /* tests/fixtures/materials-left-blank-or-false/content/projets/cadran-solaire.md and
+       girouette-cuivre.md, two projects the French home page features, write their stack under
+       [params] as an empty text, '', and as the boolean false, rather than a list of entries:
+       Go templates read both as an empty value, so the card would silently show no stack. Like
+       a stack written as a text, each must instead make the build fail with a message, on one
+       line, about the featured projects, that names the project by its reference and says its
+       stack must be a list, whatever the rest of the wording. */
+    const build = tryToBuildSite(SITE_WITH_PROJECT_STACKS_AS_AN_EMPTY_TEXT_AND_FALSE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    for (const project of ['projets/cadran-solaire', 'projets/girouette-cuivre']) {
+      const messages = build.errors
+        .split('\n')
+        .filter((line) => line.includes(project) && /\bstack\b.*\blist\b/.test(line));
+      expect(
+        messages,
+        `one error message naming ${project} and saying its stack must be a list, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(messages[0], `the error message about ${project} should be about the featured projects`).toMatch(
+        /\bprojects\b/,
+      );
+    }
   });
 });
 

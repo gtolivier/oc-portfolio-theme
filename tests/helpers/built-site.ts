@@ -1046,6 +1046,16 @@ export const SITE_WITH_THE_HERO_STACK_UNDER_THE_LAST_HERO_BUTTON = testSite('mat
    assertions look for. */
 export const SITE_WITH_A_MISSPELLED_KEY_IN_THE_SECOND_HERO_BUTTON = testSite('intitule-mal-ecrit');
 
+/* The example site's featured projects declare their stack as a list: this site replaces the
+   French home page with the one of tests/fixtures/materials-left-blank-or-false/content, without
+   a hero nor clients, which features the example site's 'projets/restauration-pendule', then
+   "Cadran solaire" and "Girouette en cuivre", two fictional projects added under projets/ in
+   French only, whose pages write, under [params], their stack as an empty text, stack = '', and
+   as the boolean false, stack = false, rather than a list. Its folder name avoids the words
+   stack, list and projects, and the language codes, which the error-message assertions look
+   for. */
+export const SITE_WITH_PROJECT_STACKS_AS_AN_EMPTY_TEXT_AND_FALSE = testSite('materials-left-blank-or-false');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
