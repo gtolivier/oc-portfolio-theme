@@ -25,6 +25,7 @@ import {
   SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER_AND_PROJECTS_ELSEWHERE,
   SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE,
   SITE_WITH_A_PADDED_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE,
   SITE_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT,
@@ -2228,6 +2229,38 @@ test.describe('projectsSection site param with whitespace at its start or end: b
     expect(
       paramMessages,
       `error messages that name projectsSection, quote its value as ${quoted} and say it has whitespace, in:\n${build.errors}`,
+    ).not.toEqual([]);
+    for (const entry of entries) {
+      const messages = build.errors.split('\n').filter((line) => line.includes(entry));
+      expect(messages, `no error message should name the featured project ${entry}, in:\n${build.errors}`).toEqual([]);
+    }
+  });
+});
+
+test.describe('projectsSection site param that names no section: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a projectsSection site param that names no section of the site, on a site whose featured projects live in another section, makes the site build fail with an error message that names the param and quotes its value, without an error message per featured project', () => {
+    /* tests/fixtures/misspelled-param-with-projects-elsewhere/hugo.toml sets projectsSection =
+       'realisatons', a typo; its content/_index.md features 'realisations/pendule-de-voyage' and
+       'realisations/horloge-de-parquet', two projects of content/realisations/, the section the
+       person building the site meant to name. The param is a well-formed text, but no section of
+       the site has that name: the person must get an error message that names the projectsSection
+       param and quotes its value as Go's %q does ("realisatons"), so that they see the typo, and no
+       error message per featured project saying it does not live in a section that does not
+       exist, which would send them moving projects that are where they meant them. The param's
+       message is looked for as the lines naming projectsSection and quoting its value, the others
+       as the lines naming an entry, as written in the front matter. */
+    const entries = ['realisations/pendule-de-voyage', 'realisations/horloge-de-parquet'];
+    const quoted = '"realisatons"';
+    const build = tryToBuildSite(SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const paramMessages = build.errors
+      .split('\n')
+      .filter((line) => line.includes(quoted) && /\bprojectsSection\b/.test(line));
+    expect(
+      paramMessages,
+      `error messages that name projectsSection and quote its value as ${quoted}, in:\n${build.errors}`,
     ).not.toEqual([]);
     for (const entry of entries) {
       const messages = build.errors.split('\n').filter((line) => line.includes(entry));

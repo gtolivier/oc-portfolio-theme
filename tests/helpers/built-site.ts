@@ -1194,6 +1194,18 @@ export const SITE_WITH_A_PADDED_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE = 
   'padded-param-with-projects-elsewhere',
 );
 
+/* Like the three sites above, this one replaces both home pages with those of
+   tests/fixtures/misspelled-param-with-projects-elsewhere/content, whose French one features
+   "realisations/pendule-de-voyage" and "realisations/horloge-de-parquet", two fictional projects
+   added in French only in realisations/, but its projectsSection site param is a well-formed text
+   that names no section of the site, projectsSection = 'realisatons', a typo (see
+   tests/fixtures/misspelled-param-with-projects-elsewhere/hugo.toml). Its English home page
+   features no projects. Its folder name avoids the words projectsSection, realisatons,
+   realisations and projets, which the error-message assertions look for. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE = testSite(
+  'misspelled-param-with-projects-elsewhere',
+);
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
