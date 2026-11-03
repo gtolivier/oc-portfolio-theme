@@ -83,7 +83,7 @@
 {{- $knownKeys := slice }}
 {{- range $keysAsRead }}{{ $knownKeys = $knownKeys | append (lower .) }}{{ end }}
 {{- range $key, $_ := $button }}
-  {{- if not (in $knownKeys (lower $key)) }}{{ errorf "hero: button %d holds an unknown %s key: a button only holds label, url and pageRef (language: %s)" $position $key $lang }}
+  {{- if not (in $knownKeys (lower $key)) }}{{ errorf "hero: button %d holds an unknown %s key: a button only holds %s (language: %s)" $position $key (delimit $buttonFields ", " " and ") $lang }}
   {{- else if not (in $keysAsRead $key) }}{{ errorf "hero: button %d holds a %s key written in another case than the one the theme reads (language: %s)" $position $key $lang }}{{ end }}
 {{- end }}
 {{- $hasMiscasedLabel := in $miscasedFields "label" }}
