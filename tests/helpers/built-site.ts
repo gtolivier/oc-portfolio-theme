@@ -1206,6 +1206,18 @@ export const SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_E
   'misspelled-param-with-projects-elsewhere',
 );
 
+/* Like the four sites above, this one replaces both home pages with those of
+   tests/fixtures/nested-param-with-its-projects/content, whose French one features
+   "projets/horlogerie/pendule-de-voyage" and "projets/horlogerie/horloge-comtoise", two fictional
+   projects added in French only in one subsection of projets/, horlogerie/, but its
+   projectsSection site param names that subsection, projectsSection = 'projets/horlogerie' (see
+   tests/fixtures/nested-param-with-its-projects/hugo.toml), rather than a top-level section. Its
+   English home page features no projects. Its folder name avoids the words projectsSection,
+   top-level, horlogerie and projets, which the error-message assertions look for. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_A_SUBSECTION_AND_ITS_PROJECTS = testSite(
+  'nested-param-with-its-projects',
+);
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

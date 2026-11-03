@@ -26,6 +26,7 @@ import {
   SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE,
   SITE_WITH_A_PADDED_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_A_SUBSECTION_AND_ITS_PROJECTS,
   SITE_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT,
@@ -2261,6 +2262,39 @@ test.describe('projectsSection site param that names no section: build failure',
     expect(
       paramMessages,
       `error messages that name projectsSection and quote its value as ${quoted}, in:\n${build.errors}`,
+    ).not.toEqual([]);
+    for (const entry of entries) {
+      const messages = build.errors.split('\n').filter((line) => line.includes(entry));
+      expect(messages, `no error message should name the featured project ${entry}, in:\n${build.errors}`).toEqual([]);
+    }
+  });
+});
+
+test.describe('projectsSection site param that names a subsection: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a projectsSection site param that names a subsection, on a site whose featured projects live in that subsection, makes the site build fail with an error message that names the param, quotes its value and says it must name a top-level section, without an error message per featured project', () => {
+    /* tests/fixtures/nested-param-with-its-projects/hugo.toml sets projectsSection =
+       'projets/horlogerie', a subsection of projets/; its content/_index.md features
+       'projets/horlogerie/pendule-de-voyage' and 'projets/horlogerie/horloge-comtoise', two
+       projects of that subsection. Featured projects are compared with the param through their
+       top-level section, so a param naming a subsection can never match: rather than an error
+       message per featured project saying it does not live in the section where it does live,
+       the person building the site must get an error message that names the projectsSection
+       param, quotes its value as Go's %q does ("projets/horlogerie") and says, on that same line,
+       that it must be a top-level section, whatever the rest of the wording. The param's message
+       is looked for as the lines naming projectsSection, quoting its value and saying top-level,
+       the others as the lines naming an entry, as written in the front matter. */
+    const entries = ['projets/horlogerie/pendule-de-voyage', 'projets/horlogerie/horloge-comtoise'];
+    const quoted = '"projets/horlogerie"';
+    const build = tryToBuildSite(SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_A_SUBSECTION_AND_ITS_PROJECTS);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const paramMessages = build.errors
+      .split('\n')
+      .filter((line) => line.includes(quoted) && /\bprojectsSection\b/.test(line) && /\btop[- ]level\b/i.test(line));
+    expect(
+      paramMessages,
+      `error messages that name projectsSection, quote its value as ${quoted} and say it must be a top-level section, in:\n${build.errors}`,
     ).not.toEqual([]);
     for (const entry of entries) {
       const messages = build.errors.split('\n').filter((line) => line.includes(entry));
