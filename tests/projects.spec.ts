@@ -12,6 +12,7 @@ import {
   SITE_WITH_AN_UNPUBLISHED_PROJECTS_SECTION,
   SITE_WITH_AN_UNPUBLISHED_SECTION_PAGE,
   SITE_WITH_PROJECTS_IN_TWO_SECTIONS,
+  SITE_WITH_PROJECTS_IN_A_SUBSECTION,
   SITE_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT,
@@ -1938,6 +1939,36 @@ test.describe('home pages of the example site, served at the site root and under
       await expect(page).toHaveURL(site.sectionAddress);
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(site.sectionTitle);
     }
+  });
+});
+
+test.describe('home page of another site, featuring only projects of one subsection of projets', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_PROJECTS_IN_A_SUBSECTION);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('the "Tous les projets" link opens the projects section, not the subsection that holds every featured project', async ({
+    page,
+    context,
+  }) => {
+    await serveSite(context, SITE_WITH_PROJECTS_IN_A_SUBSECTION, siteDirectory);
+    /* tests/fixtures/projects-in-a-subsection/content/_index.md features two projects, both in
+       content/projets/horlogerie/ (title "Horlogerie", published at /fr/projets/horlogerie/). */
+    const subsectionResponse = await page.goto(`${SITE_WITH_PROJECTS_IN_A_SUBSECTION.origin}/fr/projets/horlogerie/`);
+    expect(subsectionResponse?.status(), 'status of the subsection page').toBe(200);
+    await page.goto(`${SITE_WITH_PROJECTS_IN_A_SUBSECTION.origin}/fr/`);
+    const section = projectsSection(page);
+    await expect(section.getByRole('article')).toHaveCount(2);
+    const link = section.getByRole('link', { name: 'Tous les projets', exact: true });
+    await expect(link).toHaveCount(1);
+    await link.click();
+    /* The example site's content/projets/, titled "Projets". */
+    await expect(page).toHaveURL(`${SITE_WITH_PROJECTS_IN_A_SUBSECTION.origin}/fr/projets/`);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Projets');
   });
 });
 

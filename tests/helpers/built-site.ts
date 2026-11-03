@@ -1056,6 +1056,14 @@ export const SITE_WITH_A_MISSPELLED_KEY_IN_THE_SECOND_HERO_BUTTON = testSite('in
    for. */
 export const SITE_WITH_PROJECT_STACKS_AS_AN_EMPTY_TEXT_AND_FALSE = testSite('materials-left-blank-or-false');
 
+/* The example site's French home page features projects that sit directly in the projets/
+   section: this site replaces that home page with the one of
+   tests/fixtures/projects-in-a-subsection/content, without a hero nor clients, which features
+   "Pendule de voyage" and "Horloge comtoise", two fictional projects added in French only in
+   one subsection of projets/, horlogerie/, titled "Horlogerie" and published at
+   /fr/projets/horlogerie/. */
+export const SITE_WITH_PROJECTS_IN_A_SUBSECTION = testSite('projects-in-a-subsection');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
