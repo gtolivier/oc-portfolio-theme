@@ -400,11 +400,12 @@ export const SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES = testSite('section-withou
    hourglass's declares [build] render = false, so that it has no address at all. */
 export const SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES = testSite('projects-without-published-pages');
 
-/* The example site's featured projects all live in a section, projets/: this site replaces the
-   French home page with the one of tests/fixtures/project-at-the-root/content, without a hero nor
-   clients, which features a single fictional project, "Pendule murale", added at the root of the
-   content, outside any section (pendule-murale.md, published at /fr/pendule-murale/). The example
-   site's projets/ section is still built. */
+/* The example site's featured projects all live in a section, projets/, where featured projects
+   must live: this site replaces the French home page with the one of
+   tests/fixtures/project-at-the-root/content, without a hero nor clients, which features a single
+   fictional project, 'pendule-murale', added at the root of the content, outside any section
+   (pendule-murale.md). Its folder name avoids that slug, which the error-message assertion looks
+   for. */
 export const SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT = testSite('project-at-the-root');
 
 /* The example site's featured projects live in a published section, projets/: this site replaces

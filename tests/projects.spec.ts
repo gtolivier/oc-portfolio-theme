@@ -1911,68 +1911,6 @@ test.describe('home pages of the example site, served at the site root and under
   });
 });
 
-test.describe('home page of another site, featuring a project at the content root', () => {
-  let siteDirectory: string;
-  test.beforeAll(() => {
-    siteDirectory = buildSite(SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT);
-  });
-  test.afterAll(() => {
-    removeDirectory(siteDirectory);
-  });
-
-  test('the section "Projets sélectionnés" shows the card of a featured project that lives at the content root, outside any section, but no "Tous les projets" link, since no section holds that project', async ({
-    page,
-    context,
-  }) => {
-    await serveSite(context, SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT, siteDirectory);
-    await page.goto(`${SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT.origin}/fr/`);
-    const section = projectsSection(page);
-    /* tests/fixtures/project-at-the-root/content/_index.md features 'pendule-murale', a page at the
-       root of the content: the section and its card are still shown… */
-    const card = cardTitled(section, 'Pendule murale');
-    await expect(card).toHaveCount(1);
-    await expect(card).toBeVisible();
-    await expect(card.getByRole('link', { name: 'Voir le détail' })).toHaveCount(1);
-    /* …but no link claims to list all the projects: there is no projects section to open, and the
-       home page the visitor is on is not one. */
-    await expect(section.getByRole('link', { name: 'Tous les projets' })).toHaveCount(0);
-    await expect(section.getByText('Tous les projets')).toHaveCount(0);
-  });
-
-  test('on a phone, without the "Tous les projets" link, the first card of the section "Projets sélectionnés" is as far below the heading as it is below the link on a home page that has it', async ({
-    page,
-    context,
-  }) => {
-    await serveSite(context, SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT, siteDirectory);
-    await page.setViewportSize(PHONE);
-    /* From the bottom of an element's box (the link's ends with its underline) to the top of the
-       first card's. */
-    const spaceAboveFirstCard = async (element: Locator, firstCard: Locator) => {
-      const [above, card] = await Promise.all([elementBox(element), elementBox(firstCard)]);
-      return card.top - above.bottom;
-    };
-    /* The example site's home page has the link, below the heading and above the first card. */
-    await page.goto('/fr/');
-    await page.evaluate(() => document.fonts.ready);
-    const sectionWithLink = projectsSection(page);
-    const link = sectionWithLink.getByRole('link', { name: 'Tous les projets', exact: true });
-    await expect(link).toBeVisible();
-    const belowLink = await spaceAboveFirstCard(link, sectionWithLink.getByRole('article').first());
-    /* This site's home page has no link: the first card comes right after the heading. */
-    await page.goto(`${SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT.origin}/fr/`);
-    await page.evaluate(() => document.fonts.ready);
-    const section = projectsSection(page);
-    await expect(section.getByRole('link', { name: 'Tous les projets' })).toHaveCount(0);
-    const firstCard = section.getByRole('article').first();
-    await expect(firstCard).toBeVisible();
-    const belowHeading = await spaceAboveFirstCard(section.getByRole('heading', { level: 2 }), firstCard);
-    expect(
-      Math.abs(belowHeading - belowLink),
-      `space from the heading to the first card without the link (${belowHeading.toFixed(1)} px) against the space from the link to the first card with it (${belowLink.toFixed(1)} px)`,
-    ).toBeLessThanOrEqual(2);
-  });
-});
-
 test.describe('home pages of other sites, featuring a project whose section has no published page', () => {
   /* Two ways for a section to have no published page: its _index.md declares render = 'never' in
      its cascade, so that its projects have no page either, or under a plain [build], so that its
@@ -2028,6 +1966,41 @@ test.describe('home pages of other sites, featuring a project whose section has 
         .soft(section.getByText('Tous les projets'), `"Tous les projets" texts on ${site.origin}/fr/`)
         .toHaveCount(0);
     }
+  });
+
+  test('on a phone, without the "Tous les projets" link, the first card of the section "Projets sélectionnés" is as far below the heading as it is below the link on a home page that has it', async ({
+    page,
+    context,
+  }) => {
+    const siteWithoutLink = SITE_WITH_AN_UNPUBLISHED_PROJECTS_SECTION;
+    await serveSite(context, siteWithoutLink, siteDirectories[sites.findIndex(({ site }) => site === siteWithoutLink)]);
+    await page.setViewportSize(PHONE);
+    /* From the bottom of an element's box (the link's ends with its underline) to the top of the
+       first card's. */
+    const spaceAboveFirstCard = async (element: Locator, firstCard: Locator) => {
+      const [above, card] = await Promise.all([elementBox(element), elementBox(firstCard)]);
+      return card.top - above.bottom;
+    };
+    /* The example site's home page has the link, below the heading and above the first card. */
+    await page.goto('/fr/');
+    await page.evaluate(() => document.fonts.ready);
+    const sectionWithLink = projectsSection(page);
+    const link = sectionWithLink.getByRole('link', { name: 'Tous les projets', exact: true });
+    await expect(link).toBeVisible();
+    const belowLink = await spaceAboveFirstCard(link, sectionWithLink.getByRole('article').first());
+    /* The home page of the site whose carnets/ section has no published page has no link: the
+       first card comes right after the heading. */
+    await page.goto(`${siteWithoutLink.origin}/fr/`);
+    await page.evaluate(() => document.fonts.ready);
+    const section = projectsSection(page);
+    await expect(section.getByRole('link', { name: 'Tous les projets' })).toHaveCount(0);
+    const firstCard = section.getByRole('article').first();
+    await expect(firstCard).toBeVisible();
+    const belowHeading = await spaceAboveFirstCard(section.getByRole('heading', { level: 2 }), firstCard);
+    expect(
+      Math.abs(belowHeading - belowLink),
+      `space from the heading to the first card without the link (${belowHeading.toFixed(1)} px) against the space from the link to the first card with it (${belowLink.toFixed(1)} px)`,
+    ).toBeLessThanOrEqual(2);
   });
 });
 
@@ -2591,6 +2564,34 @@ test.describe('featured project content errors: build failure', () => {
         new RegExp(languageCodePattern(language), 'u'),
       );
     }
+  });
+
+  test("a home page that features a project living at the content root, outside any section, makes the site build fail, with an error message that names that entry, the projets section and the home page's language, without a template execution error after it", () => {
+    /* Featured projects must live in the projets section, the one the "Tous les projets" link
+       opens: a page at the root of the content, in no section at all, does not either.
+       tests/fixtures/project-at-the-root/content/_index.md features a single project,
+       'pendule-murale', a page at the root of the content. Rather than a section with a card of
+       that page, the person building the site must get the same failure as for a project of
+       another section: a message that, on one line, names the entry as written in the front
+       matter, the section the project must live in, projets, and the home page's language by its
+       code, whatever the rest of the wording, and no Go template execution error that would
+       follow it and bury it in technical jargon. The section and the language are looked for as
+       in the test above. */
+    const entry = 'pendule-murale';
+    const language = 'fr';
+    const build = tryToBuildSite(SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      /execute of template failed|error calling/i,
+    );
+    const messages = build.errors.split('\n').filter((line) => line.includes(entry));
+    expect(messages, `one error message naming the entry ${entry}, in:\n${build.errors}`).toHaveLength(1);
+    expect(messages[0], 'the error message should name the projets section').toMatch(
+      /^(?=.*\bsection\b)(?=.*(?<![\w-])projets(?![\w-]|\/[\w-])).*$/u,
+    );
+    expect(messages[0], `the error message should name the home page's language, ${language}`).toMatch(
+      new RegExp(languageCodePattern(language), 'u'),
+    );
   });
 
   /* Both directions, each with the code of the home page's language: a French home page featuring
