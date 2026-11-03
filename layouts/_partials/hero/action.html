@@ -40,7 +40,7 @@
   {{- else }}
     {{- with site.GetPage $pageRef }}
       {{- $href = .RelPermalink }}
-      {{- if and (isset .Params "build") (not (reflect.IsMap .Params.build)) }}
+      {{- if partial "has-custom-build-param.html" . }}
         {{- $pageRefError = printf "hero: button %d: the pageRef %q points to a page that declares a custom parameter named build, which the theme reads as Hugo's build options (the [build] front matter): rename this parameter (language: %s)" $position $pageRef $lang }}
       {{- else if not (partial "is-published.html" .) }}
         {{- $pageRefError = printf "hero: button %d: the pageRef %q points to a page that is not published (language: %s)" $position $pageRef $lang }}

@@ -1,0 +1,2 @@
+{{- /* Whether the page declares a custom parameter named build: Hugo reads build as the page's build options (the [build] front matter) only when it is a table, so any other value is a content mistake, which is-published.html would silently ignore. Each caller words its own error. */}}
+{{- return and (isset .Params "build") (not (reflect.IsMap .Params.build)) }}

@@ -16,7 +16,7 @@
 {{- if not $page }}{{ errorf "projects: the home page's projects parameter references a page that cannot be found (language: %s): %q. The project may not exist, the page may not be translated into this language, or not published: a draft, a future (scheduled) date or an expired page" $lang $entry }}{{ continue }}{{ end }}
 {{- if not $page.IsPage }}{{ errorf "projects: the home page's projects parameter references %s, which is not a project (language: %s): %q" (index $nonProjectKindWords $page.Kind | default "a page of another type") $lang $entry }}{{ continue }}{{ end }}
 {{- if and (ne $page.Section "projets") (partial "is-published.html" $page.Parent) }}{{ errorf "projects: the project %q does not live in the projets section, which the home page's projects parameter requires (language: %s)" $entry $lang }}{{ continue }}{{ end }}
-{{- if and (isset $page.Params "build") (not (reflect.IsMap $page.Params.build)) }}{{ errorf "projects: the project %q declares a custom parameter named build, which the theme reads as Hugo's build options (the [build] front matter): rename this parameter (language: %s)" $entry $lang }}{{ continue }}{{ end }}
+{{- if partial "has-custom-build-param.html" $page }}{{ errorf "projects: the project %q declares a custom parameter named build, which the theme reads as Hugo's build options (the [build] front matter): rename this parameter (language: %s)" $entry $lang }}{{ continue }}{{ end }}
 {{- if and $page.Params.stack (not (reflect.IsSlice $page.Params.stack)) }}{{ errorf "projects: the stack of the project %q must be a list (language: %s)" $entry $lang }}{{ continue }}{{ end }}
 {{- $projects = $projects | append $page }}
 {{- end }}
