@@ -23,9 +23,12 @@
 {{- $pageRefError := "" }}
 {{- if $hasPageRef }}
   {{- $pageRefProblem := partial "text-problem.html" $pageRef }}
-  {{- if and (eq $pageRefProblem "not-text") (ne $pageRef nil) }}
+  {{- /* YAML reads a pageRef key left without a value as null: it is an
+       empty pageRef, not a value of another type. */}}
+  {{- if eq $pageRef nil }}{{ $pageRefProblem = "empty" }}{{ end }}
+  {{- if eq $pageRefProblem "not-text" }}
     {{- $pageRefError = printf "hero: button %d: the pageRef field must be a page reference, a text (language: %s)" $position $lang }}
-  {{- else if or (eq $pageRefProblem "empty") (eq $pageRef nil) }}
+  {{- else if eq $pageRefProblem "empty" }}
     {{- $pageRefError = printf "hero: button %d: the pageRef field is empty: it must be a page reference (language: %s)" $position $lang }}
   {{- else if eq $pageRefProblem "padded" }}
     {{- $pageRefError = printf "hero: button %d: the pageRef %q has whitespace at its start or end, which Hugo does not trim (language: %s)" $position $pageRef $lang }}
