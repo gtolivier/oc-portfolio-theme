@@ -64,8 +64,9 @@
   {{- if isset $button $key }}{{ errorf "hero: button %d holds a %s key, which belongs to [params], written before [params.hero], not under a button (language: %s)" $position $key $lang }}{{ end }}
 {{- end }}
 {{- if isset $button "stack" }}{{ errorf "hero: button %d holds a stack key, which belongs to [params.hero], written before the buttons (language: %s)" $position $lang }}{{ end }}
+{{- if isset $button "tagline" }}{{ errorf "hero: button %d holds a tagline key, which belongs to [params.hero], written before the buttons (language: %s)" $position $lang }}{{ end }}
 {{- /* A misplaced [params] or [params.hero] key already has its own error above: it is not reported as unknown too. */}}
-{{- $knownKeys := union (slice "label" "url" "pageref" "stack") $homeParamsKeys }}
+{{- $knownKeys := union (slice "label" "url" "pageref" "stack" "tagline") $homeParamsKeys }}
 {{- range $key, $_ := $button }}
   {{- if not (in $knownKeys (lower $key)) }}{{ errorf "hero: button %d holds an unknown %s key: a button only holds label, url and pageRef (language: %s)" $position $key $lang }}{{ end }}
 {{- end }}
