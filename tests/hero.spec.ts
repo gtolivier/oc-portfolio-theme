@@ -2857,7 +2857,7 @@ test.describe('hero content errors: build failure', () => {
   });
 
   test('a home page whose hero stack key is written under the last hero button makes the site build fail, with an error message that names that button by its position and the stack key', () => {
-    /* tests/fixtures/materiaux-sous-le-dernier-lien/content/_index.md, a French home page, writes
+    /* tests/fixtures/materials-under-the-last-link/content/_index.md, a French home page, writes
        stack = [...] after its last [[params.hero.actions]] header rather than under [params.hero],
        so that TOML puts it in the second button's table rather than in params.hero.stack, where
        the theme reads it. Rather than a hero whose stack silently disappears, the person building
@@ -2876,7 +2876,7 @@ test.describe('hero content errors: build failure', () => {
   });
 
   test('a home page whose hero tagline key is written under the last hero button makes the site build fail, with an error message that names that button by its position, the tagline key and the [params.hero] table it belongs to', () => {
-    /* tests/fixtures/devise-sous-le-dernier-lien/content/_index.md, a French home page, writes
+    /* tests/fixtures/motto-under-the-last-link/content/_index.md, a French home page, writes
        tagline = [...] after its last [[params.hero.actions]] header rather than under
        [params.hero], so that TOML puts it in the second button's table rather than in
        params.hero.tagline, where the theme reads it. Rather than a mere unknown-key error that
@@ -2898,7 +2898,7 @@ test.describe('hero content errors: build failure', () => {
   });
 
   test('a home page whose hero title key is written under the last hero button makes the site build fail, with an error message that names that button by its position, the title key and the [params.hero] table it belongs to', () => {
-    /* tests/fixtures/metier-sous-le-dernier-lien/content/_index.md, a French home page, writes
+    /* tests/fixtures/trade-under-the-last-link/content/_index.md, a French home page, writes
        the hero's title = '...' after its last [[params.hero.actions]] header rather than under
        [params.hero], so that TOML puts it in the second button's table rather than in
        params.hero.title, where the theme reads it; the page's own title, before [params], stays
@@ -2920,7 +2920,7 @@ test.describe('hero content errors: build failure', () => {
   });
 
   test('a home page whose hero button holds a misspelled key makes the site build fail, with an error message that names that button by its position and the misspelled key', () => {
-    /* tests/fixtures/intitule-mal-ecrit/content/_index.md, a French home page, writes its second
+    /* tests/fixtures/misspelled-caption/content/_index.md, a French home page, writes its second
        hero button's label under the key lable, misspelled, next to a well filled-in url. A button
        may only hold label, url and pageRef: rather than a lone missing-label error that leaves the
        person building the site to guess why, that person must get an error message that says, on
@@ -2938,7 +2938,7 @@ test.describe('hero content errors: build failure', () => {
   });
 
   test('a home page whose hero buttons hold a key written in another case than the one the theme reads (PageRef, Tagline) makes the build fail, with one error message per such key that names its button by its position and the key as written', () => {
-    /* tests/fixtures/majuscules-mal-placees/content/_index.md, a French home page, has three hero
+    /* tests/fixtures/misplaced-capitals/content/_index.md, a French home page, has three hero
        buttons, each with a label: the first is well filled in, with pageRef = '/projets'; the
        second writes PageRef = '/projets', capitalized, without a url; the third, well filled in
        with a url, holds Tagline = [...], capitalized. The theme reads label, url and pageRef in
@@ -2977,7 +2977,7 @@ test.describe('hero content errors: build failure', () => {
   });
 
   test('a home page whose hero button holds a pageref key written all in lowercase makes the build fail, with an error message that names that button by its position and the key as written', () => {
-    /* tests/fixtures/renvoi-minuscule/content/_index.md, a French home page, has two hero buttons,
+    /* tests/fixtures/lowercase-target/content/_index.md, a French home page, has two hero buttons,
        each with a label: the first is well filled in, with pageRef = '/projets'; the second writes
        pageref = '/projets', all in lowercase, without a url. The theme reads pageRef in exactly
        that case: a key written all in lowercase is neither read nor, today, reported as a key
@@ -2997,7 +2997,7 @@ test.describe('hero content errors: build failure', () => {
   });
 
   test('a home page whose hero button is linked only by a PageRef key, written in another case than the one the theme reads, without a url, makes the build fail with an error message that names that button by its position and the key as written, and no error message saying the button has neither a url nor a pageRef', () => {
-    /* tests/fixtures/renvoi-capitale-seul/content/_index.md, a French home page, has two hero
+    /* tests/fixtures/capitalized-target-alone/content/_index.md, a French home page, has two hero
        buttons, each with a label: the first is well filled in, with pageRef = '/projets'; the
        second writes PageRef = '/projets', capitalized, and declares no url. The person building
        the site must get an error message that says, on one line, which button holds that key by
@@ -3018,7 +3018,7 @@ test.describe('hero content errors: build failure', () => {
   });
 
   test('a home page whose hero button writes its label under a Label key, in another case than the one the theme reads, with a well filled-in url, makes the build fail with an error message that names that button by its position and the key as written, and no error message saying the button has no label field', () => {
-    /* tests/fixtures/intitule-capitale/content/_index.md, a French home page, has two hero
+    /* tests/fixtures/capitalized-caption/content/_index.md, a French home page, has two hero
        buttons: the first is well filled in, with label = 'Voir les projets' and
        pageRef = '/projets'; the second writes Label = 'Contact', capitalized, next to a well
        filled-in url = '#contact'. The person building the site must get an error message that
@@ -3052,7 +3052,7 @@ test.describe('hero content errors: build failure', () => {
   });
 
   test('a home page whose hero button is linked only by a Url key, written in another case than the one the theme reads, without a pageRef, makes the build fail with an error message that names that button by its position and the key as written, and no error message saying the button has neither a url nor a pageRef', () => {
-    /* tests/fixtures/adresse-capitale-seule/content/_index.md, a French home page, has two hero
+    /* tests/fixtures/capitalized-address-alone/content/_index.md, a French home page, has two hero
        buttons, each with a label: the first is well filled in, with pageRef = '/projets'; the
        second writes Url = '#contact', capitalized, and declares no pageRef. The person building
        the site must get an error message that says, on one line, which button holds that key by
@@ -3231,7 +3231,7 @@ test.describe('hero content errors: build failure', () => {
   });
 
   test("a home page where a hero button's label is an empty text makes the site build fail with a single hero error message, which names that button by its position, says its label is empty and names the home page's language, rather than saying the button has no label field", () => {
-    /* tests/fixtures/intitule-laisse-vide/content/_index.md, a French home page, has two hero
+    /* tests/fixtures/caption-left-unfilled/content/_index.md, a French home page, has two hero
        buttons, each with a destination that is a text: the first is well filled in, with
        label = 'Voir les projets'; the second declares label = '', an empty text, with a valid
        url = '#contact'. A visitor would see a button with no text to read: the person building
@@ -3257,7 +3257,7 @@ test.describe('hero content errors: build failure', () => {
   });
 
   test("a home page written with a YAML front matter where a hero button's label is left without a value makes the site build fail with a single hero error message, which names that button by its position, says its label is empty and names the home page's language, rather than saying it must be a text", () => {
-    /* tests/fixtures/intitule-sans-valeur-yaml/content/_index.md, a French home page written
+    /* tests/fixtures/caption-without-a-yaml-value/content/_index.md, a French home page written
        with a YAML front matter, has two hero buttons, each with a destination that is a text: the
        first is well filled in, with label: Voir les projets; the second declares a label: line
        left without a value, which YAML reads as null, with a valid url: '#contact'. The person

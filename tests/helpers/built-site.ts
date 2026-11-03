@@ -1029,22 +1029,22 @@ export const SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB_
 
 /* The example site's French home page writes its hero stack under [params.hero], before its
    buttons: this site replaces that home page with the one of
-   tests/fixtures/materiaux-sous-le-dernier-lien/content, without clients nor projects, whose hero
+   tests/fixtures/materials-under-the-last-link/content, without clients nor projects, whose hero
    is well filled in, with two well filled-in buttons, but whose stack key, a list of three
    materials, is written under the last [[params.hero.actions]] header, so that TOML puts it in the
    second button's table instead of params.hero.stack. Its folder name avoids the words button,
    stack, hero, params, the numbers and the language codes, which the error-message assertions
    look for. */
-export const SITE_WITH_THE_HERO_STACK_UNDER_THE_LAST_HERO_BUTTON = testSite('materiaux-sous-le-dernier-lien');
+export const SITE_WITH_THE_HERO_STACK_UNDER_THE_LAST_HERO_BUTTON = testSite('materials-under-the-last-link');
 
 /* The example site's French home page writes its hero buttons with label, url and pageRef keys
    only: this site replaces that home page with the one of
-   tests/fixtures/intitule-mal-ecrit/content, without clients nor projects, whose hero is well
+   tests/fixtures/misspelled-caption/content, without clients nor projects, whose hero is well
    filled in, with a well filled-in first button, but whose second button writes its label under
    the misspelled key lable, next to a well filled-in url. Its folder name avoids the words
    button, lable, label, hero, the numbers and the language codes, which the error-message
    assertions look for. */
-export const SITE_WITH_A_MISSPELLED_KEY_IN_THE_SECOND_HERO_BUTTON = testSite('intitule-mal-ecrit');
+export const SITE_WITH_A_MISSPELLED_KEY_IN_THE_SECOND_HERO_BUTTON = testSite('misspelled-caption');
 
 /* The example site's featured projects declare their stack as a list: this site replaces the
    French home page with the one of tests/fixtures/materials-left-blank-or-false/content, without
@@ -1104,49 +1104,49 @@ export const SITE_WITH_A_WHITESPACE_ONLY_PROJECTS_SECTION_PARAM = testSite('sect
 
 /* The example site's French home page writes its hero tagline under [params.hero], before its
    buttons: this site replaces that home page with the one of
-   tests/fixtures/devise-sous-le-dernier-lien/content, without clients nor projects, whose hero is
+   tests/fixtures/motto-under-the-last-link/content, without clients nor projects, whose hero is
    well filled in, with a stack and two well filled-in buttons, but whose tagline key, a list of
    two lines, is written under the last [[params.hero.actions]] header, so that TOML puts it in
    the second button's table instead of params.hero.tagline. Its folder name avoids the words
    button, tagline, hero, params, before, the numbers and the language codes, which the
    error-message assertions look for. */
-export const SITE_WITH_THE_HERO_TAGLINE_UNDER_THE_LAST_HERO_BUTTON = testSite('devise-sous-le-dernier-lien');
+export const SITE_WITH_THE_HERO_TAGLINE_UNDER_THE_LAST_HERO_BUTTON = testSite('motto-under-the-last-link');
 
 /* Like the site above, this one replaces the example site's French home page with the one of
-   tests/fixtures/metier-sous-le-dernier-lien/content, without clients nor projects, whose hero is
+   tests/fixtures/trade-under-the-last-link/content, without clients nor projects, whose hero is
    well filled in, with a tagline, a stack and two well filled-in buttons, but whose hero title
    key is written under the last [[params.hero.actions]] header, so that TOML puts it in the
    second button's table instead of params.hero.title. The page's own title, written before
    [params], stays where it is. Its folder name avoids the words button, title, hero, params,
    before, the numbers and the language codes, which the error-message assertions look for. */
-export const SITE_WITH_THE_HERO_TITLE_UNDER_THE_LAST_HERO_BUTTON = testSite('metier-sous-le-dernier-lien');
+export const SITE_WITH_THE_HERO_TITLE_UNDER_THE_LAST_HERO_BUTTON = testSite('trade-under-the-last-link');
 
 /* The example site's French home page writes its hero buttons' keys in the case the theme reads:
    this site replaces that home page with the one of
-   tests/fixtures/majuscules-mal-placees/content, without clients nor projects, whose hero is well
+   tests/fixtures/misplaced-capitals/content, without clients nor projects, whose hero is well
    filled in, with a tagline, a stack and a well filled-in first button, but whose second button
    writes its page reference under PageRef instead of pageRef, without a url, and whose third
    button, well filled in with a label and a url, holds a Tagline key, capitalized. Its folder name
    avoids the words button, pageRef, tagline, hero, params, the numbers and the language codes,
    which the error-message assertions look for. */
-export const SITE_WITH_HERO_BUTTON_KEYS_WRITTEN_IN_ANOTHER_CASE = testSite('majuscules-mal-placees');
+export const SITE_WITH_HERO_BUTTON_KEYS_WRITTEN_IN_ANOTHER_CASE = testSite('misplaced-capitals');
 
 /* Like the site above, this one replaces the example site's French home page with the one of
-   tests/fixtures/renvoi-minuscule/content, without clients nor projects, whose hero is well
+   tests/fixtures/lowercase-target/content, without clients nor projects, whose hero is well
    filled in, with a tagline, a stack and a well filled-in first button, but whose second button
    writes its page reference under pageref, all in lowercase, instead of pageRef, without a url.
    Its folder name avoids the words button, pageref, hero, params, the numbers and the language
    codes, which the error-message assertions look for. */
-export const SITE_WITH_A_HERO_BUTTON_PAGE_REF_WRITTEN_IN_LOWERCASE = testSite('renvoi-minuscule');
+export const SITE_WITH_A_HERO_BUTTON_PAGE_REF_WRITTEN_IN_LOWERCASE = testSite('lowercase-target');
 
 /* The example site's French home page gives each hero button a label a visitor can read: this
-   site replaces that home page with the one of tests/fixtures/intitule-laisse-vide/content,
+   site replaces that home page with the one of tests/fixtures/caption-left-unfilled/content,
    whose hero has two buttons, written [[params.hero.actions]], each with a destination that is a
    text: the first is well filled in, with label = 'Voir les projets' and pageRef = '/projets';
    the second declares label = '', an empty text, with url = '#contact'. Its folder name avoids
    the words button, hero, label, empty, blank, missing, the numbers and the language codes,
    which the error-message assertions look for. */
-export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_LABEL = testSite('intitule-laisse-vide');
+export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_LABEL = testSite('caption-left-unfilled');
 
 /* The example site leaves out the projectsSection site param: these sites keep its content and set
    that param to the name of its section of projects with whitespace around it, which Hugo does not
@@ -1232,30 +1232,30 @@ export const SITE_WITH_A_CAPITALIZED_PROJECTS_SECTION_PARAM_AND_ITS_PROJECTS = t
 );
 
 /* Like SITE_WITH_A_HERO_BUTTON_PAGE_REF_WRITTEN_IN_LOWERCASE, this site replaces the example site's
-   French home page with the one of tests/fixtures/renvoi-capitale-seul/content, without clients
+   French home page with the one of tests/fixtures/capitalized-target-alone/content, without clients
    nor projects, whose hero is well filled in, with a tagline, a stack and a well filled-in first
    button, but whose second button, with a label, writes its page reference under PageRef instead
    of pageRef, and declares no url. Its folder name avoids the words button, pageRef, hero, params,
    url, neither, nor, both, missing, the numbers and the language codes, which the error-message
    assertions look for. */
-export const SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_PAGE_REF = testSite('renvoi-capitale-seul');
+export const SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_PAGE_REF = testSite('capitalized-target-alone');
 
 /* Like SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_PAGE_REF, this site replaces the example
-   site's French home page with the one of tests/fixtures/intitule-capitale/content, without clients
+   site's French home page with the one of tests/fixtures/capitalized-caption/content, without clients
    nor projects, whose hero is well filled in, with a tagline, a stack and a well filled-in first
    button, but whose second button, with a well filled-in url, writes its text under Label instead
    of label. Its folder name avoids the words button, label, Label, hero, params, url, no, field,
    missing, the numbers and the language codes, which the error-message assertions look for. */
-export const SITE_WITH_A_HERO_BUTTON_LABEL_WRITTEN_CAPITALIZED = testSite('intitule-capitale');
+export const SITE_WITH_A_HERO_BUTTON_LABEL_WRITTEN_CAPITALIZED = testSite('capitalized-caption');
 
 /* Like SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_PAGE_REF, this site replaces the example
-   site's French home page with the one of tests/fixtures/adresse-capitale-seule/content, without
+   site's French home page with the one of tests/fixtures/capitalized-address-alone/content, without
    clients nor projects, whose hero is well filled in, with a tagline, a stack and a well filled-in
    first button, but whose second button, with a label, writes its address under Url instead of
    url, and declares no pageRef. Its folder name avoids the words button, url, Url, pageRef, hero,
    params, neither, nor, both, missing, the numbers and the language codes, which the error-message
    assertions look for. */
-export const SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_URL = testSite('adresse-capitale-seule');
+export const SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_URL = testSite('capitalized-address-alone');
 
 /* The example site leaves out the projectsSection site param: these sites keep its content and set
    that param to the name of its section of projects with a slash at one end: at its start,
@@ -1288,14 +1288,14 @@ export const SITE_WITH_A_PROJECT_IN_AN_UNPUBLISHED_SUBSECTION_OF_ANOTHER_SECTION
 export const SITE_WITH_A_PROJECT_STACK_LEFT_BLANK_IN_YAML = testSite('materials-left-unset-in-yaml');
 
 /* The example site's French home page gives each hero button a label a visitor can read: this
-   site replaces that home page with the one of tests/fixtures/intitule-sans-valeur-yaml/content,
+   site replaces that home page with the one of tests/fixtures/caption-without-a-yaml-value/content,
    written with a YAML front matter, whose hero has two buttons, each with a destination that is a
    text: the first is well filled in, with label: Voir les projets and pageRef: /projets; the
    second declares a label: line left without a value, which YAML reads as null, with
    url: '#contact'. Its folder name avoids the words button, hero, label, empty, blank, null,
    text, must, missing, the numbers and the language codes, which the error-message assertions
    look for. */
-export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_LABEL_LEFT_BLANK_IN_YAML = testSite('intitule-sans-valeur-yaml');
+export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_LABEL_LEFT_BLANK_IN_YAML = testSite('caption-without-a-yaml-value');
 
 /* Like SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE, this site
    replaces both home pages with those of tests/fixtures/extension-param-with-its-projects/content,
