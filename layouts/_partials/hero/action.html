@@ -35,8 +35,10 @@
     {{- end }}
   {{- end }}
 {{- end }}
+{{- $urlIsEmpty := and (isset $button "url") (eq (partial "text-problem.html" $button.url) "empty") }}
+{{- if and $urlIsEmpty (not $hasPageRef) }}{{ errorf "hero: button %d: the url field is empty: it must be an address (language: %s)" $position $lang }}{{ end }}
 {{- if and $button.url $hasPageRef }}{{ errorf "hero: button %d declares both a url field and a pageRef field; it needs only one (language: %s)" $position $lang }}{{ end }}
-{{- if and (not $button.url) (not $hasPageRef) }}{{ errorf "hero: button %d has neither a url field nor a pageRef field (language: %s)" $position $lang }}{{ end }}
+{{- if and (not $button.url) (not $urlIsEmpty) (not $hasPageRef) }}{{ errorf "hero: button %d has neither a url field nor a pageRef field (language: %s)" $position $lang }}{{ end }}
 {{- range $key := slice "clients" "projects" }}
   {{- if isset $button $key }}{{ errorf "hero: button %d holds a %s key, which belongs to [params], written before [params.hero], not under a button (language: %s)" $position $key $lang }}{{ end }}
 {{- end }}
