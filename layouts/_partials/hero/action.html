@@ -4,7 +4,12 @@
 {{- $href := $button.url }}
 {{- /* "//host/…" points to another site: only a url relative to this
      site's root gets the baseURL prefix. */}}
-{{- if and $button.url (hasPrefix $button.url "/") (not (hasPrefix $button.url "//")) }}
+{{- if and (isset $button "url") (ne (partial "text-problem.html" $button.url) "not-text") }}
+{{- else if isset $button "url" }}
+  {{- errorf "hero: button %d: the url field must be a text (language: %s)" $position $lang }}
+  {{- $href = "" }}
+{{- end }}
+{{- if and (isset $button "url") (eq (printf "%T" $button.url) "string") $button.url (hasPrefix $button.url "/") (not (hasPrefix $button.url "//")) }}
   {{- $href = relURL (strings.TrimPrefix "/" $button.url) }}
 {{- end }}
 {{- $pageRef := $button.pageRef }}
