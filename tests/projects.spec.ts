@@ -54,6 +54,7 @@ import {
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_BUILD_PARAM_AS_TEXT,
   SITE_WITH_A_PROJECT_STACK_AS_A_TEXT,
   SITE_WITH_PROJECT_STACKS_AS_AN_EMPTY_TEXT_AND_FALSE,
+  SITE_WITH_A_PROJECT_STACK_LEFT_BLANK_IN_YAML,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
   SITE_WITH_PROJECTS_UNDER_THE_HERO,
   TEMPLATE_EXECUTION_ERROR,
@@ -1925,6 +1926,43 @@ test.describe('featured projects whose pages write their stack as an empty text 
       );
     }
   });
+});
+
+test('a featured project whose page, written with a YAML front matter, leaves its stack blank (stack: with no value) does not make the site build fail, and gets a card like a project without a stack: its title and description, no stack text, no empty slot for it', async ({
+  page,
+  context,
+}) => {
+  /* tests/fixtures/materials-left-unset-in-yaml/content/projets/sablier-chapelle.md, a project
+     the French home page features, writes its front matter in YAML and leaves its stack: line
+     without a value, which YAML reads as null. Unlike an empty text or false in TOML, the person
+     who wrote it left the field unfilled: the site must build, and the card must show the
+     project as if its page declared no stack at all. */
+  const build = tryToBuildSite(SITE_WITH_A_PROJECT_STACK_LEFT_BLANK_IN_YAML);
+  expect(build.succeeded, `the site build should succeed, but Hugo reported:\n${build.errors}`).toBe(true);
+  const siteDirectory = buildSite(SITE_WITH_A_PROJECT_STACK_LEFT_BLANK_IN_YAML);
+  try {
+    await serveSite(context, SITE_WITH_A_PROJECT_STACK_LEFT_BLANK_IN_YAML, siteDirectory);
+    await page.goto(`${SITE_WITH_A_PROJECT_STACK_LEFT_BLANK_IN_YAML.origin}/fr/`);
+    const title = 'Sablier de chapelle';
+    const description = 'Sablier de chapelle en verre soufflé, monture de chêne ciré et sable de marbre tamisé.';
+    const card = cardTitled(projectsSection(page), title);
+    await expect(card).toHaveCount(1);
+    await expect(card.getByText(description, { exact: true })).toHaveRole('paragraph');
+    /* Outside links (the link to the project's page has its own text), the title and the
+       description are all the card shows: no stack text, no separator left alone… */
+    const textOutsideLinks = () =>
+      card.evaluate((article) => {
+        const copy = article.cloneNode(true) as HTMLElement;
+        copy.querySelectorAll('a').forEach((link) => link.remove());
+        return (copy.textContent ?? '').replace(/\s+/g, ' ').trim();
+      });
+    await expect.poll(textOutsideLinks).toBe(`${title} ${description}`);
+    /* …and no text element left empty, or holding only whitespace, where the stack would go. */
+    const textElements = card.locator('p, span, li, dt, dd, time, small, strong, em, h1, h2, h3, h4, h5, h6');
+    await expect(textElements.filter({ hasNotText: /\S/ })).toHaveCount(0);
+  } finally {
+    removeDirectory(siteDirectory);
+  }
 });
 
 test.describe('home pages of the example site, served at the site root and under /portfolio/', () => {

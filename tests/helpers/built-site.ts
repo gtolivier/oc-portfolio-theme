@@ -1279,6 +1279,14 @@ export const SITE_WITH_A_PROJECT_IN_AN_UNPUBLISHED_SUBSECTION_OF_ANOTHER_SECTION
   'unpublished-subsection-of-another-section',
 );
 
+/* The example site's featured projects declare their stack as a list: this site replaces the
+   French home page with the one of tests/fixtures/materials-left-unset-in-yaml/content, without a
+   hero nor clients, which features the example site's 'projets/restauration-pendule', then
+   "Sablier de chapelle", a fictional project added under projets/ in French only, whose page,
+   written with a YAML front matter, declares only a title, a description and, under params, a
+   stack: line left without a value, which YAML reads as null. */
+export const SITE_WITH_A_PROJECT_STACK_LEFT_BLANK_IN_YAML = testSite('materials-left-unset-in-yaml');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
