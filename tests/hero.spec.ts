@@ -231,6 +231,15 @@ async function expectHeroNameAndTitle(
   }
 }
 
+/* Waits until the hero heading shows the name and the title in clear. Until then, the decoding
+   replaces the elements that hold them, which could vanish between finding a box and reading
+   it: a test that measures them on a running clock waits for this first. */
+async function waitForHeroHeadingInClear(page: Page): Promise<void> {
+  await expect
+    .poll(() => textOnScreen(mainContentHeading(page)), 'the name and the title in clear')
+    .toBe('Jean Exemple Horloger indépendant'.replace(/\s+/g, ''));
+}
+
 /* The two desktop windows the hero's layout is checked at: a wide one, 1280 × 900, and one
    768 px wide, 768 × 1024, where the desktop spacing starts. */
 const DESKTOP_VIEWPORTS = [
@@ -347,6 +356,7 @@ test('on the French home page, the main heading shows the author name, then the 
   /* On a new line: the professional title starts at least half a line below the name. */
   const professionalTitle = mainHeading.getByText('Horloger indépendant', { exact: true });
   await expect(professionalTitle).toBeVisible();
+  await waitForHeroHeadingInClear(page);
   const mainHeadingBox = await mainHeading.boundingBox();
   const professionalTitleBox = await professionalTitle.boundingBox();
   expect(professionalTitleBox!.y - mainHeadingBox!.y).toBeGreaterThanOrEqual(professionalTitleBox!.height / 2);
@@ -635,6 +645,7 @@ test('on phone as on desktop, the hero content lines up on the left with the hea
     'first button': firstHeroButton(page),
   };
   await expect(elements['first button']).toHaveText(/^\s*Voir les projets/);
+  await waitForHeroHeadingInClear(page);
   for (const [name, element] of Object.entries(elements)) {
     await expect(element, name).toBeVisible();
     const box = (await element.boundingBox())!;
@@ -671,6 +682,7 @@ test('on a phone, the hero fits within the screen width: no horizontal scrolling
   };
   await expect(elements['first button']).toHaveText(/^\s*Voir les projets/);
   await expect(elements['second button']).toHaveText('Contact');
+  await waitForHeroHeadingInClear(page);
   for (const [name, element] of Object.entries(elements)) {
     await expect(element, name).toBeVisible();
     const { left, right } = await displayedExtent(element);
