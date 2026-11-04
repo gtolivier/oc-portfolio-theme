@@ -1318,6 +1318,13 @@ export const SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_WITHOUT_NAM
    which the error-message assertions look for. */
 export const SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_THROUGH_A_PATH = testSite('index-file-param');
 
+/* The example site's French home page declares a clockmaker's contact intro: this site replaces
+   that home page with the one of tests/fixtures/other-contact/content, without a hero, clients,
+   projects nor background, whose [params.contact] declares a fictional bookbinder's intro,
+   'Ouverte aux commandes de reliure sur mesure, du carnet au registre. Écrivez-moi pour un
+   devis.' */
+export const SITE_WITH_ANOTHER_CONTACT_INTRO = testSite('other-contact');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

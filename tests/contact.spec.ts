@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
+import { SITE_WITH_ANOTHER_CONTACT_INTRO, buildSite, removeDirectory, serveSite } from './helpers/built-site';
 
 /* The contact section of a home page, in its main content: a region named by its title. */
 function contactSection(page: Page): Locator {
@@ -40,4 +41,31 @@ test('on the French home page, a section "Contact" with the anchor #contact come
      the section into view. */
   await page.goto('/fr/#contact');
   await expect(section).toBeInViewport();
+});
+
+/* The intro tests/fixtures/other-contact/content/_index.md declares for its contact section: a
+   fictional bookbinder's. */
+const OTHER_CONTACT_INTRO =
+  'Ouverte aux commandes de reliure sur mesure, du carnet au registre. Écrivez-moi pour un devis.';
+
+test.describe('home page of another site, with another contact intro', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_ANOTHER_CONTACT_INTRO);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on the French home page of another site, the section "Contact" shows the intro that site declares, and not the example site’s', async ({
+    page,
+    context,
+  }) => {
+    await serveSite(context, SITE_WITH_ANOTHER_CONTACT_INTRO, siteDirectory);
+    await page.goto(`${SITE_WITH_ANOTHER_CONTACT_INTRO.origin}/fr/`);
+    const section = contactSection(page);
+    await expect(section).toBeVisible();
+    await expect(section.getByText(OTHER_CONTACT_INTRO)).toBeVisible();
+    await expect(section.getByText(CONTACT_INTRO), 'the example site’s intro').toHaveCount(0);
+  });
 });
