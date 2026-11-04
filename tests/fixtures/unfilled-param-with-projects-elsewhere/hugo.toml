@@ -1,5 +1,5 @@
 # Configuration added to exampleSite/hugo.toml by the tests of a site whose
-# featured projects live in a section other than projets, realisations, but
+# featured projects live in a section other than projects, realisations, but
 # whose projectsSection site param is written but left unfilled, '', rather
 # than the name of that section. The fixture's content/ adds that section and
 # replaces both home pages.

@@ -11,9 +11,9 @@ disableKinds = ['taxonomy', 'term']
   # Sample author shown in the footer.
   author = 'Jean Exemple'
   # The top-level section the home page's featured projects live in, and
-  # that its all-projects link opens. Left out, it is projets; set it when
+  # that its all-projects link opens. Left out, it is projects; set it when
   # the projects live in another section, by its folder name.
-  # projectsSection = 'projets'
+  # projectsSection = 'projects'
 
 # The sample content may contain raw HTML (e.g. a positioned box on the
 # long page), as a project card or a figure would.
@@ -34,7 +34,7 @@ disableKinds = ['taxonomy', 'term']
       weight = 10
     [[languages.fr.menus.main]]
       name = 'Projets'
-      pageRef = '/projets'
+      pageRef = '/projects'
       weight = 20
     [[languages.fr.menus.main]]
       name = 'Contact'
@@ -51,7 +51,7 @@ disableKinds = ['taxonomy', 'term']
       weight = 10
     [[languages.en.menus.main]]
       name = 'Projects'
-      pageRef = '/projets'
+      pageRef = '/projects'
       weight = 20
     [[languages.en.menus.main]]
       name = 'Contact'

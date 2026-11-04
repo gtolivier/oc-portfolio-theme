@@ -3,8 +3,8 @@
 {{- $featured := partial "param-list-or-empty.html" (dict "params" .Params "key" "projects" "error" (printf "projects: the home page's projects parameter must be a list of pages (language: %s)" $lang)) }}
 {{- /* Only regular pages are projects. The words the error uses for each other kind of page an entry may reference; a kind missing here gets the generic wording, so that it is still rejected. */}}
 {{- $nonProjectKindWords := dict "home" "the home page itself" "section" "a section page" "term" "a taxonomy term page" "taxonomy" "a taxonomy page" "404" "the 404 error page" }}
-{{- /* The section featured projects must live in: the site names it in its projectsSection param, projets when it names none. */}}
-{{- $defaultProjectsSection := "projets" }}
+{{- /* The section featured projects must live in: the site names it in its projectsSection param, projects when it names none. */}}
+{{- $defaultProjectsSection := "projects" }}
 {{- /* What separates a section from its subsections in a section's path. */}}
 {{- $sectionPathSeparator := "/" }}
 {{- $projectsSection := $defaultProjectsSection }}

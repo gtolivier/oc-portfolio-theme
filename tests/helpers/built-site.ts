@@ -172,7 +172,7 @@ export const SITE_WITH_A_HERO_TITLE_AS_A_LIST = testSite('two-trades-heading');
 /* The example site's French home page has a hero whose every button has a
    single destination: this site replaces that home page with the one of
    tests/fixtures/button-with-two-destinations/content, whose second button
-   has a label and declares both url = '#contact' and pageRef = '/projets',
+   has a label and declares both url = '#contact' and pageRef = '/projects',
    two valid destinations. */
 export const SITE_WITH_A_BUTTON_WITH_URL_AND_PAGE_REF = testSite('button-with-two-destinations');
 
@@ -190,7 +190,7 @@ export const SITE_WITH_A_BUTTON_WITH_URL_AND_FALSE_PAGE_REF = testSite('address-
 /* The example site's French home page has a hero whose every pageRef is a
    text, a page reference: these sites replace that home page with the one of
    tests/fixtures/table-as-button-target/content, whose first button declares
-   a table, pageRef = { path = '/projets' }, and with the one of
+   a table, pageRef = { path = '/projects' }, and with the one of
    tests/fixtures/number-as-button-target/content, whose first button
    declares a number, pageRef = 42. Their folder names also avoid the words
    pageRef and page reference, which the error-message assertion looks for,
@@ -215,9 +215,9 @@ export const SITE_WITH_A_PAGE_REF_AS_FALSE = testSite('false-as-button-target');
 /* The example site's French home page has a hero whose every pageRef is written without
    whitespace around it: these sites replace that home page with the one of
    tests/fixtures/button-target-with-trailing-space/content, whose first button declares
-   pageRef = '/projets ', with a trailing space, and with the one of
+   pageRef = '/projects ', with a trailing space, and with the one of
    tests/fixtures/button-target-with-leading-tab/content, whose first button declares
-   pageRef = "\t/projets", with a leading tab: '/projets' exists, but Hugo does not trim the
+   pageRef = "\t/projects", with a leading tab: '/projects' exists, but Hugo does not trim the
    whitespace. Their folder names avoid the word whitespace, which the error-message assertion
    looks for, and hero, whose error messages are counted. */
 export const SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE = testSite('button-target-with-trailing-space');
@@ -346,17 +346,17 @@ export const SITE_WITH_CLIENTS_AS_AN_EMPTY_TEXT = testSite('empty-text-instead-o
 export const SITE_WITH_CLIENTS_AS_FALSE = testSite('false-instead-of-names');
 
 /* The example site's French home page declares its clients under [params]: this site replaces
-   that home page with the one of tests/fixtures/clientele-dans-la-banniere/content, whose hero is
+   that home page with the one of tests/fixtures/clientele-in-the-banner/content, whose hero is
    well filled in but whose clients key, a list of two names, is written after the [params.hero]
    header, under the hero's stack, so that TOML puts it in params.hero.clients instead of
    params.clients. Its folder name avoids the words clients, params, hero and before and the
    language codes, which the error-message assertions look for. */
-export const SITE_WITH_CLIENTS_UNDER_THE_HERO = testSite('clientele-dans-la-banniere');
+export const SITE_WITH_CLIENTS_UNDER_THE_HERO = testSite('clientele-in-the-banner');
 
 /* The example site's French home page features four projects: this site
    replaces that home page with the one of
    tests/fixtures/other-projects/content, without a hero nor clients, which
-   features three other fictional projects, added under projets/, in an
+   features three other fictional projects, added under projects/, in an
    order that is neither alphabetical nor reverse alphabetical: "Coucou de
    la Forêt-Noire", "Baromètre à mercure", "Chronomètre de marine". The
    barometer's page declares a title and a description only, without role,
@@ -365,27 +365,27 @@ export const SITE_WITH_CLIENTS_UNDER_THE_HERO = testSite('clientele-dans-la-bann
    /fr/projets/chronometre-marine/. */
 export const SITE_WITH_OTHER_PROJECTS = testSite('other-projects');
 
-/* The example site's French home page features projects of the projets/
+/* The example site's French home page features projects of the projects/
    section, where featured projects must live: this site replaces that home
    page with the one of tests/fixtures/projects-in-another-section/content,
    without a hero nor clients, which features a single fictional project,
    'realisations/pendule-de-voyage', added in another section, realisations/,
    titled "Réalisations" and published at /fr/realisations/. The example
-   site's projets/ section is still built. */
+   site's projects/ section is still built. */
 export const SITE_WITH_PROJECTS_IN_ANOTHER_SECTION = testSite('projects-in-another-section');
 
 /* The example site's French home page features only projects whose pages
    exist: this site replaces that home page with the one of
    tests/fixtures/featured-ref-without-page/content, without a hero nor
-   clients, which features an existing project, 'projets/restauration-pendule',
-   then 'projets/sablier-introuvable', a page that does not exist. Its folder
+   clients, which features an existing project, 'projects/restauration-pendule',
+   then 'projects/sablier-introuvable', a page that does not exist. Its folder
    name avoids that slug, which the error-message assertion looks for. */
 export const SITE_WITH_A_FEATURED_PROJECT_NOT_FOUND = testSite('featured-ref-without-page');
 
 /* The example site's featured projects each set their own [build] options, if any: this site
    replaces the French home page with the one of
    tests/fixtures/section-without-detail-pages/content, without a hero nor clients, which
-   features the example site's 'projets/restauration-pendule', then "Régulateur de parquet",
+   features the example site's 'projects/restauration-pendule', then "Régulateur de parquet",
    added in another section, esquisses/. That project's page sets no [build] options of its own:
    its section's _index.md declares [cascade.build] render = 'never', so that Hugo publishes
    nothing at /fr/esquisses/regulateur-de-parquet/. */
@@ -394,13 +394,13 @@ export const SITE_WITH_A_SECTION_WITHOUT_DETAIL_PAGES = testSite('section-withou
 /* The example site's featured projects all have a published page: this site replaces the French
    home page with the one of tests/fixtures/projects-without-published-pages/content, without a
    hero nor clients, which features "Horloge comtoise", the example site's
-   'projets/restauration-pendule', then "Sablier de marine", both added under projets/. Neither
+   'projects/restauration-pendule', then "Sablier de marine", both added under projects/. Neither
    added project has a published page: the clock's declares [build] render = 'link', so that Hugo
    gives it an address, /fr/projets/horloge-comtoise/, but publishes nothing there; the
    hourglass's declares [build] render = false, so that it has no address at all. */
 export const SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES = testSite('projects-without-published-pages');
 
-/* The example site's featured projects all live in a section, projets/, where featured projects
+/* The example site's featured projects all live in a section, projects/, where featured projects
    must live: this site replaces the French home page with the one of
    tests/fixtures/project-at-the-root/content, without a hero nor clients, which features a single
    fictional project, 'pendule-murale', added at the root of the content, outside any section
@@ -408,7 +408,7 @@ export const SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES = testSite('projects-wit
    for. */
 export const SITE_WITH_A_PROJECT_AT_THE_CONTENT_ROOT = testSite('project-at-the-root');
 
-/* The example site's featured projects live in a published section, projets/: this site replaces
+/* The example site's featured projects live in a published section, projects/: this site replaces
    the French home page with the one of tests/fixtures/unpublished-projects-section/content,
    without a hero nor clients, which features a single fictional project, "Pendule œil-de-bœuf",
    added in another section, carnets/, whose _index.md declares [cascade.build] render = 'never':
@@ -423,24 +423,24 @@ export const SITE_WITH_AN_UNPUBLISHED_PROJECTS_SECTION = testSite('unpublished-p
    project's own page is still published, at /fr/ebauches/horloge-de-gare/. */
 export const SITE_WITH_AN_UNPUBLISHED_SECTION_PAGE = testSite('unpublished-section-page');
 
-/* The example site's French home page features projects of the projets/ section alone, where
+/* The example site's French home page features projects of the projects/ section alone, where
    featured projects must live: this site replaces that home page with the one of
    tests/fixtures/projects-in-two-sections/content, without a hero nor clients, which features the
-   example site's 'projets/restauration-pendule', then 'realisations/coucou-de-chalet', added in
+   example site's 'projects/restauration-pendule', then 'realisations/coucou-de-chalet', added in
    another section, realisations/, titled "Réalisations". Both sections are published, at
    /fr/projets/ and /fr/realisations/. */
 export const SITE_WITH_PROJECTS_IN_TWO_SECTIONS = testSite('projects-in-two-sections');
 
 /* The example site's French home page features its projects as a list of page references: this
    site replaces that home page with the one of tests/fixtures/single-ref-instead-of-list/content,
-   without a hero nor clients, whose params.projects is a text, 'projets/restauration-pendule' (an
+   without a hero nor clients, whose params.projects is a text, 'projects/restauration-pendule' (an
    existing page of the example site), instead of a list. Its folder name avoids the word projects,
    which the error-message assertion looks for. */
 export const SITE_WITH_PROJECTS_AS_TEXT = testSite('single-ref-instead-of-list');
 
 /* The example site's English home page features its projects as a list of page references: this
    site replaces that home page with the one of tests/fixtures/english-home-single-ref/content,
-   without a hero nor clients, whose params.projects is a text, 'projets/restauration-pendule',
+   without a hero nor clients, whose params.projects is a text, 'projects/restauration-pendule',
    instead of a list. The example site's French home page is unchanged. Its folder name avoids the
    words projects and list and the language codes, which the error-message assertions look for. */
 export const SITE_WITH_AN_ENGLISH_HOME_WITH_PROJECTS_AS_TEXT = testSite('english-home-single-ref');
@@ -458,51 +458,51 @@ export const SITE_WITH_PROJECTS_AS_FALSE = testSite('false-instead-of-list');
 /* The example site's French home page features its projects as a list of page references: this
    site replaces that home page with the one of tests/fixtures/table-instead-of-ref/content,
    without a hero nor clients, whose params.projects is a list (so the check that projects is a
-   list lets it through) of 'projets/restauration-pendule', then a table,
-   { path = 'projets/restauration-pendule' }, instead of a page reference, then
-   'projets/montre-grande-complication', then another table,
-   { path = 'projets/montre-grande-complication' }. Its folder name avoids the word projects,
+   list lets it through) of 'projects/restauration-pendule', then a table,
+   { path = 'projects/restauration-pendule' }, instead of a page reference, then
+   'projects/montre-grande-complication', then another table,
+   { path = 'projects/montre-grande-complication' }. Its folder name avoids the word projects,
    which the error-message assertion looks for. */
 export const SITE_WITH_A_FEATURED_PROJECT_AS_MAP = testSite('table-instead-of-ref');
 
 /* The example site's French home page features its projects as a list of page references: this
    site replaces that home page with the one of tests/fixtures/empty-ref/content, without a hero
    nor clients, whose params.projects is a list of texts, as expected, of
-   'projets/restauration-pendule', then an empty text, '', instead of a page reference. Its folder
+   'projects/restauration-pendule', then an empty text, '', instead of a page reference. Its folder
    name avoids the word projects, which the error-message assertion looks for. */
 export const SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF = testSite('empty-ref');
 
 /* Same as SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF, with the home page of
    tests/fixtures/whitespace-only-ref/content, whose third entry, after
-   'projets/restauration-pendule' and 'projets/montre-grande-complication', is a text made of
+   'projects/restauration-pendule' and 'projects/montre-grande-complication', is a text made of
    three spaces only, '   ', instead of a page reference. */
 export const SITE_WITH_A_WHITESPACE_ONLY_FEATURED_PROJECT_REF = testSite('whitespace-only-ref');
 
 /* Same as SITE_WITH_AN_EMPTY_FEATURED_PROJECT_REF, with the home page of
    tests/fixtures/padded-ref/content, whose two entries reference existing pages of the example
-   site but with whitespace Hugo does not trim: a trailing space, 'projets/restauration-pendule ',
-   then a leading tab, "\tprojets/montre-grande-complication". Its folder name avoids the word
+   site but with whitespace Hugo does not trim: a trailing space, 'projects/restauration-pendule ',
+   then a leading tab, "\tprojects/montre-grande-complication". Its folder name avoids the word
    whitespace, which the error-message assertion looks for. */
 export const SITE_WITH_FEATURED_PROJECT_REFS_PADDED_WITH_WHITESPACE = testSite('padded-ref');
 
 /* The example site's home pages feature only projects translated in their own language: this site
    replaces the French home page with the one of tests/fixtures/english-only-project/content,
-   without a hero nor clients, which features the example site's 'projets/restauration-pendule',
-   then 'projets/carillon-westminster', a fictional project, "Westminster chime", added under
-   projets/ in English only (carillon-westminster.en.md, without a French page). */
+   without a hero nor clients, which features the example site's 'projects/restauration-pendule',
+   then 'projects/carillon-westminster', a fictional project, "Westminster chime", added under
+   projects/ in English only (carillon-westminster.en.md, without a French page). */
 export const SITE_WITH_A_FRENCH_HOME_FEATURING_AN_ENGLISH_ONLY_PROJECT = testSite('english-only-project');
 
 /* The other way round: this site replaces the English home page with the one of
    tests/fixtures/french-only-project/content, without a hero nor clients, which features the
-   example site's 'projets/restauration-pendule', then 'projets/horloge-morbier', a fictional
-   project, "Horloge de Morbier", added under projets/ in French only (horloge-morbier.md, without
+   example site's 'projects/restauration-pendule', then 'projects/horloge-morbier', a fictional
+   project, "Horloge de Morbier", added under projects/ in French only (horloge-morbier.md, without
    an English page). The example site's French home page is unchanged. */
 export const SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_FRENCH_ONLY_PROJECT = testSite('french-only-project');
 
 /* The example site's French home page features only published projects: this site replaces that
    home page with the one of tests/fixtures/draft-ref/content, without a hero nor clients, which
-   features the example site's 'projets/restauration-pendule', then 'projets/pendule-portique', a
-   fictional project, "Pendule portique", added under projets/ in French only, whose page declares
+   features the example site's 'projects/restauration-pendule', then 'projects/pendule-portique', a
+   fictional project, "Pendule portique", added under projects/ in French only, whose page declares
    draft = true: the production build leaves it out. Its folder name avoids that slug and the
    French words for a draft, a future date and an expired page, which the error-message assertions
    look for. */
@@ -511,15 +511,15 @@ export const SITE_WITH_A_DRAFT_FEATURED_PROJECT = testSite('draft-ref');
 /* The example site's featured projects declare roles, descriptions and stacks made of short
    words: this site replaces the French home page with the one of
    tests/fixtures/long-project-words/content, without a hero nor clients, which features the
-   example site's 'projets/restauration-pendule', then "Pendule aux mots longs", a fictional
-   project added under projets/ in French only, whose role, description and stack each hold a
+   example site's 'projects/restauration-pendule', then "Pendule aux mots longs", a fictional
+   project added under projects/ in French only, whose role, description and stack each hold a
    single word, without a hyphen nor a space, wider than a phone-sized card. */
 export const SITE_WITH_LONG_PROJECT_WORDS = testSite('long-project-words');
 
 /* The example site's featured projects all declare years: this site replaces the French home
    page with the one of tests/fixtures/long-project-title-without-years/content, without a hero
-   nor clients, which features the example site's 'projets/restauration-pendule', then a
-   fictional project added under projets/ in French only, whose page declares no years, and a
+   nor clients, which features the example site's 'projects/restauration-pendule', then a
+   fictional project added under projects/ in French only, whose page declares no years, and a
    title and a description that each hold a single word, without a hyphen nor a space, wider
    than a phone-sized card. */
 export const SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS = testSite('long-project-title-without-years');
@@ -527,7 +527,7 @@ export const SITE_WITH_A_LONG_PROJECT_TITLE_WITHOUT_YEARS = testSite('long-proje
 /* The example site's featured projects set no [build] options: this site replaces the French home
    page with the one of tests/fixtures/unusual-render-values/content, without a hero nor clients,
    which features "Horloge à poids", "Pendulette d’officier", "Montre de gousset" and "Carillon de
-   bureau", all added under projets/ in French only. The first page declares [build] render =
+   bureau", all added under projects/ in French only. The first page declares [build] render =
    'Always', capitalised, the second [build] render = 'nevr', a typo: Hugo recognises neither and
    treats a value it does not recognise as 'always', so that it publishes both pages, at
    /fr/projets/horloge-a-poids/ and /fr/projets/pendulette-officier/. The third declares [build]
@@ -539,16 +539,16 @@ export const SITE_WITH_UNUSUAL_RENDER_VALUES = testSite('unusual-render-values')
 
 /* The example site's featured projects declare no custom param named build: this site replaces
    the French home page with the one of tests/fixtures/build-param-as-text/content, without a hero
-   nor clients, which features the example site's 'projets/restauration-pendule', then "Pendule
-   squelette", a fictional project added under projets/ in French only, whose page sets no [build]
+   nor clients, which features the example site's 'projects/restauration-pendule', then "Pendule
+   squelette", a fictional project added under projects/ in French only, whose page sets no [build]
    options but declares, under [params], a custom param build = '2020', a text. Hugo publishes that
    page as any other, at /fr/projets/pendule-squelette/. */
 export const SITE_WITH_A_BUILD_PARAM_AS_TEXT = testSite('build-param-as-text');
 
 /* Same as SITE_WITH_A_BUILD_PARAM_AS_TEXT, for the English home page: this site replaces that home
    page with the one of tests/fixtures/english-home-year-param/content, without a hero nor clients,
-   which features the example site's 'projets/restauration-pendule', then "Skeleton clock", a
-   fictional project added under projets/ in English only, whose page sets no [build] options but
+   which features the example site's 'projects/restauration-pendule', then "Skeleton clock", a
+   fictional project added under projects/ in English only, whose page sets no [build] options but
    declares, under [params], a custom param build = '2020', a text. The example site's French home
    page is unchanged. Its folder name avoids the word build and the language codes, which the
    error-message assertions look for. */
@@ -556,8 +556,8 @@ export const SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_BUILD_PARAM_AS_TEXT = testSit
 
 /* The example site's featured projects declare their stack as a list: this site replaces the
    French home page with the one of tests/fixtures/card-materials-as-text/content, without a hero
-   nor clients, which features the example site's 'projets/restauration-pendule', then "Lanterne
-   forgée", a fictional project added under projets/ in French only, whose page writes, under
+   nor clients, which features the example site's 'projects/restauration-pendule', then "Lanterne
+   forgée", a fictional project added under projects/ in French only, whose page writes, under
    [params], its stack as a single text, stack = 'Laiton, Acier', rather than a list. Its folder
    name avoids the words stack, list and projects, and the language codes, which the
    error-message assertions look for. */
@@ -565,7 +565,7 @@ export const SITE_WITH_A_PROJECT_STACK_AS_A_TEXT = testSite('card-materials-as-t
 
 /* The example site's French home page features only project pages: this site replaces that home
    page with the one of tests/fixtures/self-ref/content, without a hero nor clients, whose
-   params.projects is a list of texts, as expected, of 'projets/restauration-pendule', then '/', a
+   params.projects is a list of texts, as expected, of 'projects/restauration-pendule', then '/', a
    reference to the home page itself, which exists but is no project. Its folder name avoids the
    word projects, which the error-message assertion looks for. */
 export const SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT = testSite('self-ref');
@@ -577,18 +577,18 @@ export const SITE_WITH_THE_HOME_PAGE_AS_FEATURED_PROJECT_WRITTEN_AS_A_DOT = test
 
 /* The example site's French home page features only project pages: this site replaces that home
    page with the one of tests/fixtures/section-ref/content, without a hero nor clients, whose
-   params.projects is a list of texts, as expected, of 'projets/restauration-pendule', then
-   'projets', a reference to the example site's projects section itself, which exists but is a
+   params.projects is a list of texts, as expected, of 'projects/restauration-pendule', then
+   'projects', a reference to the example site's projects section itself, which exists but is a
    section page, no project. Its folder name avoids the word projects, which the error-message
    assertion looks for. */
 export const SITE_WITH_A_SECTION_AS_FEATURED_PROJECT = testSite('section-ref');
 
 /* The example site disables the taxonomy and term kinds, which the theme itself does not: this
    site enables them again (tests/fixtures/taxonomy-refs/hugo.toml), with Hugo's default tags
-   taxonomy, adds under projets/, in French only, a fictional project, "Pendule étiquetée", that
+   taxonomy, adds under projects/, in French only, a fictional project, "Pendule étiquetée", that
    carries the tag 'horlogerie', and replaces the French home page with the one of
    tests/fixtures/taxonomy-refs/content, without a hero nor clients, whose params.projects is a
-   list of texts, as expected, of 'projets/restauration-pendule', then 'tags/horlogerie', a
+   list of texts, as expected, of 'projects/restauration-pendule', then 'tags/horlogerie', a
    reference to the page of that tag, a taxonomy term page, then 'tags', a reference to the page
    listing every tag, a taxonomy page: both exist, but neither is a project. Its folder name
    avoids the word projects, which the error-message assertion looks for. */
@@ -596,7 +596,7 @@ export const SITE_WITH_TAXONOMY_PAGES_AS_FEATURED_PROJECTS = testSite('taxonomy-
 
 /* The example site's French home page features only project pages: this site replaces that home
    page with the one of tests/fixtures/error-page-ref/content, without a hero nor clients, whose
-   params.projects is a list of texts, as expected, of 'projets/restauration-pendule', then '/404',
+   params.projects is a list of texts, as expected, of 'projects/restauration-pendule', then '/404',
    a reference to the site's 404 page, which Hugo creates even without a 404 template, so that it
    exists, but is no project. Its folder name avoids the word projects and the number 404, which
    the error-message assertions look for. */
@@ -621,9 +621,9 @@ export const SITE_WITH_A_PAGE_REF_TO_A_LINK_ONLY_PAGE = testSite('link-rendered-
    this site replaces that home page with the one of tests/fixtures/english-home-bad-entries/content,
    without a hero nor clients, whose params.projects is a list (so the check that projects is a list
    lets it through) of four bad entries, one of each kind: a table,
-   { path = 'projets/restauration-pendule' }, instead of a page reference, as entry 1; an empty
-   text, '', as entry 2; 'projets/montre-grande-complication ', an existing page with a trailing
-   space Hugo does not trim, as entry 3; and 'projets', the projects section itself, which exists
+   { path = 'projects/restauration-pendule' }, instead of a page reference, as entry 1; an empty
+   text, '', as entry 2; 'projects/montre-grande-complication ', an existing page with a trailing
+   space Hugo does not trim, as entry 3; and 'projects', the projects section itself, which exists
    but is no project, as entry 4. The example site's French home page is unchanged. Its folder name
    avoids the words projects and whitespace and the language codes, which the error-message
    assertions look for. */
@@ -639,9 +639,9 @@ export const SITE_WITH_PROJECTS_UNDER_THE_HERO = testSite('featured-list-in-the-
 /* The example site's English home page has a hero whose every button is well filled in: this site
    replaces that home page with the one of tests/fixtures/english-home-bad-buttons/content, whose
    seven hero buttons are each filled in wrong, one of each kind: a pageRef that is a table,
-   { path = '/projets' }; an empty pageRef, ''; a pageRef with a trailing space, '/projets ';
+   { path = '/projects' }; an empty pageRef, ''; a pageRef with a trailing space, '/projects ';
    pageRef = '/shut-workshop', a page of the same fixture that exists but declares
-   [build] render = 'never'; both url = '#contact' and pageRef = '/projets'; a label but neither
+   [build] render = 'never'; both url = '#contact' and pageRef = '/projects'; a label but neither
    url nor pageRef; and url = '#contact' but no label. The example site's French home page is
    unchanged. Its folder name and that page reference avoid the words label, author, url,
    published and whitespace and the language codes, which the error-message assertions look
@@ -652,15 +652,15 @@ export const SITE_WITH_AN_ENGLISH_HOME_WITH_BAD_BUTTONS = testSite('english-home
    sites replace that home page with one whose bad button is at the other position than in the
    fixtures above, the other button being well filled in. The second button is the bad one in
    tests/fixtures/table-as-second-target/content, whose pageRef is a table,
-   { path = '/projets' }; in tests/fixtures/second-target-left-unfilled/content, an empty
+   { path = '/projects' }; in tests/fixtures/second-target-left-unfilled/content, an empty
    pageRef, ''; in tests/fixtures/second-target-with-trailing-space/content, a pageRef with a
-   trailing space, '/projets '; and in tests/fixtures/second-target-never-rendered/content,
+   trailing space, '/projects '; and in tests/fixtures/second-target-never-rendered/content,
    pageRef = '/atelier-clos', a page of the same fixture that exists but declares
    [build] render = 'never'. The first button is the bad one in
    tests/fixtures/first-with-two-destinations/content, with both url = '#contact' and
-   pageRef = '/projets'; in tests/fixtures/first-without-destination/content, with a label but
+   pageRef = '/projects'; in tests/fixtures/first-without-destination/content, with a label but
    neither url nor pageRef; and in tests/fixtures/first-button-unnamed/content, with
-   pageRef = '/projets' but no label. Their folder names and that page reference avoid the
+   pageRef = '/projects' but no label. Their folder names and that page reference avoid the
    words label, author, url, published and whitespace, which the error-message assertions look
    for, and the word button followed by a number, which the position assertion looks for. */
 export const SITE_WITH_A_PAGE_REF_AS_TABLE_ON_THE_SECOND_BUTTON = testSite('table-as-second-target');
@@ -694,28 +694,28 @@ export const SITE_WITH_HERO_BUTTONS_AS_AN_EMPTY_TEXT = testSite('empty-text-inst
 export const SITE_WITH_HERO_BUTTONS_AS_FALSE = testSite('false-instead-of-links');
 
 /* The example site's French home page declares its clients and projects under [params]: this site
-   replaces that home page with the one of tests/fixtures/listes-sous-les-liens/content, without
+   replaces that home page with the one of tests/fixtures/lists-under-the-links/content, without
    [params] table, whose hero is well filled in, with two well filled-in buttons, but whose
    clients key, a list of two names, is written under the first [[params.hero.actions]] header,
    and whose projects key, a list of two of the example site's projects, under the second one, so
    that TOML puts them in the first and second buttons' tables instead of params.clients and
    params.projects. Its folder name avoids the words button, clients, projects, params, hero and
    before and the language codes, which the error-message assertions look for. */
-export const SITE_WITH_CLIENTS_AND_PROJECTS_UNDER_HERO_BUTTONS = testSite('listes-sous-les-liens');
+export const SITE_WITH_CLIENTS_AND_PROJECTS_UNDER_HERO_BUTTONS = testSite('lists-under-the-links');
 
 /* The example site's French home page writes its hero buttons as a list of tables: this site
-   replaces that home page with the one of tests/fixtures/lien-ecrit-sans-accolades/content,
+   replaces that home page with the one of tests/fixtures/link-written-without-braces/content,
    without clients nor projects, whose hero buttons are a TOML array written inline, actions = [...],
    whose first entry is a well filled-in button, an inline table with a label and
-   pageRef = '/projets', and whose second entry is a mere text, 'Contact', rather than a table. Its
+   pageRef = '/projects', and whose second entry is a mere text, 'Contact', rather than a table. Its
    folder name avoids the words button, hero, table, must and be, the numbers and the language
    codes, which the error-message assertions look for. */
-export const SITE_WITH_A_TEXT_AS_THE_SECOND_HERO_BUTTON = testSite('lien-ecrit-sans-accolades');
+export const SITE_WITH_A_TEXT_AS_THE_SECOND_HERO_BUTTON = testSite('link-written-without-braces');
 
 /* The example site's French home page gives each hero button a url or a pageRef that is a text:
    this site replaces that home page with the one of tests/fixtures/address-as-figure-or-dict/content,
    without clients nor projects, whose hero has three buttons, written [[params.hero.actions]], each
-   with a label: the first is well filled in, with pageRef = '/projets'; the second declares a
+   with a label: the first is well filled in, with pageRef = '/projects'; the second declares a
    number, url = 42; the third a table, url = { href = '/contact' }. Its folder name avoids the
    words button, hero, url, text, must and be, the numbers and the language codes, which the
    error-message assertions look for. */
@@ -725,7 +725,7 @@ export const SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE = testSite('addr
    replaces that home page with the one of tests/fixtures/caption-as-figure-or-dict/content,
    without clients nor projects, whose hero has three buttons, written [[params.hero.actions]],
    each with a destination that is a text: the first is well filled in, with label = 'Voir les
-   projets' and pageRef = '/projets'; the second declares a number, label = 42, with
+   projets' and pageRef = '/projects'; the second declares a number, label = 42, with
    url = 'tel:+33100000000'; the third a table, label = { text = 'Contact' }, with
    url = '/contact/'. Its folder name avoids the words button, hero, label, text, must and be, the
    numbers and the language codes, which the error-message assertions look for. */
@@ -735,7 +735,7 @@ export const SITE_WITH_HERO_BUTTON_LABELS_AS_A_NUMBER_AND_A_TABLE = testSite('ca
    ends: this site replaces that home page with the one of
    tests/fixtures/caption-with-blank-edges/content, without clients nor projects, whose hero has
    three buttons, written [[params.hero.actions]], each with a destination that is a text: the
-   first is well filled in, with label = 'Voir les paniers' and pageRef = '/projets'; the second
+   first is well filled in, with label = 'Voir les paniers' and pageRef = '/projects'; the second
    declares a label with a leading space, label = ' Voir les projets', with
    url = 'tel:+33100000000'; the third a label with a trailing space, label = 'Contact ', with
    url = '/contact/'. Its folder name avoids the words button, hero, label, whitespace, start and
@@ -745,7 +745,7 @@ export const SITE_WITH_HERO_BUTTON_LABELS_WITH_A_LEADING_AND_A_TRAILING_SPACE = 
 /* The example site's French home page gives each hero button a label a visitor can read: this
    site replaces that home page with the one of tests/fixtures/caption-of-spaces-only/content,
    whose hero has two buttons, written [[params.hero.actions]], each with a destination that is a
-   text: the first is well filled in, with label = 'Voir les projets' and pageRef = '/projets';
+   text: the first is well filled in, with label = 'Voir les projets' and pageRef = '/projects';
    the second declares label = " \t ", a space, a tab and a space, with url = '#contact'. Its
    folder name avoids the words button, hero, label, empty, blank, whitespace, the numbers and the
    language codes, which the error-message assertions look for. */
@@ -925,7 +925,7 @@ export const SITE_WITH_AN_ENGLISH_HOME_WITH_BACKGROUND_PARTS_NOT_AS_LISTS = test
    destination: this site replaces that home page with the one of
    tests/fixtures/addresses-unfilled-and-of-spaces/content, whose hero has three buttons, written
    [[params.hero.actions]], each with a label and no pageRef but the first: the first is well
-   filled in, with pageRef = '/projets'; the second declares url = '', an empty text; the third
+   filled in, with pageRef = '/projects'; the second declares url = '', an empty text; the third
    url = " \t ", a space, a tab and a space. Its folder name avoids the words button, hero, url,
    empty, blank, whitespace, neither, nor, destination, the numbers and the language codes, which
    the error-message assertions look for. */
@@ -934,8 +934,8 @@ export const SITE_WITH_HERO_BUTTON_URLS_EMPTY_AND_WHITESPACE_ONLY = testSite('ad
 /* The example site's French home page gives each hero button a single destination: this site
    replaces that home page with the one of tests/fixtures/unfilled-address-and-target/content,
    whose hero has two buttons, written [[params.hero.actions]], each with a label: the first is
-   well filled in, with pageRef = '/projets'; the second declares url = '', an empty text, next to
-   a valid pageRef = '/projets'. Its folder name avoids the words button, hero, url, pageRef,
+   well filled in, with pageRef = '/projects'; the second declares url = '', an empty text, next to
+   a valid pageRef = '/projects'. Its folder name avoids the words button, hero, url, pageRef,
    both, only, one, empty, the numbers and the language codes, which the error-message assertions
    look for. */
 export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_URL_AND_A_PAGE_REF = testSite('unfilled-address-and-target');
@@ -943,9 +943,9 @@ export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_URL_AND_A_PAGE_REF = t
 /* The example site's French home page gives each hero button a single destination: this site
    replaces that home page with the one of tests/fixtures/address-next-to-broken-targets/content,
    whose hero has six buttons, written [[params.hero.actions]], each with a label: the first is
-   well filled in, with pageRef = '/projets'; each of the others declares a valid url = '#contact'
-   next to a wrong pageRef: the second '/projets ', with a trailing space; the third
-   { path = '/projets' }, a table; the fourth 42, a number; the fifth '/page-fictive-introuvable',
+   well filled in, with pageRef = '/projects'; each of the others declares a valid url = '#contact'
+   next to a wrong pageRef: the second '/projects ', with a trailing space; the third
+   { path = '/projects' }, a table; the fourth 42, a number; the fifth '/page-fictive-introuvable',
    which matches no page; the sixth '/atelier-ferme', a page of the same fixture that declares
    [build] render = 'never', so that Hugo publishes nothing for it. Its folder name avoids the
    words button, hero, url, pageRef, both, only, one, empty, whitespace, published, the numbers
@@ -955,7 +955,7 @@ export const SITE_WITH_HERO_BUTTONS_WITH_A_URL_NEXT_TO_A_WRONG_PAGE_REF = testSi
 /* The example site's French home page gives each hero button a single destination: this site
    replaces that home page with the one of tests/fixtures/target-left-unset-in-yaml/content,
    written with a YAML front matter, whose hero has two buttons, each with a label and no url:
-   the first is well filled in, with pageRef: /projets; the second declares pageRef: null, the
+   the first is well filled in, with pageRef: /projects; the second declares pageRef: null, the
    YAML way of leaving a field without a value. Its folder name avoids the words button, hero,
    url, pageRef, both, empty, blank, null, neither, nor, the numbers and the language codes,
    which the error-message assertions look for. */
@@ -964,7 +964,7 @@ export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_PAGE_REF = testSite('tar
 /* The example site's French home page gives each hero button a single destination: this site
    replaces that home page with the one of tests/fixtures/address-left-unset-in-yaml/content,
    written with a YAML front matter, whose hero has two buttons, each with a label: the first is
-   well filled in, with pageRef: /projets; the second declares url: null, the YAML way of leaving
+   well filled in, with pageRef: /projects; the second declares url: null, the YAML way of leaving
    a field without a value, and no pageRef. Its folder name avoids the words button, hero, url,
    pageRef, both, empty, blank, null, text, neither, nor, the numbers and the language codes,
    which the error-message assertions look for. */
@@ -974,7 +974,7 @@ export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_URL = testSite('address-
    build param: this site replaces that home page with the one of
    tests/fixtures/target-with-a-year-option/content, whose hero has two buttons, written
    [[params.hero.actions]], each with a label and no url: the first is well filled in, with
-   pageRef = '/projets'; the second declares pageRef = '/atelier-millesime', a page of the same
+   pageRef = '/projects'; the second declares pageRef = '/atelier-millesime', a page of the same
    fixture that sets no [build] options but declares under [params] a custom param
    build = '2020', a text rather than a table. Its folder name avoids the words build, param,
    table, text, theme, Hugo, button, hero, url, pageRef, the numbers and the language codes,
@@ -984,7 +984,7 @@ export const SITE_WITH_A_HERO_BUTTON_TO_A_PAGE_WITH_A_BUILD_PARAM_AS_TEXT = test
 /* The example site's French home page gives each hero button a url or a pageRef that is a text:
    this site replaces that home page with the one of tests/fixtures/addresses-read-as-false/content,
    without clients nor projects, whose hero has four buttons, written [[params.hero.actions]], each
-   with a label: the first is well filled in, with pageRef = '/projets'; the others declare no
+   with a label: the first is well filled in, with pageRef = '/projects'; the others declare no
    pageRef and a url Hugo reads as false: the second false, the third 0, the fourth [], an empty
    list. Its folder name avoids the words button, hero, url, pageRef, text, must, be, neither, nor,
    both, missing, the numbers and the language codes, which the error-message assertions look
@@ -995,8 +995,8 @@ export const SITE_WITH_HERO_BUTTON_URLS_AS_FALSE_ZERO_AND_AN_EMPTY_LIST = testSi
    site replaces that home page with the one of
    tests/fixtures/figure-or-dict-address-and-target/content, without clients nor projects, whose
    hero has three buttons, written [[params.hero.actions]], each with a label: the first is well
-   filled in, with pageRef = '/projets'; the second declares a number, url = 42, and the third a
-   table, url = { href = '/contact' }, each next to a valid pageRef = '/projets'. Its folder name
+   filled in, with pageRef = '/projects'; the second declares a number, url = 42, and the third a
+   table, url = { href = '/contact' }, each next to a valid pageRef = '/projects'. Its folder name
    avoids the words button, hero, url, pageRef, text, must, be, both, only, one, the numbers and
    the language codes, which the error-message assertions look for. */
 export const SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE_NEXT_TO_A_PAGE_REF = testSite(
@@ -1007,7 +1007,7 @@ export const SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE_NEXT_TO_A_PAGE_R
    whitespace around it: this site replaces that home page with the one of
    tests/fixtures/addresses-padded-at-the-edges/content, whose hero has three buttons, written
    [[params.hero.actions]], each with a label and no pageRef but the first: the first is well
-   filled in, with pageRef = '/projets'; the second declares url = ' #contact', with a leading
+   filled in, with pageRef = '/projects'; the second declares url = ' #contact', with a leading
    space; the third url = "/contact/\t", with a trailing tab. Its folder name avoids the words
    button, hero, url, whitespace, empty, blank, the numbers and the language codes, which the
    error-message assertions look for. */
@@ -1019,8 +1019,8 @@ export const SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB 
    whitespace around it: this site replaces that home page with the one of
    tests/fixtures/padded-addresses-beside-targets/content, whose hero has three buttons, written
    [[params.hero.actions]], each with a label: the first is well filled in, with
-   pageRef = '/projets'; the second declares url = ' #contact', with a leading space, and the
-   third url = "/contact/\t", with a trailing tab, each next to a valid pageRef = '/projets'. Its
+   pageRef = '/projects'; the second declares url = ' #contact', with a leading space, and the
+   third url = "/contact/\t", with a trailing tab, each next to a valid pageRef = '/projects'. Its
    folder name avoids the words button, hero, url, pageRef, whitespace, both, only, one, the
    numbers and the language codes, which the error-message assertions look for. */
 export const SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB_NEXT_TO_A_PAGE_REF = testSite(
@@ -1048,44 +1048,44 @@ export const SITE_WITH_A_MISSPELLED_KEY_IN_THE_SECOND_HERO_BUTTON = testSite('mi
 
 /* The example site's featured projects declare their stack as a list: this site replaces the
    French home page with the one of tests/fixtures/materials-left-blank-or-false/content, without
-   a hero nor clients, which features the example site's 'projets/restauration-pendule', then
-   "Cadran solaire" and "Girouette en cuivre", two fictional projects added under projets/ in
+   a hero nor clients, which features the example site's 'projects/restauration-pendule', then
+   "Cadran solaire" and "Girouette en cuivre", two fictional projects added under projects/ in
    French only, whose pages write, under [params], their stack as an empty text, stack = '', and
    as the boolean false, stack = false, rather than a list. Its folder name avoids the words
    stack, list and projects, and the language codes, which the error-message assertions look
    for. */
 export const SITE_WITH_PROJECT_STACKS_AS_AN_EMPTY_TEXT_AND_FALSE = testSite('materials-left-blank-or-false');
 
-/* The example site's French home page features projects that sit directly in the projets/
+/* The example site's French home page features projects that sit directly in the projects/
    section: this site replaces that home page with the one of
    tests/fixtures/projects-in-a-subsection/content, without a hero nor clients, which features
    "Pendule de voyage" and "Horloge comtoise", two fictional projects added in French only in
-   one subsection of projets/, horlogerie/, titled "Horlogerie" and published at
+   one subsection of projects/, horlogerie/, titled "Horlogerie" and published at
    /fr/projets/horlogerie/. */
 export const SITE_WITH_PROJECTS_IN_A_SUBSECTION = testSite('projects-in-a-subsection');
 
 /* This site replaces the example site's French home page with the one of
    tests/fixtures/projects-in-the-section-and-a-subsection/content, without a hero nor clients,
    which features two projects: "Régulateur de parquet en noyer", one of the example site's
-   projects, which sits directly in projets/, and "Chronomètre de marine", a fictional project
-   added in French only in one subsection of projets/, marine/, titled "Marine" and published at
+   projects, which sits directly in projects/, and "Chronomètre de marine", a fictional project
+   added in French only in one subsection of projects/, marine/, titled "Marine" and published at
    /fr/projets/marine/. */
 export const SITE_WITH_PROJECTS_IN_THE_SECTION_AND_A_SUBSECTION = testSite('projects-in-the-section-and-a-subsection');
 
-/* The example site's featured projects live in projets/, the section the theme expects when the
+/* The example site's featured projects live in projects/, the section the theme expects when the
    site does not name another: this site names realisations/ in its projectsSection site param
    (see tests/fixtures/projects-in-the-configured-section/hugo.toml) and replaces the French home
    page with the one of tests/fixtures/projects-in-the-configured-section/content, without a hero
    nor clients, which features "Pendule de voyage" and "Horloge de parquet", two fictional
    projects added in French only in realisations/, titled "Réalisations" and published at
-   /fr/realisations/. Its English home page features no projects. The example site's projets/
+   /fr/realisations/. Its English home page features no projects. The example site's projects/
    section is still built. */
 export const SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION = testSite('projects-in-the-configured-section');
 
 /* Like the site above, this one names realisations/ in its projectsSection site param (see
    tests/fixtures/project-outside-the-configured-section/hugo.toml), but its French home page
    features "Pendule de voyage", a fictional project of realisations/, then the example site's
-   'projets/restauration-pendule', which lives outside the configured section. Its English home
+   'projects/restauration-pendule', which lives outside the configured section. Its English home
    page features no projects. */
 export const SITE_WITH_A_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION = testSite('project-outside-the-configured-section');
 
@@ -1142,7 +1142,7 @@ export const SITE_WITH_A_HERO_BUTTON_PAGE_REF_WRITTEN_IN_LOWERCASE = testSite('l
 /* The example site's French home page gives each hero button a label a visitor can read: this
    site replaces that home page with the one of tests/fixtures/caption-left-unfilled/content,
    whose hero has two buttons, written [[params.hero.actions]], each with a destination that is a
-   text: the first is well filled in, with label = 'Voir les projets' and pageRef = '/projets';
+   text: the first is well filled in, with label = 'Voir les projets' and pageRef = '/projects';
    the second declares label = '', an empty text, with url = '#contact'. Its folder name avoids
    the words button, hero, label, empty, blank, missing, the numbers and the language codes,
    which the error-message assertions look for. */
@@ -1150,10 +1150,10 @@ export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_LABEL = testSite('capt
 
 /* The example site leaves out the projectsSection site param: these sites keep its content and set
    that param to the name of its section of projects with whitespace around it, which Hugo does not
-   trim: a trailing space, projectsSection = 'projets ' (see
+   trim: a trailing space, projectsSection = 'projects ' (see
    tests/fixtures/section-param-with-trailing-space/hugo.toml), and a leading tab,
-   projectsSection = "\tprojets" (tests/fixtures/section-param-with-leading-tab/hugo.toml). Their
-   folder names avoid the words projectsSection, whitespace and projets, which the error-message
+   projectsSection = "\tprojects" (tests/fixtures/section-param-with-leading-tab/hugo.toml). Their
+   folder names avoid the words projectsSection, whitespace and projects, which the error-message
    assertions look for. */
 export const SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SPACE = testSite('section-param-with-trailing-space');
 export const SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_TAB = testSite('section-param-with-leading-tab');
@@ -1164,7 +1164,7 @@ export const SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_TAB = testSite('s
    added in French only in realisations/, but its projectsSection site param is a number,
    projectsSection = 42 (see tests/fixtures/number-param-with-projects-elsewhere/hugo.toml), rather
    than the name of that section. Its English home page features no projects. Its folder name
-   avoids the words projectsSection, text, realisations and projets, which the error-message
+   avoids the words projectsSection, text and realisations, which the error-message
    assertions look for. */
 export const SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER_AND_PROJECTS_ELSEWHERE = testSite(
   'number-param-with-projects-elsewhere',
@@ -1176,7 +1176,7 @@ export const SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER_AND_PROJECTS_ELSEWHE
    added in French only in realisations/, but its projectsSection site param is an empty text,
    projectsSection = '' (see tests/fixtures/unfilled-param-with-projects-elsewhere/hugo.toml),
    rather than the name of that section. Its English home page features no projects. Its folder
-   name avoids the words projectsSection, empty, blank, realisations and projets, which the
+   name avoids the words projectsSection, empty, blank and realisations, which the
    error-message assertions look for. */
 export const SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE = testSite(
   'unfilled-param-with-projects-elsewhere',
@@ -1189,7 +1189,7 @@ export const SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE = 
    with a trailing space, projectsSection = 'realisations ' (see
    tests/fixtures/padded-param-with-projects-elsewhere/hugo.toml), which Hugo does not trim. Its
    English home page features no projects. Its folder name avoids the words projectsSection,
-   whitespace, realisations and projets, which the error-message assertions look for. */
+   whitespace and realisations, which the error-message assertions look for. */
 export const SITE_WITH_A_PADDED_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE = testSite(
   'padded-param-with-projects-elsewhere',
 );
@@ -1200,20 +1200,20 @@ export const SITE_WITH_A_PADDED_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE = 
    added in French only in realisations/, but its projectsSection site param is a well-formed text
    that names no section of the site, projectsSection = 'realisatons', a typo (see
    tests/fixtures/misspelled-param-with-projects-elsewhere/hugo.toml). Its English home page
-   features no projects. Its folder name avoids the words projectsSection, realisatons,
-   realisations and projets, which the error-message assertions look for. */
+   features no projects. Its folder name avoids the words projectsSection, realisatons
+   and realisations, which the error-message assertions look for. */
 export const SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE = testSite(
   'misspelled-param-with-projects-elsewhere',
 );
 
 /* Like the four sites above, this one replaces both home pages with those of
    tests/fixtures/nested-param-with-its-projects/content, whose French one features
-   "projets/horlogerie/pendule-de-voyage" and "projets/horlogerie/horloge-comtoise", two fictional
-   projects added in French only in one subsection of projets/, horlogerie/, but its
-   projectsSection site param names that subsection, projectsSection = 'projets/horlogerie' (see
+   "projects/horlogerie/pendule-de-voyage" and "projects/horlogerie/horloge-comtoise", two fictional
+   projects added in French only in one subsection of projects/, horlogerie/, but its
+   projectsSection site param names that subsection, projectsSection = 'projects/horlogerie' (see
    tests/fixtures/nested-param-with-its-projects/hugo.toml), rather than a top-level section. Its
    English home page features no projects. Its folder name avoids the words projectsSection,
-   top-level, horlogerie and projets, which the error-message assertions look for. */
+   top-level and horlogerie, which the error-message assertions look for. */
 export const SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_A_SUBSECTION_AND_ITS_PROJECTS = testSite(
   'nested-param-with-its-projects',
 );
@@ -1225,8 +1225,8 @@ export const SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_A_SUBSECTION_AND_ITS_PROJ
    Realisations/, titled "Réalisations" and published at /fr/realisations/, Hugo lowercasing its
    address. Its projectsSection site param names that section with the same capital,
    projectsSection = 'Realisations' (see tests/fixtures/capitalized-param-with-its-projects/hugo.toml).
-   Its English home page features no projects. Its folder name avoids the words realisations,
-   Réalisations and projets, which the assertions look for. */
+   Its English home page features no projects. Its folder name avoids the words realisations
+   and Réalisations, which the assertions look for. */
 export const SITE_WITH_A_CAPITALIZED_PROJECTS_SECTION_PARAM_AND_ITS_PROJECTS = testSite(
   'capitalized-param-with-its-projects',
 );
@@ -1259,17 +1259,17 @@ export const SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_URL = testSite
 
 /* The example site leaves out the projectsSection site param: these sites keep its content and set
    that param to the name of its section of projects with a slash at one end: at its start,
-   projectsSection = '/projets', as a path from the content root (see
+   projectsSection = '/projects', as a path from the content root (see
    tests/fixtures/section-param-with-leading-separator/hugo.toml), and at its end,
-   projectsSection = 'projets/', as a folder (tests/fixtures/section-param-with-trailing-separator/hugo.toml).
-   Their folder names avoid the words projectsSection, slash, subsection and projets, which the
+   projectsSection = 'projects/', as a folder (tests/fixtures/section-param-with-trailing-separator/hugo.toml).
+   Their folder names avoid the words projectsSection, slash, subsection and projects, which the
    error-message assertions look for. */
 export const SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_SLASH = testSite('section-param-with-leading-separator');
 export const SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SLASH = testSite(
   'section-param-with-trailing-separator',
 );
 
-/* The example site's featured projects live in its section of projects, projets/: this site
+/* The example site's featured projects live in its section of projects, projects/: this site
    replaces the French home page with the one of
    tests/fixtures/unpublished-subsection-of-another-section/content, without a hero nor clients,
    which features a single fictional project, "Carillon de beffroi", added in archives/brouillons/,
@@ -1281,8 +1281,8 @@ export const SITE_WITH_A_PROJECT_IN_AN_UNPUBLISHED_SUBSECTION_OF_ANOTHER_SECTION
 
 /* The example site's featured projects declare their stack as a list: this site replaces the
    French home page with the one of tests/fixtures/materials-left-unset-in-yaml/content, without a
-   hero nor clients, which features the example site's 'projets/restauration-pendule', then
-   "Sablier de chapelle", a fictional project added under projets/ in French only, whose page,
+   hero nor clients, which features the example site's 'projects/restauration-pendule', then
+   "Sablier de chapelle", a fictional project added under projects/ in French only, whose page,
    written with a YAML front matter, declares only a title, a description and, under params, a
    stack: line left without a value, which YAML reads as null. */
 export const SITE_WITH_A_PROJECT_STACK_LEFT_BLANK_IN_YAML = testSite('materials-left-unset-in-yaml');
@@ -1290,7 +1290,7 @@ export const SITE_WITH_A_PROJECT_STACK_LEFT_BLANK_IN_YAML = testSite('materials-
 /* The example site's French home page gives each hero button a label a visitor can read: this
    site replaces that home page with the one of tests/fixtures/caption-without-a-yaml-value/content,
    written with a YAML front matter, whose hero has two buttons, each with a destination that is a
-   text: the first is well filled in, with label: Voir les projets and pageRef: /projets; the
+   text: the first is well filled in, with label: Voir les projets and pageRef: /projects; the
    second declares a label: line left without a value, which YAML reads as null, with
    url: '#contact'. Its folder name avoids the words button, hero, label, empty, blank, null,
    text, must, missing, the numbers and the language codes, which the error-message assertions
@@ -1299,22 +1299,22 @@ export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_LABEL_LEFT_BLANK_IN_YAML = te
 
 /* Like SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE, this site
    replaces both home pages with those of tests/fixtures/extension-param-with-its-projects/content,
-   whose French one features "projets/horloge-astronomique" and "projets/regulateur-noyer", two
-   projects of the example site's projets/ section, but its projectsSection site param is the file
-   name of a page rather than a section's name, projectsSection = 'projets.md' (see
+   whose French one features "projects/horloge-astronomique" and "projects/regulateur-noyer", two
+   projects of the example site's projects/ section, but its projectsSection site param is the file
+   name of a page rather than a section's name, projectsSection = 'projects.md' (see
    tests/fixtures/extension-param-with-its-projects/hugo.toml), which Hugo's GetPage still
-   resolves to the projets section. Its English home page features no projects. Its folder name
-   avoids the words projectsSection, projets, md and section, which the error-message assertions
+   resolves to the projects section. Its English home page features no projects. Its folder name
+   avoids the words projectsSection, md and section, which the error-message assertions
    look for. */
 export const SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_WITHOUT_NAMING_IT = testSite(
   'extension-param-with-its-projects',
 );
 
 /* The example site leaves out the projectsSection site param: this site keeps its content, whose
-   featured projects live in projets/, and sets that param to the path of that section's own page,
-   projectsSection = 'projets/_index.md' (see tests/fixtures/index-file-param/hugo.toml), which
-   holds a slash without naming a subsection: Hugo's GetPage resolves it to the top-level projets
-   section. Its folder name avoids the words projectsSection, projets, md, section and subsection,
+   featured projects live in projects/, and sets that param to the path of that section's own page,
+   projectsSection = 'projects/_index.md' (see tests/fixtures/index-file-param/hugo.toml), which
+   holds a slash without naming a subsection: Hugo's GetPage resolves it to the top-level projects
+   section. Its folder name avoids the words projectsSection, projects, md, section and subsection,
    which the error-message assertions look for. */
 export const SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_THROUGH_A_PATH = testSite('index-file-param');
 

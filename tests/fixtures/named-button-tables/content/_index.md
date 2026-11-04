@@ -6,7 +6,7 @@ title = 'Horloger indépendant'
 
 [params.hero.actions.a]
 label = 'Voir les projets'
-pageRef = '/projets'
+pageRef = '/projects'
 
 [params.hero.actions.b]
 label = 'Contact'

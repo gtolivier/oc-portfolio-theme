@@ -6,12 +6,12 @@ title = 'Céramiste'
 
 [[params.hero.actions]]
 label = 'Voir les pièces'
-pageRef = '/projets'
+pageRef = '/projects'
 
 [[params.hero.actions]]
 label = 'Voir les projets'
 url = ''
-pageRef = '/projets'
+pageRef = '/projects'
 +++
 
 Accueil fictif dont le deuxième lien du bandeau garde une adresse laissée sans

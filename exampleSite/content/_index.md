@@ -10,10 +10,10 @@ clients = [
   'Maison Delorme',
 ]
 projects = [
-  'projets/restauration-pendule',
-  'projets/montre-grande-complication',
-  'projets/horloge-astronomique',
-  'projets/regulateur-noyer',
+  'projects/restauration-pendule',
+  'projects/montre-grande-complication',
+  'projects/horloge-astronomique',
+  'projects/regulateur-noyer',
 ]
 
 [params.background]
@@ -62,7 +62,7 @@ stack = ['Laiton', 'Acier', 'Rubis', 'Émail']
 #   /portfolio/portfolio/…).
 [[params.hero.actions]]
 label = 'Voir les projets'
-pageRef = '/projets'
+pageRef = '/projects'
 
 [[params.hero.actions]]
 label = 'Contact'
@@ -70,4 +70,4 @@ url = '#contact'
 +++
 
 Bienvenue sur ce site de démonstration : un texte d’exemple, fictif, pour le
-corps de la page d’accueil. Il mène aussi vers les [projets d’exemple](/projets/).
+corps de la page d’accueil. Il mène aussi vers les [projets d’exemple]({{< relref "/projects" >}}).

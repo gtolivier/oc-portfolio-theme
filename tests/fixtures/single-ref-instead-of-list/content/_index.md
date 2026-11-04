@@ -2,7 +2,7 @@
 title = 'Accueil'
 
 [params]
-projects = 'projets/restauration-pendule'
+projects = 'projects/restauration-pendule'
 +++
 
 Accueil fictif dont la liste de projets mis en avant est remplie par erreur

@@ -10,7 +10,7 @@ tagline = [
 ]
 stack = ['Cuir', 'Papier', 'Lin']
 actions = [
-  { label = 'Voir les projets', pageRef = '/projets' },
+  { label = 'Voir les projets', pageRef = '/projects' },
   'Contact',
 ]
 +++

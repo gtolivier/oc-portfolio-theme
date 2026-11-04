@@ -3,10 +3,10 @@ title = 'Accueil'
 
 [params]
 projects = [
-  'projets/restauration-pendule',
-  { path = 'projets/restauration-pendule' },
-  'projets/montre-grande-complication',
-  { path = 'projets/montre-grande-complication' },
+  'projects/restauration-pendule',
+  { path = 'projects/restauration-pendule' },
+  'projects/montre-grande-complication',
+  { path = 'projects/montre-grande-complication' },
 ]
 +++
 

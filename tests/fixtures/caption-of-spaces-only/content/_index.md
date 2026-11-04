@@ -6,7 +6,7 @@ title = 'Doreuse'
 
 [[params.hero.actions]]
 label = 'Voir les projets'
-pageRef = '/projets'
+pageRef = '/projects'
 
 [[params.hero.actions]]
 label = " \t "

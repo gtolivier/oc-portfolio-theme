@@ -1798,7 +1798,7 @@ test.describe('client content errors: build failure', () => {
   });
 
   test("a home page whose clients key is written under [params.hero] makes the site build fail, with an error message that says the clients parameter belongs to [params], before [params.hero], and names the home page's language, without a template execution error after it", () => {
-    /* tests/fixtures/clientele-dans-la-banniere/content/_index.md writes clients = [...] after the
+    /* tests/fixtures/clientele-in-the-banner/content/_index.md writes clients = [...] after the
        [params.hero] header, under a well filled-in hero, so that TOML puts it in the hero's table
        (params.hero.clients) rather than in params.clients, where the theme reads the clients.
        Rather than a home page whose client band silently disappears, the person building the site

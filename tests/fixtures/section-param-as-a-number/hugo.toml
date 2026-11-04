@@ -1,6 +1,6 @@
 # Configuration added to exampleSite/hugo.toml by the tests of a site whose
 # projectsSection site param is a number, 42, rather than the name of a
 # section. The fixture has no content/: the example site's home pages, which
-# feature projects of projets/, are built as they are.
+# feature projects of projects/, are built as they are.
 [params]
   projectsSection = 42

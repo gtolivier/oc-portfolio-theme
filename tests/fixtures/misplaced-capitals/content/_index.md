@@ -11,11 +11,11 @@ stack = ['Grès', 'Porcelaine', 'Émail']
 
 [[params.hero.actions]]
 label = 'Voir les projets'
-pageRef = '/projets'
+pageRef = '/projects'
 
 [[params.hero.actions]]
 label = 'Voir l’atelier'
-PageRef = '/projets'
+PageRef = '/projects'
 
 [[params.hero.actions]]
 label = 'Contact'

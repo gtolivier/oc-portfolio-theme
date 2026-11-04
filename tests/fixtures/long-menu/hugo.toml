@@ -7,7 +7,7 @@
   weight = 10
 [[languages.fr.menus.main]]
   name = 'Projets'
-  pageRef = '/projets'
+  pageRef = '/projects'
   weight = 20
 [[languages.fr.menus.main]]
   name = 'Parcours'

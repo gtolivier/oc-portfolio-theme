@@ -6,17 +6,17 @@ title = 'Encadreuse'
 
 [[params.hero.actions]]
 label = 'Voir les projets'
-pageRef = '/projets'
+pageRef = '/projects'
 
 [[params.hero.actions]]
 label = 'Appeler'
 url = 42
-pageRef = '/projets'
+pageRef = '/projects'
 
 [[params.hero.actions]]
 label = 'Écrire'
 url = { href = '/contact' }
-pageRef = '/projets'
+pageRef = '/projects'
 +++
 
 Accueil fictif dont le deuxième lien du bandeau a pour adresse un nombre et le

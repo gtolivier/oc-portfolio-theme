@@ -12,7 +12,7 @@ stack = ['Osier', 'Rotin', 'Châtaignier']
 
 [[params.hero.actions]]
 label = 'Voir les paniers'
-pageRef = '/projets'
+pageRef = '/projects'
 
 [[params.hero.actions]]
 label = ' Voir les projets'
