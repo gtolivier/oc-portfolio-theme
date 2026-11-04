@@ -329,7 +329,28 @@ test.describe('home page of another site, with another contact intro', () => {
     await expect(section.getByText(OTHER_CONTACT_INTRO)).toBeVisible();
     await expect(section.getByText(CONTACT_INTRO), 'the example site’s intro').toHaveCount(0);
   });
+
+  test.describe('browser without JavaScript', () => {
+    test.use({ javaScriptEnabled: false });
+
+    test('without JavaScript, opening at #contact-sent the French home page of another site, whose contact params give a sent text, shows that text as the confirmation, and not the theme’s default one', async ({
+      page,
+      context,
+    }) => {
+      await serveSite(context, SITE_WITH_ANOTHER_CONTACT_INTRO, siteDirectory);
+      /* A fresh load, as after the endpoint's redirect. */
+      await page.goto('about:blank');
+      await page.goto(`${SITE_WITH_ANOTHER_CONTACT_INTRO.origin}/fr/#contact-sent`);
+      const section = contactSection(page);
+      await expect(section.getByText(OTHER_CONTACT_SENT), 'the site’s confirmation').toBeVisible();
+      await expect(section.getByText(CONTACT_CONFIRMATION), 'the theme’s default confirmation').not.toBeVisible();
+    });
+  });
 });
+
+/* The confirmation tests/fixtures/other-contact/content/_index.md declares for its contact section
+   ([params.contact] table, sent key), in the same fictional bookbinder's voice. */
+const OTHER_CONTACT_SENT = 'Message bien reçu : je reviens vers vous avec un devis dès que mes cahiers sont cousus.';
 
 test.describe('home page of another site, without contact params', () => {
   let siteDirectory: string;
