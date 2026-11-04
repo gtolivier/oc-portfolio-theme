@@ -2858,10 +2858,14 @@ function expectProjectsBuildError(build: BuildAttempt, context = ''): void {
   );
 }
 
-/* A message naming, on its own line, the projets section: the word "section" and the token
-   projets, which neither a word nor a page path under projets/ continues, so that a reference
-   such as 'projets/restauration-pendule' does not pass for it. */
-const NAMES_THE_PROJETS_SECTION = /^(?=.*\bsection\b)(?=.*(?<![\w-])projets(?![\w-]|\/[\w-])).*$/u;
+/* A message naming, on its own line, the projects section: the word "section" right next to the
+   word projects, in either order ("projects section", "section projects"), projects possibly
+   between quotes or guillemets, and neither a word nor a page path under projects/ continuing
+   it. Every message of this partial already holds the token projects (its "projects:" prefix,
+   the words "projects parameter"), so the token alone would also pass for a message naming
+   another section. */
+const NAMES_THE_PROJECTS_SECTION =
+  /(?:["'`‘’“”«»]\s?)?(?<![\w-])projects(?![\w-]|\/[\w-])(?:\s?["'`‘’“”«»])?\s+section\b|\bsection\s+(?:["'`‘’“”«»]\s?)?(?<![\w-])projects(?![\w-]|\/[\w-])/u;
 
 test.describe('featured project content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
@@ -3182,22 +3186,23 @@ test.describe('featured project content errors: build failure', () => {
     );
   });
 
-  test("a home page that features a project living in a top-level section other than projets makes the site build fail, with an error message that names that entry, the projets section and the home page's language, without a template execution error after it", () => {
-    /* Featured projects must live in the projets section, the one the "Tous les projets" link
-       opens. tests/fixtures/projects-in-another-section/content/_index.md features a single
+  test("a home page that features a project living in a top-level section other than projects makes the site build fail, with an error message that names that entry, the projects section and the home page's language, without a template execution error after it", () => {
+    /* Without the projectsSection site param, featured projects must live in the theme's default
+       section, projects, the one the "Tous les projets" link opens.
+       tests/fixtures/projects-in-another-section/content/_index.md features a single
        project, 'realisations/pendule-de-voyage', of another published section, realisations/;
        tests/fixtures/projects-in-two-sections/content/_index.md features
        'projets/restauration-pendule', then 'realisations/coucou-de-chalet', of that same other
        section. Rather than a section whose cards come from anywhere, the person building the site
        must get a failure whose message, on one line, names the entry as written in the front
-       matter, the section the project must live in, projets, and the home page's language by its
+       matter, the section the project must live in, projects, and the home page's language by its
        code, whatever the rest of the wording, and no Go template execution error that would
        follow it and bury it in technical jargon. Two sites whose entries differ, so that an entry
        written in the template does not pass; the second also features a project of projets/,
-       which must not be reported. The section is looked for as the word "section" and the token
-       projets, which neither a word nor a page path under projets/ continues, so that the
-       reference 'projets/restauration-pendule' does not pass for it; the language code, as in
-       the other projects' tests, as a word that no other word follows. */
+       which must not be reported. The section is looked for as the word projects right next to
+       the word "section", so that the "projects:" prefix and the words "projects parameter" of
+       every message of this partial do not pass for it; the language code, as in the other
+       projects' tests, as a word that no other word follows. */
     const cases: { name: string; site: BuiltSite; entry: string; language: string }[] = [
       {
         name: 'a French home page featuring a project of realisations/ alone',
@@ -3225,8 +3230,8 @@ test.describe('featured project content errors: build failure', () => {
       expect(messages, `with ${name}, one error message naming the entry ${entry}, in:\n${build.errors}`).toHaveLength(
         1,
       );
-      expect(messages[0], `with ${name}, the error message should name the projets section`).toMatch(
-        NAMES_THE_PROJETS_SECTION,
+      expect(messages[0], `with ${name}, the error message should name the projects section`).toMatch(
+        NAMES_THE_PROJECTS_SECTION,
       );
       expect(messages[0], `with ${name}, the error message should name the home page's language, ${language}`).toMatch(
         new RegExp(languageCodePattern(language), 'u'),
@@ -3234,14 +3239,15 @@ test.describe('featured project content errors: build failure', () => {
     }
   });
 
-  test("a home page that features a project living at the content root, outside any section, makes the site build fail, with an error message that names that entry, the projets section and the home page's language, without a template execution error after it", () => {
-    /* Featured projects must live in the projets section, the one the "Tous les projets" link
-       opens: a page at the root of the content, in no section at all, does not either.
+  test("a home page that features a project living at the content root, outside any section, makes the site build fail, with an error message that names that entry, the projects section and the home page's language, without a template execution error after it", () => {
+    /* Without the projectsSection site param, featured projects must live in the theme's default
+       section, projects, the one the "Tous les projets" link opens: a page at the root of the
+       content, in no section at all, does not either.
        tests/fixtures/project-at-the-root/content/_index.md features a single project,
        'pendule-murale', a page at the root of the content. Rather than a section with a card of
        that page, the person building the site must get the same failure as for a project of
        another section: a message that, on one line, names the entry as written in the front
-       matter, the section the project must live in, projets, and the home page's language by its
+       matter, the section the project must live in, projects, and the home page's language by its
        code, whatever the rest of the wording, and no Go template execution error that would
        follow it and bury it in technical jargon. The section and the language are looked for as
        in the test above. */
@@ -3254,7 +3260,7 @@ test.describe('featured project content errors: build failure', () => {
     );
     const messages = build.errors.split('\n').filter((line) => line.includes(entry));
     expect(messages, `one error message naming the entry ${entry}, in:\n${build.errors}`).toHaveLength(1);
-    expect(messages[0], 'the error message should name the projets section').toMatch(NAMES_THE_PROJETS_SECTION);
+    expect(messages[0], 'the error message should name the projects section').toMatch(NAMES_THE_PROJECTS_SECTION);
     expect(messages[0], `the error message should name the home page's language, ${language}`).toMatch(
       new RegExp(languageCodePattern(language), 'u'),
     );
