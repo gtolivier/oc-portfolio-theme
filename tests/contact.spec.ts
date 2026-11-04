@@ -226,7 +226,35 @@ test.describe('browser without JavaScript', () => {
       'https://montres-pas-cheres.example',
     );
   });
+
+  test('without JavaScript, opening the home page at #contact-sent, where the endpoint sends the visitor back once the message is sent, shows the confirmation in view instead of the intro and the form; at /fr/ and /fr/#contact the confirmation is not shown', async ({
+    page,
+  }) => {
+    /* Each address is opened as a fresh load, as after the endpoint's redirect, not as a jump
+       within an already open page. */
+    for (const path of ['/fr/', '/fr/#contact']) {
+      await page.goto('about:blank');
+      await page.goto(path);
+      await expect(contactSection(page).getByRole('form'), `the form on ${path}`).toBeVisible();
+      await expect(
+        contactSection(page).getByText(CONTACT_CONFIRMATION),
+        `the confirmation on ${path}`,
+      ).not.toBeVisible();
+    }
+    await page.goto('about:blank');
+    await page.goto('/fr/#contact-sent');
+    const section = contactSection(page);
+    const confirmation = section.getByText(CONTACT_CONFIRMATION);
+    await expect(confirmation, 'the confirmation').toBeVisible();
+    await expect(confirmation, 'the confirmation is in view').toBeInViewport();
+    await expect(section.getByText(CONTACT_INTRO), 'the intro').not.toBeVisible();
+    await expect(section.getByRole('form'), 'the form').not.toBeVisible();
+  });
 });
+
+/* The theme's default French confirmation for a sent message (the example site gives none of its
+   own), shown once the endpoint has sent the visitor back to #contact-sent. */
+const CONTACT_CONFIRMATION = 'Merci, je vous réponds sous 48 heures ouvrées.';
 
 /* Whether any part of an element lies within the viewport. */
 async function isInViewport(element: Locator): Promise<boolean> {
