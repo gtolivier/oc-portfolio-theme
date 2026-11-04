@@ -1,6 +1,14 @@
 /* Mobile first: base styles target phones,
    wider screens are enhanced through @media (min-width: …). */
 
+.contact-decoy {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
 @font-face {
   font-family: 'IBM Plex Sans';
   font-weight: 400;
