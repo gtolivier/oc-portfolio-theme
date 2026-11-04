@@ -1,5 +1,6 @@
 /* With JavaScript, the contact form is posted in the background, asking the endpoint for JSON, so
-   the visitor stays on the page. On success the confirmation replaces the intro and the form. */
+   the visitor stays on the page. On success the confirmation replaces the intro and the form; on
+   an error answer, or none at all, the error message shows above the form, kept for a retry. */
 const form = document.querySelector<HTMLFormElement>('.contact form');
 
 form?.addEventListener('submit', (event) => {
