@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import {
   SITE_WITHOUT_HERO,
+  SITE_WITH_ANOTHER_CONTACT_ACTION,
   SITE_WITH_ANOTHER_CONTACT_INTRO,
   buildSite,
   removeDirectory,
@@ -146,6 +147,46 @@ test.describe('browser without JavaScript', () => {
         email: 'marie.horloge@exemple.fr',
         message: 'Bonjour, ma pendule de cheminée retarde de dix minutes par jour.',
       }),
+    );
+  });
+});
+
+/* The address tests/fixtures/other-contact-address/hugo.toml gives the contact form to post to,
+   instead of the example site's: another path on the site's own domain. */
+const OTHER_CONTACT_ACTION = '/messages/envoyer';
+
+test.describe('home page of another site, with another contactAction, in a browser without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_ANOTHER_CONTACT_ACTION);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('with another contactAction, sending the filled contact form posts to that other address, and not to the example site’s', async ({
+    page,
+    context,
+  }) => {
+    await serveSite(context, SITE_WITH_ANOTHER_CONTACT_ACTION, siteDirectory);
+    /* No endpoint answers on the built site: whatever address the form posts to, the request is
+       answered here, so the browser has somewhere to land. */
+    await page.route(
+      (url) => url.pathname === OTHER_CONTACT_ACTION || url.pathname === CONTACT_ACTION,
+      (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<p>Merci</p>' }),
+    );
+    await page.goto(`${SITE_WITH_ANOTHER_CONTACT_ACTION.origin}/fr/`);
+    const form = contactSection(page).getByRole('form');
+    await form.locator('[name="email"]').fill('marie.horloge@exemple.fr');
+    await form.locator('[name="message"]').fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
+    /* Whatever the form posts to, the browser's POST is recorded. */
+    const [request] = await Promise.all([
+      page.waitForRequest((sent) => sent.method() === 'POST'),
+      form.getByRole('button').click(),
+    ]);
+    expect(request.url(), 'the address the form posts to').toBe(
+      new URL(OTHER_CONTACT_ACTION, SITE_WITH_ANOTHER_CONTACT_ACTION.origin).href,
     );
   });
 });

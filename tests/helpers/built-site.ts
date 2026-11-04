@@ -1325,6 +1325,11 @@ export const SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_THROUGH_A_P
    devis.' */
 export const SITE_WITH_ANOTHER_CONTACT_INTRO = testSite('other-contact');
 
+/* The example site's contact form posts to '/api/contact', its contactAction site param: this site
+   keeps its content and sets that param to another path on the site's own domain,
+   contactAction = '/messages/envoyer' (see tests/fixtures/other-contact-address/hugo.toml). */
+export const SITE_WITH_ANOTHER_CONTACT_ACTION = testSite('other-contact-address');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
