@@ -13,6 +13,15 @@ other = 'Background'
 [contact]
 other = 'Contact'
 
+[contactEmail]
+other = 'Your email'
+
+[contactMessage]
+other = 'Message'
+
+[contactSend]
+other = 'Send'
+
 [selectedProjects]
 other = 'Selected projects'
 
