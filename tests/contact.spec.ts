@@ -365,6 +365,33 @@ test('with JavaScript, when the endpoint answers the background request with an 
   }
 });
 
+test('with JavaScript, when the background request gets no answer at all (network failure), the error message shows and the form keeps what the visitor wrote, still usable', async ({
+  page,
+}) => {
+  const email = 'marie.horloge@exemple.fr';
+  const message = 'Bonjour, ma pendule de cheminée retarde de dix minutes par jour.';
+  /* No answer comes back: the request fails on the network, as when the visitor is offline. */
+  await page.route(`**${CONTACT_ACTION}`, (route) => route.abort('internetdisconnected'));
+  await page.goto('/fr/');
+  const section = contactSection(page);
+  const form = section.getByRole('form');
+  const emailField = form.locator('[name="email"]');
+  const messageField = form.locator('[name="message"]');
+  const sendButton = form.getByRole('button');
+  await emailField.fill(email);
+  await messageField.fill(message);
+  await Promise.all([page.waitForEvent('requestfailed', (failed) => failed.method() === 'POST'), sendButton.click()]);
+  /* The error message shows, not the confirmation. */
+  await expect(section.getByText(CONTACT_ERROR), 'the error message').toBeVisible();
+  await expect(section.getByText(CONTACT_CONFIRMATION), 'the confirmation').not.toBeVisible();
+  /* The form stays usable, with what the visitor wrote, for them to try again. */
+  expect(await isUsable(emailField, 'field'), 'the email field is usable').toBe(true);
+  expect(await isUsable(messageField, 'field'), 'the message field is usable').toBe(true);
+  expect(await isUsable(sendButton, 'button'), 'the send button is usable').toBe(true);
+  await expect(emailField, 'the email').toHaveValue(email);
+  await expect(messageField, 'the message').toHaveValue(message);
+});
+
 /* Whether any part of an element lies within the viewport. */
 async function isInViewport(element: Locator): Promise<boolean> {
   const box = await element.boundingBox();
