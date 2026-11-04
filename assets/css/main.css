@@ -1294,3 +1294,13 @@ tick-field > canvas {
 .contact:has(#contact-sent:target) :is(.contact-intro, form) {
   display: none;
 }
+
+/* The error message is for the visitor the endpoint sends back to
+   #contact-error: it shows above the form, which stays usable. */
+.contact-error {
+  display: none;
+}
+
+.contact:has(#contact-error:target) .contact-error {
+  display: block;
+}

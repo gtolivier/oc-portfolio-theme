@@ -25,6 +25,9 @@ other = 'Envoyer'
 [contactSent]
 other = 'Merci, je vous réponds sous 48 heures ouvrées.'
 
+[contactError]
+other = 'Le message n’a pas pu être envoyé. Réessayez dans un instant.'
+
 [selectedProjects]
 other = 'Projets sélectionnés'
 
