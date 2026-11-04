@@ -1967,6 +1967,20 @@ test('a featured project whose page, written with a YAML front matter, leaves it
   }
 });
 
+test('on the French home page, the "projets d’exemple" link of the page’s text opens the projects page, at /fr/projets/', async ({
+  page,
+}) => {
+  await page.goto('/fr/');
+  /* The link the example site's French home page writes in its body text (content/_index.md), told
+     apart from the header's, the hero's and the section's links to the same page by its text. */
+  const link = page.getByRole('main').getByRole('link', { name: 'projets d’exemple', exact: true });
+  await expect(link).toHaveCount(1);
+  await expect(link).toBeVisible();
+  await link.click();
+  await expect(page).toHaveURL('/fr/projets/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Projets');
+});
+
 test.describe('home pages of the example site, served at the site root and under /portfolio/', () => {
   test('the section "Projets sélectionnés" has, once and outside the cards, a "Tous les projets" link that opens the section holding the featured projects, at the site root and under /portfolio/', async ({
     page,
