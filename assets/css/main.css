@@ -1301,6 +1301,6 @@ tick-field > canvas {
   display: none;
 }
 
-.contact:has(#contact-error:target) .contact-error {
+.contact:is(.is-error, :has(#contact-error:target)) .contact-error {
   display: block;
 }

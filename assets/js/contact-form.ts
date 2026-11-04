@@ -8,7 +8,12 @@ form?.addEventListener('submit', (event) => {
     method: 'POST',
     headers: { Accept: 'application/json' },
     body: new FormData(form),
-  }).then((response) => {
-    if (response.ok) form.closest('.contact')?.classList.add('is-sent');
-  });
+  })
+    .then((response) => response.ok)
+    .catch(() => false)
+    .then((sent) => {
+      const contact = form.closest('.contact');
+      contact?.classList.toggle('is-sent', sent);
+      contact?.classList.toggle('is-error', !sent);
+    });
 });
