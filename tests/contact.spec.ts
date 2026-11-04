@@ -7,6 +7,7 @@ import {
   removeDirectory,
   serveSite,
 } from './helpers/built-site';
+import { holdRequests } from './helpers/held-requests';
 import { tabKey } from './helpers/keyboard';
 
 /* The contact section of a home page, in its main content: a region named by its title. */
@@ -390,6 +391,45 @@ test('with JavaScript, when the background request gets no answer at all (networ
   expect(await isUsable(sendButton, 'button'), 'the send button is usable').toBe(true);
   await expect(emailField, 'the email').toHaveValue(email);
   await expect(messageField, 'the message').toHaveValue(message);
+});
+
+test('with JavaScript, while the message is being sent, the endpoint not having answered yet, sending the form again, by its button or by Enter in the email field, does not post it a second time', async ({
+  page,
+}) => {
+  /* The endpoint answers with success once the test lets the request through; until then it is
+     held, as on a slow connection. */
+  await page.route(`**${CONTACT_ACTION}`, (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
+  );
+  const held = await holdRequests(page, `**${CONTACT_ACTION}`);
+  /* Every POST the page sends to the endpoint, held or not. */
+  const posts: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === CONTACT_ACTION) posts.push(request.url());
+  });
+  try {
+    await page.goto('/fr/');
+    const section = contactSection(page);
+    const form = section.getByRole('form');
+    const emailField = form.locator('[name="email"]');
+    const messageField = form.locator('[name="message"]');
+    const sendButton = form.getByRole('button');
+    await emailField.fill('marie.horloge@exemple.fr');
+    await messageField.fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
+    await sendButton.click();
+    await held.requested;
+    /* Sending again, however the visitor can, while the first request is still pending: a click on
+       the button, even if it no longer takes one, and Enter in the email field. */
+    await sendButton.click({ force: true });
+    await emailField.press('Enter');
+    /* The first request answered, the confirmation shows: by then any second POST, sent before the
+       answer, has reached the endpoint. */
+    held.release();
+    await expect(section.getByText(CONTACT_CONFIRMATION), 'the confirmation').toBeVisible();
+    expect(posts, 'the POST requests that reached the endpoint').toHaveLength(1);
+  } finally {
+    await held.end();
+  }
 });
 
 /* Whether any part of an element lies within the viewport. */
