@@ -1280,3 +1280,17 @@ tick-field > canvas {
   height: 1px;
   overflow: hidden;
 }
+
+/* The confirmation is for the visitor the endpoint sends back to
+   #contact-sent: it replaces the intro and the form. */
+.contact-sent {
+  display: none;
+}
+
+.contact:has(#contact-sent:target) .contact-sent {
+  display: block;
+}
+
+.contact:has(#contact-sent:target) :is(.contact-intro, form) {
+  display: none;
+}

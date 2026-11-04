@@ -22,6 +22,9 @@ other = 'Message'
 [contactSend]
 other = 'Envoyer'
 
+[contactSent]
+other = 'Merci, je vous réponds sous 48 heures ouvrées.'
+
 [selectedProjects]
 other = 'Projets sélectionnés'
 
