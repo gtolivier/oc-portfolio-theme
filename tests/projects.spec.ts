@@ -2000,7 +2000,7 @@ test.describe('home pages of the example site, served at the site root and under
   });
 });
 
-test.describe('home page of another site, featuring only projects of one subsection of projects', () => {
+test.describe('home page of another site, featuring only projects of one subsection of the projects section', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
     siteDirectory = buildSite(SITE_WITH_PROJECTS_IN_A_SUBSECTION);
@@ -2031,7 +2031,7 @@ test.describe('home page of another site, featuring only projects of one subsect
   });
 });
 
-test.describe('home page of another site, featuring projects of projects and of one of its subsections', () => {
+test.describe('home page of another site, featuring projects of the projects section and of one of its subsections', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
     siteDirectory = buildSite(SITE_WITH_PROJECTS_IN_THE_SECTION_AND_A_SUBSECTION);
@@ -2123,7 +2123,7 @@ test.describe('home page of another site, whose projectsSection param names the 
 test.describe('featured project outside the section named by the projectsSection param: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
-  test('with the projectsSection site param set to realisations, a home page that features a project of projects makes the site build fail, with an error message that names that entry and the configured section, realisations, never the default section, projects, as the section', () => {
+  test('with the projectsSection site param set to realisations, a home page that features a project of the projects section makes the site build fail, with an error message that names that entry and the configured section, realisations, never the default section, projects, as the section', () => {
     /* tests/fixtures/project-outside-the-configured-section/hugo.toml sets projectsSection =
        'realisations'; its content/_index.md features 'realisations/pendule-de-voyage', then the
        example site's 'projects/restauration-pendule'. The site said its projects live in
