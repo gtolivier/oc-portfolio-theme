@@ -12,15 +12,15 @@ stack = ['Laiton', 'Acier', 'Rubis']
 
 [[params.hero.actions]]
 label = 'Voir les projets'
-pageRef = '/projets'
+pageRef = '/projects'
 clients = ['Maison Delorme', 'Librairie Vasseur']
 
 [[params.hero.actions]]
 label = 'Contact'
 url = '#contact'
 projects = [
-  'projets/restauration-pendule',
-  'projets/horloge-astronomique',
+  'projects/restauration-pendule',
+  'projects/horloge-astronomique',
 ]
 +++
 

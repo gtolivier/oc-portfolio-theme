@@ -11,7 +11,7 @@ stack = ['Noyer', 'Frêne', 'Merisier']
 
 [[params.hero.actions]]
 label = 'Voir les projets'
-pageRef = '/projets'
+pageRef = '/projects'
 
 [[params.hero.actions]]
 Label = 'Contact'

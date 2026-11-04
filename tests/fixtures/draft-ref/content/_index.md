@@ -3,8 +3,8 @@ title = 'Accueil'
 
 [params]
 projects = [
-  'projets/restauration-pendule',
-  'projets/pendule-portique',
+  'projects/restauration-pendule',
+  'projects/pendule-portique',
 ]
 +++
 

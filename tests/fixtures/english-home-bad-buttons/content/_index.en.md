@@ -6,7 +6,7 @@ title = 'Independent clockmaker'
 
 [[params.hero.actions]]
 label = 'View projects'
-pageRef = { path = '/projets' }
+pageRef = { path = '/projects' }
 
 [[params.hero.actions]]
 label = 'View projects'
@@ -14,7 +14,7 @@ pageRef = ''
 
 [[params.hero.actions]]
 label = 'View projects'
-pageRef = '/projets '
+pageRef = '/projects '
 
 [[params.hero.actions]]
 label = 'See the workshop'
@@ -23,7 +23,7 @@ pageRef = '/shut-workshop'
 [[params.hero.actions]]
 label = 'Contact'
 url = '#contact'
-pageRef = '/projets'
+pageRef = '/projects'
 
 [[params.hero.actions]]
 label = 'Contact'

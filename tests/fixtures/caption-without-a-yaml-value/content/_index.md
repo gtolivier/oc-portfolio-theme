@@ -5,7 +5,7 @@ params:
     title: Relieuse
     actions:
       - label: Voir les projets
-        pageRef: /projets
+        pageRef: /projects
       - label:
         url: '#contact'
 ---

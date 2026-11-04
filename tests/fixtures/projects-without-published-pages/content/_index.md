@@ -3,9 +3,9 @@ title = 'Accueil'
 
 [params]
 projects = [
-  'projets/horloge-comtoise',
-  'projets/restauration-pendule',
-  'projets/sablier-de-marine',
+  'projects/horloge-comtoise',
+  'projects/restauration-pendule',
+  'projects/sablier-de-marine',
 ]
 +++
 

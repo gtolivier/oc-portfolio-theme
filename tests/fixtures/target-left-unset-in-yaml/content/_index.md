@@ -5,7 +5,7 @@ params:
     title: Horloger indépendant
     actions:
       - label: Voir les projets
-        pageRef: /projets
+        pageRef: /projects
       - label: Contact
         pageRef: null
 ---

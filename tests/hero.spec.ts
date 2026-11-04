@@ -410,7 +410,7 @@ test('on the French home page, the first hero button, "Voir les projets", leads 
 }) => {
   await page.goto('/fr/');
   /* The buttons come from the front matter of exampleSite/content/_index.md,
-     [[params.hero.actions]] blocks; the first one has pageRef = '/projets'. */
+     [[params.hero.actions]] blocks; the first one has pageRef = '/projects'. */
   const firstButton = firstHeroButton(page);
   await expect(firstButton).toHaveText('Voir les projets');
   await expect(firstButton).toHaveAttribute('href', '/fr/projets/');
@@ -1374,7 +1374,9 @@ test('on the English home page, the hero shows the English title, tagline and st
     'of antique clocks and watches.',
   ]);
   await expect(main.getByText('Brass · Steel · Ruby · Enamel', { exact: true })).toBeVisible();
-  /* The English Projects page has the slug 'projects' (exampleSite/content/projets/_index.en.md). */
+  /* The English Projects page is at /en/projects/, from its folder's name,
+     exampleSite/content/projects/; only the French _index.md carries slug = 'projets', so that
+     the French addresses stay /fr/projets/. */
   const firstButton = firstHeroButton(page);
   await expect(firstButton).toHaveText('View projects');
   await expect(firstButton).toHaveAttribute('href', '/en/projects/');
@@ -2262,7 +2264,7 @@ test.describe('hero content errors: build failure', () => {
 
   test('a home page where a hero button declares both a url and a pageRef makes the site build fail with a single hero error message, which cites both fields and, on that same line, says both are declared', () => {
     /* The second button of tests/fixtures/button-with-two-destinations/content/_index.md has a
-       label and declares both url = '#contact' and pageRef = '/projets', two valid
+       label and declares both url = '#contact' and pageRef = '/projects', two valid
        destinations. Rather than a link where one of the two destinations would be silently
        ignored, the person building the site must get a failure whose message names the url
        and pageRef fields of the front matter and, on that same line, says that both are
@@ -2321,7 +2323,7 @@ test.describe('hero content errors: build failure', () => {
 
   test('a home page where a hero button declares a pageRef that is not a text but a table or a number makes the site build fail with a single hero error message that says the pageRef must be a page reference, without a template execution error after it', () => {
     /* The first button of tests/fixtures/table-as-button-target/content/_index.md declares
-       pageRef = { path = '/projets' }, a table, and that of
+       pageRef = { path = '/projects' }, a table, and that of
        tests/fixtures/number-as-button-target/content/_index.md pageRef = 42, a number, rather
        than a page reference, a text. Rather than a Go template execution error about a function
        called with a table, or a message saying that the page "42" cannot be found, the person
@@ -2444,19 +2446,19 @@ test.describe('hero content errors: build failure', () => {
 
   test('a home page where a hero button declares a pageRef with whitespace at its start or end makes the site build fail with a single hero error message that quotes this pageRef and says it has whitespace, which Hugo does not trim', () => {
     /* The first button of tests/fixtures/button-target-with-trailing-space/content/_index.md
-       declares pageRef = '/projets ', with a trailing space, and that of
-       tests/fixtures/button-target-with-leading-tab/content/_index.md pageRef = "\t/projets",
-       with a leading tab: '/projets' exists, but Hugo does not trim the whitespace, so that it
+       declares pageRef = '/projects ', with a trailing space, and that of
+       tests/fixtures/button-target-with-leading-tab/content/_index.md pageRef = "\t/projects",
+       with a leading tab: '/projects' exists, but Hugo does not trim the whitespace, so that it
        finds no page. A message that only says the pageRef matches no page would show the person
        building the site a reference that looks right, the whitespace being invisible in it: the
-       message must quote the pageRef as Go's %q does, which shows the whitespace ("/projets ",
-       "\t/projets"), and say, on that same line, that it has whitespace, whatever the rest of
+       message must quote the pageRef as Go's %q does, which shows the whitespace ("/projects ",
+       "\t/projects"), and say, on that same line, that it has whitespace, whatever the rest of
        the wording. Any other hero message, such as one saying the page cannot be found, would
        send them looking elsewhere: this one must be the only one. A trailing space and a leading
        tab, so that checking only one end, or only the space character, does not pass. */
     const cases: { name: string; site: BuiltSite; quoted: string }[] = [
-      { name: 'a trailing space', site: SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE, quoted: '"/projets "' },
-      { name: 'a leading tab', site: SITE_WITH_A_PAGE_REF_WITH_A_LEADING_TAB, quoted: '"\\t/projets"' },
+      { name: 'a trailing space', site: SITE_WITH_A_PAGE_REF_WITH_A_TRAILING_SPACE, quoted: '"/projects "' },
+      { name: 'a leading tab', site: SITE_WITH_A_PAGE_REF_WITH_A_LEADING_TAB, quoted: '"\\t/projects"' },
     ];
     for (const { name, site, quoted } of cases) {
       const build = tryToBuildSite(site);
@@ -2809,7 +2811,7 @@ test.describe('hero content errors: build failure', () => {
   });
 
   test("a home page whose clients or projects key is written under a hero button makes the site build fail, with one error message per such key that names the button by its position, says the key belongs to [params], before [params.hero], and names the home page's language", () => {
-    /* tests/fixtures/listes-sous-les-liens/content/_index.md, a French home page, writes
+    /* tests/fixtures/lists-under-the-links/content/_index.md, a French home page, writes
        clients = [...] after its first [[params.hero.actions]] header and projects = [...] after
        its second one, so that TOML puts them in the first and second buttons' tables rather than
        in params.clients and params.projects, where the theme reads them. Rather than a home page
@@ -2939,8 +2941,8 @@ test.describe('hero content errors: build failure', () => {
 
   test('a home page whose hero buttons hold a key written in another case than the one the theme reads (PageRef, Tagline) makes the build fail, with one error message per such key that names its button by its position and the key as written', () => {
     /* tests/fixtures/misplaced-capitals/content/_index.md, a French home page, has three hero
-       buttons, each with a label: the first is well filled in, with pageRef = '/projets'; the
-       second writes PageRef = '/projets', capitalized, without a url; the third, well filled in
+       buttons, each with a label: the first is well filled in, with pageRef = '/projects'; the
+       second writes PageRef = '/projects', capitalized, without a url; the third, well filled in
        with a url, holds Tagline = [...], capitalized. The theme reads label, url and pageRef in
        exactly that case, and the hero's tagline under [params.hero]: a key written in another case
        is neither read nor, today, reported as a wrong key. The person building the site must get,
@@ -2978,8 +2980,8 @@ test.describe('hero content errors: build failure', () => {
 
   test('a home page whose hero button holds a pageref key written all in lowercase makes the build fail, with an error message that names that button by its position and the key as written', () => {
     /* tests/fixtures/lowercase-target/content/_index.md, a French home page, has two hero buttons,
-       each with a label: the first is well filled in, with pageRef = '/projets'; the second writes
-       pageref = '/projets', all in lowercase, without a url. The theme reads pageRef in exactly
+       each with a label: the first is well filled in, with pageRef = '/projects'; the second writes
+       pageref = '/projects', all in lowercase, without a url. The theme reads pageRef in exactly
        that case: a key written all in lowercase is neither read nor, today, reported as a key
        written in another case. The person building the site must get an error message that says,
        on one line, which button holds it by its position, button 2, and names that key in the case
@@ -2998,8 +3000,8 @@ test.describe('hero content errors: build failure', () => {
 
   test('a home page whose hero button is linked only by a PageRef key, written in another case than the one the theme reads, without a url, makes the build fail with an error message that names that button by its position and the key as written, and no error message saying the button has neither a url nor a pageRef', () => {
     /* tests/fixtures/capitalized-target-alone/content/_index.md, a French home page, has two hero
-       buttons, each with a label: the first is well filled in, with pageRef = '/projets'; the
-       second writes PageRef = '/projets', capitalized, and declares no url. The person building
+       buttons, each with a label: the first is well filled in, with pageRef = '/projects'; the
+       second writes PageRef = '/projects', capitalized, and declares no url. The person building
        the site must get an error message that says, on one line, which button holds that key by
        its position, button 2, and names it in the case written, PageRef, whatever the rest of the
        wording, and that line must not name the well filled-in first button. The button does
@@ -3020,7 +3022,7 @@ test.describe('hero content errors: build failure', () => {
   test('a home page whose hero button writes its label under a Label key, in another case than the one the theme reads, with a well filled-in url, makes the build fail with an error message that names that button by its position and the key as written, and no error message saying the button has no label field', () => {
     /* tests/fixtures/capitalized-caption/content/_index.md, a French home page, has two hero
        buttons: the first is well filled in, with label = 'Voir les projets' and
-       pageRef = '/projets'; the second writes Label = 'Contact', capitalized, next to a well
+       pageRef = '/projects'; the second writes Label = 'Contact', capitalized, next to a well
        filled-in url = '#contact'. The person building the site must get an error message that
        says, on one line, which button holds that key by its position, button 2, and names it in
        the case written, Label, whatever the rest of the wording, and that line must not name the
@@ -3053,7 +3055,7 @@ test.describe('hero content errors: build failure', () => {
 
   test('a home page whose hero button is linked only by a Url key, written in another case than the one the theme reads, without a pageRef, makes the build fail with an error message that names that button by its position and the key as written, and no error message saying the button has neither a url nor a pageRef', () => {
     /* tests/fixtures/capitalized-address-alone/content/_index.md, a French home page, has two hero
-       buttons, each with a label: the first is well filled in, with pageRef = '/projets'; the
+       buttons, each with a label: the first is well filled in, with pageRef = '/projects'; the
        second writes Url = '#contact', capitalized, and declares no pageRef. The person building
        the site must get an error message that says, on one line, which button holds that key by
        its position, button 2, and names it in the case written, Url, whatever the rest of the
@@ -3073,7 +3075,7 @@ test.describe('hero content errors: build failure', () => {
   });
 
   test("a home page where a hero button is not a table but a text, in a list whose other button is a table, makes the site build fail with a single hero error message that names that button by its position, says a button must be a table and names the home page's language, without a template execution error after it", () => {
-    /* tests/fixtures/lien-ecrit-sans-accolades/content/_index.md, a French home page, writes its
+    /* tests/fixtures/link-written-without-braces/content/_index.md, a French home page, writes its
        hero buttons as an inline TOML array whose first entry is a well filled-in button, a table,
        and whose second entry is a mere text, 'Contact': reading the url or the label of a text in
        a Go template raises an execution error. Rather than that, the person building the site
@@ -3101,7 +3103,7 @@ test.describe('hero content errors: build failure', () => {
 
   test("a home page where a hero button's url is not a text, a number or a table, makes the site build fail with one error message per such button, which names that button by its position, says its url must be a text and names the home page's language, without a template execution error after it", () => {
     /* tests/fixtures/address-as-figure-or-dict/content/_index.md, a French home page, has three
-       hero buttons, each with a label: the first is well filled in, with pageRef = '/projets'; the
+       hero buttons, each with a label: the first is well filled in, with pageRef = '/projects'; the
        second declares a number, url = 42; the third a table, url = { href = '/contact' }. Neither
        is an address: rather than a link to "42", or a Go template execution error on the table,
        the person building the site must get, for each of these two buttons, a single error
@@ -3287,7 +3289,7 @@ test.describe('hero content errors: build failure', () => {
   test("a home page where a hero button's url is an empty text or made only of whitespace, without a pageRef, makes the site build fail with a single error message per such button, which names that button by its position, says its url is empty and names the home page's language, rather than saying the button has neither a url nor a pageRef", () => {
     /* tests/fixtures/addresses-unfilled-and-of-spaces/content/_index.md, a French home page, has
        three hero buttons, each with a label: the first is well filled in, with
-       pageRef = '/projets'; the second declares url = '', an empty text, and the third
+       pageRef = '/projects'; the second declares url = '', an empty text, and the third
        url = " \t ", a space, a tab and a space, both without a pageRef. Neither is an address:
        rather than a link that leads nowhere, the person building the site must get, for each of
        these two buttons, a single error message that says, on one line, which button is at
@@ -3319,8 +3321,8 @@ test.describe('hero content errors: build failure', () => {
 
   test("a home page where a hero button declares an empty url next to a valid pageRef makes the site build fail with a single hero error message, which names that button by its position, cites both fields and, on that same line, says both are declared and names the home page's language", () => {
     /* tests/fixtures/unfilled-address-and-target/content/_index.md, a French home page, has two
-       hero buttons, each with a label: the first is well filled in, with pageRef = '/projets';
-       the second declares url = '', an empty text, next to a valid pageRef = '/projets'. Hugo
+       hero buttons, each with a label: the first is well filled in, with pageRef = '/projects';
+       the second declares url = '', an empty text, next to a valid pageRef = '/projects'. Hugo
        reads the url as false, but the button does declare a url next to its pageRef: the person
        building the site must get a single hero error message that says, on one line, which
        button is at fault by its position, names the url and pageRef fields of the front matter,
@@ -3348,8 +3350,8 @@ test.describe('hero content errors: build failure', () => {
   test("a home page where hero buttons declare a url next to a wrong pageRef (with whitespace at its end, a table, a number, one that matches no page, one to a page that is not published) makes the site build fail with a single hero error message per such button, the pageRef's own one, and no message saying both fields are declared", () => {
     /* tests/fixtures/address-next-to-broken-targets/content/_index.md, a French home page, has
        six hero buttons, each with a label: the first is well filled in, with
-       pageRef = '/projets'; each of the others declares a valid url = '#contact' next to a wrong
-       pageRef: the second '/projets ', with a trailing space; the third { path = '/projets' }, a
+       pageRef = '/projects'; each of the others declares a valid url = '#contact' next to a wrong
+       pageRef: the second '/projects ', with a trailing space; the third { path = '/projects' }, a
        table; the fourth 42, a number, neither of which Hugo reads as false; the fifth
        '/page-fictive-introuvable', which matches no page; the sixth '/atelier-ferme', a page that
        declares [build] render = 'never'. The person building the site must first fix the
@@ -3367,7 +3369,7 @@ test.describe('hero content errors: build failure', () => {
     const cases: { position: number; isPageRefError: (line: string) => boolean; description: string }[] = [
       {
         position: 2,
-        isPageRefError: (line) => line.includes('"/projets "') && /\bwhitespace\b/i.test(line),
+        isPageRefError: (line) => line.includes('"/projects "') && /\bwhitespace\b/i.test(line),
         description: 'quote the pageRef and say it has whitespace',
       },
       {
@@ -3408,7 +3410,7 @@ test.describe('hero content errors: build failure', () => {
   test("a home page written with a YAML front matter where a hero button's pageRef is null, without a url, makes the site build fail with a single hero error message, which names that button by its position, says its pageRef is empty and names the home page's language, rather than saying the button has neither a url nor a pageRef", () => {
     /* tests/fixtures/target-left-unset-in-yaml/content/_index.md, a French home page written
        with a YAML front matter, has two hero buttons, each with a label and no url: the first is
-       well filled in, with pageRef: /projets; the second declares pageRef: null, the YAML way of
+       well filled in, with pageRef: /projects; the second declares pageRef: null, the YAML way of
        leaving a field without a value. The person building the site wrote the pageRef field but
        left it unfilled, as with pageRef = '' in TOML: they must get the same error, a single hero
        message that says, on one line, which button is at fault by its position, that its pageRef
@@ -3436,7 +3438,7 @@ test.describe('hero content errors: build failure', () => {
   test("a home page written with a YAML front matter where a hero button's url is null, without a pageRef, makes the site build fail with a single hero error message, which names that button by its position, says its url is empty and names the home page's language, rather than saying it must be a text or that the button has neither a url nor a pageRef", () => {
     /* tests/fixtures/address-left-unset-in-yaml/content/_index.md, a French home page written
        with a YAML front matter, has two hero buttons, each with a label: the first is well filled
-       in, with pageRef: /projets; the second declares url: null, the YAML way of leaving a field
+       in, with pageRef: /projects; the second declares url: null, the YAML way of leaving a field
        without a value, and no pageRef. The person building the site wrote the url field but left
        it unfilled, as with url = '' in TOML: they must get the same error, a single hero message
        that says, on one line, which button is at fault by its position, that its url is empty (or
@@ -3463,7 +3465,7 @@ test.describe('hero content errors: build failure', () => {
   test("a home page where a hero button's pageRef points to a page that declares a custom param build = \"2020\", a text rather than a table, makes the site build fail with a single hero error message, which names that button by its position, quotes its pageRef, says the theme reads the page's build param as Hugo's build options and to rename it, and names the home page's language, without a template execution error after it", () => {
     /* tests/fixtures/target-with-a-year-option/content/_index.md, a French home page, has two
        hero buttons, each with a label and no url: the first is well filled in, with
-       pageRef = '/projets'; the second declares pageRef = '/atelier-millesime', a page of the same
+       pageRef = '/projects'; the second declares pageRef = '/atelier-millesime', a page of the same
        fixture that sets no [build] options but declares under [params] a custom param
        build = '2020'. The theme reads the page's build param as Hugo's build options, the [build]
        front matter, to know whether Hugo publishes the page: a custom build param hides them, so
@@ -3499,7 +3501,7 @@ test.describe('hero content errors: build failure', () => {
 
   test("a home page where a hero button's url is a value Hugo reads as false (false, 0, an empty list), without a pageRef, makes the site build fail with a single hero error message per such button, which names that button by its position and says its url must be a text, rather than saying the button has neither a url nor a pageRef", () => {
     /* tests/fixtures/addresses-read-as-false/content/_index.md, a French home page, has four hero
-       buttons, each with a label: the first is well filled in, with pageRef = '/projets'; the
+       buttons, each with a label: the first is well filled in, with pageRef = '/projects'; the
        others declare no pageRef and a url Hugo reads as false: the second false, the third 0, the
        fourth [], an empty list. None is an address, but each button does declare a url: the person
        building the site must get, for each of these three buttons, a single hero message that
@@ -3524,8 +3526,8 @@ test.describe('hero content errors: build failure', () => {
   test("a home page where a hero button's url is not a text, a number or a table, next to a valid pageRef, makes the site build fail with a single hero error message per such button, which names that button by its position and says its url must be a text, and no message saying both fields are declared", () => {
     /* tests/fixtures/figure-or-dict-address-and-target/content/_index.md, a French home page, has
        three hero buttons, each with a label: the first is well filled in, with
-       pageRef = '/projets'; the second declares a number, url = 42, and the third a table,
-       url = { href = '/contact' }, each next to a valid pageRef = '/projets'. The url is wrong in
+       pageRef = '/projects'; the second declares a number, url = 42, and the third a table,
+       url = { href = '/contact' }, each next to a valid pageRef = '/projects'. The url is wrong in
        itself: the person building the site must first fix it, so that they get, for each of these
        two buttons, a single hero message that says, on one line, which button is at fault by its
        position and that its url must be a text, whatever the rest of the wording. A message
@@ -3552,7 +3554,7 @@ test.describe('hero content errors: build failure', () => {
   test("a home page where a hero button's url has whitespace at its start or at its end, without a pageRef, makes the site build fail with a single error message per such button, which names that button by its position, says its url has whitespace and names the home page's language", () => {
     /* tests/fixtures/addresses-padded-at-the-edges/content/_index.md, a French home page, has
        three hero buttons, each with a label: the first is well filled in, with
-       pageRef = '/projets'; the second declares url = ' #contact', with a leading space, and the
+       pageRef = '/projects'; the second declares url = ' #contact', with a leading space, and the
        third url = "/contact/\t", with a trailing tab, both without a pageRef. Hugo does not trim
        the whitespace, which ends up in the link's address, and it is invisible in the front
        matter: rather than a link that may lead elsewhere, the person building the site must get,
@@ -3582,8 +3584,8 @@ test.describe('hero content errors: build failure', () => {
   test("a home page where a hero button's url has whitespace at its start or at its end, next to a valid pageRef, makes the site build fail with a single hero error message per such button, the one a padded url alone gets, which names that button by its position, says its url has whitespace and names the home page's language, and no message saying both fields are declared", () => {
     /* tests/fixtures/padded-addresses-beside-targets/content/_index.md, a French home page, has
        three hero buttons, each with a label: the first is well filled in, with
-       pageRef = '/projets'; the second declares url = ' #contact', with a leading space, and the
-       third url = "/contact/\t", with a trailing tab, each next to a valid pageRef = '/projets'.
+       pageRef = '/projects'; the second declares url = ' #contact', with a leading space, and the
+       third url = "/contact/\t", with a trailing tab, each next to a valid pageRef = '/projects'.
        The url is wrong in itself, as it is without a pageRef: the person building the site must
        first fix it, so that they get, for each of these two buttons, the single hero message a
        padded url alone gets, which says, on one line, which button is at fault by its position,

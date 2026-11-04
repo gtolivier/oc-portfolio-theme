@@ -1,7 +1,7 @@
 # Configuration added to exampleSite/hugo.toml by the tests of a site whose
-# featured projects live in the example site's projets section, but whose
-# projectsSection site param is 'projets.md', the file name of a page rather
+# featured projects live in the example site's projects section, but whose
+# projectsSection site param is 'projects.md', the file name of a page rather
 # than a section's name, which Hugo's GetPage still resolves to that section.
 # The fixture's content/ replaces both home pages.
 [params]
-  projectsSection = 'projets.md'
+  projectsSection = 'projects.md'

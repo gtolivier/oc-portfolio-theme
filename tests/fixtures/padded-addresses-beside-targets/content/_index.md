@@ -6,17 +6,17 @@ title = 'Vannière'
 
 [[params.hero.actions]]
 label = 'Voir les projets'
-pageRef = '/projets'
+pageRef = '/projects'
 
 [[params.hero.actions]]
 label = 'Contact'
 url = ' #contact'
-pageRef = '/projets'
+pageRef = '/projects'
 
 [[params.hero.actions]]
 label = 'Écrire'
 url = "/contact/\t"
-pageRef = '/projets'
+pageRef = '/projects'
 +++
 
 Accueil fictif dont le deuxième lien du bandeau a une adresse qui commence par

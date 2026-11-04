@@ -11,11 +11,11 @@ stack = ['Cuir', 'Papier', 'Dorure']
 
 [[params.hero.actions]]
 label = 'Voir les projets'
-pageRef = '/projets'
+pageRef = '/projects'
 
 [[params.hero.actions]]
 label = 'Voir l’atelier'
-pageref = '/projets'
+pageref = '/projects'
 +++
 
 Accueil fictif dont le second lien du bandeau écrit sa clé de renvoi tout en

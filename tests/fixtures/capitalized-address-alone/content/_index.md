@@ -11,7 +11,7 @@ stack = ['Cuir', 'Papier marbré', 'Feuille d’or']
 
 [[params.hero.actions]]
 label = 'Voir les projets'
-pageRef = '/projets'
+pageRef = '/projects'
 
 [[params.hero.actions]]
 label = 'Contact'

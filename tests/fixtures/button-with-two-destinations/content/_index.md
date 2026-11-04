@@ -6,12 +6,12 @@ title = 'Horloger indépendant'
 
 [[params.hero.actions]]
 label = 'Voir les projets'
-pageRef = '/projets'
+pageRef = '/projects'
 
 [[params.hero.actions]]
 label = 'Contact'
 url = '#contact'
-pageRef = '/projets'
+pageRef = '/projects'
 +++
 
 Accueil fictif dont le second bouton du hero a un libellé et déclare à la fois
