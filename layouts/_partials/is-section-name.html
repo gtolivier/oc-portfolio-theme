@@ -2,7 +2,7 @@
 {{- $sectionPath := printf "/%s" $ }}
 {{- $isSectionName := false }}
 {{- range hugo.Sites }}
-  {{- /* GetPage also finds a section through a text that is not its name, such as one of its file names (projets.md): only a section whose own path is that text counts. */}}
+  {{- /* GetPage also finds a section through a text that is not its name, such as one of its file names (projects.md): only a section whose own path is that text counts. */}}
   {{- with .GetPage $sectionPath }}{{ if and .IsSection (eq (lower .Path) (lower $sectionPath)) }}{{ $isSectionName = true }}{{ end }}{{ end }}
 {{- end }}
 {{- return $isSectionName }}
