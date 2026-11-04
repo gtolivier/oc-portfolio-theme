@@ -10,6 +10,9 @@ other = 'Pause scrolling'
 [background]
 other = 'Background'
 
+[contact]
+other = 'Contact'
+
 [selectedProjects]
 other = 'Selected projects'
 

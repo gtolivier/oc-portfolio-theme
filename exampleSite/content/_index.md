@@ -43,6 +43,9 @@ items = ['Restauration de mouvements', 'Taillage d’engrenages']
 title = 'Finitions'
 items = ['Anglage', 'Perlage', 'Dorure à la feuille']
 
+[params.contact]
+intro = 'Disponible pour de nouvelles restaurations, à l’atelier ou à domicile. Parlons de votre pendule.'
+
 [params.hero]
 title = 'Horloger indépendant'
 tagline = [

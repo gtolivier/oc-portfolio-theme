@@ -183,5 +183,13 @@
     {{- end }}
   </section>
   {{- end }}
+  {{- with .Params.contact }}
+  {{- with .intro }}
+  <section class="contact" id="contact" aria-labelledby="contact-heading">
+    <h2 id="contact-heading">{{ i18n "contact" }}</h2>
+    <p class="contact-intro">{{ . }}</p>
+  </section>
+  {{- end }}
+  {{- end }}
   {{ .Content }}
 {{ end }}

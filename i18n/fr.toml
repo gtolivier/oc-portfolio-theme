@@ -10,6 +10,9 @@ other = 'Mettre en pause le défilement'
 [background]
 other = 'Parcours'
 
+[contact]
+other = 'Contact'
+
 [selectedProjects]
 other = 'Projets sélectionnés'
 
