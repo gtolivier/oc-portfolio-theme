@@ -332,6 +332,39 @@ test('with JavaScript, sending the filled contact form posts it in the backgroun
   await expect.poll(() => isUsable(sendButton, 'button'), { message: 'the send button is usable' }).toBe(false);
 });
 
+test('with JavaScript, when the endpoint answers the background request with an error, the error message shows and the form keeps what the visitor wrote, still usable', async ({
+  page,
+}) => {
+  const email = 'marie.horloge@exemple.fr';
+  const message = 'Bonjour, ma pendule de cheminée retarde de dix minutes par jour.';
+  /* An error is any answer that is not a success: one the endpoint refuses, one it fails on. */
+  for (const status of [422, 500]) {
+    await page.unrouteAll();
+    await page.route(`**${CONTACT_ACTION}`, (route) =>
+      route.fulfill({ status, contentType: 'application/json', body: JSON.stringify({ ok: false }) }),
+    );
+    await page.goto('about:blank');
+    await page.goto('/fr/');
+    const section = contactSection(page);
+    const form = section.getByRole('form');
+    const emailField = form.locator('[name="email"]');
+    const messageField = form.locator('[name="message"]');
+    const sendButton = form.getByRole('button');
+    await emailField.fill(email);
+    await messageField.fill(message);
+    await Promise.all([page.waitForResponse((answer) => answer.request().method() === 'POST'), sendButton.click()]);
+    /* The error message shows, not the confirmation. */
+    await expect(section.getByText(CONTACT_ERROR), `the error message after a ${status}`).toBeVisible();
+    await expect(section.getByText(CONTACT_CONFIRMATION), `the confirmation after a ${status}`).not.toBeVisible();
+    /* The form stays usable, with what the visitor wrote, for them to try again. */
+    expect(await isUsable(emailField, 'field'), `the email field is usable after a ${status}`).toBe(true);
+    expect(await isUsable(messageField, 'field'), `the message field is usable after a ${status}`).toBe(true);
+    expect(await isUsable(sendButton, 'button'), `the send button is usable after a ${status}`).toBe(true);
+    await expect(emailField, `the email after a ${status}`).toHaveValue(email);
+    await expect(messageField, `the message after a ${status}`).toHaveValue(message);
+  }
+});
+
 /* Whether any part of an element lies within the viewport. */
 async function isInViewport(element: Locator): Promise<boolean> {
   const box = await element.boundingBox();
