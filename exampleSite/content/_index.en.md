@@ -10,10 +10,10 @@ clients = [
   'Maison Delorme',
 ]
 projects = [
-  'projets/restauration-pendule',
-  'projets/montre-grande-complication',
-  'projets/horloge-astronomique',
-  'projets/regulateur-noyer',
+  'projects/restauration-pendule',
+  'projects/montre-grande-complication',
+  'projects/horloge-astronomique',
+  'projects/regulateur-noyer',
 ]
 
 [params.background]
@@ -54,7 +54,7 @@ stack = ['Brass', 'Steel', 'Ruby', 'Enamel']
 
 [[params.hero.actions]]
 label = 'View projects'
-pageRef = '/projets'
+pageRef = '/projects'
 
 [[params.hero.actions]]
 label = 'Contact'
