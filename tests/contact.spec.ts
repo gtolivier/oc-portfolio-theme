@@ -250,7 +250,38 @@ test.describe('browser without JavaScript', () => {
     await expect(section.getByText(CONTACT_INTRO), 'the intro').not.toBeVisible();
     await expect(section.getByRole('form'), 'the form').not.toBeVisible();
   });
+
+  test('without JavaScript, opening the home page at #contact-error, where the endpoint sends the visitor back when the message could not be sent, shows the error message in view above the form, which stays usable; at /fr/ the error message is not shown', async ({
+    page,
+  }) => {
+    /* Each address is opened as a fresh load, as after the endpoint's redirect. */
+    await page.goto('about:blank');
+    await page.goto('/fr/');
+    await expect(contactSection(page).getByRole('form'), 'the form on /fr/').toBeVisible();
+    await expect(contactSection(page).getByText(CONTACT_ERROR), 'the error message on /fr/').not.toBeVisible();
+    await page.goto('about:blank');
+    await page.goto('/fr/#contact-error');
+    const section = contactSection(page);
+    const error = section.getByText(CONTACT_ERROR);
+    const form = section.getByRole('form');
+    await expect(error, 'the error message').toBeVisible();
+    await expect(error, 'the error message is in view').toBeInViewport();
+    /* The form stays there, usable, for the visitor to try again. */
+    await expect(form, 'the form').toBeVisible();
+    await expect(form.locator('[name="email"]'), 'the email field').toBeEditable();
+    await expect(form.locator('[name="message"]'), 'the message field').toBeEditable();
+    await expect(form.getByRole('button'), 'the send button').toBeEnabled();
+    /* Above the form: the error message ends where the form starts, or higher. */
+    const errorBox = (await error.boundingBox())!;
+    const formBox = (await form.boundingBox())!;
+    expect(errorBox.y + errorBox.height, 'the bottom of the error message').toBeLessThanOrEqual(formBox.y);
+    await expect(section.getByText(CONTACT_CONFIRMATION), 'the confirmation').not.toBeVisible();
+  });
 });
+
+/* The theme's default French error message for a message that could not be sent, shown once the
+   endpoint has sent the visitor back to #contact-error. */
+const CONTACT_ERROR = 'Le message n’a pas pu être envoyé. Réessayez dans un instant.';
 
 /* The theme's default French confirmation for a sent message (the example site gives none of its
    own), shown once the endpoint has sent the visitor back to #contact-sent. */
