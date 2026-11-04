@@ -1,5 +1,11 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import { SITE_WITH_ANOTHER_CONTACT_INTRO, buildSite, removeDirectory, serveSite } from './helpers/built-site';
+import {
+  SITE_WITHOUT_HERO,
+  SITE_WITH_ANOTHER_CONTACT_INTRO,
+  buildSite,
+  removeDirectory,
+  serveSite,
+} from './helpers/built-site';
 
 /* The contact section of a home page, in its main content: a region named by its title. */
 function contactSection(page: Page): Locator {
@@ -67,5 +73,31 @@ test.describe('home page of another site, with another contact intro', () => {
     await expect(section).toBeVisible();
     await expect(section.getByText(OTHER_CONTACT_INTRO)).toBeVisible();
     await expect(section.getByText(CONTACT_INTRO), 'the example site’s intro').toHaveCount(0);
+  });
+});
+
+test.describe('home page of another site, without contact params', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITHOUT_HERO);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('a home page whose front matter declares no contact params shows no section "Contact", no #contact anchor and none of the example site’s intro', async ({
+    page,
+    context,
+  }) => {
+    await serveSite(context, SITE_WITHOUT_HERO, siteDirectory);
+    await page.goto(`${SITE_WITHOUT_HERO.origin}/fr/`);
+    /* tests/fixtures/without-hero/content/_index.md declares no [params.contact]: its text is
+       displayed… */
+    const main = page.getByRole('main');
+    await expect(main.getByText('Accueil fictif sans hero')).toBeVisible();
+    /* …with no contact section, no element to land on at #contact, and not the example site's intro. */
+    await expect(contactSection(page)).toHaveCount(0);
+    await expect(page.locator('#contact')).toHaveCount(0);
+    await expect(page.getByText(CONTACT_INTRO)).toHaveCount(0);
   });
 });
