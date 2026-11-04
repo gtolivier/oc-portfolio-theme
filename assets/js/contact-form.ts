@@ -1,0 +1,14 @@
+/* With JavaScript, the contact form is posted in the background, asking the endpoint for JSON, so
+   the visitor stays on the page. On success the confirmation replaces the intro and the form. */
+const form = document.querySelector<HTMLFormElement>('.contact form');
+
+form?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  void fetch(form.action, {
+    method: 'POST',
+    headers: { Accept: 'application/json' },
+    body: new FormData(form),
+  }).then((response) => {
+    if (response.ok) form.closest('.contact')?.classList.add('is-sent');
+  });
+});

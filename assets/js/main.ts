@@ -6,3 +6,4 @@ import './header-height';
 import './clients-fit';
 import './tick-pattern';
 import './key-figures';
+import './contact-form';

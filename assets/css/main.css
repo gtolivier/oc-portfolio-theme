@@ -1287,11 +1287,11 @@ tick-field > canvas {
   display: none;
 }
 
-.contact:has(#contact-sent:target) .contact-sent {
+.contact:is(.is-sent, :has(#contact-sent:target)) .contact-sent {
   display: block;
 }
 
-.contact:has(#contact-sent:target) :is(.contact-intro, form) {
+.contact:is(.is-sent, :has(#contact-sent:target)) :is(.contact-intro, form) {
   display: none;
 }
 
