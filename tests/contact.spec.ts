@@ -287,6 +287,51 @@ const CONTACT_ERROR = 'Le message n’a pas pu être envoyé. Réessayez dans un
    own), shown once the endpoint has sent the visitor back to #contact-sent. */
 const CONTACT_CONFIRMATION = 'Merci, je vous réponds sous 48 heures ouvrées.';
 
+/* Whether a visitor can use a control of the form: it is shown, and a field takes typing or a
+   button takes a click. Hidden or disabled, it cannot be used. */
+async function isUsable(control: Locator, kind: 'field' | 'button'): Promise<boolean> {
+  if (!(await control.isVisible())) return false;
+  return kind === 'field' ? control.isEditable() : control.isEnabled();
+}
+
+test('with JavaScript, sending the filled contact form posts it in the background to the contactAction address, asking for JSON, without leaving the page, and on a successful answer shows the confirmation, the form no longer usable', async ({
+  page,
+  baseURL,
+}) => {
+  /* The endpoint answers the background request with success, in JSON. */
+  await page.route(`**${CONTACT_ACTION}`, (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
+  );
+  await page.goto('/fr/');
+  const urlBefore = page.url();
+  /* A mark left on the page as loaded: a reload or a navigation would wipe it out. */
+  await page.evaluate(() => {
+    (window as unknown as { samePageMark?: boolean }).samePageMark = true;
+  });
+  const section = contactSection(page);
+  const form = section.getByRole('form');
+  const emailField = form.locator('[name="email"]');
+  const messageField = form.locator('[name="message"]');
+  const sendButton = form.getByRole('button');
+  await emailField.fill('marie.horloge@exemple.fr');
+  await messageField.fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
+  const [request] = await Promise.all([page.waitForRequest((sent) => sent.method() === 'POST'), sendButton.click()]);
+  expect(request.url(), 'the address the form posts to').toBe(new URL(CONTACT_ACTION, baseURL).href);
+  expect(request.headers()['accept'] ?? '', 'the answer the request asks for').toContain('application/json');
+  /* On success, the confirmation is shown… */
+  await expect(section.getByText(CONTACT_CONFIRMATION), 'the confirmation').toBeVisible();
+  /* …on the same page: same address, not reloaded. */
+  expect(page.url(), 'the page address').toBe(urlBefore);
+  expect(
+    await page.evaluate(() => (window as unknown as { samePageMark?: boolean }).samePageMark === true),
+    'the page is the one loaded before sending',
+  ).toBe(true);
+  /* The form can no longer be filled in and sent. */
+  await expect.poll(() => isUsable(emailField, 'field'), { message: 'the email field is usable' }).toBe(false);
+  await expect.poll(() => isUsable(messageField, 'field'), { message: 'the message field is usable' }).toBe(false);
+  await expect.poll(() => isUsable(sendButton, 'button'), { message: 'the send button is usable' }).toBe(false);
+});
+
 /* Whether any part of an element lies within the viewport. */
 async function isInViewport(element: Locator): Promise<boolean> {
   const box = await element.boundingBox();
