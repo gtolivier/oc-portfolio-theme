@@ -49,6 +49,29 @@ test('on the French home page, a section "Contact" with the anchor #contact come
   await expect(section).toBeInViewport();
 });
 
+test('on the French home page, the header menu’s "Contact" link brings the heading of the section "Contact" fully into view, below the sticky header', async ({
+  page,
+}) => {
+  await page.goto('/fr/');
+  const heading = contactSection(page).getByRole('heading', { level: 2 });
+  await expect(heading).toHaveCount(1);
+  /* Below the first screen on load, so that the link has to bring it into view. */
+  await expect(heading).not.toBeInViewport();
+  await page.locator('header nav').getByRole('link', { name: 'Contact', exact: true }).click();
+  await expect(heading, 'the heading is fully in view').toBeInViewport({ ratio: 1 });
+  /* Below the sticky header, not hidden under it; polled, as the scroll may be smooth. */
+  await expect
+    .poll(
+      async () => {
+        const headerBox = (await page.locator('header').boundingBox())!;
+        const headingBox = (await heading.boundingBox())!;
+        return headingBox.y - (headerBox.y + headerBox.height);
+      },
+      { message: 'gap between the bottom of the header and the top of the heading' },
+    )
+    .toBeGreaterThanOrEqual(0);
+});
+
 /* The intro tests/fixtures/other-contact/content/_index.md declares for its contact section: a
    fictional bookbinder's. */
 const OTHER_CONTACT_INTRO =
