@@ -2123,7 +2123,7 @@ test.describe('home page of another site, whose projectsSection param names the 
 test.describe('featured project outside the section named by the projectsSection param: build failure', () => {
   runBuildTestsInOneProjectOnly();
 
-  test('with the projectsSection site param set to realisations, a home page that features a project of projects makes the site build fail, with an error message that names that entry and the configured section, realisations', () => {
+  test('with the projectsSection site param set to realisations, a home page that features a project of projects makes the site build fail, with an error message that names that entry and the configured section, realisations, never the default section, projects, as the section', () => {
     /* tests/fixtures/project-outside-the-configured-section/hugo.toml sets projectsSection =
        'realisations'; its content/_index.md features 'realisations/pendule-de-voyage', then the
        example site's 'projects/restauration-pendule'. The site said its projects live in
@@ -2131,8 +2131,11 @@ test.describe('featured project outside the section named by the projectsSection
        move to, not the theme's default, projects. The message is the one line naming the entry, as
        written in the front matter; the section is looked for as the word "section" and the token
        realisations, which neither a word nor a page path under realisations/ continues, so that
-       the reference 'realisations/pendule-de-voyage' does not pass for it. That project of the
-       configured section must not be reported. */
+       the reference 'realisations/pendule-de-voyage' does not pass for it. Nor may the message
+       name the default section, projects, as the section, which would send the person to the wrong
+       one: it is looked for as in the default-section case, with NAMES_THE_PROJECTS_SECTION, which
+       the entry 'projects/restauration-pendule' does not pass for. That project of the configured
+       section must not be reported. */
     const entry = 'projects/restauration-pendule';
     const build = tryToBuildSite(SITE_WITH_A_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION);
     expect(build.succeeded, 'the site build should fail').toBe(false);
@@ -2143,6 +2146,9 @@ test.describe('featured project outside the section named by the projectsSection
     expect(messages, `one error message naming the entry ${entry}, in:\n${build.errors}`).toHaveLength(1);
     expect(messages[0], 'the error message should name the configured section, realisations').toMatch(
       /^(?=.*\bsection\b)(?=.*(?<![\w-])realisations(?![\w-]|\/[\w-])).*$/u,
+    );
+    expect(messages[0], 'the error message should not name the default section, projects, as the section').not.toMatch(
+      NAMES_THE_PROJECTS_SECTION,
     );
   });
 });
