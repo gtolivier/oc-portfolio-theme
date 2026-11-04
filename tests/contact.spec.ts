@@ -72,6 +72,44 @@ test('on the French home page, the header menu’s "Contact" link brings the hea
     .toBeGreaterThanOrEqual(0);
 });
 
+/* Whether a form field is required as the browser sees it: left empty, it fails the form's
+   constraint validation for a missing value (the native `required`, also exposed to assistive
+   technologies). */
+function isRequired(field: Locator): Promise<boolean> {
+  return field.evaluate((element) => (element as HTMLInputElement | HTMLTextAreaElement).validity.valueMissing);
+}
+
+/* Whether a field takes an email address, as the browser sees it: a value that is not one fails
+   the form's constraint validation for its type. */
+async function takesAnEmail(field: Locator): Promise<boolean> {
+  await field.fill('not-an-email');
+  const mismatch = await field.evaluate((element) => (element as HTMLInputElement).validity.typeMismatch);
+  await field.fill('');
+  return mismatch;
+}
+
+test('the section "Contact" holds a form with a required email field, a required message field and a send button, named "Votre email", "Message" and "Envoyer" on the French home page and "Your email", "Message" and "Send" on the English one', async ({
+  page,
+}) => {
+  for (const { path, email, message, send } of [
+    { path: '/fr/', email: 'Votre email', message: 'Message', send: 'Envoyer' },
+    { path: '/en/', email: 'Your email', message: 'Message', send: 'Send' },
+  ]) {
+    await page.goto(path);
+    const form = contactSection(page).getByRole('form');
+    await expect(form, `a form in the section "Contact" of ${path}`).toHaveCount(1);
+    const emailField = form.getByRole('textbox', { name: email, exact: true });
+    const messageField = form.getByRole('textbox', { name: message, exact: true });
+    const sendButton = form.getByRole('button', { name: send, exact: true });
+    await expect(emailField, `the field "${email}" on ${path}`).toBeEditable();
+    await expect(messageField, `the field "${message}" on ${path}`).toBeEditable();
+    await expect(sendButton, `the button "${send}" on ${path}`).toBeVisible();
+    expect(await takesAnEmail(emailField), `the field "${email}" on ${path} takes an email address`).toBe(true);
+    expect(await isRequired(emailField), `the field "${email}" on ${path} is required`).toBe(true);
+    expect(await isRequired(messageField), `the field "${message}" on ${path} is required`).toBe(true);
+  }
+});
+
 /* The intro tests/fixtures/other-contact/content/_index.md declares for its contact section: a
    fictional bookbinder's. */
 const OTHER_CONTACT_INTRO =
