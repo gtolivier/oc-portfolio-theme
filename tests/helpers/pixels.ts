@@ -31,8 +31,8 @@ async function columnsOverBackground(
       const TOLERANCE = 2;
       const luma = (data: Uint8ClampedArray, i: number): number =>
         0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
-      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
-      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const png = await (await fetch(`data:image/png;base64,${base64}`)).blob();
+      const image = await createImageBitmap(png);
       const scale = image.width / el.getBoundingClientRect().width;
       const fromColumn = zone ? Math.max(0, Math.round(zone.x * scale)) : 0;
       const toColumn = zone ? Math.min(image.width, Math.round((zone.x + zone.width) * scale)) : image.width;
@@ -48,20 +48,25 @@ async function columnsOverBackground(
       const backgroundLuma = luma(background, 0);
       context.clearRect(0, 0, canvas.width, canvas.height);
       context.drawImage(image, 0, 0);
-      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
       const notOfBackground = new Array<number>(image.width).fill(0);
       const notOfBackgroundPerRow = new Array<number>(image.height).fill(0);
       const luminanceAboveBackground = new Array<number>(image.width).fill(0);
-      for (let i = 0; i < pixels.length; i += 4) {
-        const column = (i / 4) % image.width;
-        const row = Math.floor(i / 4 / image.width);
-        if (column < fromColumn || column >= toColumn || row < fromRow || row >= toRow) continue;
-        for (let channel = 0; channel < 3; channel++) {
-          if (Math.abs(pixels[i + channel] - background[channel]) > TOLERANCE) {
-            notOfBackground[column] += 1;
-            notOfBackgroundPerRow[row] += 1;
-            luminanceAboveBackground[column] += Math.max(0, luma(pixels, i) - backgroundLuma);
-            break;
+      const zoneWidth = toColumn - fromColumn;
+      const zoneHeight = toRow - fromRow;
+      /* Only the zone is read and scanned: a whole screenshot per call made the analyses run
+         band by band slow enough to time out on a busy CI runner. */
+      if (zoneWidth > 0 && zoneHeight > 0) {
+        const pixels = context.getImageData(fromColumn, fromRow, zoneWidth, zoneHeight).data;
+        for (let i = 0; i < pixels.length; i += 4) {
+          const column = fromColumn + ((i / 4) % zoneWidth);
+          const row = fromRow + Math.floor(i / 4 / zoneWidth);
+          for (let channel = 0; channel < 3; channel++) {
+            if (Math.abs(pixels[i + channel] - background[channel]) > TOLERANCE) {
+              notOfBackground[column] += 1;
+              notOfBackgroundPerRow[row] += 1;
+              luminanceAboveBackground[column] += Math.max(0, luma(pixels, i) - backgroundLuma);
+              break;
+            }
           }
         }
       }
@@ -190,8 +195,8 @@ export async function canvasOpacityOverBackgroundAt(
 ): Promise<{ opacity: number; colour: Channels }[]> {
   return element.evaluate(
     async (el, [base64, spots]) => {
-      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
-      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const png = await (await fetch(`data:image/png;base64,${base64}`)).blob();
+      const image = await createImageBitmap(png);
       const box = el.getBoundingClientRect();
       const scale = image.width / box.width;
       const decoder = document.createElement('canvas');
@@ -244,8 +249,8 @@ export async function pixelsChangedPerColumnInRectangle(
   return element.evaluate(
     async (el, [beforeBase64, afterBase64, zone, TOLERANCE]) => {
       const decode = async (base64: string): Promise<{ pixels: Uint8ClampedArray; width: number; height: number }> => {
-        const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
-        const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+        const png = await (await fetch(`data:image/png;base64,${base64}`)).blob();
+        const image = await createImageBitmap(png);
         const canvas = document.createElement('canvas');
         canvas.width = image.width;
         canvas.height = image.height;
@@ -300,8 +305,8 @@ export async function meanLuminanceGainedInRectangle(
       const luma = (data: Uint8ClampedArray, i: number): number =>
         0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
       const decode = async (base64: string): Promise<{ pixels: Uint8ClampedArray; width: number; height: number }> => {
-        const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
-        const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+        const png = await (await fetch(`data:image/png;base64,${base64}`)).blob();
+        const image = await createImageBitmap(png);
         const canvas = document.createElement('canvas');
         canvas.width = image.width;
         canvas.height = image.height;
@@ -360,8 +365,8 @@ export async function brightnessKeptUnderLayerInRectangle(
       const luma = (data: Uint8ClampedArray, i: number): number =>
         0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
       const decode = async (base64: string): Promise<{ pixels: Uint8ClampedArray; width: number; height: number }> => {
-        const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
-        const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+        const png = await (await fetch(`data:image/png;base64,${base64}`)).blob();
+        const image = await createImageBitmap(png);
         const canvas = document.createElement('canvas');
         canvas.width = image.width;
         canvas.height = image.height;
@@ -465,8 +470,8 @@ export async function brightestLuminanceAboveBackgroundPerColumnInRectangle(
       const TOLERANCE = 2;
       const luma = (data: Uint8ClampedArray, i: number): number =>
         0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
-      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
-      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const png = await (await fetch(`data:image/png;base64,${base64}`)).blob();
+      const image = await createImageBitmap(png);
       const scale = image.width / el.getBoundingClientRect().width;
       const fromColumn = Math.max(0, Math.round(zone.x * scale));
       const toColumn = Math.min(image.width, Math.round((zone.x + zone.width) * scale));
@@ -518,8 +523,8 @@ export async function strongestShareOfColourInRectangle(
 ): Promise<number> {
   return element.evaluate(
     async (el, [base64, zone, cssColour]) => {
-      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
-      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const png = await (await fetch(`data:image/png;base64,${base64}`)).blob();
+      const image = await createImageBitmap(png);
       const scale = image.width / el.getBoundingClientRect().width;
       const fromColumn = Math.max(0, Math.round(zone.x * scale));
       const toColumn = Math.min(image.width, Math.round((zone.x + zone.width) * scale));
@@ -570,8 +575,8 @@ export async function drawnStrokesInRectangle(
   return element.evaluate(
     async (el, [base64, zone]) => {
       const TOLERANCE = 2;
-      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
-      const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const png = await (await fetch(`data:image/png;base64,${base64}`)).blob();
+      const image = await createImageBitmap(png);
       const scale = image.width / el.getBoundingClientRect().width;
       const fromColumn = Math.max(0, Math.round(zone.x * scale));
       const toColumn = Math.min(image.width, Math.round((zone.x + zone.width) * scale));
@@ -659,8 +664,8 @@ export async function extentOfDrawnTicks(
 ): Promise<{ left: number; right: number; top: number; bottom: number }> {
   return element.evaluate(async (el, base64) => {
     const TOLERANCE = 2;
-    const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
-    const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+    const png = await (await fetch(`data:image/png;base64,${base64}`)).blob();
+    const image = await createImageBitmap(png);
     const scale = image.width / el.getBoundingClientRect().width;
     const canvas = document.createElement('canvas');
     canvas.width = image.width;
