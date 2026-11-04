@@ -7,6 +7,7 @@ import {
   removeDirectory,
   serveSite,
 } from './helpers/built-site';
+import { tabKey } from './helpers/keyboard';
 
 /* The contact section of a home page, in its main content: a region named by its title. */
 function contactSection(page: Page): Locator {
@@ -149,7 +150,91 @@ test.describe('browser without JavaScript', () => {
       }),
     );
   });
+
+  test('without JavaScript, the contact form also posts a "website" field, a decoy for spam bots that the visitor does not see, cannot reach with Tab and assistive technologies do not expose: empty when a visitor sends, with what a bot typed in it otherwise', async ({
+    page,
+    browserName,
+  }) => {
+    await page.route(`**${CONTACT_ACTION}`, (route) =>
+      route.fulfill({ status: 200, contentType: 'text/html', body: '<p>Merci</p>' }),
+    );
+    await page.goto('/fr/');
+    const form = contactSection(page).getByRole('form');
+    const emailField = form.locator('[name="email"]');
+    const messageField = form.locator('[name="message"]');
+    const decoy = form.locator('[name="website"]');
+    const sendButton = form.getByRole('button');
+    /* Assistive technologies: the form's only textboxes are the email and the message. */
+    const textboxes = form.getByRole('textbox');
+    await expect(textboxes, 'the textboxes of the form, as assistive technologies see them').toHaveCount(2);
+    expect(
+      await textboxes.evaluateAll((elements) => elements.map((element) => element.getAttribute('name'))),
+      'the fields behind those textboxes',
+    ).toEqual(['email', 'message']);
+    /* The visitor: with the form in view, the decoy is nowhere on screen. */
+    await sendButton.scrollIntoViewIfNeeded();
+    const decoyOnScreen = (await decoy.isVisible()) && (await isInViewport(decoy));
+    expect(decoyOnScreen, 'the decoy field is shown on screen').toBe(false);
+    /* The keyboard: tabbing through the page, from its start until the focus has gone past the
+       send button and out of the form, never lands on the decoy. */
+    const sendButtonElement = await sendButton.elementHandle();
+    let sendButtonReached = false;
+    let decoyReached = false;
+    for (let i = 0; i < 60; i++) {
+      await page.keyboard.press(tabKey(browserName));
+      const focus = await form.evaluate(
+        (formElement, button) => ({
+          name: document.activeElement?.getAttribute('name') ?? null,
+          inForm: formElement.contains(document.activeElement),
+          onSendButton: document.activeElement === button,
+        }),
+        sendButtonElement,
+      );
+      if (focus.inForm && focus.name === 'website') decoyReached = true;
+      if (focus.onSendButton) sendButtonReached = true;
+      else if (sendButtonReached && !focus.inForm) break;
+    }
+    expect(sendButtonReached, 'the send button is reached with Tab').toBe(true);
+    expect(decoyReached, 'the decoy field is reached with Tab').toBe(false);
+    /* Sent as a visitor would: the visible fields filled in, the decoy left as it is. */
+    await emailField.fill('marie.horloge@exemple.fr');
+    await messageField.fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
+    const [request] = await Promise.all([page.waitForRequest((sent) => sent.method() === 'POST'), sendButton.click()]);
+    const body = new URLSearchParams(request.postData() ?? '');
+    expect(body.has('website'), 'the data sent includes the "website" field').toBe(true);
+    expect(body.get('website'), 'the value sent for "website"').toBe('');
+    /* Sent as a bot would: a program that reads the markup fills every text field of the form,
+       the decoy included, however it is hidden, and sends what it typed there. A field that is
+       not a text field (a hidden input) would be skipped, and would not catch it. */
+    await page.goto('/fr/');
+    await emailField.fill('robot@exemple.fr');
+    await messageField.fill('Achetez des montres pas chères.');
+    const typedByBot = await decoy.evaluate((element, value) => {
+      const textField =
+        element instanceof HTMLTextAreaElement ||
+        (element instanceof HTMLInputElement && ['text', 'email', 'url', 'search', 'tel'].includes(element.type));
+      if (textField) element.value = value;
+      return textField;
+    }, 'https://montres-pas-cheres.example');
+    expect(typedByBot, 'the decoy is a text field, which a bot fills').toBe(true);
+    const [botRequest] = await Promise.all([
+      page.waitForRequest((sent) => sent.method() === 'POST'),
+      sendButton.click(),
+    ]);
+    const botBody = new URLSearchParams(botRequest.postData() ?? '');
+    expect(botBody.get('website'), 'the value a bot typed in "website", sent').toBe(
+      'https://montres-pas-cheres.example',
+    );
+  });
 });
+
+/* Whether any part of an element lies within the viewport. */
+async function isInViewport(element: Locator): Promise<boolean> {
+  const box = await element.boundingBox();
+  const viewport = element.page().viewportSize();
+  if (!box || !viewport || box.width === 0 || box.height === 0) return false;
+  return box.x + box.width > 0 && box.y + box.height > 0 && box.x < viewport.width && box.y < viewport.height;
+}
 
 /* The address tests/fixtures/other-contact-address/hugo.toml gives the contact form to post to,
    instead of the example site's: another path on the site's own domain. */
