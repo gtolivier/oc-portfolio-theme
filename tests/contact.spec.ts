@@ -110,6 +110,46 @@ test('the section "Contact" holds a form with a required email field, a required
   }
 });
 
+/* The address the example site's configuration gives the contact form to post to
+   (exampleSite/hugo.toml, [params], contactAction key): a path on the site's own domain. */
+const CONTACT_ACTION = '/api/contact';
+
+test.describe('browser without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('without JavaScript, sending the filled contact form posts the email and the message, form-encoded, to the address the site’s contactAction param gives', async ({
+    page,
+    baseURL,
+  }) => {
+    /* No endpoint answers on the example site's server: the request is answered here, so the
+       browser has somewhere to land. */
+    await page.route(`**${CONTACT_ACTION}`, (route) =>
+      route.fulfill({ status: 200, contentType: 'text/html', body: '<p>Merci</p>' }),
+    );
+    await page.goto('/fr/');
+    const form = contactSection(page).getByRole('form');
+    await form.locator('[name="email"]').fill('marie.horloge@exemple.fr');
+    await form.locator('[name="message"]').fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
+    /* Whatever the form posts to, the browser's POST is recorded. */
+    const [request] = await Promise.all([
+      page.waitForRequest((sent) => sent.method() === 'POST'),
+      form.getByRole('button').click(),
+    ]);
+    expect(request.url(), 'the address the form posts to').toBe(new URL(CONTACT_ACTION, baseURL).href);
+    expect(request.headers()['content-type'], 'the encoding of the form data').toBe(
+      'application/x-www-form-urlencoded',
+    );
+    /* The email and the message filled in, among whatever else the form may send. */
+    const body = Object.fromEntries(new URLSearchParams(request.postData() ?? ''));
+    expect(body, 'the data sent').toEqual(
+      expect.objectContaining({
+        email: 'marie.horloge@exemple.fr',
+        message: 'Bonjour, ma pendule de cheminée retarde de dix minutes par jour.',
+      }),
+    );
+  });
+});
+
 /* The intro tests/fixtures/other-contact/content/_index.md declares for its contact section: a
    fictional bookbinder's. */
 const OTHER_CONTACT_INTRO =
