@@ -54,12 +54,28 @@ import {
   SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE,
   SITE_WITH_HERO_BUTTON_LABELS_AS_A_NUMBER_AND_A_TABLE,
   SITE_WITH_HERO_BUTTON_LABELS_WITH_A_LEADING_AND_A_TRAILING_SPACE,
+  SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_WHITESPACE_ONLY_LABEL,
+  SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_LABEL,
+  SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_LABEL_LEFT_BLANK_IN_YAML,
   SITE_WITH_HERO_BUTTON_URLS_EMPTY_AND_WHITESPACE_ONLY,
   SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_URL_AND_A_PAGE_REF,
   SITE_WITH_HERO_BUTTONS_WITH_A_URL_NEXT_TO_A_WRONG_PAGE_REF,
   SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_PAGE_REF,
   SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_URL,
   SITE_WITH_A_HERO_BUTTON_TO_A_PAGE_WITH_A_BUILD_PARAM_AS_TEXT,
+  SITE_WITH_HERO_BUTTON_URLS_AS_FALSE_ZERO_AND_AN_EMPTY_LIST,
+  SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE_NEXT_TO_A_PAGE_REF,
+  SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB,
+  SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB_NEXT_TO_A_PAGE_REF,
+  SITE_WITH_THE_HERO_STACK_UNDER_THE_LAST_HERO_BUTTON,
+  SITE_WITH_A_MISSPELLED_KEY_IN_THE_SECOND_HERO_BUTTON,
+  SITE_WITH_THE_HERO_TAGLINE_UNDER_THE_LAST_HERO_BUTTON,
+  SITE_WITH_THE_HERO_TITLE_UNDER_THE_LAST_HERO_BUTTON,
+  SITE_WITH_HERO_BUTTON_KEYS_WRITTEN_IN_ANOTHER_CASE,
+  SITE_WITH_A_HERO_BUTTON_PAGE_REF_WRITTEN_IN_LOWERCASE,
+  SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_PAGE_REF,
+  SITE_WITH_A_HERO_BUTTON_LABEL_WRITTEN_CAPITALIZED,
+  SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_URL,
   TEMPLATE_EXECUTION_ERROR,
   type BuildAttempt,
   type BuiltSite,
@@ -2044,6 +2060,20 @@ function heroMessagesContaining(errors: string, text: string): string[] {
   return heroMessages(errors).filter((line) => line.includes(text));
 }
 
+/* The lines of the build's errors that are hero error messages saying a url must be a text,
+   whatever the rest of the wording. */
+function heroMessagesSayingUrlMustBeAText(errors: string): string[] {
+  return heroMessages(errors).filter(
+    (line) => /\burl\b/.test(line) && /\b(?:must|should)\s+be\b.*\btext\b/i.test(line),
+  );
+}
+
+/* The lines of the build's errors that are hero error messages saying a url has whitespace,
+   whatever the rest of the wording. */
+function heroMessagesSayingUrlHasWhitespace(errors: string): string[] {
+  return heroMessages(errors).filter((line) => /\burl\b/.test(line) && /\bwhitespace\b/i.test(line));
+}
+
 /* A message naming a hero button by its position, as "button 2" or "button #2", in any case. */
 function namesButton(position: number): RegExp {
   return new RegExp(`\\bbutton\\s+#?${position}\\b`, 'i');
@@ -2071,6 +2101,9 @@ const PAGE_REF_IS_EMPTY = /\bhero:.*\bpageRef\b.*\b(?:empty|blank)\b/i;
 
 /* A hero message saying, on its own line, that the url is empty or blank. */
 const URL_IS_EMPTY = /\bhero:.*\burl\b.*\b(?:empty|blank)\b/i;
+
+/* A message saying that the label is empty or blank, whatever the rest of the wording. */
+const LABEL_IS_EMPTY = /\blabel\b.*\b(?:empty|blank)\b/i;
 
 /* The lines of the build's errors that match this message pattern and name both of a
    button's destination fields, url and pageRef, on that same line. */
@@ -2823,6 +2856,222 @@ test.describe('hero content errors: build failure', () => {
     );
   });
 
+  test('a home page whose hero stack key is written under the last hero button makes the site build fail, with an error message that names that button by its position and the stack key', () => {
+    /* tests/fixtures/materials-under-the-last-link/content/_index.md, a French home page, writes
+       stack = [...] after its last [[params.hero.actions]] header rather than under [params.hero],
+       so that TOML puts it in the second button's table rather than in params.hero.stack, where
+       the theme reads it. Rather than a hero whose stack silently disappears, the person building
+       the site must get an error message that says, on one line, which button holds it by its
+       position, button 2, and names the stack key, whatever the rest of the wording; that line
+       must not name the well filled-in first button, so that a message naming both buttons at
+       once does not pass. */
+    const build = tryToBuildSite(SITE_WITH_THE_HERO_STACK_UNDER_THE_LAST_HERO_BUTTON);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors.split('\n').filter((line) => namesButton(2).test(line) && /\bstack\b/.test(line));
+    expect(
+      messages,
+      `one error message should name button 2 and the stack key it holds, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], 'the error message about button 2 should not name button 1').not.toMatch(namesButton(1));
+  });
+
+  test('a home page whose hero tagline key is written under the last hero button makes the site build fail, with an error message that names that button by its position, the tagline key and the [params.hero] table it belongs to', () => {
+    /* tests/fixtures/motto-under-the-last-link/content/_index.md, a French home page, writes
+       tagline = [...] after its last [[params.hero.actions]] header rather than under
+       [params.hero], so that TOML puts it in the second button's table rather than in
+       params.hero.tagline, where the theme reads it. Rather than a mere unknown-key error that
+       leaves the person building the site to guess where the key goes, that person must get an
+       error message that says, on one line, which button holds it by its position, button 2,
+       names the tagline key and the table it belongs to, [params.hero], whatever the rest of the
+       wording; that line must not name the well filled-in first button, so that a message naming
+       both buttons at once does not pass. */
+    const build = tryToBuildSite(SITE_WITH_THE_HERO_TAGLINE_UNDER_THE_LAST_HERO_BUTTON);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors
+      .split('\n')
+      .filter((line) => namesButton(2).test(line) && /\btagline\b/.test(line) && line.includes('[params.hero]'));
+    expect(
+      messages,
+      `one error message should name button 2, the tagline key it holds and the [params.hero] table it belongs to, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], 'the error message about button 2 should not name button 1').not.toMatch(namesButton(1));
+  });
+
+  test('a home page whose hero title key is written under the last hero button makes the site build fail, with an error message that names that button by its position, the title key and the [params.hero] table it belongs to', () => {
+    /* tests/fixtures/trade-under-the-last-link/content/_index.md, a French home page, writes
+       the hero's title = '...' after its last [[params.hero.actions]] header rather than under
+       [params.hero], so that TOML puts it in the second button's table rather than in
+       params.hero.title, where the theme reads it; the page's own title, before [params], stays
+       where it belongs. Rather than a mere unknown-key error that leaves the person building the
+       site to guess where the key goes, that person must get an error message that says, on one
+       line, which button holds it by its position, button 2, names the title key and the table it
+       belongs to, [params.hero], whatever the rest of the wording; that line must not name the
+       well filled-in first button, so that a message naming both buttons at once does not pass. */
+    const build = tryToBuildSite(SITE_WITH_THE_HERO_TITLE_UNDER_THE_LAST_HERO_BUTTON);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors
+      .split('\n')
+      .filter((line) => namesButton(2).test(line) && /\btitle\b/.test(line) && line.includes('[params.hero]'));
+    expect(
+      messages,
+      `one error message should name button 2, the title key it holds and the [params.hero] table it belongs to, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], 'the error message about button 2 should not name button 1').not.toMatch(namesButton(1));
+  });
+
+  test('a home page whose hero button holds a misspelled key makes the site build fail, with an error message that names that button by its position and the misspelled key', () => {
+    /* tests/fixtures/misspelled-caption/content/_index.md, a French home page, writes its second
+       hero button's label under the key lable, misspelled, next to a well filled-in url. A button
+       may only hold label, url and pageRef: rather than a lone missing-label error that leaves the
+       person building the site to guess why, that person must get an error message that says, on
+       one line, which button holds the unknown key by its position, button 2, and names that key,
+       lable, whatever the rest of the wording; that line must not name the well filled-in first
+       button, so that a message naming both buttons at once does not pass. */
+    const build = tryToBuildSite(SITE_WITH_A_MISSPELLED_KEY_IN_THE_SECOND_HERO_BUTTON);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors.split('\n').filter((line) => namesButton(2).test(line) && /\blable\b/.test(line));
+    expect(
+      messages,
+      `one error message should name button 2 and the misspelled key lable it holds, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], 'the error message about button 2 should not name button 1').not.toMatch(namesButton(1));
+  });
+
+  test('a home page whose hero buttons hold a key written in another case than the one the theme reads (PageRef, Tagline) makes the build fail, with one error message per such key that names its button by its position and the key as written', () => {
+    /* tests/fixtures/misplaced-capitals/content/_index.md, a French home page, has three hero
+       buttons, each with a label: the first is well filled in, with pageRef = '/projets'; the
+       second writes PageRef = '/projets', capitalized, without a url; the third, well filled in
+       with a url, holds Tagline = [...], capitalized. The theme reads label, url and pageRef in
+       exactly that case, and the hero's tagline under [params.hero]: a key written in another case
+       is neither read nor, today, reported as a wrong key. The person building the site must get,
+       for each such key, an error message that says, on one line, which button holds it by its
+       position (button 2, button 3) and names that key in the case written (PageRef, Tagline),
+       whatever the rest of the wording; a message that names pageRef or tagline only, as the
+       theme writes them, does not tell them which key to fix. Each line must name its own button
+       and key only, so that a message that names both buttons or both keys at once does not pass
+       for either. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_KEYS_WRITTEN_IN_ANOTHER_CASE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const cases = [
+      { position: 2, key: 'PageRef', otherPosition: 3, otherKey: 'Tagline' },
+      { position: 3, key: 'Tagline', otherPosition: 2, otherKey: 'PageRef' },
+    ];
+    for (const { position, key, otherPosition, otherKey } of cases) {
+      const messages = build.errors
+        .split('\n')
+        .filter((line) => namesButton(position).test(line) && new RegExp(`\\b${key}\\b`).test(line));
+      expect(
+        messages,
+        `one error message should name button ${position} and the ${key} key it holds, as written, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages.filter(
+          (line) =>
+            namesButton(1).test(line) ||
+            namesButton(otherPosition).test(line) ||
+            new RegExp(`\\b${otherKey}\\b`).test(line),
+        ),
+        `the error message about button ${position}'s ${key} should name neither button 1, button ${otherPosition} nor ${otherKey}`,
+      ).toEqual([]);
+    }
+  });
+
+  test('a home page whose hero button holds a pageref key written all in lowercase makes the build fail, with an error message that names that button by its position and the key as written', () => {
+    /* tests/fixtures/lowercase-target/content/_index.md, a French home page, has two hero buttons,
+       each with a label: the first is well filled in, with pageRef = '/projets'; the second writes
+       pageref = '/projets', all in lowercase, without a url. The theme reads pageRef in exactly
+       that case: a key written all in lowercase is neither read nor, today, reported as a key
+       written in another case. The person building the site must get an error message that says,
+       on one line, which button holds it by its position, button 2, and names that key in the case
+       written, pageref, whatever the rest of the wording; a message that names pageRef only, as
+       the theme writes it, does not tell them which key to fix. That line must not name the well
+       filled-in first button, so that a message naming both buttons at once does not pass. */
+    const build = tryToBuildSite(SITE_WITH_A_HERO_BUTTON_PAGE_REF_WRITTEN_IN_LOWERCASE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors.split('\n').filter((line) => namesButton(2).test(line) && /\bpageref\b/.test(line));
+    expect(
+      messages,
+      `one error message should name button 2 and the pageref key it holds, as written, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], 'the error message about button 2 should not name button 1').not.toMatch(namesButton(1));
+  });
+
+  test('a home page whose hero button is linked only by a PageRef key, written in another case than the one the theme reads, without a url, makes the build fail with an error message that names that button by its position and the key as written, and no error message saying the button has neither a url nor a pageRef', () => {
+    /* tests/fixtures/capitalized-target-alone/content/_index.md, a French home page, has two hero
+       buttons, each with a label: the first is well filled in, with pageRef = '/projets'; the
+       second writes PageRef = '/projets', capitalized, and declares no url. The person building
+       the site must get an error message that says, on one line, which button holds that key by
+       its position, button 2, and names it in the case written, PageRef, whatever the rest of the
+       wording, and that line must not name the well filled-in first button. The button does
+       declare a page reference, only in the wrong case: a message saying it has neither a url nor
+       a pageRef would contradict that one and send them adding a field rather than fixing the
+       key's case, so that no error message must say both fields are missing. */
+    const build = tryToBuildSite(SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_PAGE_REF);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors.split('\n').filter((line) => namesButton(2).test(line) && /\bPageRef\b/.test(line));
+    expect(
+      messages,
+      `one error message should name button 2 and the PageRef key it holds, as written, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], 'the error message about button 2 should not name button 1').not.toMatch(namesButton(1));
+    expect(build.errors, 'no error message should say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
+  });
+
+  test('a home page whose hero button writes its label under a Label key, in another case than the one the theme reads, with a well filled-in url, makes the build fail with an error message that names that button by its position and the key as written, and no error message saying the button has no label field', () => {
+    /* tests/fixtures/capitalized-caption/content/_index.md, a French home page, has two hero
+       buttons: the first is well filled in, with label = 'Voir les projets' and
+       pageRef = '/projets'; the second writes Label = 'Contact', capitalized, next to a well
+       filled-in url = '#contact'. The person building the site must get an error message that
+       says, on one line, which button holds that key by its position, button 2, and names it in
+       the case written, Label, whatever the rest of the wording, and that line must not name the
+       well filled-in first button. The button does declare a label, only in the wrong case: a
+       message saying it has no label field, or that its label is missing, would contradict that
+       one and send them adding a field rather than fixing the key's case, so that no error
+       message about button 2 must say so. The label field is looked for in lowercase, as the
+       theme writes it, so that the line naming the Label key does not count. */
+    const build = tryToBuildSite(SITE_WITH_A_HERO_BUTTON_LABEL_WRITTEN_CAPITALIZED);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors.split('\n').filter((line) => namesButton(2).test(line) && /\bLabel\b/.test(line));
+    expect(
+      messages,
+      `one error message should name button 2 and the Label key it holds, as written, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], 'the error message about button 2 should not name button 1').not.toMatch(namesButton(1));
+    expect(
+      build.errors
+        .split('\n')
+        .filter(
+          (line) =>
+            namesButton(2).test(line) &&
+            /\bno\s+label\b|\blabel\b.*\b(?:missing|absent)\b|\b(?:missing|lacks|lacking|without)\b.*\blabel\b/.test(
+              line,
+            ),
+        ),
+      `no error message should say that button 2 has no label field, in:\n${build.errors}`,
+    ).toEqual([]);
+  });
+
+  test('a home page whose hero button is linked only by a Url key, written in another case than the one the theme reads, without a pageRef, makes the build fail with an error message that names that button by its position and the key as written, and no error message saying the button has neither a url nor a pageRef', () => {
+    /* tests/fixtures/capitalized-address-alone/content/_index.md, a French home page, has two hero
+       buttons, each with a label: the first is well filled in, with pageRef = '/projets'; the
+       second writes Url = '#contact', capitalized, and declares no pageRef. The person building
+       the site must get an error message that says, on one line, which button holds that key by
+       its position, button 2, and names it in the case written, Url, whatever the rest of the
+       wording, and that line must not name the well filled-in first button. The button does
+       declare an address, only in the wrong case: a message saying it has neither a url nor a
+       pageRef would contradict that one and send them adding a field rather than fixing the key's
+       case, so that no error message must say both fields are missing. */
+    const build = tryToBuildSite(SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_URL);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors.split('\n').filter((line) => namesButton(2).test(line) && /\bUrl\b/.test(line));
+    expect(
+      messages,
+      `one error message should name button 2 and the Url key it holds, as written, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], 'the error message about button 2 should not name button 1').not.toMatch(namesButton(1));
+    expect(build.errors, 'no error message should say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
+  });
+
   test("a home page where a hero button is not a table but a text, in a list whose other button is a table, makes the site build fail with a single hero error message that names that button by its position, says a button must be a table and names the home page's language, without a template execution error after it", () => {
     /* tests/fixtures/lien-ecrit-sans-accolades/content/_index.md, a French home page, writes its
        hero buttons as an inline TOML array whose first entry is a well filled-in button, a table,
@@ -2953,6 +3202,86 @@ test.describe('hero content errors: build failure', () => {
       paddedLabelMessages.filter((line) => namesButton(1).test(line)),
       'no error message should say that the well filled-in button 1 has a label with whitespace',
     ).toEqual([]);
+  });
+
+  test("a home page where a hero button's label is made only of whitespace makes the site build fail with a single hero error message, which names that button by its position, says its label is empty and names the home page's language", () => {
+    /* tests/fixtures/caption-of-spaces-only/content/_index.md, a French home page, has two hero
+       buttons, each with a destination that is a text: the first is well filled in, with
+       label = 'Voir les projets'; the second declares label = " \t ", a space, a tab and a space,
+       with a valid url = '#contact'. A visitor would see a button with no text to read: the
+       person building the site must get a single hero error message that says, on one line,
+       which button is at fault by its position, that its label is empty (or blank), and names the
+       home page's language, fr, whatever the rest of the wording. A message saying the label has
+       whitespace at its ends would send them trimming a text that is not there, so that this one
+       must be the only hero message. A tab between two spaces, so that checking only the space
+       character does not pass. The language is looked for as a word that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_WHITESPACE_ONLY_LABEL);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
+    const messages = heroMessages(build.errors).filter(
+      (line) => LABEL_IS_EMPTY.test(line) && namesButton(2).test(line),
+    );
+    expect(
+      messages,
+      `one hero error message should say that button 2's label is empty, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], "the error message about button 2 should name the home page's language, fr").toMatch(
+      new RegExp(languageCodePattern('fr'), 'u'),
+    );
+  });
+
+  test("a home page where a hero button's label is an empty text makes the site build fail with a single hero error message, which names that button by its position, says its label is empty and names the home page's language, rather than saying the button has no label field", () => {
+    /* tests/fixtures/caption-left-unfilled/content/_index.md, a French home page, has two hero
+       buttons, each with a destination that is a text: the first is well filled in, with
+       label = 'Voir les projets'; the second declares label = '', an empty text, with a valid
+       url = '#contact'. A visitor would see a button with no text to read: the person building
+       the site must get a single hero error message that says, on one line, which button is at
+       fault by its position, that its label is empty (or blank), and names the home page's
+       language, fr, whatever the rest of the wording. The button does declare a label field: a
+       message saying it has none, or that it is missing, would send them looking for a field
+       that is right there, so that this one must be the only hero message. The language is
+       looked for as a word that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_LABEL);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
+    const messages = heroMessages(build.errors).filter(
+      (line) => LABEL_IS_EMPTY.test(line) && namesButton(2).test(line),
+    );
+    expect(
+      messages,
+      `one hero error message should say that button 2's label is empty, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], "the error message about button 2 should name the home page's language, fr").toMatch(
+      new RegExp(languageCodePattern('fr'), 'u'),
+    );
+  });
+
+  test("a home page written with a YAML front matter where a hero button's label is left without a value makes the site build fail with a single hero error message, which names that button by its position, says its label is empty and names the home page's language, rather than saying it must be a text", () => {
+    /* tests/fixtures/caption-without-a-yaml-value/content/_index.md, a French home page written
+       with a YAML front matter, has two hero buttons, each with a destination that is a text: the
+       first is well filled in, with label: Voir les projets; the second declares a label: line
+       left without a value, which YAML reads as null, with a valid url: '#contact'. The person
+       building the site wrote the label field but left it unfilled, as with label = '' in TOML:
+       they must get the same error, a single hero message that says, on one line, which button
+       is at fault by its position, that its label is empty (or blank), and names the home page's
+       language, fr, whatever the rest of the wording. A message saying the label must be a text
+       would make them look for a value of the wrong type that is not there, and one saying the
+       button has no label field would send them looking for a field that is right there: this
+       one must be the only hero message. The language is looked for as a word that no other
+       word follows. */
+    const build = tryToBuildSite(SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_LABEL_LEFT_BLANK_IN_YAML);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(1);
+    const messages = heroMessages(build.errors).filter(
+      (line) => LABEL_IS_EMPTY.test(line) && namesButton(2).test(line),
+    );
+    expect(
+      messages,
+      `one hero error message should say that button 2's label is empty, in:\n${build.errors}`,
+    ).toHaveLength(1);
+    expect(messages[0], "the error message about button 2 should name the home page's language, fr").toMatch(
+      new RegExp(languageCodePattern('fr'), 'u'),
+    );
   });
 
   test("a home page where a hero button's url is an empty text or made only of whitespace, without a pageRef, makes the site build fail with a single error message per such button, which names that button by its position, says its url is empty and names the home page's language, rather than saying the button has neither a url nor a pageRef", () => {
@@ -3166,5 +3495,122 @@ test.describe('hero content errors: build failure', () => {
     expect(messages[0], "the error message about button 2 should name the home page's language, fr").toMatch(
       new RegExp(languageCodePattern('fr'), 'u'),
     );
+  });
+
+  test("a home page where a hero button's url is a value Hugo reads as false (false, 0, an empty list), without a pageRef, makes the site build fail with a single hero error message per such button, which names that button by its position and says its url must be a text, rather than saying the button has neither a url nor a pageRef", () => {
+    /* tests/fixtures/addresses-read-as-false/content/_index.md, a French home page, has four hero
+       buttons, each with a label: the first is well filled in, with pageRef = '/projets'; the
+       others declare no pageRef and a url Hugo reads as false: the second false, the third 0, the
+       fourth [], an empty list. None is an address, but each button does declare a url: the person
+       building the site must get, for each of these three buttons, a single hero message that
+       says, on one line, which button is at fault by its position and that its url must be a text,
+       whatever the rest of the wording. A message saying the button has neither a url nor a
+       pageRef would send them looking for a field that is right there: these three messages must
+       be the only hero messages, and none must say both fields are missing. False, 0 and an empty
+       list, so that a check made for a single value Hugo reads as false does not pass. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_URLS_AS_FALSE_ZERO_AND_AN_EMPTY_LIST);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(3);
+    const urlMustBeTextMessages = heroMessagesSayingUrlMustBeAText(build.errors);
+    for (const position of [2, 3, 4]) {
+      expect(
+        urlMustBeTextMessages.filter((line) => namesButton(position).test(line)),
+        `one hero error message should say that button ${position}'s url must be a text, in:\n${build.errors}`,
+      ).toHaveLength(1);
+    }
+    expect(build.errors, 'no error message should say both fields are missing').not.toMatch(BOTH_FIELDS_MISSING);
+  });
+
+  test("a home page where a hero button's url is not a text, a number or a table, next to a valid pageRef, makes the site build fail with a single hero error message per such button, which names that button by its position and says its url must be a text, and no message saying both fields are declared", () => {
+    /* tests/fixtures/figure-or-dict-address-and-target/content/_index.md, a French home page, has
+       three hero buttons, each with a label: the first is well filled in, with
+       pageRef = '/projets'; the second declares a number, url = 42, and the third a table,
+       url = { href = '/contact' }, each next to a valid pageRef = '/projets'. The url is wrong in
+       itself: the person building the site must first fix it, so that they get, for each of these
+       two buttons, a single hero message that says, on one line, which button is at fault by its
+       position and that its url must be a text, whatever the rest of the wording. A message
+       saying that both fields are declared would send them removing one of the two before they
+       know what is wrong with the url: these two messages must be the only hero messages, and
+       none must say both are declared. A number and a table, so that a check made for a single
+       type does not pass. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE_NEXT_TO_A_PAGE_REF);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(2);
+    const urlMustBeTextMessages = heroMessagesSayingUrlMustBeAText(build.errors);
+    for (const position of [2, 3]) {
+      expect(
+        urlMustBeTextMessages.filter((line) => namesButton(position).test(line)),
+        `one hero error message should say that button ${position}'s url must be a text, in:\n${build.errors}`,
+      ).toHaveLength(1);
+    }
+    expect(
+      heroMessages(build.errors).filter((line) => BOTH_FIELDS_DECLARED.test(line)),
+      `no hero error message should say both fields are declared, in:\n${build.errors}`,
+    ).toEqual([]);
+  });
+
+  test("a home page where a hero button's url has whitespace at its start or at its end, without a pageRef, makes the site build fail with a single error message per such button, which names that button by its position, says its url has whitespace and names the home page's language", () => {
+    /* tests/fixtures/addresses-padded-at-the-edges/content/_index.md, a French home page, has
+       three hero buttons, each with a label: the first is well filled in, with
+       pageRef = '/projets'; the second declares url = ' #contact', with a leading space, and the
+       third url = "/contact/\t", with a trailing tab, both without a pageRef. Hugo does not trim
+       the whitespace, which ends up in the link's address, and it is invisible in the front
+       matter: rather than a link that may lead elsewhere, the person building the site must get,
+       for each of these two buttons, a single error message that says, on one line, which button
+       is at fault by its position, that its url has whitespace, and names the home page's
+       language, fr, whatever the rest of the wording. These two messages must be the only hero
+       messages, none about the well filled-in first button. A leading space and a trailing tab,
+       so that checking only one end, or only the space character, does not pass. The language is
+       looked for as a word that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(2);
+    const paddedUrlMessages = heroMessagesSayingUrlHasWhitespace(build.errors);
+    for (const position of [2, 3]) {
+      const messages = paddedUrlMessages.filter((line) => namesButton(position).test(line));
+      expect(
+        messages,
+        `one hero error message should say that button ${position}'s url has whitespace, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages[0],
+        `the error message about button ${position} should name the home page's language, fr`,
+      ).toMatch(new RegExp(languageCodePattern('fr'), 'u'));
+    }
+  });
+
+  test("a home page where a hero button's url has whitespace at its start or at its end, next to a valid pageRef, makes the site build fail with a single hero error message per such button, the one a padded url alone gets, which names that button by its position, says its url has whitespace and names the home page's language, and no message saying both fields are declared", () => {
+    /* tests/fixtures/padded-addresses-beside-targets/content/_index.md, a French home page, has
+       three hero buttons, each with a label: the first is well filled in, with
+       pageRef = '/projets'; the second declares url = ' #contact', with a leading space, and the
+       third url = "/contact/\t", with a trailing tab, each next to a valid pageRef = '/projets'.
+       The url is wrong in itself, as it is without a pageRef: the person building the site must
+       first fix it, so that they get, for each of these two buttons, the single hero message a
+       padded url alone gets, which says, on one line, which button is at fault by its position,
+       that its url has whitespace, and names the home page's language, fr, whatever the rest of
+       the wording. A message saying that both fields are declared would send them removing one
+       of the two before they know what is wrong with the url: these two messages must be the
+       only hero messages, and none must say both are declared. A leading space and a trailing
+       tab, so that checking only one end, or only the space character, does not pass. The
+       language is looked for as a word that no other word follows. */
+    const build = tryToBuildSite(SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB_NEXT_TO_A_PAGE_REF);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(heroErrorCount(build.errors), `number of hero error messages, in:\n${build.errors}`).toBe(2);
+    const paddedUrlMessages = heroMessagesSayingUrlHasWhitespace(build.errors);
+    for (const position of [2, 3]) {
+      const messages = paddedUrlMessages.filter((line) => namesButton(position).test(line));
+      expect(
+        messages,
+        `one hero error message should say that button ${position}'s url has whitespace, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages[0],
+        `the error message about button ${position} should name the home page's language, fr`,
+      ).toMatch(new RegExp(languageCodePattern('fr'), 'u'));
+    }
+    expect(
+      heroMessages(build.errors).filter((line) => BOTH_FIELDS_DECLARED.test(line)),
+      `no hero error message should say both fields are declared, in:\n${build.errors}`,
+    ).toEqual([]);
   });
 });

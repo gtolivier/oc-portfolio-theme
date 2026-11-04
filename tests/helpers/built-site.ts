@@ -742,6 +742,15 @@ export const SITE_WITH_HERO_BUTTON_LABELS_AS_A_NUMBER_AND_A_TABLE = testSite('ca
    end, the numbers and the language codes, which the error-message assertions look for. */
 export const SITE_WITH_HERO_BUTTON_LABELS_WITH_A_LEADING_AND_A_TRAILING_SPACE = testSite('caption-with-blank-edges');
 
+/* The example site's French home page gives each hero button a label a visitor can read: this
+   site replaces that home page with the one of tests/fixtures/caption-of-spaces-only/content,
+   whose hero has two buttons, written [[params.hero.actions]], each with a destination that is a
+   text: the first is well filled in, with label = 'Voir les projets' and pageRef = '/projets';
+   the second declares label = " \t ", a space, a tab and a space, with url = '#contact'. Its
+   folder name avoids the words button, hero, label, empty, blank, whitespace, the numbers and the
+   language codes, which the error-message assertions look for. */
+export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_WHITESPACE_ONLY_LABEL = testSite('caption-of-spaces-only');
+
 /* The example site's English home page writes its hero tagline as a list of texts and its hero
    buttons as a list of tables, [[params.hero.actions]]: this site replaces that home page with the
    one of tests/fixtures/english-home-text-and-table/content, whose tagline is a single text,
@@ -971,6 +980,343 @@ export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_NULL_URL = testSite('address-
    table, text, theme, Hugo, button, hero, url, pageRef, the numbers and the language codes,
    which the error-message assertions look for. */
 export const SITE_WITH_A_HERO_BUTTON_TO_A_PAGE_WITH_A_BUILD_PARAM_AS_TEXT = testSite('target-with-a-year-option');
+
+/* The example site's French home page gives each hero button a url or a pageRef that is a text:
+   this site replaces that home page with the one of tests/fixtures/addresses-read-as-false/content,
+   without clients nor projects, whose hero has four buttons, written [[params.hero.actions]], each
+   with a label: the first is well filled in, with pageRef = '/projets'; the others declare no
+   pageRef and a url Hugo reads as false: the second false, the third 0, the fourth [], an empty
+   list. Its folder name avoids the words button, hero, url, pageRef, text, must, be, neither, nor,
+   both, missing, the numbers and the language codes, which the error-message assertions look
+   for. */
+export const SITE_WITH_HERO_BUTTON_URLS_AS_FALSE_ZERO_AND_AN_EMPTY_LIST = testSite('addresses-read-as-false');
+
+/* The example site's French home page gives each hero button a single destination, a text: this
+   site replaces that home page with the one of
+   tests/fixtures/figure-or-dict-address-and-target/content, without clients nor projects, whose
+   hero has three buttons, written [[params.hero.actions]], each with a label: the first is well
+   filled in, with pageRef = '/projets'; the second declares a number, url = 42, and the third a
+   table, url = { href = '/contact' }, each next to a valid pageRef = '/projets'. Its folder name
+   avoids the words button, hero, url, pageRef, text, must, be, both, only, one, the numbers and
+   the language codes, which the error-message assertions look for. */
+export const SITE_WITH_HERO_BUTTON_URLS_AS_A_NUMBER_AND_A_TABLE_NEXT_TO_A_PAGE_REF = testSite(
+  'figure-or-dict-address-and-target',
+);
+
+/* The example site's French home page gives each hero button a url or a pageRef without
+   whitespace around it: this site replaces that home page with the one of
+   tests/fixtures/addresses-padded-at-the-edges/content, whose hero has three buttons, written
+   [[params.hero.actions]], each with a label and no pageRef but the first: the first is well
+   filled in, with pageRef = '/projets'; the second declares url = ' #contact', with a leading
+   space; the third url = "/contact/\t", with a trailing tab. Its folder name avoids the words
+   button, hero, url, whitespace, empty, blank, the numbers and the language codes, which the
+   error-message assertions look for. */
+export const SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB = testSite(
+  'addresses-padded-at-the-edges',
+);
+
+/* The example site's French home page gives each hero button a single destination, without
+   whitespace around it: this site replaces that home page with the one of
+   tests/fixtures/padded-addresses-beside-targets/content, whose hero has three buttons, written
+   [[params.hero.actions]], each with a label: the first is well filled in, with
+   pageRef = '/projets'; the second declares url = ' #contact', with a leading space, and the
+   third url = "/contact/\t", with a trailing tab, each next to a valid pageRef = '/projets'. Its
+   folder name avoids the words button, hero, url, pageRef, whitespace, both, only, one, the
+   numbers and the language codes, which the error-message assertions look for. */
+export const SITE_WITH_HERO_BUTTON_URLS_WITH_A_LEADING_SPACE_AND_A_TRAILING_TAB_NEXT_TO_A_PAGE_REF = testSite(
+  'padded-addresses-beside-targets',
+);
+
+/* The example site's French home page writes its hero stack under [params.hero], before its
+   buttons: this site replaces that home page with the one of
+   tests/fixtures/materials-under-the-last-link/content, without clients nor projects, whose hero
+   is well filled in, with two well filled-in buttons, but whose stack key, a list of three
+   materials, is written under the last [[params.hero.actions]] header, so that TOML puts it in the
+   second button's table instead of params.hero.stack. Its folder name avoids the words button,
+   stack, hero, params, the numbers and the language codes, which the error-message assertions
+   look for. */
+export const SITE_WITH_THE_HERO_STACK_UNDER_THE_LAST_HERO_BUTTON = testSite('materials-under-the-last-link');
+
+/* The example site's French home page writes its hero buttons with label, url and pageRef keys
+   only: this site replaces that home page with the one of
+   tests/fixtures/misspelled-caption/content, without clients nor projects, whose hero is well
+   filled in, with a well filled-in first button, but whose second button writes its label under
+   the misspelled key lable, next to a well filled-in url. Its folder name avoids the words
+   button, lable, label, hero, the numbers and the language codes, which the error-message
+   assertions look for. */
+export const SITE_WITH_A_MISSPELLED_KEY_IN_THE_SECOND_HERO_BUTTON = testSite('misspelled-caption');
+
+/* The example site's featured projects declare their stack as a list: this site replaces the
+   French home page with the one of tests/fixtures/materials-left-blank-or-false/content, without
+   a hero nor clients, which features the example site's 'projets/restauration-pendule', then
+   "Cadran solaire" and "Girouette en cuivre", two fictional projects added under projets/ in
+   French only, whose pages write, under [params], their stack as an empty text, stack = '', and
+   as the boolean false, stack = false, rather than a list. Its folder name avoids the words
+   stack, list and projects, and the language codes, which the error-message assertions look
+   for. */
+export const SITE_WITH_PROJECT_STACKS_AS_AN_EMPTY_TEXT_AND_FALSE = testSite('materials-left-blank-or-false');
+
+/* The example site's French home page features projects that sit directly in the projets/
+   section: this site replaces that home page with the one of
+   tests/fixtures/projects-in-a-subsection/content, without a hero nor clients, which features
+   "Pendule de voyage" and "Horloge comtoise", two fictional projects added in French only in
+   one subsection of projets/, horlogerie/, titled "Horlogerie" and published at
+   /fr/projets/horlogerie/. */
+export const SITE_WITH_PROJECTS_IN_A_SUBSECTION = testSite('projects-in-a-subsection');
+
+/* This site replaces the example site's French home page with the one of
+   tests/fixtures/projects-in-the-section-and-a-subsection/content, without a hero nor clients,
+   which features two projects: "Régulateur de parquet en noyer", one of the example site's
+   projects, which sits directly in projets/, and "Chronomètre de marine", a fictional project
+   added in French only in one subsection of projets/, marine/, titled "Marine" and published at
+   /fr/projets/marine/. */
+export const SITE_WITH_PROJECTS_IN_THE_SECTION_AND_A_SUBSECTION = testSite('projects-in-the-section-and-a-subsection');
+
+/* The example site's featured projects live in projets/, the section the theme expects when the
+   site does not name another: this site names realisations/ in its projectsSection site param
+   (see tests/fixtures/projects-in-the-configured-section/hugo.toml) and replaces the French home
+   page with the one of tests/fixtures/projects-in-the-configured-section/content, without a hero
+   nor clients, which features "Pendule de voyage" and "Horloge de parquet", two fictional
+   projects added in French only in realisations/, titled "Réalisations" and published at
+   /fr/realisations/. Its English home page features no projects. The example site's projets/
+   section is still built. */
+export const SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION = testSite('projects-in-the-configured-section');
+
+/* Like the site above, this one names realisations/ in its projectsSection site param (see
+   tests/fixtures/project-outside-the-configured-section/hugo.toml), but its French home page
+   features "Pendule de voyage", a fictional project of realisations/, then the example site's
+   'projets/restauration-pendule', which lives outside the configured section. Its English home
+   page features no projects. */
+export const SITE_WITH_A_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION = testSite('project-outside-the-configured-section');
+
+/* The example site leaves out the projectsSection site param: these sites keep its content and set
+   that param to a value that names no section: a number, projectsSection = 42 (see
+   tests/fixtures/section-param-as-a-number/hugo.toml), a list, projectsSection = ['realisations']
+   (tests/fixtures/section-param-as-a-list/hugo.toml), an empty text, projectsSection = ''
+   (tests/fixtures/unfilled-section-param/hugo.toml), and a text of spaces only,
+   projectsSection = '   ' (tests/fixtures/section-param-of-spaces/hugo.toml). Their folder names
+   avoid the words projectsSection, text, empty and blank, which the error-message assertions look
+   for. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER = testSite('section-param-as-a-number');
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_LIST = testSite('section-param-as-a-list');
+export const SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM = testSite('unfilled-section-param');
+export const SITE_WITH_A_WHITESPACE_ONLY_PROJECTS_SECTION_PARAM = testSite('section-param-of-spaces');
+
+/* The example site's French home page writes its hero tagline under [params.hero], before its
+   buttons: this site replaces that home page with the one of
+   tests/fixtures/motto-under-the-last-link/content, without clients nor projects, whose hero is
+   well filled in, with a stack and two well filled-in buttons, but whose tagline key, a list of
+   two lines, is written under the last [[params.hero.actions]] header, so that TOML puts it in
+   the second button's table instead of params.hero.tagline. Its folder name avoids the words
+   button, tagline, hero, params, before, the numbers and the language codes, which the
+   error-message assertions look for. */
+export const SITE_WITH_THE_HERO_TAGLINE_UNDER_THE_LAST_HERO_BUTTON = testSite('motto-under-the-last-link');
+
+/* Like the site above, this one replaces the example site's French home page with the one of
+   tests/fixtures/trade-under-the-last-link/content, without clients nor projects, whose hero is
+   well filled in, with a tagline, a stack and two well filled-in buttons, but whose hero title
+   key is written under the last [[params.hero.actions]] header, so that TOML puts it in the
+   second button's table instead of params.hero.title. The page's own title, written before
+   [params], stays where it is. Its folder name avoids the words button, title, hero, params,
+   before, the numbers and the language codes, which the error-message assertions look for. */
+export const SITE_WITH_THE_HERO_TITLE_UNDER_THE_LAST_HERO_BUTTON = testSite('trade-under-the-last-link');
+
+/* The example site's French home page writes its hero buttons' keys in the case the theme reads:
+   this site replaces that home page with the one of
+   tests/fixtures/misplaced-capitals/content, without clients nor projects, whose hero is well
+   filled in, with a tagline, a stack and a well filled-in first button, but whose second button
+   writes its page reference under PageRef instead of pageRef, without a url, and whose third
+   button, well filled in with a label and a url, holds a Tagline key, capitalized. Its folder name
+   avoids the words button, pageRef, tagline, hero, params, the numbers and the language codes,
+   which the error-message assertions look for. */
+export const SITE_WITH_HERO_BUTTON_KEYS_WRITTEN_IN_ANOTHER_CASE = testSite('misplaced-capitals');
+
+/* Like the site above, this one replaces the example site's French home page with the one of
+   tests/fixtures/lowercase-target/content, without clients nor projects, whose hero is well
+   filled in, with a tagline, a stack and a well filled-in first button, but whose second button
+   writes its page reference under pageref, all in lowercase, instead of pageRef, without a url.
+   Its folder name avoids the words button, pageref, hero, params, the numbers and the language
+   codes, which the error-message assertions look for. */
+export const SITE_WITH_A_HERO_BUTTON_PAGE_REF_WRITTEN_IN_LOWERCASE = testSite('lowercase-target');
+
+/* The example site's French home page gives each hero button a label a visitor can read: this
+   site replaces that home page with the one of tests/fixtures/caption-left-unfilled/content,
+   whose hero has two buttons, written [[params.hero.actions]], each with a destination that is a
+   text: the first is well filled in, with label = 'Voir les projets' and pageRef = '/projets';
+   the second declares label = '', an empty text, with url = '#contact'. Its folder name avoids
+   the words button, hero, label, empty, blank, missing, the numbers and the language codes,
+   which the error-message assertions look for. */
+export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_AN_EMPTY_LABEL = testSite('caption-left-unfilled');
+
+/* The example site leaves out the projectsSection site param: these sites keep its content and set
+   that param to the name of its section of projects with whitespace around it, which Hugo does not
+   trim: a trailing space, projectsSection = 'projets ' (see
+   tests/fixtures/section-param-with-trailing-space/hugo.toml), and a leading tab,
+   projectsSection = "\tprojets" (tests/fixtures/section-param-with-leading-tab/hugo.toml). Their
+   folder names avoid the words projectsSection, whitespace and projets, which the error-message
+   assertions look for. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SPACE = testSite('section-param-with-trailing-space');
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_TAB = testSite('section-param-with-leading-tab');
+
+/* Like SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION, this site replaces both home pages with those
+   of tests/fixtures/number-param-with-projects-elsewhere/content, whose French one features
+   "realisations/pendule-de-voyage" and "realisations/horloge-de-parquet", two fictional projects
+   added in French only in realisations/, but its projectsSection site param is a number,
+   projectsSection = 42 (see tests/fixtures/number-param-with-projects-elsewhere/hugo.toml), rather
+   than the name of that section. Its English home page features no projects. Its folder name
+   avoids the words projectsSection, text, realisations and projets, which the error-message
+   assertions look for. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER_AND_PROJECTS_ELSEWHERE = testSite(
+  'number-param-with-projects-elsewhere',
+);
+
+/* Like the site above, this one replaces both home pages with those of
+   tests/fixtures/unfilled-param-with-projects-elsewhere/content, whose French one features
+   "realisations/pendule-de-voyage" and "realisations/horloge-de-parquet", two fictional projects
+   added in French only in realisations/, but its projectsSection site param is an empty text,
+   projectsSection = '' (see tests/fixtures/unfilled-param-with-projects-elsewhere/hugo.toml),
+   rather than the name of that section. Its English home page features no projects. Its folder
+   name avoids the words projectsSection, empty, blank, realisations and projets, which the
+   error-message assertions look for. */
+export const SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE = testSite(
+  'unfilled-param-with-projects-elsewhere',
+);
+
+/* Like the two sites above, this one replaces both home pages with those of
+   tests/fixtures/padded-param-with-projects-elsewhere/content, whose French one features
+   "realisations/pendule-de-voyage" and "realisations/horloge-de-parquet", two fictional projects
+   added in French only in realisations/, but its projectsSection site param names that section
+   with a trailing space, projectsSection = 'realisations ' (see
+   tests/fixtures/padded-param-with-projects-elsewhere/hugo.toml), which Hugo does not trim. Its
+   English home page features no projects. Its folder name avoids the words projectsSection,
+   whitespace, realisations and projets, which the error-message assertions look for. */
+export const SITE_WITH_A_PADDED_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE = testSite(
+  'padded-param-with-projects-elsewhere',
+);
+
+/* Like the three sites above, this one replaces both home pages with those of
+   tests/fixtures/misspelled-param-with-projects-elsewhere/content, whose French one features
+   "realisations/pendule-de-voyage" and "realisations/horloge-de-parquet", two fictional projects
+   added in French only in realisations/, but its projectsSection site param is a well-formed text
+   that names no section of the site, projectsSection = 'realisatons', a typo (see
+   tests/fixtures/misspelled-param-with-projects-elsewhere/hugo.toml). Its English home page
+   features no projects. Its folder name avoids the words projectsSection, realisatons,
+   realisations and projets, which the error-message assertions look for. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE = testSite(
+  'misspelled-param-with-projects-elsewhere',
+);
+
+/* Like the four sites above, this one replaces both home pages with those of
+   tests/fixtures/nested-param-with-its-projects/content, whose French one features
+   "projets/horlogerie/pendule-de-voyage" and "projets/horlogerie/horloge-comtoise", two fictional
+   projects added in French only in one subsection of projets/, horlogerie/, but its
+   projectsSection site param names that subsection, projectsSection = 'projets/horlogerie' (see
+   tests/fixtures/nested-param-with-its-projects/hugo.toml), rather than a top-level section. Its
+   English home page features no projects. Its folder name avoids the words projectsSection,
+   top-level, horlogerie and projets, which the error-message assertions look for. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_A_SUBSECTION_AND_ITS_PROJECTS = testSite(
+  'nested-param-with-its-projects',
+);
+
+/* Like SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION, this site replaces both home pages with those
+   of tests/fixtures/capitalized-param-with-its-projects/content, without a hero nor clients, whose
+   French one features "Realisations/pendule-de-voyage" and "Realisations/horloge-de-parquet", two
+   fictional projects added in French only in a section whose folder is written with a capital,
+   Realisations/, titled "Réalisations" and published at /fr/realisations/, Hugo lowercasing its
+   address. Its projectsSection site param names that section with the same capital,
+   projectsSection = 'Realisations' (see tests/fixtures/capitalized-param-with-its-projects/hugo.toml).
+   Its English home page features no projects. Its folder name avoids the words realisations,
+   Réalisations and projets, which the assertions look for. */
+export const SITE_WITH_A_CAPITALIZED_PROJECTS_SECTION_PARAM_AND_ITS_PROJECTS = testSite(
+  'capitalized-param-with-its-projects',
+);
+
+/* Like SITE_WITH_A_HERO_BUTTON_PAGE_REF_WRITTEN_IN_LOWERCASE, this site replaces the example site's
+   French home page with the one of tests/fixtures/capitalized-target-alone/content, without clients
+   nor projects, whose hero is well filled in, with a tagline, a stack and a well filled-in first
+   button, but whose second button, with a label, writes its page reference under PageRef instead
+   of pageRef, and declares no url. Its folder name avoids the words button, pageRef, hero, params,
+   url, neither, nor, both, missing, the numbers and the language codes, which the error-message
+   assertions look for. */
+export const SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_PAGE_REF = testSite('capitalized-target-alone');
+
+/* Like SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_PAGE_REF, this site replaces the example
+   site's French home page with the one of tests/fixtures/capitalized-caption/content, without clients
+   nor projects, whose hero is well filled in, with a tagline, a stack and a well filled-in first
+   button, but whose second button, with a well filled-in url, writes its text under Label instead
+   of label. Its folder name avoids the words button, label, Label, hero, params, url, no, field,
+   missing, the numbers and the language codes, which the error-message assertions look for. */
+export const SITE_WITH_A_HERO_BUTTON_LABEL_WRITTEN_CAPITALIZED = testSite('capitalized-caption');
+
+/* Like SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_PAGE_REF, this site replaces the example
+   site's French home page with the one of tests/fixtures/capitalized-address-alone/content, without
+   clients nor projects, whose hero is well filled in, with a tagline, a stack and a well filled-in
+   first button, but whose second button, with a label, writes its address under Url instead of
+   url, and declares no pageRef. Its folder name avoids the words button, url, Url, pageRef, hero,
+   params, neither, nor, both, missing, the numbers and the language codes, which the error-message
+   assertions look for. */
+export const SITE_WITH_A_HERO_BUTTON_ONLY_LINKED_BY_A_CAPITALIZED_URL = testSite('capitalized-address-alone');
+
+/* The example site leaves out the projectsSection site param: these sites keep its content and set
+   that param to the name of its section of projects with a slash at one end: at its start,
+   projectsSection = '/projets', as a path from the content root (see
+   tests/fixtures/section-param-with-leading-separator/hugo.toml), and at its end,
+   projectsSection = 'projets/', as a folder (tests/fixtures/section-param-with-trailing-separator/hugo.toml).
+   Their folder names avoid the words projectsSection, slash, subsection and projets, which the
+   error-message assertions look for. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_SLASH = testSite('section-param-with-leading-separator');
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SLASH = testSite(
+  'section-param-with-trailing-separator',
+);
+
+/* The example site's featured projects live in its section of projects, projets/: this site
+   replaces the French home page with the one of
+   tests/fixtures/unpublished-subsection-of-another-section/content, without a hero nor clients,
+   which features a single fictional project, "Carillon de beffroi", added in archives/brouillons/,
+   a subsection whose _index.md declares a plain [build] render = 'never', of another section,
+   archives/, which is published, at /fr/archives/. */
+export const SITE_WITH_A_PROJECT_IN_AN_UNPUBLISHED_SUBSECTION_OF_ANOTHER_SECTION = testSite(
+  'unpublished-subsection-of-another-section',
+);
+
+/* The example site's featured projects declare their stack as a list: this site replaces the
+   French home page with the one of tests/fixtures/materials-left-unset-in-yaml/content, without a
+   hero nor clients, which features the example site's 'projets/restauration-pendule', then
+   "Sablier de chapelle", a fictional project added under projets/ in French only, whose page,
+   written with a YAML front matter, declares only a title, a description and, under params, a
+   stack: line left without a value, which YAML reads as null. */
+export const SITE_WITH_A_PROJECT_STACK_LEFT_BLANK_IN_YAML = testSite('materials-left-unset-in-yaml');
+
+/* The example site's French home page gives each hero button a label a visitor can read: this
+   site replaces that home page with the one of tests/fixtures/caption-without-a-yaml-value/content,
+   written with a YAML front matter, whose hero has two buttons, each with a destination that is a
+   text: the first is well filled in, with label: Voir les projets and pageRef: /projets; the
+   second declares a label: line left without a value, which YAML reads as null, with
+   url: '#contact'. Its folder name avoids the words button, hero, label, empty, blank, null,
+   text, must, missing, the numbers and the language codes, which the error-message assertions
+   look for. */
+export const SITE_WITH_A_SECOND_HERO_BUTTON_WITH_A_LABEL_LEFT_BLANK_IN_YAML = testSite('caption-without-a-yaml-value');
+
+/* Like SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE, this site
+   replaces both home pages with those of tests/fixtures/extension-param-with-its-projects/content,
+   whose French one features "projets/horloge-astronomique" and "projets/regulateur-noyer", two
+   projects of the example site's projets/ section, but its projectsSection site param is the file
+   name of a page rather than a section's name, projectsSection = 'projets.md' (see
+   tests/fixtures/extension-param-with-its-projects/hugo.toml), which Hugo's GetPage still
+   resolves to the projets section. Its English home page features no projects. Its folder name
+   avoids the words projectsSection, projets, md and section, which the error-message assertions
+   look for. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_WITHOUT_NAMING_IT = testSite(
+  'extension-param-with-its-projects',
+);
+
+/* The example site leaves out the projectsSection site param: this site keeps its content, whose
+   featured projects live in projets/, and sets that param to the path of that section's own page,
+   projectsSection = 'projets/_index.md' (see tests/fixtures/index-file-param/hugo.toml), which
+   holds a slash without naming a subsection: Hugo's GetPage resolves it to the top-level projets
+   section. Its folder name avoids the words projectsSection, projets, md, section and subsection,
+   which the error-message assertions look for. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_THROUGH_A_PATH = testSite('index-file-param');
 
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that

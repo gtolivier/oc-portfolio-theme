@@ -10,6 +10,10 @@ disableKinds = ['taxonomy', 'term']
   initials = ['E', 'X']
   # Sample author shown in the footer.
   author = 'Jean Exemple'
+  # The top-level section the home page's featured projects live in, and
+  # that its all-projects link opens. Left out, it is projets; set it when
+  # the projects live in another section, by its folder name.
+  # projectsSection = 'projets'
 
 # The sample content may contain raw HTML (e.g. a positioned box on the
 # long page), as a project card or a figure would.

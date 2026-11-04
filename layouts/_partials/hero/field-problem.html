@@ -1,0 +1,4 @@
+{{- /* What is wrong with a label, url or pageRef field a hero button declares, in text-problem.html's words. YAML reads a key left without a value as null: it is an empty field, not a value of another type. */}}
+{{- $problem := partial "text-problem.html" . }}
+{{- if eq . nil }}{{ $problem = "empty" }}{{ end }}
+{{- return $problem }}

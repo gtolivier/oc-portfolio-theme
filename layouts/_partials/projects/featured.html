@@ -1,8 +1,33 @@
-{{- /* The home page's featured projects: the pages its params.projects references, each entry checked and its page looked up once, for both the all-projects link and the cards. errorf does not stop the template: after an error, only the bad entry is skipped (param-list-or-empty.html turns a list that is not one into an empty list), so that no template execution error buries the error message. */}}
+{{- /* The home page's featured projects: the pages its params.projects references, each entry checked and its page looked up once, for both the all-projects link and the cards, returned with the name of the section they must live in. errorf does not stop the template: after an error, only the bad entry is skipped (param-list-or-empty.html turns a list that is not one into an empty list), so that no template execution error buries the error message. */}}
 {{- $lang := site.Language.Lang }}
 {{- $featured := partial "param-list-or-empty.html" (dict "params" .Params "key" "projects" "error" (printf "projects: the home page's projects parameter must be a list of pages (language: %s)" $lang)) }}
 {{- /* Only regular pages are projects. The words the error uses for each other kind of page an entry may reference; a kind missing here gets the generic wording, so that it is still rejected. */}}
 {{- $nonProjectKindWords := dict "home" "the home page itself" "section" "a section page" "term" "a taxonomy term page" "taxonomy" "a taxonomy page" "404" "the 404 error page" }}
+{{- /* The section featured projects must live in: the site names it in its projectsSection param, projets when it names none. */}}
+{{- $defaultProjectsSection := "projets" }}
+{{- /* What separates a section from its subsections in a section's path. */}}
+{{- $sectionPathSeparator := "/" }}
+{{- $projectsSection := $defaultProjectsSection }}
+{{- $sectionIsKnown := true }}
+{{- if isset site.Params "projectssection" }}
+  {{- /* A bad param names no section the theme can check against: no error per featured project then, which would send the person moving projects that may be where they meant them. */}}
+  {{- $sectionIsKnown = false }}
+  {{- $sectionProblem := partial "text-problem.html" site.Params.projectsSection }}
+  {{- if eq $sectionProblem "not-text" }}{{ errorf "projects: the projectsSection site param must be a text, the name of a section" }}
+  {{- else if eq $sectionProblem "empty" }}{{ errorf "projects: the projectsSection site param is empty: it must name a section" }}
+  {{- else if eq $sectionProblem "padded" }}{{ errorf "projects: the projectsSection site param %q has whitespace at its start or end: it must be the name of a section" site.Params.projectsSection }}
+  {{- else if or (strings.HasPrefix site.Params.projectsSection $sectionPathSeparator) (strings.HasSuffix site.Params.projectsSection $sectionPathSeparator) }}
+    {{- errorf "projects: the projectsSection site param %q has a slash at its start or end: it must be the name of a top-level section, without any slash" site.Params.projectsSection }}
+  {{- else if not (partial "is-section-name.html" site.Params.projectsSection) }}
+    {{- errorf "projects: the projectsSection site param %q names no section of the site: it must be the name of a section" site.Params.projectsSection }}
+  {{- else if strings.Contains site.Params.projectsSection $sectionPathSeparator }}
+    {{- errorf "projects: the projectsSection site param %q names a subsection: it must be the name of a top-level section" site.Params.projectsSection }}
+  {{- else }}
+    {{- $projectsSection = site.Params.projectsSection }}
+    {{- $sectionIsKnown = true }}
+  {{- end }}
+{{- end }}
+{{- $projectsSectionName := lower $projectsSection }}
 {{- $projects := slice }}
 {{- range $index, $entry := $featured }}
 {{- $entryNumber := add $index 1 }}
@@ -13,9 +38,10 @@
 {{- $page := $.GetPage $entry }}
 {{- if not $page }}{{ errorf "projects: the home page's projects parameter references a page that cannot be found (language: %s): %q. Possible causes: %s" $lang $entry (partial "page-not-found-causes.html") }}{{ continue }}{{ end }}
 {{- if not $page.IsPage }}{{ errorf "projects: the home page's projects parameter references %s, which is not a project (language: %s): %q" (index $nonProjectKindWords $page.Kind | default "a page of another type") $lang $entry }}{{ continue }}{{ end }}
-{{- if and (ne $page.Section "projets") (partial "is-published.html" $page.Parent) }}{{ errorf "projects: the project %q does not live in the projets section, which the home page's projects parameter requires (language: %s)" $entry $lang }}{{ continue }}{{ end }}
+{{- if and $sectionIsKnown (ne $page.Section $projectsSectionName) (partial "is-published.html" $page.Parent) }}{{ errorf "projects: the project %q does not live in the %s section, which the home page's projects parameter requires (language: %s)" $entry $projectsSection $lang }}{{ continue }}{{ end }}
 {{- if partial "has-custom-build-param.html" $page }}{{ errorf "projects: the project %q declares a custom parameter named build, which the theme reads as Hugo's build options (the [build] front matter): rename this parameter (language: %s)" $entry $lang }}{{ continue }}{{ end }}
-{{- if and $page.Params.stack (not (reflect.IsSlice $page.Params.stack)) }}{{ errorf "projects: the stack of the project %q must be a list (language: %s)" $entry $lang }}{{ continue }}{{ end }}
+{{- /* YAML reads a stack: line left without a value as null: a field left unfilled, like an omitted key, so a project without a stack, unlike an empty text or false, which is a content mistake. */}}
+{{- if and (ne $page.Params.stack nil) (not (reflect.IsSlice $page.Params.stack)) }}{{ errorf "projects: the stack of the project %q must be a list (language: %s)" $entry $lang }}{{ continue }}{{ end }}
 {{- $projects = $projects | append $page }}
 {{- end }}
-{{- return $projects }}
+{{- return dict "projects" $projects "section" $projectsSectionName }}

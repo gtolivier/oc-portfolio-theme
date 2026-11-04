@@ -11,7 +11,28 @@ import {
   SITE_WITH_PROJECTS_WITHOUT_PUBLISHED_PAGES,
   SITE_WITH_AN_UNPUBLISHED_PROJECTS_SECTION,
   SITE_WITH_AN_UNPUBLISHED_SECTION_PAGE,
+  SITE_WITH_A_PROJECT_IN_AN_UNPUBLISHED_SUBSECTION_OF_ANOTHER_SECTION,
   SITE_WITH_PROJECTS_IN_TWO_SECTIONS,
+  SITE_WITH_PROJECTS_IN_A_SUBSECTION,
+  SITE_WITH_PROJECTS_IN_THE_SECTION_AND_A_SUBSECTION,
+  SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION,
+  SITE_WITH_A_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_LIST,
+  SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM,
+  SITE_WITH_A_WHITESPACE_ONLY_PROJECTS_SECTION_PARAM,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SPACE,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_TAB,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER_AND_PROJECTS_ELSEWHERE,
+  SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE,
+  SITE_WITH_A_PADDED_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_WITHOUT_NAMING_IT,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_THROUGH_A_PATH,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_A_SUBSECTION_AND_ITS_PROJECTS,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_SLASH,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SLASH,
+  SITE_WITH_A_CAPITALIZED_PROJECTS_SECTION_PARAM_AND_ITS_PROJECTS,
   SITE_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_WITH_PROJECTS_AS_TEXT,
   SITE_WITH_PROJECTS_AS_AN_EMPTY_TEXT,
@@ -34,6 +55,8 @@ import {
   SITE_WITH_A_BUILD_PARAM_AS_TEXT,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_A_BUILD_PARAM_AS_TEXT,
   SITE_WITH_A_PROJECT_STACK_AS_A_TEXT,
+  SITE_WITH_PROJECT_STACKS_AS_AN_EMPTY_TEXT_AND_FALSE,
+  SITE_WITH_A_PROJECT_STACK_LEFT_BLANK_IN_YAML,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
   SITE_WITH_PROJECTS_UNDER_THE_HERO,
   TEMPLATE_EXECUTION_ERROR,
@@ -1879,6 +1902,71 @@ test.describe('featured project whose page writes its stack as a text: build fai
   });
 });
 
+test.describe('featured projects whose pages write their stack as an empty text or as false: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('featured projects whose pages write their stack as an empty text or as the boolean false rather than a list make the site build fail, with, for each, an error message that names that project and says its stack must be a list', () => {
+    /* tests/fixtures/materials-left-blank-or-false/content/projets/cadran-solaire.md and
+       girouette-cuivre.md, two projects the French home page features, write their stack under
+       [params] as an empty text, '', and as the boolean false, rather than a list of entries:
+       Go templates read both as an empty value, so the card would silently show no stack. Like
+       a stack written as a text, each must instead make the build fail with a message, on one
+       line, about the featured projects, that names the project by its reference and says its
+       stack must be a list, whatever the rest of the wording. */
+    const build = tryToBuildSite(SITE_WITH_PROJECT_STACKS_AS_AN_EMPTY_TEXT_AND_FALSE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    for (const project of ['projets/cadran-solaire', 'projets/girouette-cuivre']) {
+      const messages = build.errors
+        .split('\n')
+        .filter((line) => line.includes(project) && /\bstack\b.*\blist\b/.test(line));
+      expect(
+        messages,
+        `one error message naming ${project} and saying its stack must be a list, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(messages[0], `the error message about ${project} should be about the featured projects`).toMatch(
+        /\bprojects\b/,
+      );
+    }
+  });
+});
+
+test('a featured project whose page, written with a YAML front matter, leaves its stack blank (stack: with no value) does not make the site build fail, and gets a card like a project without a stack: its title and description, no stack text, no empty slot for it', async ({
+  page,
+  context,
+}) => {
+  /* tests/fixtures/materials-left-unset-in-yaml/content/projets/sablier-chapelle.md, a project
+     the French home page features, writes its front matter in YAML and leaves its stack: line
+     without a value, which YAML reads as null. Unlike an empty text or false in TOML, the person
+     who wrote it left the field unfilled: the site must build, and the card must show the
+     project as if its page declared no stack at all. */
+  const build = tryToBuildSite(SITE_WITH_A_PROJECT_STACK_LEFT_BLANK_IN_YAML);
+  expect(build.succeeded, `the site build should succeed, but Hugo reported:\n${build.errors}`).toBe(true);
+  const siteDirectory = buildSite(SITE_WITH_A_PROJECT_STACK_LEFT_BLANK_IN_YAML);
+  try {
+    await serveSite(context, SITE_WITH_A_PROJECT_STACK_LEFT_BLANK_IN_YAML, siteDirectory);
+    await page.goto(`${SITE_WITH_A_PROJECT_STACK_LEFT_BLANK_IN_YAML.origin}/fr/`);
+    const title = 'Sablier de chapelle';
+    const description = 'Sablier de chapelle en verre soufflé, monture de chêne ciré et sable de marbre tamisé.';
+    const card = cardTitled(projectsSection(page), title);
+    await expect(card).toHaveCount(1);
+    await expect(card.getByText(description, { exact: true })).toHaveRole('paragraph');
+    /* Outside links (the link to the project's page has its own text), the title and the
+       description are all the card shows: no stack text, no separator left alone… */
+    const textOutsideLinks = () =>
+      card.evaluate((article) => {
+        const copy = article.cloneNode(true) as HTMLElement;
+        copy.querySelectorAll('a').forEach((link) => link.remove());
+        return (copy.textContent ?? '').replace(/\s+/g, ' ').trim();
+      });
+    await expect.poll(textOutsideLinks).toBe(`${title} ${description}`);
+    /* …and no text element left empty, or holding only whitespace, where the stack would go. */
+    const textElements = card.locator('p, span, li, dt, dd, time, small, strong, em, h1, h2, h3, h4, h5, h6');
+    await expect(textElements.filter({ hasNotText: /\S/ })).toHaveCount(0);
+  } finally {
+    removeDirectory(siteDirectory);
+  }
+});
+
 test.describe('home pages of the example site, served at the site root and under /portfolio/', () => {
   test('the section "Projets sélectionnés" has, once and outside the cards, a "Tous les projets" link that opens the section holding the featured projects, at the site root and under /portfolio/', async ({
     page,
@@ -1908,6 +1996,543 @@ test.describe('home pages of the example site, served at the site root and under
       await link.click();
       await expect(page).toHaveURL(site.sectionAddress);
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(site.sectionTitle);
+    }
+  });
+});
+
+test.describe('home page of another site, featuring only projects of one subsection of projets', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_PROJECTS_IN_A_SUBSECTION);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('the "Tous les projets" link opens the projects section, not the subsection that holds every featured project', async ({
+    page,
+    context,
+  }) => {
+    const site = SITE_WITH_PROJECTS_IN_A_SUBSECTION;
+    await serveSite(context, site, siteDirectory);
+    /* tests/fixtures/projects-in-a-subsection/content/_index.md features two projects, both in
+       content/projets/horlogerie/ (title "Horlogerie", published at /fr/projets/horlogerie/). */
+    const subsectionResponse = await page.goto(`${site.origin}/fr/projets/horlogerie/`);
+    expect(subsectionResponse?.status(), 'status of the subsection page').toBe(200);
+    await page.goto(`${site.origin}/fr/`);
+    const section = projectsSection(page);
+    await expect(section.getByRole('article')).toHaveCount(2);
+    const link = section.getByRole('link', { name: 'Tous les projets', exact: true });
+    await expect(link).toHaveCount(1);
+    await link.click();
+    /* The example site's content/projets/, titled "Projets". */
+    await expect(page).toHaveURL(`${site.origin}/fr/projets/`);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Projets');
+  });
+});
+
+test.describe('home page of another site, featuring projects of projets and of one of its subsections', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_PROJECTS_IN_THE_SECTION_AND_A_SUBSECTION);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('with featured projects in the projects section and in one of its subsections, the "Tous les projets" link shows and opens the projects section', async ({
+    page,
+    context,
+  }) => {
+    const site = SITE_WITH_PROJECTS_IN_THE_SECTION_AND_A_SUBSECTION;
+    await serveSite(context, site, siteDirectory);
+    /* tests/fixtures/projects-in-the-section-and-a-subsection/content/_index.md features one
+       project of content/projets/ and one of content/projets/marine/ (title "Marine", published
+       at /fr/projets/marine/). */
+    const subsectionResponse = await page.goto(`${site.origin}/fr/projets/marine/`);
+    expect(subsectionResponse?.status(), 'status of the subsection page').toBe(200);
+    await page.goto(`${site.origin}/fr/`);
+    const section = projectsSection(page);
+    await expect(section.getByRole('article')).toHaveCount(2);
+    const link = section.getByRole('link', { name: 'Tous les projets', exact: true });
+    await expect(link).toHaveCount(1);
+    await link.click();
+    /* The example site's content/projets/, titled "Projets". */
+    await expect(page).toHaveURL(`${site.origin}/fr/projets/`);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Projets');
+  });
+});
+
+test.describe('home page of another site, whose projectsSection param names the section of its projects', () => {
+  test('a home page featuring projects of the section named by the projectsSection site param builds, and its "Tous les projets" link opens that section', async ({
+    page,
+    context,
+  }) => {
+    /* tests/fixtures/projects-in-the-configured-section/hugo.toml sets projectsSection =
+       'realisations'; its content/_index.md features two projects of content/realisations/ (title
+       "Réalisations", published at /fr/realisations/). The site, not the theme, says where its
+       projects live: the person building it must get a site, not a build error. */
+    const site = SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION;
+    const build = tryToBuildSite(site);
+    expect(build.succeeded, `the site build should succeed, Hugo said:\n${build.errors}`).toBe(true);
+    const siteDirectory = buildSite(site);
+    try {
+      await serveSite(context, site, siteDirectory);
+      await page.goto(`${site.origin}/fr/`);
+      const section = projectsSection(page);
+      await expect(section.getByRole('article')).toHaveCount(2);
+      const link = section.getByRole('link', { name: 'Tous les projets', exact: true });
+      await expect(link).toHaveCount(1);
+      await link.click();
+      await expect(page).toHaveURL(`${site.origin}/fr/realisations/`);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Réalisations');
+    } finally {
+      removeDirectory(siteDirectory);
+    }
+  });
+
+  test('a projectsSection site param written with capitals, naming a section whose folder has the same capitals, lets the home page featuring projects of that section build, and its "Tous les projets" link opens that section', async ({
+    page,
+    context,
+  }) => {
+    /* tests/fixtures/capitalized-param-with-its-projects/hugo.toml sets projectsSection =
+       'Realisations'; its content/_index.md features two projects of content/Realisations/ (title
+       "Réalisations", published at /fr/realisations/, Hugo lowercasing the address). The param is
+       written as the folder is: the person building the site must get a site, not an error message
+       per featured project saying it does not live in the section where it does live. */
+    const site = SITE_WITH_A_CAPITALIZED_PROJECTS_SECTION_PARAM_AND_ITS_PROJECTS;
+    const build = tryToBuildSite(site);
+    expect(build.succeeded, `the site build should succeed, Hugo said:\n${build.errors}`).toBe(true);
+    const siteDirectory = buildSite(site);
+    try {
+      await serveSite(context, site, siteDirectory);
+      await page.goto(`${site.origin}/fr/`);
+      const section = projectsSection(page);
+      await expect(section.getByRole('article')).toHaveCount(2);
+      const link = section.getByRole('link', { name: 'Tous les projets', exact: true });
+      await expect(link).toHaveCount(1);
+      await link.click();
+      await expect(page).toHaveURL(`${site.origin}/fr/realisations/`);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Réalisations');
+    } finally {
+      removeDirectory(siteDirectory);
+    }
+  });
+});
+
+test.describe('featured project outside the section named by the projectsSection param: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('with the projectsSection site param set to realisations, a home page that features a project of projets makes the site build fail, with an error message that names that entry and the configured section, realisations', () => {
+    /* tests/fixtures/project-outside-the-configured-section/hugo.toml sets projectsSection =
+       'realisations'; its content/_index.md features 'realisations/pendule-de-voyage', then the
+       example site's 'projets/restauration-pendule'. The site said its projects live in
+       realisations: the person building it must be told that section, the one the project should
+       move to, not the theme's default, projets. The message is the one line naming the entry, as
+       written in the front matter; the section is looked for as the word "section" and the token
+       realisations, which neither a word nor a page path under realisations/ continues, so that
+       the reference 'realisations/pendule-de-voyage' does not pass for it. That project of the
+       configured section must not be reported. */
+    const entry = 'projets/restauration-pendule';
+    const build = tryToBuildSite(SITE_WITH_A_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'no error message should name the featured project of realisations/').not.toContain(
+      'realisations/pendule-de-voyage',
+    );
+    const messages = build.errors.split('\n').filter((line) => line.includes(entry));
+    expect(messages, `one error message naming the entry ${entry}, in:\n${build.errors}`).toHaveLength(1);
+    expect(messages[0], 'the error message should name the configured section, realisations').toMatch(
+      /^(?=.*\bsection\b)(?=.*(?<![\w-])realisations(?![\w-]|\/[\w-])).*$/u,
+    );
+  });
+});
+
+/* A message saying, on one line, that the projectsSection param must be a text, whatever the rest
+   of the wording. */
+const PROJECTS_SECTION_MUST_BE_A_TEXT = /\bprojectsSection\b.*\b(?:must|should)\s+be\b.*\btext\b/i;
+
+/* A message saying, on one line, that the projectsSection param is empty or blank. */
+const PROJECTS_SECTION_IS_EMPTY = /\bprojectsSection\b.*\b(?:empty|blank)\b/i;
+
+test.describe('projectsSection site param that is not a text or is empty: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a projectsSection site param that is not a text (a number, a list) or is empty (an empty text, spaces only) makes the site build fail, with an error message that names the param and says it must be a text, or that it is empty, without a template execution error after it', () => {
+    /* tests/fixtures/section-param-as-a-number/hugo.toml sets projectsSection = 42,
+       tests/fixtures/section-param-as-a-list/hugo.toml projectsSection = ['realisations'],
+       tests/fixtures/unfilled-section-param/hugo.toml projectsSection = '' and
+       tests/fixtures/section-param-of-spaces/hugo.toml projectsSection = '   '; all four keep the
+       example site's home pages, which feature projects of projets/. None names a section: rather
+       than a site that quietly falls back to projets, a message saying every project lives outside
+       a section "42" or "   ", or a Go template execution error, the person building the site must
+       get an error message that names the projectsSection param and says, on that same line, that
+       it must be a text (for a number or a list) or that it is empty (for an empty text or spaces),
+       whatever the rest of the wording, and no Go template execution error that would follow it
+       and bury it in technical jargon. Two values of each kind, so that a check, or a message,
+       made for a single type or a single empty value does not pass. */
+    const cases: { name: string; site: BuiltSite; message: RegExp; description: string }[] = [
+      {
+        name: 'a number as projectsSection',
+        site: SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER,
+        message: PROJECTS_SECTION_MUST_BE_A_TEXT,
+        description: 'projectsSection must be a text',
+      },
+      {
+        name: 'a list as projectsSection',
+        site: SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_LIST,
+        message: PROJECTS_SECTION_MUST_BE_A_TEXT,
+        description: 'projectsSection must be a text',
+      },
+      {
+        name: 'an empty text as projectsSection',
+        site: SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM,
+        message: PROJECTS_SECTION_IS_EMPTY,
+        description: 'projectsSection is empty',
+      },
+      {
+        name: 'spaces only as projectsSection',
+        site: SITE_WITH_A_WHITESPACE_ONLY_PROJECTS_SECTION_PARAM,
+        message: PROJECTS_SECTION_IS_EMPTY,
+        description: 'projectsSection is empty',
+      },
+    ];
+    for (const { name, site, message, description } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      expect(build.errors, `with ${name}, the error message should say ${description}`).toMatch(message);
+      expect(build.errors, `with ${name}, no template execution error should follow the error message`).not.toMatch(
+        TEMPLATE_EXECUTION_ERROR,
+      );
+    }
+  });
+
+  test('a projectsSection site param that is not a text, on a site whose featured projects live in another section than projets, makes the site build fail with the error message about the param alone, without an error message per featured project', () => {
+    /* tests/fixtures/number-param-with-projects-elsewhere/hugo.toml sets projectsSection = 42; its
+       content/_index.md features 'realisations/pendule-de-voyage' and
+       'realisations/horloge-de-parquet', two projects of content/realisations/, the section the
+       person building the site meant to name. The param names no section, so the theme cannot
+       tell where featured projects must live: the person must get the error message saying
+       projectsSection must be a text, and no error message per featured project saying it does
+       not live in projets, a section they never chose and that would send them moving projects
+       that are where they should be. The messages are looked for as the lines naming an entry, as
+       written in the front matter. */
+    const entries = ['realisations/pendule-de-voyage', 'realisations/horloge-de-parquet'];
+    const build = tryToBuildSite(SITE_WITH_A_PROJECTS_SECTION_PARAM_AS_A_NUMBER_AND_PROJECTS_ELSEWHERE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the error message should say projectsSection must be a text').toMatch(
+      PROJECTS_SECTION_MUST_BE_A_TEXT,
+    );
+    for (const entry of entries) {
+      const messages = build.errors.split('\n').filter((line) => line.includes(entry));
+      expect(messages, `no error message should name the featured project ${entry}, in:\n${build.errors}`).toEqual([]);
+    }
+  });
+
+  test('an empty projectsSection site param, on a site whose featured projects live in another section than projets, makes the site build fail with the error message about the param alone, without an error message per featured project', () => {
+    /* tests/fixtures/unfilled-param-with-projects-elsewhere/hugo.toml sets projectsSection = '';
+       its content/_index.md features 'realisations/pendule-de-voyage' and
+       'realisations/horloge-de-parquet', two projects of content/realisations/, the section the
+       person building the site meant to name. The param names no section, so the theme cannot
+       tell where featured projects must live: the person must get the error message saying
+       projectsSection is empty, and no error message per featured project saying it does not
+       live in a section, an unnamed one or projets, that they never chose and that would send
+       them moving projects that are where they should be. The messages are looked for as the
+       lines naming an entry, as written in the front matter. */
+    const entries = ['realisations/pendule-de-voyage', 'realisations/horloge-de-parquet'];
+    const build = tryToBuildSite(SITE_WITH_AN_EMPTY_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the error message should say projectsSection is empty').toMatch(PROJECTS_SECTION_IS_EMPTY);
+    for (const entry of entries) {
+      const messages = build.errors.split('\n').filter((line) => line.includes(entry));
+      expect(messages, `no error message should name the featured project ${entry}, in:\n${build.errors}`).toEqual([]);
+    }
+  });
+});
+
+test.describe('projectsSection site param with whitespace at its start or end: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a projectsSection site param with whitespace at its start or end makes the site build fail, with an error message that names the param, quotes its value and says it has whitespace', () => {
+    /* tests/fixtures/section-param-with-trailing-space/hugo.toml sets projectsSection =
+       'projets ', with a trailing space, and tests/fixtures/section-param-with-leading-tab/hugo.toml
+       projectsSection = "\tprojets", with a leading tab; both keep the example site's home pages,
+       which feature projects of projets/. Hugo does not trim the whitespace: a message saying every
+       featured project does not live in that section would show the person building the site a
+       section name that looks right, the whitespace being invisible in it. The message must name the
+       projectsSection param, quote its value as Go's %q does, which shows the whitespace
+       ("projets ", "\tprojets"), and say, on that same line, that it has whitespace, whatever the
+       rest of the wording. A trailing space and a leading tab, so that checking only one end, or
+       only the space character, does not pass. */
+    const cases: { name: string; site: BuiltSite; quoted: string }[] = [
+      {
+        name: 'a trailing space',
+        site: SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SPACE,
+        quoted: '"projets "',
+      },
+      { name: 'a leading tab', site: SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_TAB, quoted: '"\\tprojets"' },
+    ];
+    for (const { name, site, quoted } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const messages = build.errors
+        .split('\n')
+        .filter((line) => line.includes(quoted) && /\bprojectsSection\b/.test(line) && /\bwhitespace\b/i.test(line));
+      expect(
+        messages,
+        `with ${name}, error messages that name projectsSection, quote its value as ${quoted} and say it has whitespace, in:\n${build.errors}`,
+      ).not.toEqual([]);
+    }
+  });
+
+  test('a projectsSection site param with whitespace at its start or end, on a site whose featured projects live in the section it names, makes the site build fail with the error message about the param alone, without an error message per featured project', () => {
+    /* tests/fixtures/padded-param-with-projects-elsewhere/hugo.toml sets projectsSection =
+       'realisations ', with a trailing space; its content/_index.md features
+       'realisations/pendule-de-voyage' and 'realisations/horloge-de-parquet', two projects of
+       content/realisations/, the section the person building the site meant to name. Hugo does
+       not trim the whitespace, so the param names no section exactly and the theme cannot tell
+       where featured projects must live: the person must get the error message saying the param
+       has whitespace, and no error message per featured project saying it does not live in a
+       section, the padded one or projets, that they never chose and that would send them moving
+       projects that are where they should be. The param's message is looked for as in the test
+       above, the others as the lines naming an entry, as written in the front matter. */
+    const entries = ['realisations/pendule-de-voyage', 'realisations/horloge-de-parquet'];
+    const quoted = '"realisations "';
+    const build = tryToBuildSite(SITE_WITH_A_PADDED_PROJECTS_SECTION_PARAM_AND_PROJECTS_ELSEWHERE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const paramMessages = build.errors
+      .split('\n')
+      .filter((line) => line.includes(quoted) && /\bprojectsSection\b/.test(line) && /\bwhitespace\b/i.test(line));
+    expect(
+      paramMessages,
+      `error messages that name projectsSection, quote its value as ${quoted} and say it has whitespace, in:\n${build.errors}`,
+    ).not.toEqual([]);
+    for (const entry of entries) {
+      const messages = build.errors.split('\n').filter((line) => line.includes(entry));
+      expect(messages, `no error message should name the featured project ${entry}, in:\n${build.errors}`).toEqual([]);
+    }
+  });
+});
+
+test.describe('projectsSection site param that names no section: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a projectsSection site param that names no section of the site, on a site whose featured projects live in another section, makes the site build fail with an error message that names the param and quotes its value, without an error message per featured project', () => {
+    /* tests/fixtures/misspelled-param-with-projects-elsewhere/hugo.toml sets projectsSection =
+       'realisatons', a typo; its content/_index.md features 'realisations/pendule-de-voyage' and
+       'realisations/horloge-de-parquet', two projects of content/realisations/, the section the
+       person building the site meant to name. The param is a well-formed text, but no section of
+       the site has that name: the person must get an error message that names the projectsSection
+       param and quotes its value as Go's %q does ("realisatons"), so that they see the typo, and no
+       error message per featured project saying it does not live in a section that does not
+       exist, which would send them moving projects that are where they meant them. The param's
+       message is looked for as the lines naming projectsSection and quoting its value, the others
+       as the lines naming an entry, as written in the front matter. */
+    const entries = ['realisations/pendule-de-voyage', 'realisations/horloge-de-parquet'];
+    const quoted = '"realisatons"';
+    const build = tryToBuildSite(SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const paramMessages = build.errors
+      .split('\n')
+      .filter((line) => line.includes(quoted) && /\bprojectsSection\b/.test(line));
+    expect(
+      paramMessages,
+      `error messages that name projectsSection and quote its value as ${quoted}, in:\n${build.errors}`,
+    ).not.toEqual([]);
+    for (const entry of entries) {
+      const messages = build.errors.split('\n').filter((line) => line.includes(entry));
+      expect(messages, `no error message should name the featured project ${entry}, in:\n${build.errors}`).toEqual([]);
+    }
+  });
+
+  test('a projectsSection site param that leads to a section without being its name, on a site whose featured projects live in that section, makes the site build fail with the error message that it names no section and quotes its value, without an error message per featured project', () => {
+    /* tests/fixtures/extension-param-with-its-projects/hugo.toml sets projectsSection =
+       'projets.md', the file name of a page rather than the name of a section; its
+       content/_index.md features 'projets/horloge-astronomique' and 'projets/regulateur-noyer',
+       two projects of the example site's projets/ section. Hugo's GetPage resolves '/projets.md'
+       to the projets section, but the param is not that section's name, and featured projects are
+       compared with the param through their section's name: the person building the site must get
+       the error message that names the projectsSection param, quotes its value as Go's %q does
+       ("projets.md") and says it names no section, whatever the rest of the wording, and no error
+       message per featured project saying it does not live in a section it does live in. The
+       param's message is looked for as the lines naming projectsSection, quoting its value and
+       saying "names no section", the others as the lines naming an entry, as written in the front
+       matter. */
+    const entries = ['projets/horloge-astronomique', 'projets/regulateur-noyer'];
+    const quoted = '"projets.md"';
+    const build = tryToBuildSite(SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_WITHOUT_NAMING_IT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const paramMessages = build.errors
+      .split('\n')
+      .filter(
+        (line) => line.includes(quoted) && /\bprojectsSection\b/.test(line) && /\bnames no section\b/i.test(line),
+      );
+    expect(
+      paramMessages,
+      `error messages that name projectsSection, quote its value as ${quoted} and say it names no section, in:\n${build.errors}`,
+    ).not.toEqual([]);
+    for (const entry of entries) {
+      const messages = build.errors.split('\n').filter((line) => line.includes(entry));
+      expect(messages, `no error message should name the featured project ${entry}, in:\n${build.errors}`).toEqual([]);
+    }
+  });
+
+  test('a projectsSection site param that leads to a top-level section through a path makes the site build fail with the error message that it names no section and quotes its value, and no error message saying it names a subsection', () => {
+    /* tests/fixtures/index-file-param/hugo.toml sets projectsSection = 'projets/_index.md', the
+       path of the projets section's own page rather than the name of a section, and keeps the
+       example site's home pages, which feature projects of projets/. Hugo's GetPage resolves
+       '/projets/_index.md' to the top-level projets section, so the value holds a slash without
+       naming a subsection: telling the person building the site that it names one, and that it
+       must name a top-level section, would leave them puzzled, since projets is one. The message
+       must name the projectsSection param, quote its value as Go's %q does ("projets/_index.md")
+       and say, on that same line, that it names no section, whatever the rest of the wording; no
+       error line may say the param names a subsection. */
+    const quoted = '"projets/_index.md"';
+    const build = tryToBuildSite(SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_THROUGH_A_PATH);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const lines = build.errors.split('\n');
+    const paramMessages = lines.filter(
+      (line) => line.includes(quoted) && /\bprojectsSection\b/.test(line) && /\bnames no section\b/i.test(line),
+    );
+    expect(
+      paramMessages,
+      `error messages that name projectsSection, quote its value as ${quoted} and say it names no section, in:\n${build.errors}`,
+    ).not.toEqual([]);
+    const subsectionMessages = lines.filter((line) => /\bsubsections?\b/i.test(line));
+    expect(
+      subsectionMessages,
+      `no error message should say the param names a subsection, in:\n${build.errors}`,
+    ).toEqual([]);
+  });
+});
+
+test.describe('projectsSection site param that names a subsection: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a projectsSection site param that names a subsection, on a site whose featured projects live in that subsection, makes the site build fail with an error message that names the param, quotes its value and says it must name a top-level section, without an error message per featured project', () => {
+    /* tests/fixtures/nested-param-with-its-projects/hugo.toml sets projectsSection =
+       'projets/horlogerie', a subsection of projets/; its content/_index.md features
+       'projets/horlogerie/pendule-de-voyage' and 'projets/horlogerie/horloge-comtoise', two
+       projects of that subsection. Featured projects are compared with the param through their
+       top-level section, so a param naming a subsection can never match: rather than an error
+       message per featured project saying it does not live in the section where it does live,
+       the person building the site must get an error message that names the projectsSection
+       param, quotes its value as Go's %q does ("projets/horlogerie") and says, on that same line,
+       that it must be a top-level section, whatever the rest of the wording. The param's message
+       is looked for as the lines naming projectsSection, quoting its value and saying top-level,
+       the others as the lines naming an entry, as written in the front matter. */
+    const entries = ['projets/horlogerie/pendule-de-voyage', 'projets/horlogerie/horloge-comtoise'];
+    const quoted = '"projets/horlogerie"';
+    const build = tryToBuildSite(SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_A_SUBSECTION_AND_ITS_PROJECTS);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const paramMessages = build.errors
+      .split('\n')
+      .filter((line) => line.includes(quoted) && /\bprojectsSection\b/.test(line) && /\btop[- ]level\b/i.test(line));
+    expect(
+      paramMessages,
+      `error messages that name projectsSection, quote its value as ${quoted} and say it must be a top-level section, in:\n${build.errors}`,
+    ).not.toEqual([]);
+    for (const entry of entries) {
+      const messages = build.errors.split('\n').filter((line) => line.includes(entry));
+      expect(messages, `no error message should name the featured project ${entry}, in:\n${build.errors}`).toEqual([]);
+    }
+  });
+});
+
+test.describe('projectsSection site param with a slash at its start or end: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a projectsSection site param with a slash at its start or end makes the site build fail, with an error message that names the param, quotes its value and says something about a slash, and no error message saying it names a subsection', () => {
+    /* tests/fixtures/section-param-with-leading-separator/hugo.toml sets projectsSection =
+       '/projets', as a path from the content root, and
+       tests/fixtures/section-param-with-trailing-separator/hugo.toml projectsSection = 'projets/', as
+       a folder; both keep the example site's home pages, which feature projects of projets/. Either
+       value holds a slash, but names no subsection: telling the person building the site that it
+       does, and that it must name a top-level section, would leave them puzzled, since projets is
+       one. The message must name the projectsSection param, quote its value as Go's %q does
+       ("/projets", "projets/") and say, on that same line, something about a slash, whatever the
+       rest of the wording; no error line may say the param names a subsection. A slash at each end,
+       so that checking only one of them does not pass. */
+    const cases: { name: string; site: BuiltSite; quoted: string }[] = [
+      { name: 'a leading slash', site: SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_SLASH, quoted: '"/projets"' },
+      {
+        name: 'a trailing slash',
+        site: SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SLASH,
+        quoted: '"projets/"',
+      },
+    ];
+    for (const { name, site, quoted } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const lines = build.errors.split('\n');
+      const messages = lines.filter(
+        (line) => line.includes(quoted) && /\bprojectsSection\b/.test(line) && /\bslash/i.test(line),
+      );
+      expect(
+        messages,
+        `with ${name}, error messages that name projectsSection, quote its value as ${quoted} and say something about a slash, in:\n${build.errors}`,
+      ).not.toEqual([]);
+      const subsectionMessages = lines.filter((line) => /\bsubsections?\b/i.test(line));
+      expect(
+        subsectionMessages,
+        `with ${name}, no error message should say the param names a subsection, in:\n${build.errors}`,
+      ).toEqual([]);
+    }
+  });
+});
+
+test.describe('projectsSection site param that names no section, a subsection or has a slash at one end: one error message on a bilingual site', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a projectsSection site param that names no section, names a subsection, or has a slash at its start or end makes the site build fail with a single error message about the param, that names no language, as the other projectsSection error messages do', () => {
+    /* The projectsSection param is a site param, the same for every language, but its checks run
+       once per home page, and the example site is bilingual (fr, en). Hugo prints an identical
+       error line only once: the messages saying the param is not a text, is empty or has
+       whitespace name no language and show once, while a message that names the language of the
+       home page being built shows once per language, a repetition that suggests to the person
+       building the site that each language has its own mistake to fix, and a language that the
+       param, written once for the whole site, does not have. The sites are those of the tests
+       above: tests/fixtures/misspelled-param-with-projects-elsewhere ('realisatons', no section),
+       tests/fixtures/nested-param-with-its-projects ('projets/horlogerie', a subsection),
+       tests/fixtures/section-param-with-leading-separator ('/projets') and
+       tests/fixtures/section-param-with-trailing-separator ('projets/'). The param's message is
+       looked for as the lines naming projectsSection and quoting its value as Go's %q does: there
+       must be exactly one, and it must name no language code (fr, en), looked for as a word that
+       no other word follows. Each of the three checks, so that fixing only one of them does not
+       pass. */
+    const cases: { name: string; site: BuiltSite; quoted: string }[] = [
+      {
+        name: 'a param that names no section',
+        site: SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE,
+        quoted: '"realisatons"',
+      },
+      {
+        name: 'a param that names a subsection',
+        site: SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_A_SUBSECTION_AND_ITS_PROJECTS,
+        quoted: '"projets/horlogerie"',
+      },
+      { name: 'a leading slash', site: SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_LEADING_SLASH, quoted: '"/projets"' },
+      {
+        name: 'a trailing slash',
+        site: SITE_WITH_A_PROJECTS_SECTION_PARAM_WITH_A_TRAILING_SLASH,
+        quoted: '"projets/"',
+      },
+    ];
+    for (const { name, site, quoted } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const messages = build.errors
+        .split('\n')
+        .filter((line) => line.includes(quoted) && /\bprojectsSection\b/.test(line));
+      expect(
+        messages,
+        `with ${name}, one error message naming projectsSection and quoting its value as ${quoted}, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messages.filter((line) =>
+          ['fr', 'en'].some((language) => new RegExp(languageCodePattern(language), 'u').test(line)),
+        ),
+        `with ${name}, projectsSection error messages that name a language`,
+      ).toEqual([]);
     }
   });
 });
@@ -2002,6 +2627,43 @@ test.describe('home pages of other sites, featuring a project whose section has 
       Math.abs(belowHeading - belowLink),
       `space from the heading to the first card without the link (${belowHeading.toFixed(1)} px) against the space from the link to the first card with it (${belowLink.toFixed(1)} px)`,
     ).toBeLessThanOrEqual(2);
+  });
+});
+
+test.describe('home page of another site, featuring a project of an unpublished subsection of a section other than the projects section', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_PROJECT_IN_AN_UNPUBLISHED_SUBSECTION_OF_ANOTHER_SECTION);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('the section "Projets sélectionnés" shows the card of the project but no "Tous les projets" link, since the published section above its subsection is not the projects section', async ({
+    page,
+    context,
+  }) => {
+    const site = SITE_WITH_A_PROJECT_IN_AN_UNPUBLISHED_SUBSECTION_OF_ANOTHER_SECTION;
+    await serveSite(context, site, siteDirectory);
+    /* In tests/fixtures/unpublished-subsection-of-another-section/content/, archives/_index.md is
+       published, while archives/brouillons/_index.md declares [build] render = 'never'. */
+    const sectionResponse = await page.goto(`${site.origin}/fr/archives/`);
+    expect(sectionResponse?.status(), 'status of the archives section page').toBe(200);
+    const subsectionResponse = await page.goto(`${site.origin}/fr/archives/brouillons/`);
+    expect(subsectionResponse?.status(), 'status of the brouillons subsection page').toBe(404);
+    await page.goto(`${site.origin}/fr/`);
+    const section = projectsSection(page);
+    const card = cardTitled(section, 'Carillon de beffroi');
+    await expect(card).toHaveCount(1);
+    await expect(card).toBeVisible();
+    /* archives/ holds the featured project, but it is not the projects section, projets/: no link
+       claims it lists all the projects. */
+    await expect
+      .soft(section.getByRole('link', { name: 'Tous les projets' }), `"Tous les projets" links on ${site.origin}/fr/`)
+      .toHaveCount(0);
+    await expect
+      .soft(section.getByText('Tous les projets'), `"Tous les projets" texts on ${site.origin}/fr/`)
+      .toHaveCount(0);
   });
 });
 

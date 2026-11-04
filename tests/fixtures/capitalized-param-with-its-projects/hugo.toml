@@ -1,0 +1,7 @@
+# Configuration added to exampleSite/hugo.toml by the tests of a site whose
+# featured projects live in a section whose folder is written with a capital,
+# Realisations, and whose projectsSection site param names it with the same
+# capital, 'Realisations'. The fixture's content/ adds that section and
+# replaces both home pages.
+[params]
+  projectsSection = 'Realisations'
