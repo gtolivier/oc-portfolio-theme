@@ -2883,9 +2883,10 @@ function expectProjectsBuildError(build: BuildAttempt, context = ''): void {
    between quotes or guillemets, and neither a word nor a page path under projects/ continuing
    it. Every message of this partial already holds the token projects (its "projects:" prefix,
    the words "projects parameter"), so the token alone would also pass for a message naming
-   another section. */
+   another section. A quote opening "projects section" needs no pattern of its own: the match can
+   start at projects, which the lookbehind still sees after the quote. */
 const NAMES_THE_PROJECTS_SECTION =
-  /(?:["'`‘’“”«»]\s?)?(?<![\w-])projects(?![\w-]|\/[\w-])(?:\s?["'`‘’“”«»])?\s+section\b|\bsection\s+(?:["'`‘’“”«»]\s?)?(?<![\w-])projects(?![\w-]|\/[\w-])/u;
+  /(?<![\w-])projects(?![\w-]|\/[\w-])(?:\s?["'`‘’“”«»])?\s+section\b|\bsection\s+(?:["'`‘’“”«»]\s?)?(?<![\w-])projects(?![\w-]|\/[\w-])/u;
 
 test.describe('featured project content errors: build failure', () => {
   runBuildTestsInOneProjectOnly();
