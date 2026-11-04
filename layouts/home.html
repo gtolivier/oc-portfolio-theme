@@ -188,7 +188,7 @@
   <section class="contact" id="contact" aria-labelledby="contact-heading">
     <h2 id="contact-heading">{{ i18n "contact" }}</h2>
     <p class="contact-intro">{{ . }}</p>
-    <form aria-labelledby="contact-heading" method="post">
+    <form aria-labelledby="contact-heading" method="post"{{ with site.Params.contactAction }} action="{{ . }}"{{ end }}>
       <label for="contact-email">{{ i18n "contactEmail" }}</label>
       <input type="email" id="contact-email" name="email" required>
       <label for="contact-message">{{ i18n "contactMessage" }}</label>
