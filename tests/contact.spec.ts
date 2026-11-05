@@ -461,6 +461,28 @@ test('with JavaScript, while the message is being sent, the endpoint not having 
   }
 });
 
+test('with JavaScript, while the message is being sent, the endpoint not having answered yet, the send button is disabled, for visitors and assistive technologies, and focus stays on it', async ({
+  page,
+}) => {
+  /* The endpoint's answer is held, as on a slow connection, for as long as the test checks. */
+  const held = await holdRequests(page, `**${CONTACT_ACTION}`);
+  try {
+    await page.goto('/fr/');
+    const form = contactForm(page);
+    const { sendButton } = form;
+    await fillAsAVisitor(form);
+    /* Sent from the button with the keyboard, focus on it, as every browser leaves it after the send
+       (a click does not focus a button in every browser). */
+    await sendButton.press('Enter');
+    await held.requested;
+    /* Disabled as Playwright sees it: the disabled attribute or aria-disabled. */
+    await expect(sendButton, 'the send button while the message is being sent').toBeDisabled();
+    await expect(sendButton, 'the send button while the message is being sent').toBeFocused();
+  } finally {
+    await held.end();
+  }
+});
+
 test('with JavaScript, after a successful send, focus moves to the confirmation, which assistive technologies get as a status, the whole sentence at once', async ({
   page,
 }) => {
