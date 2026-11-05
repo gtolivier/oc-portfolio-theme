@@ -16,8 +16,14 @@ other = 'Contact'
 [contactEmail]
 other = 'Votre email'
 
+[contactEmailPlaceholder]
+other = 'nom@entreprise.fr'
+
 [contactMessage]
 other = 'Message'
+
+[contactMessagePlaceholder]
+other = 'Votre projet, votre besoin, vos délais…'
 
 [contactSend]
 other = 'Envoyer'

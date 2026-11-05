@@ -16,14 +16,20 @@ other = 'Contact'
 [contactEmail]
 other = 'Your email'
 
+[contactEmailPlaceholder]
+other = 'name@company.com'
+
 [contactMessage]
 other = 'Message'
+
+[contactMessagePlaceholder]
+other = 'Your project, your needs, your timeline…'
 
 [contactSend]
 other = 'Send'
 
 [contactSent]
-other = 'Thank you, I will reply within 48 working hours.'
+other = 'Thanks — I reply within 48 business hours.'
 
 [contactError]
 other = 'The message could not be sent. Please try again in a moment.'
