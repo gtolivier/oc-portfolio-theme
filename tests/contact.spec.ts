@@ -509,6 +509,44 @@ test('with JavaScript, after the endpoint answers a send with an error, the send
   expect(posts, 'the POST requests that reached the endpoint').toHaveLength(2);
 });
 
+/* How far the fake clock moves on, in ms, for a send that gets no answer to be given up: a
+   generous limit, well past any reasonable wait, not the wait itself. */
+const WELL_PAST_ANY_WAIT = 60000;
+
+test('with JavaScript, when the endpoint does not answer the background request for a long while, the send gives up: the error message shows, the form keeps what the visitor wrote and the send button is usable again', async ({
+  page,
+}) => {
+  /* The endpoint's answer never comes, for as long as the test runs; time stands still from before
+     the page loads, until the test advances it. */
+  const held = await holdRequests(page, `**${CONTACT_ACTION}`);
+  await stopClockBeforeLoad(page);
+  try {
+    await page.goto('/fr/');
+    const section = contactSection(page);
+    const form = contactForm(page);
+    const { emailField, messageField, sendButton } = form;
+    await fillAsAVisitor(form);
+    await sendButton.click();
+    await held.requested;
+    /* The send is still pending, not given up at once. */
+    await expect(section.getByText(CONTACT_ERROR), 'the error message as the send starts').not.toBeVisible();
+    /* A long while later, still no answer. */
+    await page.clock.runFor(WELL_PAST_ANY_WAIT);
+    /* The error message shows, not the confirmation. */
+    await expect(section.getByText(CONTACT_ERROR), 'the error message after a long while').toBeVisible();
+    await expect(section.getByText(CONTACT_CONFIRMATION), 'the confirmation after a long while').not.toBeVisible();
+    /* The form stays usable, with what the visitor wrote, for them to try again. */
+    await expect(sendButton, 'the send button after a long while').toBeEnabled();
+    expect(await isUsable(emailField, 'field'), 'the email field is usable').toBe(true);
+    expect(await isUsable(messageField, 'field'), 'the message field is usable').toBe(true);
+    expect(await isUsable(sendButton, 'button'), 'the send button is usable').toBe(true);
+    await expect(emailField, 'the email').toHaveValue(VISITOR_EMAIL);
+    await expect(messageField, 'the message').toHaveValue(VISITOR_MESSAGE);
+  } finally {
+    await held.end();
+  }
+});
+
 test('with JavaScript, after a successful send, focus moves to the confirmation, which assistive technologies get as a status, the whole sentence at once', async ({
   page,
 }) => {
