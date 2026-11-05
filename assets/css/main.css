@@ -583,6 +583,20 @@ footer small:last-child {
   display: block;
 }
 
+/* From 768 px, the note joins the logo and the © line, at the right gutter. */
+@media (min-width: 768px) {
+  footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.5em;
+  }
+
+  footer small:last-child {
+    margin-inline-start: auto;
+  }
+}
+
 /* In the footer, the logo is plain text like the © line: same size, spacing,
    weight and colour, only the font stays the logo's. */
 footer .logo {
