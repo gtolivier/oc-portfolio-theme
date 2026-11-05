@@ -54,6 +54,9 @@ function showConfirmation(contact: Element | null): void {
     status.textContent = sentence;
     return;
   }
+  /* Focused while still empty, the status message is named after the whole sentence, so that
+     assistive technologies get it right away, before it is typed. */
+  status.setAttribute('aria-label', sentence);
   contact?.classList.add('is-erasing');
   setTimeout(() => {
     eraseIntro(contact?.querySelector('.contact-intro'), () => {
@@ -94,6 +97,7 @@ function typeIn(sentence: string): void {
   let typedCount = 0;
   const typed = document.createElement('span');
   typed.setAttribute('aria-hidden', 'true');
+  status.removeAttribute('aria-label');
   status.replaceChildren(wholeSentence(sentence), typed);
   const timer = setInterval(() => {
     typedCount += 1;
