@@ -22,28 +22,51 @@ test('screen readers do not read the decorative bars of the footer logo', async 
   expect(accessibilityTree).not.toContain('|');
 });
 
-test('the footer logo is styled like the header logo: same font, size, letter-spacing, color and character weights', async ({
+test("the footer logo is plain footer text: in the header logo's font, with the size, letter-spacing, color and weight of the © line, and no bold bar", async ({
   page,
 }) => {
   await page.goto('/fr/');
+  const year = new Date().getFullYear();
   const headerLogo = page
     .locator('header')
     .getByRole('link', { name: 'Exemple', exact: true })
     .locator('[aria-hidden="true"]');
   const logo = footerLogoText(page);
+  const copyright = page.locator('footer').getByText(`© ${year} Jean Exemple`, { exact: true });
   await expect(headerLogo).toHaveText('| E ||| | X |||');
   await expect(logo).toHaveText('| E ||| | X |||');
-  /* The computed style of every element that directly holds a piece of each logo's text, the bold bars included. */
-  const looks = async (element: Locator) =>
-    (await textPieceStyles(element)).map(({ text, fontFamily, fontSize, letterSpacing, color }) => ({
+  await expect(copyright).toBeVisible();
+
+  const [copyrightStyle] = await textPieceStyles(copyright);
+  const headerFontFamilies = new Set((await textPieceStyles(headerLogo)).map(({ fontFamily }) => fontFamily));
+  expect(headerFontFamilies.size).toBe(1);
+  const [headerFontFamily] = headerFontFamilies;
+
+  /* Every piece of the footer logo's text, the bars included, looks like the © line, in the header logo's font. */
+  const pieces = await textPieceStyles(logo);
+  expect(pieces.length).toBeGreaterThan(0);
+  expect(
+    pieces.map(({ text, fontFamily, fontSize, letterSpacing, color }) => ({
       text,
       fontFamily,
       fontSize,
       letterSpacing,
       color,
-    }));
-  expect(await looks(logo)).toEqual(await looks(headerLogo));
-  expect(await characterWeights(logo)).toEqual(await characterWeights(headerLogo));
+    })),
+  ).toEqual(
+    pieces.map(({ text }) => ({
+      text,
+      fontFamily: headerFontFamily,
+      fontSize: copyrightStyle.fontSize,
+      letterSpacing: copyrightStyle.letterSpacing,
+      color: copyrightStyle.color,
+    })),
+  );
+  /* No character stands out in bold: each has the weight of the © line. */
+  const visibleCharacters = [...'| E ||| | X |||'].filter((character) => character.trim() !== '');
+  expect(await characterWeights(logo)).toEqual(
+    visibleCharacters.map((character) => `${character} ${copyrightStyle.fontWeight}`),
+  );
 });
 
 test('the footer displays the site footer note in the page language', async ({ page }) => {
