@@ -574,10 +574,10 @@ tick-field > canvas {
 }
 
 /* In the footer, the logo is plain text like the © line: same size, spacing,
-   weight and colour, only the font stays the logo's. */
+   weight and colour, only the font stays the logo's. A decorative "—"
+   follows it, before the © line. */
 footer .logo {
-  /* The size of <small>, which the © line uses. */
-  font-size: smaller;
+  font-size: inherit;
   letter-spacing: inherit;
   color: inherit;
 }
@@ -586,27 +586,41 @@ footer .logo b {
   font-weight: inherit;
 }
 
-/* The footer starts at the page gutter, like the header; the footer note
-   takes its own line below the © line. */
+footer .logo::after {
+  content: '—';
+}
+
+/* The footer: one ink band in small monospace, from the page gutter, like
+   the header. On a phone, the footer note takes its own line below the ©
+   line. */
 footer {
-  padding-inline: var(--page-gutter);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 28px var(--page-gutter);
+  background: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: rgb(var(--color-paper-channels) / 0.75);
 }
 
-footer small:last-child {
-  display: block;
+footer p {
+  margin: 0;
 }
 
-/* From 768 px, the note joins the logo and the © line, at the right gutter. */
+/* The footer sets its own size: <small> only marks the fine print. */
+footer small {
+  font-size: inherit;
+}
+
+/* From 768 px, the note joins the logo and the © line, at the right gutter;
+   both blocks wrap onto two lines when they do not fit on one. */
 @media (min-width: 768px) {
   footer {
-    display: flex;
+    flex-direction: row;
     flex-wrap: wrap;
+    justify-content: space-between;
     align-items: baseline;
-    column-gap: 0.5em;
-  }
-
-  footer small:last-child {
-    margin-inline-start: auto;
   }
 }
 
