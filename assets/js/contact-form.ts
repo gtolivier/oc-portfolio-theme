@@ -5,6 +5,14 @@ const form = document.querySelector<HTMLFormElement>('.contact form');
 
 let isSending = false;
 
+/* An empty status message, present from the start so that assistive technologies announce what is
+   put in it, the whole sentence at once. */
+const status = document.createElement('div');
+status.setAttribute('role', 'status');
+status.tabIndex = -1;
+status.className = 'contact-status';
+if (form) form.parentElement?.insertBefore(status, form);
+
 form?.addEventListener('submit', (event) => {
   event.preventDefault();
   if (isSending) return;
@@ -19,7 +27,13 @@ form?.addEventListener('submit', (event) => {
     .then((sent) => {
       isSending = false;
       const contact = form.closest('.contact');
-      contact?.classList.toggle('is-sent', sent);
+      if (sent) {
+        const confirmation = contact?.querySelector('.contact-sent');
+        status.textContent = confirmation?.textContent ?? '';
+        confirmation?.remove();
+        contact?.classList.add('is-confirmed');
+        status.focus();
+      }
       contact?.classList.toggle('is-error', !sent);
     });
 });

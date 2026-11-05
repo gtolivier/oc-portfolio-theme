@@ -1291,7 +1291,7 @@ tick-field > canvas {
   display: block;
 }
 
-.contact:is(.is-sent, :has(#contact-sent:target)) :is(.contact-intro, form) {
+.contact:is(.is-sent, .is-confirmed, :has(#contact-sent:target)) :is(.contact-intro, form) {
   display: none;
 }
 
