@@ -1,7 +1,8 @@
 /* With JavaScript, the contact form is posted in the background, asking the endpoint for JSON, so
-   the visitor stays on the page. On success the confirmation replaces the intro and the form,
-   typed in letter by letter unless motion is reduced; on an error answer, or none at all, the
-   error message shows above the form, kept for a retry. */
+   the visitor stays on the page. On success the confirmation replaces the intro and the form:
+   unless motion is reduced, the form goes at once, the intro is erased letter by letter, then the
+   confirmation typed in letter by letter. On an error answer, or none at all, the error message
+   shows above the form, kept for a retry. */
 import { reducedMotionQuery } from './reduced-motion';
 
 const TYPING_TICK_MS = 40;
@@ -37,8 +38,8 @@ form?.addEventListener('submit', (event) => {
     });
 });
 
-/* Moves the confirmation's sentence into the status message, in place of the intro and the form,
-   and focuses it. */
+/* Focuses the status message and moves the confirmation's sentence into it, in place of the intro
+   and the form; with motion allowed, the sentence comes once the intro is erased. */
 function showConfirmation(contact: Element | null): void {
   const confirmation = contact?.querySelector('.contact-sent');
   const sentence = confirmation?.textContent ?? '';
@@ -49,7 +50,7 @@ function showConfirmation(contact: Element | null): void {
     status.textContent = sentence;
     return;
   }
-  form?.style.setProperty('display', 'none');
+  contact?.classList.add('is-erasing');
   eraseIntro(contact?.querySelector('.contact-intro'), () => {
     contact?.classList.add('is-confirmed');
     typeIn(sentence);

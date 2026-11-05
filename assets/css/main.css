@@ -1295,6 +1295,11 @@ tick-field > canvas {
   display: none;
 }
 
+/* While the intro is erased, before the confirmation is typed, the form is already gone. */
+.contact.is-erasing form {
+  display: none;
+}
+
 /* The error message is for the visitor the endpoint sends back to
    #contact-error: it shows above the form, which stays usable. */
 .contact-error {
