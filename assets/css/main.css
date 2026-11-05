@@ -573,6 +573,16 @@ tick-field > canvas {
   font-weight: 700;
 }
 
+/* The footer starts at the page gutter, like the header; the footer note
+   takes its own line below the © line. */
+footer {
+  padding-inline: var(--page-gutter);
+}
+
+footer small:last-child {
+  display: block;
+}
+
 /* In the footer, the logo is plain text like the © line: same size, spacing,
    weight and colour, only the font stays the logo's. */
 footer .logo {
