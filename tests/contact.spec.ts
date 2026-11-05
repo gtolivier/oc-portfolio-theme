@@ -374,6 +374,26 @@ test('with JavaScript, sending the filled contact form posts it in the backgroun
   await expect.poll(() => isUsable(sendButton, 'button'), { message: 'the send button is usable' }).toBe(false);
 });
 
+test('with JavaScript, the background send posts the email, the message and the empty decoy "contact_reference", form-encoded, as the browser does without JavaScript', async ({
+  page,
+}) => {
+  await answerWithSuccess(page);
+  await page.goto('/fr/');
+  const form = contactForm(page);
+  await fillAsAVisitor(form);
+  const request = await sendAndCatchThePost(page, form);
+  /* The same encoding as without JavaScript; a charset parameter the browser may add aside. */
+  const mediaType = (request.headers()['content-type'] ?? '').split(';')[0].trim().toLowerCase();
+  expect(mediaType, 'the encoding of the form data').toBe('application/x-www-form-urlencoded');
+  /* The same fields as without JavaScript: what the visitor filled in, and the decoy left empty. */
+  const body = new URLSearchParams(request.postData() ?? '');
+  expect(Object.fromEntries(body), 'the data sent').toEqual(
+    expect.objectContaining({ email: VISITOR_EMAIL, message: VISITOR_MESSAGE }),
+  );
+  expect(body.has('contact_reference'), 'the data sent includes the "contact_reference" field').toBe(true);
+  expect(body.get('contact_reference'), 'the value sent for "contact_reference"').toBe('');
+});
+
 test('with JavaScript, when the endpoint answers the background request with an error, the error message shows and the form keeps what the visitor wrote, still usable', async ({
   page,
 }) => {
