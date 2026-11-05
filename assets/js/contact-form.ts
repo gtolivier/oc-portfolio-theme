@@ -27,13 +27,17 @@ form?.addEventListener('submit', (event) => {
     .then((sent) => {
       isSending = false;
       const contact = form.closest('.contact');
-      if (sent) {
-        const confirmation = contact?.querySelector('.contact-sent');
-        status.textContent = confirmation?.textContent ?? '';
-        confirmation?.remove();
-        contact?.classList.add('is-confirmed');
-        status.focus();
-      }
+      if (sent) showConfirmation(contact);
       contact?.classList.toggle('is-error', !sent);
     });
 });
+
+/* Moves the confirmation's sentence into the status message, in place of the intro and the form,
+   and focuses it. */
+function showConfirmation(contact: Element | null): void {
+  const confirmation = contact?.querySelector('.contact-sent');
+  status.textContent = confirmation?.textContent ?? '';
+  confirmation?.remove();
+  contact?.classList.add('is-confirmed');
+  status.focus();
+}
