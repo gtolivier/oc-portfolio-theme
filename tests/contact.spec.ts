@@ -925,6 +925,23 @@ test.describe('home page of another site, with another contact intro', () => {
     await expect(section.getByText(CONTACT_INTRO), 'the example site’s intro').toHaveCount(0);
   });
 
+  test('with JavaScript, after a successful send from the French home page of another site, whose contact params give a sent text, the section shows that text as the confirmation, and not the theme’s default one', async ({
+    page,
+    context,
+  }) => {
+    await serveSite(context, SITE_WITH_ANOTHER_CONTACT_INTRO, siteDirectory);
+    await answerWithSuccess(page);
+    /* Reduced motion: the confirmation shows whole at once, with no animation to wait for. */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto(`${SITE_WITH_ANOTHER_CONTACT_INTRO.origin}/fr/`);
+    const section = contactSection(page);
+    const form = contactForm(page);
+    await fillAsAVisitor(form);
+    await sendAndCatchThePost(page, form);
+    await expect(section.getByText(OTHER_CONTACT_SENT), 'the site’s confirmation').toBeVisible();
+    await expect(section.getByText(CONTACT_CONFIRMATION), 'the theme’s default confirmation').not.toBeVisible();
+  });
+
   test.describe('browser without JavaScript', () => {
     test.use({ javaScriptEnabled: false });
 
