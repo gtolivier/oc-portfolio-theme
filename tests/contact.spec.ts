@@ -432,6 +432,57 @@ test('with JavaScript, while the message is being sent, the endpoint not having 
   }
 });
 
+test('with JavaScript, after a successful send, focus moves to the confirmation, which assistive technologies get as a status, the whole sentence at once', async ({
+  page,
+}) => {
+  /* The endpoint answers the background request with success, in JSON. */
+  await page.route(`**${CONTACT_ACTION}`, (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
+  );
+  await page.goto('/fr/');
+  const section = contactSection(page);
+  const form = section.getByRole('form');
+  await form.locator('[name="email"]').fill('marie.horloge@exemple.fr');
+  await form.locator('[name="message"]').fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
+  await form.getByRole('button').click();
+  /* Assistive technologies get the confirmation as a status message (a polite live region)… */
+  const status = section.getByRole('status');
+  await expect(status, 'the status message of the section "Contact"').toHaveCount(1);
+  /* …and, from the first moment it holds any text, the whole sentence, not a first part of it that
+     would grow character by character. An empty status reads "- status" alone. */
+  let firstAnnounced = '';
+  await expect
+    .poll(
+      async () => {
+        firstAnnounced = (await status.ariaSnapshot()).trim();
+        return firstAnnounced !== '- status';
+      },
+      { message: 'the status holds some text', intervals: [10] },
+    )
+    .toBe(true);
+  expect(firstAnnounced, 'what assistive technologies first get of the status').toContain(CONTACT_CONFIRMATION);
+  /* Focus has moved to the confirmation: the focused element is the status, or holds it, within the
+     section "Contact" — not the page itself, nor the whole section. */
+  await expect
+    .poll(
+      () =>
+        status.evaluate((confirmation) => {
+          const focused = document.activeElement;
+          const contact = confirmation.closest('section');
+          return (
+            focused !== null &&
+            focused !== document.body &&
+            focused !== contact &&
+            contact !== null &&
+            contact.contains(focused) &&
+            focused.contains(confirmation)
+          );
+        }),
+      { message: 'the focused element is the confirmation, or holds it' },
+    )
+    .toBe(true);
+});
+
 /* Whether any part of an element lies within the viewport. */
 async function isInViewport(element: Locator): Promise<boolean> {
   const box = await element.boundingBox();
