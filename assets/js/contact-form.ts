@@ -1,6 +1,7 @@
 /* With JavaScript, the contact form is posted in the background, asking the endpoint for JSON, so
-   the visitor stays on the page. On success the confirmation replaces the intro and the form; on
-   an error answer, or none at all, the error message shows above the form, kept for a retry. */
+   the visitor stays on the page. On success the confirmation replaces the intro and the form,
+   typed in letter by letter unless motion is reduced; on an error answer, or none at all, the
+   error message shows above the form, kept for a retry. */
 import { reducedMotionQuery } from './reduced-motion';
 
 const TYPING_TICK_MS = 40;
@@ -51,20 +52,24 @@ function showConfirmation(contact: Element | null): void {
   typeIn(sentence);
 }
 
-/* Types the sentence into the status message, one letter at a time. */
-function typeIn(sentence: string): void {
-  const letters = Array.from(sentence);
-  let count = 0;
-  /* Assistive technologies get the whole sentence at once; the typed letters are for the eyes. */
+/* Assistive technologies get the whole sentence at once; the typed letters are for the eyes. */
+function wholeSentence(sentence: string): HTMLSpanElement {
   const whole = document.createElement('span');
   whole.className = 'contact-status-whole';
   whole.textContent = sentence;
+  return whole;
+}
+
+/* Types the sentence into the status message, one letter at a time. */
+function typeIn(sentence: string): void {
+  const letters = Array.from(sentence);
+  let typedCount = 0;
   const typed = document.createElement('span');
   typed.setAttribute('aria-hidden', 'true');
-  status.replaceChildren(whole, typed);
+  status.replaceChildren(wholeSentence(sentence), typed);
   const timer = setInterval(() => {
-    count += 1;
-    typed.textContent = letters.slice(0, count).join('');
-    if (count >= letters.length) clearInterval(timer);
+    typedCount += 1;
+    typed.textContent = letters.slice(0, typedCount).join('');
+    if (typedCount >= letters.length) clearInterval(timer);
   }, TYPING_TICK_MS);
 }
