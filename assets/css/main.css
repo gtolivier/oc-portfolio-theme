@@ -1434,6 +1434,13 @@ tick-field > canvas {
   cursor: pointer;
 }
 
+/* While contact-form.ts sends the message, the button is dimmed: a second
+   press would do nothing. */
+.contact-fields button[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: progress;
+}
+
 /* The spam bots' decoy field is moved off screen rather than hidden with
    display: none, which some bots recognize and leave empty. */
 .contact-decoy {
