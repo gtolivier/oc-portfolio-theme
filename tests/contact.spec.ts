@@ -483,6 +483,32 @@ test('with JavaScript, while the message is being sent, the endpoint not having 
   }
 });
 
+test('with JavaScript, after the endpoint answers a send with an error, the send button is enabled again, for visitors and assistive technologies, and sending again posts the message a second time', async ({
+  page,
+}) => {
+  /* The endpoint fails on every send. */
+  await page.route(`**${CONTACT_ACTION}`, (route) =>
+    route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ ok: false }) }),
+  );
+  /* Every POST the page sends to the endpoint. */
+  const posts: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === CONTACT_ACTION) posts.push(request.url());
+  });
+  await page.goto('/fr/');
+  const section = contactSection(page);
+  const form = contactForm(page);
+  const { sendButton } = form;
+  await fillAsAVisitor(form);
+  await sendButton.click();
+  await expect(section.getByText(CONTACT_ERROR), 'the error message after the first send').toBeVisible();
+  /* Enabled as Playwright sees it: neither the disabled attribute nor aria-disabled. */
+  await expect(sendButton, 'the send button after the error').toBeEnabled();
+  /* Trying again posts the message once more. */
+  await sendAndCatchThePost(page, form);
+  expect(posts, 'the POST requests that reached the endpoint').toHaveLength(2);
+});
+
 test('with JavaScript, after a successful send, focus moves to the confirmation, which assistive technologies get as a status, the whole sentence at once', async ({
   page,
 }) => {
