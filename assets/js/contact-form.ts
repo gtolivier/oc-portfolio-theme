@@ -11,6 +11,9 @@ const ERASE_DELAY_MS = 340;
 const ERASE_TICK_MS = 26;
 const TYPING_TICK_MS = 50;
 
+/* How long a send may wait for the endpoint's answer before it is given up. */
+const SEND_TIMEOUT_MS = 15000;
+
 const form = document.querySelector<HTMLFormElement>('.contact form');
 
 let isSending = false;
@@ -30,8 +33,12 @@ form?.addEventListener('submit', (event) => {
   /* aria-disabled rather than disabled: the button keeps the focus while the message is sent. */
   const sendButton = form.querySelector('button');
   sendButton?.setAttribute('aria-disabled', 'true');
+  /* A send the endpoint never answers is given up after a while, as an error. */
+  const abortion = new AbortController();
+  const giveUp = setTimeout(() => abortion.abort(), SEND_TIMEOUT_MS);
   void fetch(form.action, {
     method: 'POST',
+    signal: abortion.signal,
     headers: { Accept: 'application/json' },
     /* Form-encoded, as the browser posts the form without JavaScript, so the endpoint gets one
        encoding; the form has no file field, so every value is a string. */
@@ -40,6 +47,7 @@ form?.addEventListener('submit', (event) => {
     .then((response) => response.ok)
     .catch(() => false)
     .then((sent) => {
+      clearTimeout(giveUp);
       isSending = false;
       sendButton?.removeAttribute('aria-disabled');
       const contact = form.closest('.contact');
