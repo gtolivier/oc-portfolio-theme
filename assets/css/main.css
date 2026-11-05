@@ -557,9 +557,10 @@ tick-field > canvas {
   pointer-events: none;
 }
 
-/* The site logo looks the same wherever it is used, except in the footer
-   (below). Elsewhere, a context may only resize it, by setting --logo-size
-   on an ancestor: everything else is in em, so it follows the size. */
+/* The site logo looks the same wherever it is used, except in the site
+   footer (below). Elsewhere, a context may only resize it, by setting
+   --logo-size on an ancestor: everything else is in em, so it follows the
+   size. */
 .logo {
   font-family: var(--font-mono);
   font-size: var(--logo-size, 14px);
@@ -573,27 +574,28 @@ tick-field > canvas {
   font-weight: 700;
 }
 
-/* In the footer, the logo is plain text like the © line: same size, spacing,
-   weight and colour, only the font stays the logo's. A decorative "—"
-   follows it, before the © line. */
-footer .logo {
+/* In the site footer, the logo is plain text like the © line: same size,
+   spacing, weight and colour, only the font stays the logo's. A decorative
+   "—" follows it, before the © line; it brings its own leading space rather
+   than rely on the whitespace of the logo's markup. */
+.site-footer .logo {
   font-size: inherit;
   letter-spacing: inherit;
   color: inherit;
 }
 
-footer .logo b {
+.site-footer .logo b {
   font-weight: inherit;
 }
 
-footer .logo::after {
-  content: '—';
+.site-footer .logo::after {
+  content: ' —';
 }
 
-/* The footer: one ink band in small monospace, from the page gutter, like
+/* The site footer: one ink band in small monospace, from the page gutter, like
    the header. On a phone, the footer note takes its own line below the ©
    line. */
-footer {
+.site-footer {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -604,19 +606,19 @@ footer {
   color: rgb(var(--color-paper-channels) / 0.75);
 }
 
-footer p {
+.site-footer p {
   margin: 0;
 }
 
 /* The footer sets its own size: <small> only marks the fine print. */
-footer small {
+.site-footer small {
   font-size: inherit;
 }
 
 /* From 768 px, the note joins the logo and the © line, at the right gutter;
    both blocks wrap onto two lines when they do not fit on one. */
 @media (min-width: 768px) {
-  footer {
+  .site-footer {
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: space-between;
