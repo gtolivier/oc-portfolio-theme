@@ -1325,6 +1325,12 @@ tick-field > canvas {
   color: var(--color-accent-dark);
 }
 
+/* The script focuses the status message so that assistive technologies read
+   the confirmation from it; it is no control, so it shows no focus ring. */
+.contact-status:focus {
+  outline: none;
+}
+
 /* A terminal cursor after the text, decorative: its empty alternative text
    keeps it out of what assistive technologies read. It blinks unless the
    visitor asks for reduced motion. */
