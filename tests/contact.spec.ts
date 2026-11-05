@@ -222,7 +222,7 @@ test.describe('browser without JavaScript', () => {
     );
   });
 
-  test('without JavaScript, the contact form also posts a "website" field, a decoy for spam bots that the visitor does not see, cannot reach with Tab and assistive technologies do not expose: empty when a visitor sends, with what a bot typed in it otherwise', async ({
+  test('without JavaScript, the contact form also posts a "contact_reference" field, a decoy for spam bots that the visitor does not see, cannot reach with Tab and assistive technologies do not expose: empty when a visitor sends, with what a bot typed in it otherwise', async ({
     page,
     browserName,
   }) => {
@@ -230,7 +230,7 @@ test.describe('browser without JavaScript', () => {
     await page.goto('/fr/');
     const contact = contactForm(page);
     const { form, emailField, messageField, sendButton } = contact;
-    const decoy = form.locator('[name="website"]');
+    const decoy = form.locator('[name="contact_reference"]');
     /* Assistive technologies: the form's only textboxes are the email and the message. */
     const textboxes = form.getByRole('textbox');
     await expect(textboxes, 'the textboxes of the form, as assistive technologies see them').toHaveCount(2);
@@ -257,7 +257,7 @@ test.describe('browser without JavaScript', () => {
         }),
         sendButtonElement,
       );
-      if (focus.inForm && focus.name === 'website') decoyReached = true;
+      if (focus.inForm && focus.name === 'contact_reference') decoyReached = true;
       if (focus.onSendButton) sendButtonReached = true;
       else if (sendButtonReached && !focus.inForm) break;
     }
@@ -267,8 +267,8 @@ test.describe('browser without JavaScript', () => {
     await fillAsAVisitor(contact);
     const request = await sendAndCatchThePost(page, contact);
     const body = new URLSearchParams(request.postData() ?? '');
-    expect(body.has('website'), 'the data sent includes the "website" field').toBe(true);
-    expect(body.get('website'), 'the value sent for "website"').toBe('');
+    expect(body.has('contact_reference'), 'the data sent includes the "contact_reference" field').toBe(true);
+    expect(body.get('contact_reference'), 'the value sent for "contact_reference"').toBe('');
     /* Sent as a bot would: a program that reads the markup fills every text field of the form,
        the decoy included, however it is hidden, and sends what it typed there. A field that is
        not a text field (a hidden input) would be skipped, and would not catch it. */
@@ -285,7 +285,7 @@ test.describe('browser without JavaScript', () => {
     expect(typedByBot, 'the decoy is a text field, which a bot fills').toBe(true);
     const botRequest = await sendAndCatchThePost(page, contact);
     const botBody = new URLSearchParams(botRequest.postData() ?? '');
-    expect(botBody.get('website'), 'the value a bot typed in "website", sent').toBe(
+    expect(botBody.get('contact_reference'), 'the value a bot typed in "contact_reference", sent').toBe(
       'https://montres-pas-cheres.example',
     );
   });
