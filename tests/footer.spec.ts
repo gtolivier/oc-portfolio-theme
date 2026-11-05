@@ -68,6 +68,70 @@ test('on a phone, the footer starts at the page gutter, its logo lined up with t
   ).toBeLessThanOrEqual(1);
 });
 
+/* A wide window, past the desktop breakpoint. */
+const WIDE_VIEWPORT = { width: 1280, height: 800 };
+
+/* The right edge of the last visible character of the element, as rendered: where its text ends. */
+async function lastCharacterRight(element: Locator): Promise<number> {
+  return element.evaluate((root) => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let right: number | undefined;
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      const text = node.textContent!;
+      for (let index = 0; index < text.length; index++) {
+        if (text[index].trim() === '') continue;
+        const range = document.createRange();
+        range.setStart(node, index);
+        range.setEnd(node, index + 1);
+        right = range.getBoundingClientRect().right;
+      }
+    }
+    if (right === undefined) throw new Error('the element shows no character');
+    return right;
+  });
+}
+
+test("on a wide screen, the footer note shares the line of the logo and the © text, and ends at the page's right gutter, lined up with the right edge of the header's content", async ({
+  page,
+}) => {
+  await page.setViewportSize(WIDE_VIEWPORT);
+  await page.goto('/fr/');
+  const year = new Date().getFullYear();
+  /* With a language switcher, it is the header's last item: it ends at the page's right gutter. */
+  const switcher = page.locator('header').getByRole('group', { name: 'Langue', exact: true });
+  const logo = footerLogoText(page);
+  const copyright = page.locator('footer').getByText(`© ${year} Jean Exemple`, { exact: true });
+  const note = page.locator('footer').getByText('Horloger de démonstration', { exact: true });
+  await expect(switcher).toBeVisible();
+  await expect(logo).toHaveText('| E ||| | X |||');
+  await expect(copyright).toBeVisible();
+  await expect(note).toBeVisible();
+
+  /* On the same line: the middle of the note's box lies within the logo's box and the © line's box. */
+  const noteBox = (await note.boundingBox())!;
+  const noteMiddle = noteBox.y + noteBox.height / 2;
+  for (const [name, box] of [
+    ['footer logo', (await logo.boundingBox())!],
+    ['© line', (await copyright.boundingBox())!],
+  ] as const) {
+    expect(noteMiddle, `middle of the footer note against the top of the ${name} (${box.y} px)`).toBeGreaterThanOrEqual(
+      box.y,
+    );
+    expect(
+      noteMiddle,
+      `middle of the footer note against the bottom of the ${name} (${box.y + box.height} px)`,
+    ).toBeLessThanOrEqual(box.y + box.height);
+  }
+
+  const switcherBox = (await switcher.boundingBox())!;
+  const noteEnd = await lastCharacterRight(note);
+  /* Compared with a 1 px tolerance: rendered box positions may carry sub-pixel rounding. */
+  expect(
+    Math.abs(noteEnd - (switcherBox.x + switcherBox.width)),
+    `footer note ends at ${noteEnd} px, header content at ${switcherBox.x + switcherBox.width} px`,
+  ).toBeLessThanOrEqual(1);
+});
+
 test('the footer displays the site logo followed by "© <current year> <site author>"', async ({ page }) => {
   await page.goto('/fr/');
   const year = new Date().getFullYear();
