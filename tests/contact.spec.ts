@@ -546,6 +546,74 @@ test('with JavaScript and motion allowed, after a successful send, the intro is 
   expect(end, 'the section in the end').not.toContain(introStart);
 });
 
+test('with JavaScript and motion allowed, after a successful send, the intro is erased before the confirmation is typed: partway through the erasing, the section shows only the start of the intro, the form already gone, and none of the confirmation', async ({
+  page,
+}) => {
+  /* The endpoint answers the background request with success, in JSON. */
+  await page.route(`**${CONTACT_ACTION}`, (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
+  );
+  /* Animations are allowed, and time stands still from before the page loads, until the test
+     advances it. */
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  const section = contactSection(page);
+  const form = section.getByRole('form');
+  const emailField = form.locator('[name="email"]');
+  const messageField = form.locator('[name="message"]');
+  const sendButton = form.getByRole('button');
+  await emailField.fill('marie.horloge@exemple.fr');
+  await messageField.fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
+  /* What the form shows on screen before sending, spaces aside: the labels of its fields and the
+     text of its button. Once the form is gone, none of them shows. */
+  const labelText = (field: Locator) =>
+    field.evaluate((element) =>
+      Array.from((element as HTMLInputElement | HTMLTextAreaElement).labels ?? [])
+        .map((label) => label.textContent ?? '')
+        .join(''),
+    );
+  const formTexts = [await labelText(emailField), await labelText(messageField), await textOnScreen(sendButton)]
+    .map((text) => text.replace(/\s/g, ''))
+    .filter((text) => text !== '');
+  expect(formTexts, 'the texts the form shows before sending').toHaveLength(3);
+  /* Before sending, what the section already shows of the confirmation's start by chance (a
+     letter or two of a label): showing the start of the confirmation means more than that. */
+  const confirmationByChance = startShown(await textOnScreen(section), CONTACT_CONFIRMATION);
+  const wholeConfirmation = CONTACT_CONFIRMATION.replace(/ /g, '').length;
+  const wholeIntro = CONTACT_INTRO.replace(/ /g, '').length;
+  const introStart = CONTACT_INTRO.split(' ')[0];
+  await sendButton.click();
+  /* Time moves on in small steps, the answer arriving meanwhile, until the whole confirmation
+     shows without the intro, well past the end of the animation, or a generous limit. */
+  const samples: string[] = [];
+  for (let elapsed = 0; elapsed <= 20000; elapsed += 25) {
+    if (elapsed > 0) await page.clock.runFor(25);
+    const shown = await textOnScreen(section);
+    samples.push(shown);
+    if (startShown(shown, CONTACT_CONFIRMATION) === wholeConfirmation && !shown.includes(introStart)) break;
+  }
+  /* In the end, well past the whole animation: what the section still shows of the intro's start
+     by chance. Showing a start of the intro means more than that. */
+  await page.clock.runFor(20000);
+  const introByChance = startShown(await textOnScreen(section), CONTACT_INTRO);
+  /* Partway through the erasing: a start of the intro, not all of it, none of the form, and no
+     more of the confirmation's start than shows by chance. */
+  const partway = samples.find((shown) => {
+    const introLength = startShown(shown, CONTACT_INTRO);
+    return (
+      introLength > introByChance &&
+      introLength < wholeIntro &&
+      formTexts.every((text) => !shown.includes(text)) &&
+      startShown(shown, CONTACT_CONFIRMATION) <= confirmationByChance
+    );
+  });
+  expect(
+    partway,
+    `a moment when the section shows only the start of the intro, among: ${JSON.stringify([...new Set(samples)].slice(0, 5))}`,
+  ).toBeDefined();
+});
+
 /* Whether any part of an element lies within the viewport. */
 async function isInViewport(element: Locator): Promise<boolean> {
   const box = await element.boundingBox();
