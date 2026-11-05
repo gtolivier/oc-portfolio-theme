@@ -5,7 +5,11 @@
    shows above the form, kept for a retry. */
 import { reducedMotionQuery } from './reduced-motion';
 
-const TYPING_TICK_MS = 40;
+/* The mockup's pace: the intro starts to go once the form has begun to fold, is erased faster than
+   the confirmation is typed. */
+const ERASE_DELAY_MS = 340;
+const ERASE_TICK_MS = 26;
+const TYPING_TICK_MS = 50;
 
 const form = document.querySelector<HTMLFormElement>('.contact form');
 
@@ -51,10 +55,12 @@ function showConfirmation(contact: Element | null): void {
     return;
   }
   contact?.classList.add('is-erasing');
-  eraseIntro(contact?.querySelector('.contact-intro'), () => {
-    contact?.classList.add('is-confirmed');
-    typeIn(sentence);
-  });
+  setTimeout(() => {
+    eraseIntro(contact?.querySelector('.contact-intro'), () => {
+      contact?.classList.add('is-confirmed');
+      typeIn(sentence);
+    });
+  }, ERASE_DELAY_MS);
 }
 
 /* Erases the intro one letter at a time, from the end, then calls done. */
@@ -71,7 +77,7 @@ function eraseIntro(intro: Element | null | undefined, done: () => void): void {
       clearInterval(timer);
       done();
     }
-  }, TYPING_TICK_MS);
+  }, ERASE_TICK_MS);
 }
 
 /* Assistive technologies get the whole sentence at once; the typed letters are for the eyes. */
