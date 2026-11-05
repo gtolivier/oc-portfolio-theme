@@ -1,8 +1,8 @@
-/* With JavaScript, the contact form is posted in the background, asking the endpoint for JSON, so
-   the visitor stays on the page. On success the confirmation replaces the intro and the form:
-   unless motion is reduced, the form goes at once, the intro is erased letter by letter, then the
-   confirmation typed in letter by letter. On an error answer, or none at all, the error message
-   shows above the form, kept for a retry. */
+/* With JavaScript, the contact form is posted in the background, form-encoded, asking the endpoint
+   for JSON, so the visitor stays on the page. On success the confirmation replaces the intro and
+   the form: unless motion is reduced, the form goes at once, the intro is erased letter by letter,
+   then the confirmation typed in letter by letter. On an error answer, or none at all, the error
+   message shows above the form, kept for a retry. */
 import { reducedMotionQuery } from './reduced-motion';
 
 /* The mockup's pace: the intro starts to go once the form has begun to fold, is erased faster than
@@ -30,7 +30,9 @@ form?.addEventListener('submit', (event) => {
   void fetch(form.action, {
     method: 'POST',
     headers: { Accept: 'application/json' },
-    body: new FormData(form),
+    /* Form-encoded, as the browser posts the form without JavaScript, so the endpoint gets one
+       encoding; the form has no file field, so every value is a string. */
+    body: new URLSearchParams(Array.from(new FormData(form), ([name, value]) => [name, String(value)])),
   })
     .then((response) => response.ok)
     .catch(() => false)
@@ -43,7 +45,8 @@ form?.addEventListener('submit', (event) => {
 });
 
 /* Focuses the status message and moves the confirmation's sentence into it, in place of the intro
-   and the form; with motion allowed, the sentence comes once the intro is erased. */
+   and the form. Assistive technologies get the whole sentence at once, from the focused status;
+   with motion allowed, the eyes get it typed in once the intro is erased. */
 function showConfirmation(contact: Element | null): void {
   const confirmation = contact?.querySelector('.contact-sent');
   const sentence = confirmation?.textContent ?? '';
@@ -56,9 +59,7 @@ function showConfirmation(contact: Element | null): void {
     status.textContent = sentence;
     return;
   }
-  /* Focused while still empty, the status message is named after the whole sentence, so that
-     assistive technologies get it right away, before it is typed. */
-  status.setAttribute('aria-label', sentence);
+  status.replaceChildren(wholeSentence(sentence));
   contact?.classList.add('is-erasing');
   setTimeout(() => {
     eraseIntro(contact?.querySelector('.contact-intro'), () => {
@@ -75,9 +76,12 @@ function eraseIntro(intro: Element | null | undefined, done: () => void): void {
     done();
     return;
   }
+  /* One text node, shortened by its last letter on each tick rather than rebuilt. */
+  const shown = new Text(letters.join(''));
+  intro.replaceChildren(shown);
   const timer = setInterval(() => {
-    letters.pop();
-    intro.textContent = letters.join('');
+    const last = letters.pop() ?? '';
+    shown.deleteData(shown.length - last.length, last.length);
     if (letters.length === 0) {
       clearInterval(timer);
       done();
@@ -93,17 +97,19 @@ function wholeSentence(sentence: string): HTMLSpanElement {
   return whole;
 }
 
-/* Types the sentence into the status message, one letter at a time. */
+/* Types the sentence into the status message, after its whole sentence, one letter at a time. */
 function typeIn(sentence: string): void {
   const letters = Array.from(sentence);
   let typedCount = 0;
   const typed = document.createElement('span');
   typed.setAttribute('aria-hidden', 'true');
-  status.removeAttribute('aria-label');
-  status.replaceChildren(wholeSentence(sentence), typed);
+  /* One text node, grown by the next letter on each tick rather than rebuilt. */
+  const typedLetters = new Text();
+  typed.append(typedLetters);
+  status.append(typed);
   const timer = setInterval(() => {
+    typedLetters.appendData(letters[typedCount] ?? '');
     typedCount += 1;
-    typed.textContent = letters.slice(0, typedCount).join('');
     if (typedCount >= letters.length) clearInterval(timer);
   }, TYPING_TICK_MS);
 }
