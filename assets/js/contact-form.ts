@@ -3,12 +3,12 @@
    an error answer, or none at all, the error message shows above the form, kept for a retry. */
 const form = document.querySelector<HTMLFormElement>('.contact form');
 
-let sending = false;
+let isSending = false;
 
 form?.addEventListener('submit', (event) => {
   event.preventDefault();
-  if (sending) return;
-  sending = true;
+  if (isSending) return;
+  isSending = true;
   void fetch(form.action, {
     method: 'POST',
     headers: { Accept: 'application/json' },
@@ -17,7 +17,7 @@ form?.addEventListener('submit', (event) => {
     .then((response) => response.ok)
     .catch(() => false)
     .then((sent) => {
-      sending = false;
+      isSending = false;
       const contact = form.closest('.contact');
       contact?.classList.toggle('is-sent', sent);
       contact?.classList.toggle('is-error', !sent);
