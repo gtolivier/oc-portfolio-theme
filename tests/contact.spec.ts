@@ -7,8 +7,10 @@ import {
   removeDirectory,
   serveSite,
 } from './helpers/built-site';
+import { stopClockBeforeLoad } from './helpers/clock';
 import { holdRequests } from './helpers/held-requests';
 import { tabKey } from './helpers/keyboard';
+import { textOnScreen } from './helpers/text-on-screen';
 
 /* The contact section of a home page, in its main content: a region named by its title. */
 function contactSection(page: Page): Locator {
@@ -481,6 +483,67 @@ test('with JavaScript, after a successful send, focus moves to the confirmation,
       { message: 'the focused element is the confirmation, or holds it' },
     )
     .toBe(true);
+});
+
+/* The length of the longest start of `sentence` that `shown` holds, spaces aside (textOnScreen
+   leaves them out). */
+function startShown(shown: string, sentence: string): number {
+  const letters = sentence.replace(/ /g, '');
+  let length = 0;
+  while (length < letters.length && shown.includes(letters.slice(0, length + 1))) length += 1;
+  return length;
+}
+
+test('with JavaScript and motion allowed, after a successful send, the intro is erased then the confirmation typed in: partway through, the section shows only the start of the confirmation, and in the end the whole of it', async ({
+  page,
+}) => {
+  /* The endpoint answers the background request with success, in JSON. */
+  await page.route(`**${CONTACT_ACTION}`, (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
+  );
+  /* Animations are allowed, and time stands still from before the page loads, until the test
+     advances it. */
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  const section = contactSection(page);
+  const form = section.getByRole('form');
+  await form.locator('[name="email"]').fill('marie.horloge@exemple.fr');
+  await form.locator('[name="message"]').fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
+  /* Before sending, what the section already shows of the confirmation's start by chance (a
+     letter or two of a label): showing the start of the confirmation means more than that. */
+  const shownByChance = startShown(await textOnScreen(section), CONTACT_CONFIRMATION);
+  const wholeConfirmation = CONTACT_CONFIRMATION.replace(/ /g, '').length;
+  /* The intro's first word: once the intro is erased, not even its start shows. */
+  const introStart = CONTACT_INTRO.split(' ')[0];
+  await form.getByRole('button').click();
+  /* Time moves on in small steps, the answer arriving meanwhile, until the whole confirmation
+     shows without the intro, well past the end of the animation, or a generous limit. */
+  const samples: string[] = [];
+  for (let elapsed = 0; elapsed <= 20000; elapsed += 25) {
+    if (elapsed > 0) await page.clock.runFor(25);
+    const shown = await textOnScreen(section);
+    samples.push(shown);
+    if (startShown(shown, CONTACT_CONFIRMATION) === wholeConfirmation && !shown.includes(introStart)) break;
+  }
+  /* Partway through: the section shows a start of the confirmation, not all of it, the intro
+     already erased. */
+  const partway = samples.find((shown) => {
+    const length = startShown(shown, CONTACT_CONFIRMATION);
+    return length > shownByChance && length < wholeConfirmation;
+  });
+  expect(
+    partway,
+    `a moment when the section shows only the start of the confirmation, among: ${JSON.stringify(samples.slice(-5))}`,
+  ).toBeDefined();
+  expect(partway ?? '', 'the section partway through the typing').not.toContain(introStart);
+  /* In the end, well past the whole animation: the whole confirmation, and no longer the intro. */
+  await page.clock.runFor(20000);
+  const end = await textOnScreen(section);
+  expect(startShown(end, CONTACT_CONFIRMATION), `the confirmation's characters shown in the end, in "${end}"`).toBe(
+    wholeConfirmation,
+  );
+  expect(end, 'the section in the end').not.toContain(introStart);
 });
 
 /* Whether any part of an element lies within the viewport. */
