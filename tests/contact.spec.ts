@@ -614,6 +614,58 @@ test('with JavaScript and motion allowed, after a successful send, the intro is 
   ).toBeDefined();
 });
 
+test('with JavaScript and reduced motion, after a successful send, the section shows the whole confirmation at once, without the intro or the form, time standing still', async ({
+  page,
+}) => {
+  /* The endpoint answers the background request with success, in JSON. */
+  await page.route(`**${CONTACT_ACTION}`, (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
+  );
+  /* The visitor asks for reduced motion, and time stands still from before the page loads: no
+     timer fires and no animation frame runs, so nothing that takes time can show. */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  const section = contactSection(page);
+  const form = section.getByRole('form');
+  const emailField = form.locator('[name="email"]');
+  const messageField = form.locator('[name="message"]');
+  const sendButton = form.getByRole('button');
+  await emailField.fill('marie.horloge@exemple.fr');
+  await messageField.fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
+  /* What the form shows on screen before sending, spaces aside: the labels of its fields and the
+     text of its button. Once the form is gone, none of them shows. */
+  const labelText = (field: Locator) =>
+    field.evaluate((element) =>
+      Array.from((element as HTMLInputElement | HTMLTextAreaElement).labels ?? [])
+        .map((label) => label.textContent ?? '')
+        .join(''),
+    );
+  const formTexts = [await labelText(emailField), await labelText(messageField), await textOnScreen(sendButton)]
+    .map((text) => text.replace(/\s/g, ''))
+    .filter((text) => text !== '');
+  expect(formTexts, 'the texts the form shows before sending').toHaveLength(3);
+  const before = await textOnScreen(section);
+  const introStart = CONTACT_INTRO.split(' ')[0];
+  await Promise.all([page.waitForResponse((answer) => answer.request().method() === 'POST'), sendButton.click()]);
+  /* The first time the section shows anything other than before sending, the clock never
+     advanced: what it shows then. */
+  let reacted = before;
+  await expect
+    .poll(
+      async () => {
+        reacted = await textOnScreen(section);
+        return reacted !== before;
+      },
+      { message: 'the section reacts to the successful answer', intervals: [10] },
+    )
+    .toBe(true);
+  /* From that first moment: the whole confirmation, none of the intro, none of the form. */
+  expect(reacted, 'the section as it first reacts').toContain(CONTACT_CONFIRMATION.replace(/ /g, ''));
+  expect(reacted, 'the section as it first reacts').not.toContain(introStart);
+  for (const text of formTexts) expect(reacted, `the section as it first reacts, "${text}"`).not.toContain(text);
+});
+
 /* Whether any part of an element lies within the viewport. */
 async function isInViewport(element: Locator): Promise<boolean> {
   const box = await element.boundingBox();
