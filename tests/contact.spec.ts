@@ -147,9 +147,13 @@ async function answerWithALandingPage(
   await page.route(address, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<p>Merci</p>' }));
 }
 
-/* The endpoint answers the background request, with JavaScript, with success, in JSON. */
-async function answerWithSuccess(page: Page): Promise<void> {
-  await page.route(`**${CONTACT_ACTION}`, (route) =>
+/* The endpoint at `address` answers the background request, with JavaScript, with success, in
+   JSON. */
+async function answerWithSuccess(
+  page: Page,
+  address: Parameters<Page['route']>[0] = `**${CONTACT_ACTION}`,
+): Promise<void> {
+  await page.route(address, (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
   );
 }
@@ -861,6 +865,33 @@ test.describe('home page of another site, with another contactAction, in a brows
     expect(request.url(), 'the address the form posts to').toBe(
       new URL(OTHER_CONTACT_ACTION, SITE_WITH_ANOTHER_CONTACT_ACTION.origin).href,
     );
+  });
+});
+
+test.describe('home page of another site, with another contactAction, in a browser with JavaScript', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_ANOTHER_CONTACT_ACTION);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('with JavaScript and another contactAction, sending the filled contact form posts it in the background to that other address, and not to the example site’s, and on a successful answer shows the confirmation', async ({
+    page,
+    context,
+  }) => {
+    await serveSite(context, SITE_WITH_ANOTHER_CONTACT_ACTION, siteDirectory);
+    /* Whatever address the form posts to, this site's or the example site's. */
+    await answerWithSuccess(page, (url) => url.pathname === OTHER_CONTACT_ACTION || url.pathname === CONTACT_ACTION);
+    await page.goto(`${SITE_WITH_ANOTHER_CONTACT_ACTION.origin}/fr/`);
+    const form = contactForm(page);
+    await fillAsAVisitor(form);
+    const request = await sendAndCatchThePost(page, form);
+    expect(request.url(), 'the address the form posts to').toBe(
+      new URL(OTHER_CONTACT_ACTION, SITE_WITH_ANOTHER_CONTACT_ACTION.origin).href,
+    );
+    await expect(contactSection(page).getByText(CONTACT_CONFIRMATION), 'the confirmation').toBeVisible();
   });
 });
 
