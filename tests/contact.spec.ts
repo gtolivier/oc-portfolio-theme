@@ -134,6 +134,17 @@ test('the section "Contact" holds a form with a required email field, a required
   }
 });
 
+/* A browser's autofill cannot be driven from a test: what it, and assistive technologies, read to
+   know the field asks for the visitor's own email address is the field's autofill hint (WCAG
+   1.3.5, identify input purpose). */
+test('the contact form’s email field tells the browser and assistive technologies it asks for the visitor’s email address, so the browser can offer the one it knows', async ({
+  page,
+}) => {
+  await page.goto('/fr/');
+  const { emailField } = contactForm(page);
+  await expect(emailField, 'the autofill hint of the email field').toHaveAttribute('autocomplete', 'email');
+});
+
 /* The address the example site's configuration gives the contact form to post to
    (exampleSite/hugo.toml, [params], contactAction key): a path on the site's own domain. */
 const CONTACT_ACTION = '/api/contact';
