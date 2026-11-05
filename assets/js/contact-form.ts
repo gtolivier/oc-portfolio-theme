@@ -43,13 +43,34 @@ function showConfirmation(contact: Element | null): void {
   const confirmation = contact?.querySelector('.contact-sent');
   const sentence = confirmation?.textContent ?? '';
   confirmation?.remove();
-  contact?.classList.add('is-confirmed');
   status.focus();
   if (reducedMotionQuery().matches) {
+    contact?.classList.add('is-confirmed');
     status.textContent = sentence;
     return;
   }
-  typeIn(sentence);
+  form?.style.setProperty('display', 'none');
+  eraseIntro(contact?.querySelector('.contact-intro'), () => {
+    contact?.classList.add('is-confirmed');
+    typeIn(sentence);
+  });
+}
+
+/* Erases the intro one letter at a time, from the end, then calls done. */
+function eraseIntro(intro: Element | null | undefined, done: () => void): void {
+  const letters = Array.from(intro?.textContent ?? '');
+  if (!intro || letters.length === 0) {
+    done();
+    return;
+  }
+  const timer = setInterval(() => {
+    letters.pop();
+    intro.textContent = letters.join('');
+    if (letters.length === 0) {
+      clearInterval(timer);
+      done();
+    }
+  }, TYPING_TICK_MS);
 }
 
 /* Assistive technologies get the whole sentence at once; the typed letters are for the eyes. */
