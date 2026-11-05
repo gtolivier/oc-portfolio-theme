@@ -11,10 +11,10 @@ disableKinds = ['taxonomy', 'term']
   # Sample author shown in the footer.
   author = 'Jean Exemple'
   # The address the contact form posts to: a path on the site's own domain.
-  # The endpoint gets the fields email, message and contact_reference (a decoy that
-  # must stay empty), form-encoded with or without JavaScript. Without
-  # JavaScript, it sends the visitor back with a 303 to the home page's
-  # #contact-sent or #contact-error; when the request asks for JSON
+  # The endpoint gets the fields email, message and contact_reference (a
+  # decoy that must stay empty), form-encoded with or without JavaScript.
+  # Without JavaScript, it sends the visitor back with a 303 to the home
+  # page's #contact-sent or #contact-error; when the request asks for JSON
   # (Accept: application/json), it answers with a 2xx status on success and
   # any other on failure.
   contactAction = '/api/contact'
