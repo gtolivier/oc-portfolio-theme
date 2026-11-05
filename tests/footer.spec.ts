@@ -7,6 +7,67 @@ function footerLogoText(page: Page): Locator {
   return page.locator('footer [aria-hidden="true"]');
 }
 
+/* A phone window, narrower than the desktop breakpoint. */
+const PHONE_VIEWPORT = { width: 390, height: 844 };
+
+/* The box of the first visible character of the element, as rendered: where its text starts,
+   even when an inline element runs over several lines. */
+async function firstCharacterBox(element: Locator): Promise<{ left: number; top: number }> {
+  return element.evaluate((root) => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      const text = node.textContent!;
+      for (let index = 0; index < text.length; index++) {
+        if (text[index].trim() === '') continue;
+        const range = document.createRange();
+        range.setStart(node, index);
+        range.setEnd(node, index + 1);
+        const { left, top } = range.getBoundingClientRect();
+        return { left, top };
+      }
+    }
+    throw new Error('the element shows no character');
+  });
+}
+
+test('on a phone, the footer starts at the page gutter, its logo lined up with the header logo, and the footer note starts on its own line below the © line, lined up with the logo', async ({
+  page,
+}) => {
+  await page.setViewportSize(PHONE_VIEWPORT);
+  await page.goto('/fr/');
+  const year = new Date().getFullYear();
+  const headerLogo = page
+    .locator('header')
+    .getByRole('link', { name: 'Exemple', exact: true })
+    .locator('[aria-hidden="true"]');
+  const logo = footerLogoText(page);
+  const copyright = page.locator('footer').getByText(`© ${year} Jean Exemple`, { exact: true });
+  const note = page.locator('footer').getByText('Horloger de démonstration', { exact: true });
+  await expect(headerLogo).toHaveText('| E ||| | X |||');
+  await expect(logo).toHaveText('| E ||| | X |||');
+  await expect(copyright).toBeVisible();
+  await expect(note).toBeVisible();
+
+  const headerLogoStart = await firstCharacterBox(headerLogo);
+  const logoStart = await firstCharacterBox(logo);
+  /* Compared with a 1 px tolerance: rendered box positions may carry sub-pixel rounding. */
+  expect(
+    Math.abs(logoStart.left - headerLogoStart.left),
+    `footer logo starts at ${logoStart.left} px, header logo at ${headerLogoStart.left} px`,
+  ).toBeLessThanOrEqual(1);
+
+  const copyrightBox = (await copyright.boundingBox())!;
+  const noteStart = await firstCharacterBox(note);
+  expect(
+    noteStart.top,
+    `top of the footer note against the bottom of the © line (${copyrightBox.y + copyrightBox.height} px)`,
+  ).toBeGreaterThanOrEqual(copyrightBox.y + copyrightBox.height - 0.5);
+  expect(
+    Math.abs(noteStart.left - logoStart.left),
+    `footer note starts at ${noteStart.left} px, footer logo at ${logoStart.left} px`,
+  ).toBeLessThanOrEqual(1);
+});
+
 test('the footer displays the site logo followed by "© <current year> <site author>"', async ({ page }) => {
   await page.goto('/fr/');
   const year = new Date().getFullYear();
