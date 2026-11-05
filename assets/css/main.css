@@ -573,6 +573,19 @@ tick-field > canvas {
   font-weight: 700;
 }
 
+/* In the footer, the logo is plain text like the © line: same size, spacing,
+   weight and colour, only the font stays the logo's. */
+footer .logo {
+  /* The size of <small>, which the © line uses. */
+  font-size: smaller;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
+footer .logo b {
+  font-weight: inherit;
+}
+
 /* With a hero, the hero alone fills the window below the header: still names
    (the default) may wrap and make the band taller, so it starts below the
    fold; the client band is the strip below it. Without a hero, nothing
