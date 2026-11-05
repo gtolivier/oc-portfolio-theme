@@ -1304,3 +1304,13 @@ tick-field > canvas {
 .contact:is(.is-error, :has(#contact-error:target)) .contact-error {
   display: block;
 }
+
+/* The whole confirmation, kept for assistive technologies while the visible one is typed. */
+.contact-status-whole {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

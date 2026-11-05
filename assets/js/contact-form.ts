@@ -1,6 +1,10 @@
 /* With JavaScript, the contact form is posted in the background, asking the endpoint for JSON, so
    the visitor stays on the page. On success the confirmation replaces the intro and the form; on
    an error answer, or none at all, the error message shows above the form, kept for a retry. */
+import { reducedMotionQuery } from './reduced-motion';
+
+const TYPING_TICK_MS = 40;
+
 const form = document.querySelector<HTMLFormElement>('.contact form');
 
 let isSending = false;
@@ -36,8 +40,31 @@ form?.addEventListener('submit', (event) => {
    and focuses it. */
 function showConfirmation(contact: Element | null): void {
   const confirmation = contact?.querySelector('.contact-sent');
-  status.textContent = confirmation?.textContent ?? '';
+  const sentence = confirmation?.textContent ?? '';
   confirmation?.remove();
   contact?.classList.add('is-confirmed');
   status.focus();
+  if (reducedMotionQuery().matches) {
+    status.textContent = sentence;
+    return;
+  }
+  typeIn(sentence);
+}
+
+/* Types the sentence into the status message, one letter at a time. */
+function typeIn(sentence: string): void {
+  const letters = Array.from(sentence);
+  let count = 0;
+  /* Assistive technologies get the whole sentence at once; the typed letters are for the eyes. */
+  const whole = document.createElement('span');
+  whole.className = 'contact-status-whole';
+  whole.textContent = sentence;
+  const typed = document.createElement('span');
+  typed.setAttribute('aria-hidden', 'true');
+  status.replaceChildren(whole, typed);
+  const timer = setInterval(() => {
+    count += 1;
+    typed.textContent = letters.slice(0, count).join('');
+    if (count >= letters.length) clearInterval(timer);
+  }, TYPING_TICK_MS);
 }
