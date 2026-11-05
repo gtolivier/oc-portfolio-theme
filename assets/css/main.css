@@ -557,9 +557,9 @@ tick-field > canvas {
   pointer-events: none;
 }
 
-/* The site logo looks the same wherever it is used. A context may only
-   resize it, by setting --logo-size on an ancestor: everything else is in
-   em, so it follows the size. */
+/* The site logo looks the same wherever it is used, except in the footer
+   (below). Elsewhere, a context may only resize it, by setting --logo-size
+   on an ancestor: everything else is in em, so it follows the size. */
 .logo {
   font-family: var(--font-mono);
   font-size: var(--logo-size, 14px);

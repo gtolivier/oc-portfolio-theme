@@ -1,6 +1,7 @@
 {{- /* The initials and bars are decoration, hidden from screen readers:
   a caller that needs a name gives it, as the header link's aria-label does.
-  The .logo class fixes their look; a caller may only resize them, through
+  The .logo class fixes their look, except in the footer, where they read
+  as plain footer text; elsewhere, a caller may only resize them, through
   --logo-size. */ -}}
 <span class="logo" aria-hidden="true">
   {{- range site.Params.initials }}<span><b>|</b> {{ . }} |||</span> {{ end -}}
