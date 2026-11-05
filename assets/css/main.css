@@ -1420,6 +1420,12 @@ tick-field > canvas {
   background: #fff;
 }
 
+/* .contact-fields clips what overflows it, for the fold: the focus ring is
+   drawn inside the field or the button, or its edges would be cut off. */
+.contact-fields :is(input, textarea, button):focus-visible {
+  outline-offset: -3px;
+}
+
 .contact-fields button {
   align-self: flex-start;
   padding: 14px 28px;
