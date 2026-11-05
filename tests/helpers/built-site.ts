@@ -1318,6 +1318,25 @@ export const SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_WITHOUT_NAM
    which the error-message assertions look for. */
 export const SITE_WITH_A_PROJECTS_SECTION_PARAM_LEADING_TO_A_SECTION_THROUGH_A_PATH = testSite('index-file-param');
 
+/* The example site's French home page declares a clockmaker's contact intro: this site replaces
+   that home page with the one of tests/fixtures/other-contact/content, without a hero, clients,
+   projects nor background, whose [params.contact] declares a fictional bookbinder's intro,
+   'Ouverte aux commandes de reliure sur mesure, du carnet au registre. Écrivez-moi pour un
+   devis.' */
+export const SITE_WITH_ANOTHER_CONTACT_INTRO = testSite('other-contact');
+
+/* The example site's contact form posts to '/api/contact', its contactAction site param: this site
+   keeps its content and sets that param to another path on the site's own domain,
+   contactAction = '/messages/envoyer' (see tests/fixtures/other-contact-address/hugo.toml). */
+export const SITE_WITH_ANOTHER_CONTACT_ACTION = testSite('other-contact-address');
+
+/* The example site's contact form posts to '/api/contact', its contactAction site param: this site
+   keeps its content, whose home pages declare contact params, and leaves that param out, emptying
+   it, contactAction = '' (see tests/fixtures/unaddressed-form/hugo.toml), which Hugo reads as
+   unset. Its folder name avoids the words contact and action, which the error-message assertions
+   look for. */
+export const SITE_WITHOUT_CONTACT_ACTION = testSite('unaddressed-form');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

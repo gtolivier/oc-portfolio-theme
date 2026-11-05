@@ -10,6 +10,30 @@ other = 'Pause scrolling'
 [background]
 other = 'Background'
 
+[contact]
+other = 'Contact'
+
+[contactEmail]
+other = 'Your email'
+
+[contactEmailPlaceholder]
+other = 'name@company.com'
+
+[contactMessage]
+other = 'Message'
+
+[contactMessagePlaceholder]
+other = 'Your project, your needs, your timeline…'
+
+[contactSend]
+other = 'Send'
+
+[contactSent]
+other = 'Thanks — I reply within 48 business hours.'
+
+[contactError]
+other = 'The message could not be sent. Please try again in a moment.'
+
 [selectedProjects]
 other = 'Selected projects'
 

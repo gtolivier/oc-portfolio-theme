@@ -1,0 +1,7 @@
+# Configuration added to exampleSite/hugo.toml by the tests of a site that
+# leaves out the address its form posts to: TOML has no null, so the param
+# the example site sets is emptied, which Hugo reads as unset. The fixture
+# has no content/: the example site's home pages, which declare contact
+# params, are built as they are.
+[params]
+  contactAction = ''

@@ -10,6 +10,16 @@ disableKinds = ['taxonomy', 'term']
   initials = ['E', 'X']
   # Sample author shown in the footer.
   author = 'Jean Exemple'
+  # The address the contact form posts to: a path on the site's own domain,
+  # written from the domain's root, as the form posts to it as given (a
+  # baseURL with a subpath does not prefix it).
+  # The endpoint gets the fields email, message and contact_reference (a
+  # decoy that must stay empty), form-encoded with or without JavaScript.
+  # Without JavaScript, it sends the visitor back with a 303 to the home
+  # page's #contact-sent or #contact-error; when the request asks for JSON
+  # (Accept: application/json), it answers with a 2xx status on success and
+  # any other on failure.
+  contactAction = '/api/contact'
   # The top-level section the home page's featured projects live in, and
   # that its all-projects link opens. Left out, it is projects; set it when
   # the projects live in another section, by its folder name.

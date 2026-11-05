@@ -944,8 +944,9 @@ test(
     await expect(hero).toBeVisible();
     const title = hero.getByRole('heading', { level: 1 }).getByText('Horloger indépendant', { exact: true });
     await expect(title).toBeVisible();
-    /* The "Contact" button leads to #contact, an anchor of the page itself: activating it leaves
-     the visitor on the home page, with the hero where it was. */
+    /* The "Contact" button leads to #contact, an anchor of the page itself, which scrolls the page
+     to the contact section. The test keeps that link from navigating, so that the hero stays
+     where it was and only a ripple could change its pixels. */
     const contact = secondHeroButton(page);
     await expect(contact).toHaveText('Contact');
     await expect(contact).toHaveAttribute('href', '#contact');
@@ -967,8 +968,8 @@ test(
     await page.clock.runFor(100);
     const before = await hero.screenshot();
 
+    await contact.evaluate((link) => link.addEventListener('click', (event) => event.preventDefault()));
     await page.keyboard.press('Enter');
-    await expect(page).toHaveURL(/\/fr\/#contact$/);
 
     /* A ripple spreads for about 1.6 s: 300 ms and 900 ms after the Enter key, the pixels of the
      whole hero that differ from just before it by more than a rounding error. */
@@ -1033,8 +1034,9 @@ test(
     await expect(title).toBeVisible();
     const header = page.getByRole('banner');
     await expect(header).toBeVisible();
-    /* The "Contact" button leads to #contact, an anchor of the page itself: activating it leaves
-     the visitor on the home page, with the hero where it was. */
+    /* The "Contact" button leads to #contact, an anchor of the page itself, which scrolls the page
+     to the contact section. The test keeps that link from navigating, so that the hero stays
+     where it was and only a ripple could change its pixels. */
     const contact = secondHeroButton(page);
     await expect(contact).toHaveText('Contact');
     await expect(contact).toHaveAttribute('href', '#contact');
@@ -1059,8 +1061,8 @@ test(
     await page.clock.runFor(100);
     const before = await hero.screenshot();
 
+    await contact.evaluate((link) => link.addEventListener('click', (event) => event.preventDefault()));
     await page.keyboard.press('Enter');
-    await expect(page).toHaveURL(/\/fr\/#contact$/);
 
     /* A ripple spreads for about 1.6 s: 300 ms and 900 ms after the Enter key, the pixels of the
      whole hero that differ from just before it by more than a rounding error. */

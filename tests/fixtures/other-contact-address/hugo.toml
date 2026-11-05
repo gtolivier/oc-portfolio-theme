@@ -1,0 +1,5 @@
+# Configuration added to exampleSite/hugo.toml by the tests of a site whose
+# contact form posts to another address than the example site's: another
+# path on the site's own domain.
+[params]
+  contactAction = '/messages/envoyer'

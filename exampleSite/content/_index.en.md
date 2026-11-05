@@ -43,6 +43,9 @@ label = 'Years in the trade'
 value = '350'
 label = 'Clocks restored'
 
+[params.contact]
+intro = 'Available for new restorations, at the workshop or at your home. Let us talk about your clock.'
+
 [params.hero]
 title = 'Independent clockmaker'
 tagline = [
