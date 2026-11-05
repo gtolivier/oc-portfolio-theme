@@ -48,6 +48,8 @@ function showConfirmation(contact: Element | null): void {
   const confirmation = contact?.querySelector('.contact-sent');
   const sentence = confirmation?.textContent ?? '';
   confirmation?.remove();
+  /* An error left by an earlier failed send, such as the one #contact-error targets, no longer applies. */
+  contact?.querySelector('.contact-error')?.remove();
   status.focus();
   if (reducedMotionQuery().matches) {
     contact?.classList.add('is-confirmed');
