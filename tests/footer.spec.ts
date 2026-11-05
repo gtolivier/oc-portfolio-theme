@@ -7,14 +7,36 @@ function footerLogoText(page: Page): Locator {
   return page.locator('footer [aria-hidden="true"]');
 }
 
+/* The visible text of the header logo, hidden from screen readers. */
+function headerLogoText(page: Page): Locator {
+  return page.locator('header').getByRole('link', { name: 'Exemple', exact: true }).locator('[aria-hidden="true"]');
+}
+
+/* The footer's © line, for the current year. */
+function copyrightLine(page: Page): Locator {
+  const year = new Date().getFullYear();
+  return page.locator('footer').getByText(`© ${year} Jean Exemple`, { exact: true });
+}
+
+/* The French footer note. */
+function footerNote(page: Page): Locator {
+  return page.locator('footer').getByText('Horloger de démonstration', { exact: true });
+}
+
 /* A phone window, narrower than the desktop breakpoint. */
 const PHONE_VIEWPORT = { width: 390, height: 844 };
 
-/* The box of the first visible character of the element, as rendered: where its text starts,
-   even when an inline element runs over several lines. */
-async function firstCharacterBox(element: Locator): Promise<{ left: number; top: number }> {
-  return element.evaluate((root) => {
+/* A wide window, past the desktop breakpoint. */
+const WIDE_VIEWPORT = { width: 1280, height: 800 };
+
+type CharacterBox = { left: number; top: number; right: number };
+
+/* The box of every visible character of the element, as rendered, in text order: they follow its
+   text even when an inline element runs over several lines. */
+async function characterBoxes(element: Locator): Promise<CharacterBox[]> {
+  const boxes = await element.evaluate((root) => {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const found: CharacterBox[] = [];
     for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
       const text = node.textContent!;
       for (let index = 0; index < text.length; index++) {
@@ -22,12 +44,24 @@ async function firstCharacterBox(element: Locator): Promise<{ left: number; top:
         const range = document.createRange();
         range.setStart(node, index);
         range.setEnd(node, index + 1);
-        const { left, top } = range.getBoundingClientRect();
-        return { left, top };
+        const { left, top, right } = range.getBoundingClientRect();
+        found.push({ left, top, right });
       }
     }
-    throw new Error('the element shows no character');
+    return found;
   });
+  if (boxes.length === 0) throw new Error('the element shows no character');
+  return boxes;
+}
+
+/* The box of the first visible character of the element: where its text starts. */
+async function firstCharacterBox(element: Locator): Promise<CharacterBox> {
+  return (await characterBoxes(element))[0];
+}
+
+/* The right edge of the last visible character of the element: where its text ends. */
+async function lastCharacterRight(element: Locator): Promise<number> {
+  return (await characterBoxes(element)).at(-1)!.right;
 }
 
 test('on a phone, the footer starts at the page gutter, its logo lined up with the header logo, and the footer note starts on its own line below the © line, lined up with the logo', async ({
@@ -35,14 +69,10 @@ test('on a phone, the footer starts at the page gutter, its logo lined up with t
 }) => {
   await page.setViewportSize(PHONE_VIEWPORT);
   await page.goto('/fr/');
-  const year = new Date().getFullYear();
-  const headerLogo = page
-    .locator('header')
-    .getByRole('link', { name: 'Exemple', exact: true })
-    .locator('[aria-hidden="true"]');
+  const headerLogo = headerLogoText(page);
   const logo = footerLogoText(page);
-  const copyright = page.locator('footer').getByText(`© ${year} Jean Exemple`, { exact: true });
-  const note = page.locator('footer').getByText('Horloger de démonstration', { exact: true });
+  const copyright = copyrightLine(page);
+  const note = footerNote(page);
   await expect(headerLogo).toHaveText('| E ||| | X |||');
   await expect(logo).toHaveText('| E ||| | X |||');
   await expect(copyright).toBeVisible();
@@ -68,40 +98,16 @@ test('on a phone, the footer starts at the page gutter, its logo lined up with t
   ).toBeLessThanOrEqual(1);
 });
 
-/* A wide window, past the desktop breakpoint. */
-const WIDE_VIEWPORT = { width: 1280, height: 800 };
-
-/* The right edge of the last visible character of the element, as rendered: where its text ends. */
-async function lastCharacterRight(element: Locator): Promise<number> {
-  return element.evaluate((root) => {
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    let right: number | undefined;
-    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-      const text = node.textContent!;
-      for (let index = 0; index < text.length; index++) {
-        if (text[index].trim() === '') continue;
-        const range = document.createRange();
-        range.setStart(node, index);
-        range.setEnd(node, index + 1);
-        right = range.getBoundingClientRect().right;
-      }
-    }
-    if (right === undefined) throw new Error('the element shows no character');
-    return right;
-  });
-}
-
 test("on a wide screen, the footer note shares the line of the logo and the © text, and ends at the page's right gutter, lined up with the right edge of the header's content", async ({
   page,
 }) => {
   await page.setViewportSize(WIDE_VIEWPORT);
   await page.goto('/fr/');
-  const year = new Date().getFullYear();
   /* With a language switcher, it is the header's last item: it ends at the page's right gutter. */
   const switcher = page.locator('header').getByRole('group', { name: 'Langue', exact: true });
   const logo = footerLogoText(page);
-  const copyright = page.locator('footer').getByText(`© ${year} Jean Exemple`, { exact: true });
-  const note = page.locator('footer').getByText('Horloger de démonstration', { exact: true });
+  const copyright = copyrightLine(page);
+  const note = footerNote(page);
   await expect(switcher).toBeVisible();
   await expect(logo).toHaveText('| E ||| | X |||');
   await expect(copyright).toBeVisible();
@@ -151,13 +157,9 @@ test("the footer logo is plain footer text: in the header logo's font, with the 
   page,
 }) => {
   await page.goto('/fr/');
-  const year = new Date().getFullYear();
-  const headerLogo = page
-    .locator('header')
-    .getByRole('link', { name: 'Exemple', exact: true })
-    .locator('[aria-hidden="true"]');
+  const headerLogo = headerLogoText(page);
   const logo = footerLogoText(page);
-  const copyright = page.locator('footer').getByText(`© ${year} Jean Exemple`, { exact: true });
+  const copyright = copyrightLine(page);
   await expect(headerLogo).toHaveText('| E ||| | X |||');
   await expect(logo).toHaveText('| E ||| | X |||');
   await expect(copyright).toBeVisible();
