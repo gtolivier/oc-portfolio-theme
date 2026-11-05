@@ -3,9 +3,12 @@ import {
   SITE_WITHOUT_HERO,
   SITE_WITH_ANOTHER_CONTACT_ACTION,
   SITE_WITH_ANOTHER_CONTACT_INTRO,
+  SITE_WITHOUT_CONTACT_ACTION,
   buildSite,
   removeDirectory,
+  runBuildTestsInOneProjectOnly,
   serveSite,
+  tryToBuildSite,
 } from './helpers/built-site';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { holdRequests } from './helpers/held-requests';
@@ -785,5 +788,19 @@ test.describe('home page of another site, without contact params', () => {
     await expect(contactSection(page)).toHaveCount(0);
     await expect(page.locator('#contact')).toHaveCount(0);
     await expect(page.getByText(CONTACT_INTRO)).toHaveCount(0);
+  });
+});
+
+test.describe('contact content errors: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a home page with contact params, on a site without the contactAction site param, makes the site build fail with an error message that names contactAction', () => {
+    /* tests/fixtures/unaddressed-form leaves out contactAction, while the example site's home pages
+       declare contact params: rather than a form with nowhere to post to, the person building the
+       site must get a failure whose message names the contactAction site param, so that they know
+       what to set, whatever the rest of the wording. */
+    const build = tryToBuildSite(SITE_WITHOUT_CONTACT_ACTION);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    expect(build.errors, 'the error message should name contactAction').toMatch(/\bcontactAction\b/);
   });
 });

@@ -1330,6 +1330,13 @@ export const SITE_WITH_ANOTHER_CONTACT_INTRO = testSite('other-contact');
    contactAction = '/messages/envoyer' (see tests/fixtures/other-contact-address/hugo.toml). */
 export const SITE_WITH_ANOTHER_CONTACT_ACTION = testSite('other-contact-address');
 
+/* The example site's contact form posts to '/api/contact', its contactAction site param: this site
+   keeps its content, whose home pages declare contact params, and leaves that param out, emptying
+   it, contactAction = '' (see tests/fixtures/unaddressed-form/hugo.toml), which Hugo reads as
+   unset. Its folder name avoids the words contact and action, which the error-message assertions
+   look for. */
+export const SITE_WITHOUT_CONTACT_ACTION = testSite('unaddressed-form');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
