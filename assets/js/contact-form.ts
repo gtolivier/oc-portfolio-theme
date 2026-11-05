@@ -27,6 +27,9 @@ form?.addEventListener('submit', (event) => {
   event.preventDefault();
   if (isSending) return;
   isSending = true;
+  /* aria-disabled rather than disabled: the button keeps the focus while the message is sent. */
+  const sendButton = form.querySelector('button');
+  sendButton?.setAttribute('aria-disabled', 'true');
   void fetch(form.action, {
     method: 'POST',
     headers: { Accept: 'application/json' },
@@ -38,6 +41,7 @@ form?.addEventListener('submit', (event) => {
     .catch(() => false)
     .then((sent) => {
       isSending = false;
+      sendButton?.removeAttribute('aria-disabled');
       const contact = form.closest('.contact');
       if (sent) showConfirmation(contact);
       contact?.classList.toggle('is-error', !sent);
