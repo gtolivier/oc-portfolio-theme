@@ -32,7 +32,7 @@ other = 'Envoyer'
 other = 'Merci, je vous réponds sous 48 heures ouvrées.'
 
 [contactError]
-other = 'Le message n’a pas pu être envoyé. Réessayez dans un instant.'
+other = 'Le message n’a pas pu être envoyé. Veuillez réessayer dans un instant.'
 
 [selectedProjects]
 other = 'Projets sélectionnés'

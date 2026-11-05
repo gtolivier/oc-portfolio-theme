@@ -31,7 +31,7 @@ const CONTACT_CONFIRMATION = 'Merci, je vous réponds sous 48 heures ouvrées.';
 
 /* The theme's default French error message for a message that could not be sent, shown once the
    endpoint has sent the visitor back to #contact-error. */
-const CONTACT_ERROR = 'Le message n’a pas pu être envoyé. Réessayez dans un instant.';
+const CONTACT_ERROR = 'Le message n’a pas pu être envoyé. Veuillez réessayer dans un instant.';
 
 test('on the French home page, a section "Contact" with the anchor #contact comes right after the section "Parcours" and shows the intro the home page declares', async ({
   page,
