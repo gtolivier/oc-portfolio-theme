@@ -640,6 +640,37 @@ test('with JavaScript and motion allowed, after a successful send, the intro is 
   ).toBeDefined();
 });
 
+test('with JavaScript and motion allowed, as soon as focus moves to the confirmation after a successful send, before the intro is erased, assistive technologies get the whole confirmation from the focused element', async ({
+  page,
+}) => {
+  await answerWithSuccess(page);
+  /* Animations are allowed, and time stands still from before the page loads: the erasing cannot
+     start, nor the typing, until the test advances the clock, which it never does. */
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await stopClockBeforeLoad(page);
+  await page.goto('/fr/');
+  const section = contactSection(page);
+  const form = contactForm(page);
+  await fillAsAVisitor(form);
+  await Promise.all([page.waitForResponse((answer) => answer.request().method() === 'POST'), form.sendButton.click()]);
+  /* The moment focus leaves the send button for the section "Contact", the clock never advanced. */
+  await expect
+    .poll(
+      () =>
+        section.evaluate((contact) => {
+          const focused = document.activeElement;
+          return focused !== null && focused !== contact && contact.contains(focused) && focused.tagName !== 'BUTTON';
+        }),
+      { message: 'focus has moved within the section "Contact"', intervals: [10] },
+    )
+    .toBe(true);
+  /* The intro is not erased yet: its start still shows. */
+  expect(await textOnScreen(section), 'the section as focus moves').toContain(INTRO_START);
+  /* What assistive technologies get from the focused element, right then: the whole confirmation. */
+  const announced = await page.locator(':focus').ariaSnapshot();
+  expect(announced, 'what assistive technologies get from the focused element').toContain(CONTACT_CONFIRMATION);
+});
+
 test('with JavaScript and reduced motion, after a successful send, the section shows the whole confirmation at once, without the intro or the form, time standing still', async ({
   page,
 }) => {
