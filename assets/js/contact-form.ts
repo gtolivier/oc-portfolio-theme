@@ -83,13 +83,14 @@ function showConfirmation(contact: Element | null): void {
 
 /* Erases the intro one letter at a time, from the end, then calls done. */
 function eraseIntro(intro: Element | null | undefined, done: () => void): void {
-  const letters = Array.from(intro?.textContent ?? '');
+  const text = intro?.textContent ?? '';
+  const letters = Array.from(text);
   if (!intro || letters.length === 0) {
     done();
     return;
   }
   /* One text node, shortened by its last letter on each tick rather than rebuilt. */
-  const shown = new Text(letters.join(''));
+  const shown = new Text(text);
   intro.replaceChildren(shown);
   const timer = setInterval(() => {
     const last = letters.pop() ?? '';
