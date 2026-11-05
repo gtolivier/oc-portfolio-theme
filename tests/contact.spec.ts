@@ -1,4 +1,4 @@
-import { test, expect, type Locator, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page, type Request } from '@playwright/test';
 import {
   SITE_WITHOUT_HERO,
   SITE_WITH_ANOTHER_CONTACT_ACTION,
@@ -24,6 +24,14 @@ function contactSection(page: Page): Locator {
    (exampleSite/content/_index.md, [params.contact] table, intro key): a fictional clockmaker's. */
 const CONTACT_INTRO =
   'Disponible pour de nouvelles restaurations, à l’atelier ou à domicile. Parlons de votre pendule.';
+
+/* The theme's default French confirmation for a sent message (the example site gives none of its
+   own), shown once the endpoint has sent the visitor back to #contact-sent. */
+const CONTACT_CONFIRMATION = 'Merci, je vous réponds sous 48 heures ouvrées.';
+
+/* The theme's default French error message for a message that could not be sent, shown once the
+   endpoint has sent the visitor back to #contact-error. */
+const CONTACT_ERROR = 'Le message n’a pas pu être envoyé. Réessayez dans un instant.';
 
 test('on the French home page, a section "Contact" with the anchor #contact comes right after the section "Parcours" and shows the intro the home page declares', async ({
   page,
@@ -96,6 +104,14 @@ async function takesAnEmail(field: Locator): Promise<boolean> {
   return mismatch;
 }
 
+/* Whether any part of an element lies within the viewport. */
+async function isInViewport(element: Locator): Promise<boolean> {
+  const box = await element.boundingBox();
+  const viewport = element.page().viewportSize();
+  if (!box || !viewport || box.width === 0 || box.height === 0) return false;
+  return box.x + box.width > 0 && box.y + box.height > 0 && box.x < viewport.width && box.y < viewport.height;
+}
+
 test('the section "Contact" holds a form with a required email field, a required message field and a send button, named "Votre email", "Message" and "Envoyer" on the French home page and "Your email", "Message" and "Send" on the English one', async ({
   page,
 }) => {
@@ -122,6 +138,64 @@ test('the section "Contact" holds a form with a required email field, a required
    (exampleSite/hugo.toml, [params], contactAction key): a path on the site's own domain. */
 const CONTACT_ACTION = '/api/contact';
 
+/* No endpoint answers on the test servers: the browser's form post to `address`, without
+   JavaScript, gets a page here, so that the browser has somewhere to land. */
+async function answerWithALandingPage(
+  page: Page,
+  address: Parameters<Page['route']>[0] = `**${CONTACT_ACTION}`,
+): Promise<void> {
+  await page.route(address, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<p>Merci</p>' }));
+}
+
+/* The endpoint answers the background request, with JavaScript, with success, in JSON. */
+async function answerWithSuccess(page: Page): Promise<void> {
+  await page.route(`**${CONTACT_ACTION}`, (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
+  );
+}
+
+/* The contact form of a home page and the controls a visitor uses, its fields found by the names
+   they are sent under. */
+interface ContactForm {
+  form: Locator;
+  emailField: Locator;
+  messageField: Locator;
+  sendButton: Locator;
+}
+
+function contactForm(page: Page): ContactForm {
+  const form = contactSection(page).getByRole('form');
+  return {
+    form,
+    emailField: form.locator('[name="email"]'),
+    messageField: form.locator('[name="message"]'),
+    sendButton: form.getByRole('button'),
+  };
+}
+
+/* What a visitor writes in the form: a fictional clock owner's email and message. */
+const VISITOR_EMAIL = 'marie.horloge@exemple.fr';
+const VISITOR_MESSAGE = 'Bonjour, ma pendule de cheminée retarde de dix minutes par jour.';
+
+async function fillAsAVisitor({ emailField, messageField }: ContactForm): Promise<void> {
+  await emailField.fill(VISITOR_EMAIL);
+  await messageField.fill(VISITOR_MESSAGE);
+}
+
+/* Opens `address` as a fresh load, not as a jump within an already open page: as after the
+   endpoint's redirect, or to start over with a page that has sent nothing yet. */
+async function openAsAFreshLoad(page: Page, address: string): Promise<void> {
+  await page.goto('about:blank');
+  await page.goto(address);
+}
+
+/* Sends the form with its button and returns the POST the browser makes, whatever address it
+   goes to. */
+async function sendAndCatchThePost(page: Page, { sendButton }: ContactForm): Promise<Request> {
+  const [request] = await Promise.all([page.waitForRequest((sent) => sent.method() === 'POST'), sendButton.click()]);
+  return request;
+}
+
 test.describe('browser without JavaScript', () => {
   test.use({ javaScriptEnabled: false });
 
@@ -129,20 +203,11 @@ test.describe('browser without JavaScript', () => {
     page,
     baseURL,
   }) => {
-    /* No endpoint answers on the example site's server: the request is answered here, so the
-       browser has somewhere to land. */
-    await page.route(`**${CONTACT_ACTION}`, (route) =>
-      route.fulfill({ status: 200, contentType: 'text/html', body: '<p>Merci</p>' }),
-    );
+    await answerWithALandingPage(page);
     await page.goto('/fr/');
-    const form = contactSection(page).getByRole('form');
-    await form.locator('[name="email"]').fill('marie.horloge@exemple.fr');
-    await form.locator('[name="message"]').fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
-    /* Whatever the form posts to, the browser's POST is recorded. */
-    const [request] = await Promise.all([
-      page.waitForRequest((sent) => sent.method() === 'POST'),
-      form.getByRole('button').click(),
-    ]);
+    const form = contactForm(page);
+    await fillAsAVisitor(form);
+    const request = await sendAndCatchThePost(page, form);
     expect(request.url(), 'the address the form posts to').toBe(new URL(CONTACT_ACTION, baseURL).href);
     expect(request.headers()['content-type'], 'the encoding of the form data').toBe(
       'application/x-www-form-urlencoded',
@@ -161,15 +226,11 @@ test.describe('browser without JavaScript', () => {
     page,
     browserName,
   }) => {
-    await page.route(`**${CONTACT_ACTION}`, (route) =>
-      route.fulfill({ status: 200, contentType: 'text/html', body: '<p>Merci</p>' }),
-    );
+    await answerWithALandingPage(page);
     await page.goto('/fr/');
-    const form = contactSection(page).getByRole('form');
-    const emailField = form.locator('[name="email"]');
-    const messageField = form.locator('[name="message"]');
+    const contact = contactForm(page);
+    const { form, emailField, messageField, sendButton } = contact;
     const decoy = form.locator('[name="website"]');
-    const sendButton = form.getByRole('button');
     /* Assistive technologies: the form's only textboxes are the email and the message. */
     const textboxes = form.getByRole('textbox');
     await expect(textboxes, 'the textboxes of the form, as assistive technologies see them').toHaveCount(2);
@@ -203,9 +264,8 @@ test.describe('browser without JavaScript', () => {
     expect(sendButtonReached, 'the send button is reached with Tab').toBe(true);
     expect(decoyReached, 'the decoy field is reached with Tab').toBe(false);
     /* Sent as a visitor would: the visible fields filled in, the decoy left as it is. */
-    await emailField.fill('marie.horloge@exemple.fr');
-    await messageField.fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
-    const [request] = await Promise.all([page.waitForRequest((sent) => sent.method() === 'POST'), sendButton.click()]);
+    await fillAsAVisitor(contact);
+    const request = await sendAndCatchThePost(page, contact);
     const body = new URLSearchParams(request.postData() ?? '');
     expect(body.has('website'), 'the data sent includes the "website" field').toBe(true);
     expect(body.get('website'), 'the value sent for "website"').toBe('');
@@ -223,10 +283,7 @@ test.describe('browser without JavaScript', () => {
       return textField;
     }, 'https://montres-pas-cheres.example');
     expect(typedByBot, 'the decoy is a text field, which a bot fills').toBe(true);
-    const [botRequest] = await Promise.all([
-      page.waitForRequest((sent) => sent.method() === 'POST'),
-      sendButton.click(),
-    ]);
+    const botRequest = await sendAndCatchThePost(page, contact);
     const botBody = new URLSearchParams(botRequest.postData() ?? '');
     expect(botBody.get('website'), 'the value a bot typed in "website", sent').toBe(
       'https://montres-pas-cheres.example',
@@ -236,19 +293,15 @@ test.describe('browser without JavaScript', () => {
   test('without JavaScript, opening the home page at #contact-sent, where the endpoint sends the visitor back once the message is sent, shows the confirmation in view instead of the intro and the form; at /fr/ and /fr/#contact the confirmation is not shown', async ({
     page,
   }) => {
-    /* Each address is opened as a fresh load, as after the endpoint's redirect, not as a jump
-       within an already open page. */
     for (const path of ['/fr/', '/fr/#contact']) {
-      await page.goto('about:blank');
-      await page.goto(path);
+      await openAsAFreshLoad(page, path);
       await expect(contactSection(page).getByRole('form'), `the form on ${path}`).toBeVisible();
       await expect(
         contactSection(page).getByText(CONTACT_CONFIRMATION),
         `the confirmation on ${path}`,
       ).not.toBeVisible();
     }
-    await page.goto('about:blank');
-    await page.goto('/fr/#contact-sent');
+    await openAsAFreshLoad(page, '/fr/#contact-sent');
     const section = contactSection(page);
     const confirmation = section.getByText(CONTACT_CONFIRMATION);
     await expect(confirmation, 'the confirmation').toBeVisible();
@@ -260,23 +313,20 @@ test.describe('browser without JavaScript', () => {
   test('without JavaScript, opening the home page at #contact-error, where the endpoint sends the visitor back when the message could not be sent, shows the error message in view above the form, which stays usable; at /fr/ the error message is not shown', async ({
     page,
   }) => {
-    /* Each address is opened as a fresh load, as after the endpoint's redirect. */
-    await page.goto('about:blank');
-    await page.goto('/fr/');
+    await openAsAFreshLoad(page, '/fr/');
     await expect(contactSection(page).getByRole('form'), 'the form on /fr/').toBeVisible();
     await expect(contactSection(page).getByText(CONTACT_ERROR), 'the error message on /fr/').not.toBeVisible();
-    await page.goto('about:blank');
-    await page.goto('/fr/#contact-error');
+    await openAsAFreshLoad(page, '/fr/#contact-error');
     const section = contactSection(page);
     const error = section.getByText(CONTACT_ERROR);
-    const form = section.getByRole('form');
+    const { form, emailField, messageField, sendButton } = contactForm(page);
     await expect(error, 'the error message').toBeVisible();
     await expect(error, 'the error message is in view').toBeInViewport();
     /* The form stays there, usable, for the visitor to try again. */
     await expect(form, 'the form').toBeVisible();
-    await expect(form.locator('[name="email"]'), 'the email field').toBeEditable();
-    await expect(form.locator('[name="message"]'), 'the message field').toBeEditable();
-    await expect(form.getByRole('button'), 'the send button').toBeEnabled();
+    await expect(emailField, 'the email field').toBeEditable();
+    await expect(messageField, 'the message field').toBeEditable();
+    await expect(sendButton, 'the send button').toBeEnabled();
     /* Above the form: the error message ends where the form starts, or higher. */
     const errorBox = (await error.boundingBox())!;
     const formBox = (await form.boundingBox())!;
@@ -284,14 +334,6 @@ test.describe('browser without JavaScript', () => {
     await expect(section.getByText(CONTACT_CONFIRMATION), 'the confirmation').not.toBeVisible();
   });
 });
-
-/* The theme's default French error message for a message that could not be sent, shown once the
-   endpoint has sent the visitor back to #contact-error. */
-const CONTACT_ERROR = 'Le message n’a pas pu être envoyé. Réessayez dans un instant.';
-
-/* The theme's default French confirmation for a sent message (the example site gives none of its
-   own), shown once the endpoint has sent the visitor back to #contact-sent. */
-const CONTACT_CONFIRMATION = 'Merci, je vous réponds sous 48 heures ouvrées.';
 
 /* Whether a visitor can use a control of the form: it is shown, and a field takes typing or a
    button takes a click. Hidden or disabled, it cannot be used. */
@@ -304,10 +346,7 @@ test('with JavaScript, sending the filled contact form posts it in the backgroun
   page,
   baseURL,
 }) => {
-  /* The endpoint answers the background request with success, in JSON. */
-  await page.route(`**${CONTACT_ACTION}`, (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
-  );
+  await answerWithSuccess(page);
   await page.goto('/fr/');
   const urlBefore = page.url();
   /* A mark left on the page as loaded: a reload or a navigation would wipe it out. */
@@ -315,13 +354,10 @@ test('with JavaScript, sending the filled contact form posts it in the backgroun
     (window as unknown as { samePageMark?: boolean }).samePageMark = true;
   });
   const section = contactSection(page);
-  const form = section.getByRole('form');
-  const emailField = form.locator('[name="email"]');
-  const messageField = form.locator('[name="message"]');
-  const sendButton = form.getByRole('button');
-  await emailField.fill('marie.horloge@exemple.fr');
-  await messageField.fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
-  const [request] = await Promise.all([page.waitForRequest((sent) => sent.method() === 'POST'), sendButton.click()]);
+  const form = contactForm(page);
+  const { emailField, messageField, sendButton } = form;
+  await fillAsAVisitor(form);
+  const request = await sendAndCatchThePost(page, form);
   expect(request.url(), 'the address the form posts to').toBe(new URL(CONTACT_ACTION, baseURL).href);
   expect(request.headers()['accept'] ?? '', 'the answer the request asks for').toContain('application/json');
   /* On success, the confirmation is shown… */
@@ -349,13 +385,9 @@ test('with JavaScript, when the endpoint answers the background request with an 
     await page.route(`**${CONTACT_ACTION}`, (route) =>
       route.fulfill({ status, contentType: 'application/json', body: JSON.stringify({ ok: false }) }),
     );
-    await page.goto('about:blank');
-    await page.goto('/fr/');
+    await openAsAFreshLoad(page, '/fr/');
     const section = contactSection(page);
-    const form = section.getByRole('form');
-    const emailField = form.locator('[name="email"]');
-    const messageField = form.locator('[name="message"]');
-    const sendButton = form.getByRole('button');
+    const { emailField, messageField, sendButton } = contactForm(page);
     await emailField.fill(email);
     await messageField.fill(message);
     await Promise.all([page.waitForResponse((answer) => answer.request().method() === 'POST'), sendButton.click()]);
@@ -380,10 +412,7 @@ test('with JavaScript, when the background request gets no answer at all (networ
   await page.route(`**${CONTACT_ACTION}`, (route) => route.abort('internetdisconnected'));
   await page.goto('/fr/');
   const section = contactSection(page);
-  const form = section.getByRole('form');
-  const emailField = form.locator('[name="email"]');
-  const messageField = form.locator('[name="message"]');
-  const sendButton = form.getByRole('button');
+  const { emailField, messageField, sendButton } = contactForm(page);
   await emailField.fill(email);
   await messageField.fill(message);
   await Promise.all([page.waitForEvent('requestfailed', (failed) => failed.method() === 'POST'), sendButton.click()]);
@@ -403,9 +432,7 @@ test('with JavaScript, while the message is being sent, the endpoint not having 
 }) => {
   /* The endpoint answers with success once the test lets the request through; until then it is
      held, as on a slow connection. */
-  await page.route(`**${CONTACT_ACTION}`, (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
-  );
+  await answerWithSuccess(page);
   const held = await holdRequests(page, `**${CONTACT_ACTION}`);
   /* Every POST the page sends to the endpoint, held or not. */
   const posts: string[] = [];
@@ -415,12 +442,9 @@ test('with JavaScript, while the message is being sent, the endpoint not having 
   try {
     await page.goto('/fr/');
     const section = contactSection(page);
-    const form = section.getByRole('form');
-    const emailField = form.locator('[name="email"]');
-    const messageField = form.locator('[name="message"]');
-    const sendButton = form.getByRole('button');
-    await emailField.fill('marie.horloge@exemple.fr');
-    await messageField.fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
+    const form = contactForm(page);
+    const { emailField, sendButton } = form;
+    await fillAsAVisitor(form);
     await sendButton.click();
     await held.requested;
     /* Sending again, however the visitor can, while the first request is still pending: a click on
@@ -440,16 +464,12 @@ test('with JavaScript, while the message is being sent, the endpoint not having 
 test('with JavaScript, after a successful send, focus moves to the confirmation, which assistive technologies get as a status, the whole sentence at once', async ({
   page,
 }) => {
-  /* The endpoint answers the background request with success, in JSON. */
-  await page.route(`**${CONTACT_ACTION}`, (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
-  );
+  await answerWithSuccess(page);
   await page.goto('/fr/');
   const section = contactSection(page);
-  const form = section.getByRole('form');
-  await form.locator('[name="email"]').fill('marie.horloge@exemple.fr');
-  await form.locator('[name="message"]').fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
-  await form.getByRole('button').click();
+  const form = contactForm(page);
+  await fillAsAVisitor(form);
+  await form.sendButton.click();
   /* Assistive technologies get the confirmation as a status message (a polite live region)… */
   const status = section.getByRole('status');
   await expect(status, 'the status message of the section "Contact"').toHaveCount(1);
@@ -488,47 +508,77 @@ test('with JavaScript, after a successful send, focus moves to the confirmation,
     .toBe(true);
 });
 
-/* The length of the longest start of `sentence` that `shown` holds, spaces aside (textOnScreen
-   leaves them out). */
+/* What the form shows on screen, spaces aside: the labels of its fields and the text of its
+   button, those that are not empty. Once the form is gone, none of them shows. */
+async function textsTheFormShows({ emailField, messageField, sendButton }: ContactForm): Promise<string[]> {
+  const labelText = (field: Locator) =>
+    field.evaluate((element) =>
+      Array.from((element as HTMLInputElement | HTMLTextAreaElement).labels ?? [])
+        .map((label) => label.textContent ?? '')
+        .join(''),
+    );
+  return [await labelText(emailField), await labelText(messageField), await textOnScreen(sendButton)]
+    .map((text) => text.replace(/\s/g, ''))
+    .filter((text) => text !== '');
+}
+
+/* A sentence as textOnScreen shows it: without its spaces. */
+function lettersOf(sentence: string): string {
+  return sentence.replace(/ /g, '');
+}
+
+/* The length of the longest start of `sentence` that `shown` holds, spaces aside. */
 function startShown(shown: string, sentence: string): number {
-  const letters = sentence.replace(/ /g, '');
+  const letters = lettersOf(sentence);
   let length = 0;
   while (length < letters.length && shown.includes(letters.slice(0, length + 1))) length += 1;
   return length;
 }
 
+/* The intro's first word: once the intro is erased, not even its start shows. */
+const INTRO_START = CONTACT_INTRO.split(' ')[0];
+
+/* How long the fake clock runs, in ms, for the erasing and the typing to be well over: a
+   generous limit. */
+const WELL_PAST_THE_ANIMATION = 20000;
+
+/* How far the fake clock moves on, in ms, between two looks at the section. */
+const SAMPLING_STEP = 25;
+
+/* What the section shows as time moves on in small steps, the answer arriving meanwhile, until
+   the whole confirmation shows without the intro, or WELL_PAST_THE_ANIMATION. */
+async function sampleUntilConfirmed(section: Locator): Promise<string[]> {
+  const samples: string[] = [];
+  for (let elapsed = 0; elapsed <= WELL_PAST_THE_ANIMATION; elapsed += SAMPLING_STEP) {
+    if (elapsed > 0) await section.page().clock.runFor(SAMPLING_STEP);
+    const shown = await textOnScreen(section);
+    samples.push(shown);
+    const isConfirmed =
+      startShown(shown, CONTACT_CONFIRMATION) === lettersOf(CONTACT_CONFIRMATION).length &&
+      !shown.includes(INTRO_START);
+    if (isConfirmed) break;
+  }
+  return samples;
+}
+
 test('with JavaScript and motion allowed, after a successful send, the intro is erased then the confirmation typed in: partway through, the section shows only the start of the confirmation, and in the end the whole of it', async ({
   page,
 }) => {
-  /* The endpoint answers the background request with success, in JSON. */
-  await page.route(`**${CONTACT_ACTION}`, (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
-  );
+  await answerWithSuccess(page);
   /* Animations are allowed, and time stands still from before the page loads, until the test
      advances it. */
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
   const section = contactSection(page);
-  const form = section.getByRole('form');
-  await form.locator('[name="email"]').fill('marie.horloge@exemple.fr');
-  await form.locator('[name="message"]').fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
+  const form = contactForm(page);
+  await fillAsAVisitor(form);
   /* Before sending, what the section already shows of the confirmation's start by chance (a
      letter or two of a label): showing the start of the confirmation means more than that. */
   const shownByChance = startShown(await textOnScreen(section), CONTACT_CONFIRMATION);
-  const wholeConfirmation = CONTACT_CONFIRMATION.replace(/ /g, '').length;
-  /* The intro's first word: once the intro is erased, not even its start shows. */
-  const introStart = CONTACT_INTRO.split(' ')[0];
-  await form.getByRole('button').click();
-  /* Time moves on in small steps, the answer arriving meanwhile, until the whole confirmation
-     shows without the intro, well past the end of the animation, or a generous limit. */
-  const samples: string[] = [];
-  for (let elapsed = 0; elapsed <= 20000; elapsed += 25) {
-    if (elapsed > 0) await page.clock.runFor(25);
-    const shown = await textOnScreen(section);
-    samples.push(shown);
-    if (startShown(shown, CONTACT_CONFIRMATION) === wholeConfirmation && !shown.includes(introStart)) break;
-  }
+  const wholeConfirmation = lettersOf(CONTACT_CONFIRMATION).length;
+  await form.sendButton.click();
+  const samples = await sampleUntilConfirmed(section);
   /* Partway through: the section shows a start of the confirmation, not all of it, the intro
      already erased. */
   const partway = samples.find((shown) => {
@@ -539,66 +589,39 @@ test('with JavaScript and motion allowed, after a successful send, the intro is 
     partway,
     `a moment when the section shows only the start of the confirmation, among: ${JSON.stringify(samples.slice(-5))}`,
   ).toBeDefined();
-  expect(partway ?? '', 'the section partway through the typing').not.toContain(introStart);
+  expect(partway ?? '', 'the section partway through the typing').not.toContain(INTRO_START);
   /* In the end, well past the whole animation: the whole confirmation, and no longer the intro. */
-  await page.clock.runFor(20000);
+  await page.clock.runFor(WELL_PAST_THE_ANIMATION);
   const end = await textOnScreen(section);
   expect(startShown(end, CONTACT_CONFIRMATION), `the confirmation's characters shown in the end, in "${end}"`).toBe(
     wholeConfirmation,
   );
-  expect(end, 'the section in the end').not.toContain(introStart);
+  expect(end, 'the section in the end').not.toContain(INTRO_START);
 });
 
 test('with JavaScript and motion allowed, after a successful send, the intro is erased before the confirmation is typed: partway through the erasing, the section shows only the start of the intro, the form already gone, and none of the confirmation', async ({
   page,
 }) => {
-  /* The endpoint answers the background request with success, in JSON. */
-  await page.route(`**${CONTACT_ACTION}`, (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
-  );
+  await answerWithSuccess(page);
   /* Animations are allowed, and time stands still from before the page loads, until the test
      advances it. */
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
   const section = contactSection(page);
-  const form = section.getByRole('form');
-  const emailField = form.locator('[name="email"]');
-  const messageField = form.locator('[name="message"]');
-  const sendButton = form.getByRole('button');
-  await emailField.fill('marie.horloge@exemple.fr');
-  await messageField.fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
-  /* What the form shows on screen before sending, spaces aside: the labels of its fields and the
-     text of its button. Once the form is gone, none of them shows. */
-  const labelText = (field: Locator) =>
-    field.evaluate((element) =>
-      Array.from((element as HTMLInputElement | HTMLTextAreaElement).labels ?? [])
-        .map((label) => label.textContent ?? '')
-        .join(''),
-    );
-  const formTexts = [await labelText(emailField), await labelText(messageField), await textOnScreen(sendButton)]
-    .map((text) => text.replace(/\s/g, ''))
-    .filter((text) => text !== '');
+  const form = contactForm(page);
+  await fillAsAVisitor(form);
+  const formTexts = await textsTheFormShows(form);
   expect(formTexts, 'the texts the form shows before sending').toHaveLength(3);
   /* Before sending, what the section already shows of the confirmation's start by chance (a
      letter or two of a label): showing the start of the confirmation means more than that. */
   const confirmationByChance = startShown(await textOnScreen(section), CONTACT_CONFIRMATION);
-  const wholeConfirmation = CONTACT_CONFIRMATION.replace(/ /g, '').length;
-  const wholeIntro = CONTACT_INTRO.replace(/ /g, '').length;
-  const introStart = CONTACT_INTRO.split(' ')[0];
-  await sendButton.click();
-  /* Time moves on in small steps, the answer arriving meanwhile, until the whole confirmation
-     shows without the intro, well past the end of the animation, or a generous limit. */
-  const samples: string[] = [];
-  for (let elapsed = 0; elapsed <= 20000; elapsed += 25) {
-    if (elapsed > 0) await page.clock.runFor(25);
-    const shown = await textOnScreen(section);
-    samples.push(shown);
-    if (startShown(shown, CONTACT_CONFIRMATION) === wholeConfirmation && !shown.includes(introStart)) break;
-  }
+  const wholeIntro = lettersOf(CONTACT_INTRO).length;
+  await form.sendButton.click();
+  const samples = await sampleUntilConfirmed(section);
   /* In the end, well past the whole animation: what the section still shows of the intro's start
      by chance. Showing a start of the intro means more than that. */
-  await page.clock.runFor(20000);
+  await page.clock.runFor(WELL_PAST_THE_ANIMATION);
   const introByChance = startShown(await textOnScreen(section), CONTACT_INTRO);
   /* Partway through the erasing: a start of the intro, not all of it, none of the form, and no
      more of the confirmation's start than shows by chance. */
@@ -620,37 +643,19 @@ test('with JavaScript and motion allowed, after a successful send, the intro is 
 test('with JavaScript and reduced motion, after a successful send, the section shows the whole confirmation at once, without the intro or the form, time standing still', async ({
   page,
 }) => {
-  /* The endpoint answers the background request with success, in JSON. */
-  await page.route(`**${CONTACT_ACTION}`, (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
-  );
+  await answerWithSuccess(page);
   /* The visitor asks for reduced motion, and time stands still from before the page loads: no
      timer fires and no animation frame runs, so nothing that takes time can show. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await stopClockBeforeLoad(page);
   await page.goto('/fr/');
   const section = contactSection(page);
-  const form = section.getByRole('form');
-  const emailField = form.locator('[name="email"]');
-  const messageField = form.locator('[name="message"]');
-  const sendButton = form.getByRole('button');
-  await emailField.fill('marie.horloge@exemple.fr');
-  await messageField.fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
-  /* What the form shows on screen before sending, spaces aside: the labels of its fields and the
-     text of its button. Once the form is gone, none of them shows. */
-  const labelText = (field: Locator) =>
-    field.evaluate((element) =>
-      Array.from((element as HTMLInputElement | HTMLTextAreaElement).labels ?? [])
-        .map((label) => label.textContent ?? '')
-        .join(''),
-    );
-  const formTexts = [await labelText(emailField), await labelText(messageField), await textOnScreen(sendButton)]
-    .map((text) => text.replace(/\s/g, ''))
-    .filter((text) => text !== '');
+  const form = contactForm(page);
+  await fillAsAVisitor(form);
+  const formTexts = await textsTheFormShows(form);
   expect(formTexts, 'the texts the form shows before sending').toHaveLength(3);
   const before = await textOnScreen(section);
-  const introStart = CONTACT_INTRO.split(' ')[0];
-  await Promise.all([page.waitForResponse((answer) => answer.request().method() === 'POST'), sendButton.click()]);
+  await Promise.all([page.waitForResponse((answer) => answer.request().method() === 'POST'), form.sendButton.click()]);
   /* The first time the section shows anything other than before sending, the clock never
      advanced: what it shows then. */
   let reacted = before;
@@ -665,17 +670,9 @@ test('with JavaScript and reduced motion, after a successful send, the section s
     .toBe(true);
   /* From that first moment: the whole confirmation, none of the intro, none of the form. */
   expect(reacted, 'the section as it first reacts').toContain(CONTACT_CONFIRMATION.replace(/ /g, ''));
-  expect(reacted, 'the section as it first reacts').not.toContain(introStart);
+  expect(reacted, 'the section as it first reacts').not.toContain(INTRO_START);
   for (const text of formTexts) expect(reacted, `the section as it first reacts, "${text}"`).not.toContain(text);
 });
-
-/* Whether any part of an element lies within the viewport. */
-async function isInViewport(element: Locator): Promise<boolean> {
-  const box = await element.boundingBox();
-  const viewport = element.page().viewportSize();
-  if (!box || !viewport || box.width === 0 || box.height === 0) return false;
-  return box.x + box.width > 0 && box.y + box.height > 0 && box.x < viewport.width && box.y < viewport.height;
-}
 
 /* The address tests/fixtures/other-contact-address/hugo.toml gives the contact form to post to,
    instead of the example site's: another path on the site's own domain. */
@@ -696,21 +693,15 @@ test.describe('home page of another site, with another contactAction, in a brows
     context,
   }) => {
     await serveSite(context, SITE_WITH_ANOTHER_CONTACT_ACTION, siteDirectory);
-    /* No endpoint answers on the built site: whatever address the form posts to, the request is
-       answered here, so the browser has somewhere to land. */
-    await page.route(
+    /* Whatever address the form posts to, this site's or the example site's. */
+    await answerWithALandingPage(
+      page,
       (url) => url.pathname === OTHER_CONTACT_ACTION || url.pathname === CONTACT_ACTION,
-      (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<p>Merci</p>' }),
     );
     await page.goto(`${SITE_WITH_ANOTHER_CONTACT_ACTION.origin}/fr/`);
-    const form = contactSection(page).getByRole('form');
-    await form.locator('[name="email"]').fill('marie.horloge@exemple.fr');
-    await form.locator('[name="message"]').fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
-    /* Whatever the form posts to, the browser's POST is recorded. */
-    const [request] = await Promise.all([
-      page.waitForRequest((sent) => sent.method() === 'POST'),
-      form.getByRole('button').click(),
-    ]);
+    const form = contactForm(page);
+    await fillAsAVisitor(form);
+    const request = await sendAndCatchThePost(page, form);
     expect(request.url(), 'the address the form posts to').toBe(
       new URL(OTHER_CONTACT_ACTION, SITE_WITH_ANOTHER_CONTACT_ACTION.origin).href,
     );
@@ -721,6 +712,10 @@ test.describe('home page of another site, with another contactAction, in a brows
    fictional bookbinder's. */
 const OTHER_CONTACT_INTRO =
   'Ouverte aux commandes de reliure sur mesure, du carnet au registre. Écrivez-moi pour un devis.';
+
+/* The confirmation tests/fixtures/other-contact/content/_index.md declares for its contact section
+   ([params.contact] table, sent key), in the same fictional bookbinder's voice. */
+const OTHER_CONTACT_SENT = 'Message bien reçu : je reviens vers vous avec un devis dès que mes cahiers sont cousus.';
 
 test.describe('home page of another site, with another contact intro', () => {
   let siteDirectory: string;
@@ -751,19 +746,13 @@ test.describe('home page of another site, with another contact intro', () => {
       context,
     }) => {
       await serveSite(context, SITE_WITH_ANOTHER_CONTACT_INTRO, siteDirectory);
-      /* A fresh load, as after the endpoint's redirect. */
-      await page.goto('about:blank');
-      await page.goto(`${SITE_WITH_ANOTHER_CONTACT_INTRO.origin}/fr/#contact-sent`);
+      await openAsAFreshLoad(page, `${SITE_WITH_ANOTHER_CONTACT_INTRO.origin}/fr/#contact-sent`);
       const section = contactSection(page);
       await expect(section.getByText(OTHER_CONTACT_SENT), 'the site’s confirmation').toBeVisible();
       await expect(section.getByText(CONTACT_CONFIRMATION), 'the theme’s default confirmation').not.toBeVisible();
     });
   });
 });
-
-/* The confirmation tests/fixtures/other-contact/content/_index.md declares for its contact section
-   ([params.contact] table, sent key), in the same fictional bookbinder's voice. */
-const OTHER_CONTACT_SENT = 'Message bien reçu : je reviens vers vous avec un devis dès que mes cahiers sont cousus.';
 
 test.describe('home page of another site, without contact params', () => {
   let siteDirectory: string;
