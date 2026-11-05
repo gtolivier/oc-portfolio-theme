@@ -10,7 +10,9 @@ disableKinds = ['taxonomy', 'term']
   initials = ['E', 'X']
   # Sample author shown in the footer.
   author = 'Jean Exemple'
-  # The address the contact form posts to: a path on the site's own domain.
+  # The address the contact form posts to: a path on the site's own domain,
+  # written from the domain's root, as the form posts to it as given (a
+  # baseURL with a subpath does not prefix it).
   # The endpoint gets the fields email, message and contact_reference (a
   # decoy that must stay empty), form-encoded with or without JavaScript.
   # Without JavaScript, it sends the visitor back with a 303 to the home
