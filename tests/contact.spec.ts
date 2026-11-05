@@ -705,6 +705,25 @@ test('with JavaScript and reduced motion, after a successful send, the section s
   for (const text of formTexts) expect(reacted, `the section as it first reacts, "${text}"`).not.toContain(text);
 });
 
+test('with JavaScript, a successful send from the home page opened at #contact-error, where the endpoint sent the visitor back after a failure without JavaScript, shows the confirmation without the error message', async ({
+  page,
+}) => {
+  await answerWithSuccess(page);
+  /* Reduced motion: the confirmation shows whole at once, with no animation to wait for. */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openAsAFreshLoad(page, '/fr/#contact-error');
+  const section = contactSection(page);
+  const error = section.getByText(CONTACT_ERROR);
+  /* The visitor comes back from a failed send: the error message shows above the form. */
+  await expect(error, 'the error message before trying again').toBeVisible();
+  const form = contactForm(page);
+  await fillAsAVisitor(form);
+  await Promise.all([page.waitForResponse((answer) => answer.request().method() === 'POST'), form.sendButton.click()]);
+  /* The send succeeded: the confirmation shows, and the earlier error message no longer does. */
+  await expect(section.getByText(CONTACT_CONFIRMATION), 'the confirmation').toBeVisible();
+  await expect(error, 'the error message after a successful send').not.toBeVisible();
+});
+
 /* The address tests/fixtures/other-contact-address/hugo.toml gives the contact form to post to,
    instead of the example site's: another path on the site's own domain. */
 const OTHER_CONTACT_ACTION = '/messages/envoyer';
