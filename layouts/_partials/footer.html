@@ -1,3 +1,5 @@
-{{ partial "logo.html" . -}}
-<small>© {{ now.Year }} {{ site.Params.author }}</small>
+{{- /* Two blocks: the logo and the © line on the left, the footer note on
+  the right. The "—" between the logo and the © line is drawn by the CSS,
+  inside the logo, which screen readers skip. */ -}}
+<p>{{ partial "logo.html" . }} <small>© {{ now.Year }} {{ site.Params.author }}</small></p>
 <small>{{ site.Params.footerNote }}</small>
