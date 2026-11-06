@@ -1,0 +1,18 @@
+{{- /* The section projects live in, from the projectsSection site param: its name, lowercased as Hugo's .Section is; the name as the site wrote it, for error messages; and what is wrong with the param, or "" when nothing is: a problem from text-problem.html, or "slash-at-edge", "no-section" or "subsection". The section is projects when the site names none, or names one the theme cannot check against. Each caller words its own error. */}}
+{{- $defaultSection := "projects" }}
+{{- /* What separates a section from its subsections in a section's path. */}}
+{{- $sectionPathSeparator := "/" }}
+{{- $section := $defaultSection }}
+{{- $problem := "" }}
+{{- if isset site.Params "projectssection" }}
+  {{- $param := site.Params.projectsSection }}
+  {{- $problem = partial "text-problem.html" $param }}
+  {{- if eq $problem "" }}
+    {{- if or (strings.HasPrefix $param $sectionPathSeparator) (strings.HasSuffix $param $sectionPathSeparator) }}{{ $problem = "slash-at-edge" }}
+    {{- else if not (partial "is-section-name.html" $param) }}{{ $problem = "no-section" }}
+    {{- else if strings.Contains $param $sectionPathSeparator }}{{ $problem = "subsection" }}
+    {{- else }}{{ $section = $param }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- return dict "name" (lower $section) "asWritten" $section "problem" $problem }}
