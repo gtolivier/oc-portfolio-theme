@@ -339,6 +339,18 @@ test.describe('browser without JavaScript', () => {
     expect(body.get('lang'), 'the value sent for "lang"').toBe('fr');
   });
 
+  test('without JavaScript, sending the filled contact form from the English home page posts "lang" with the value "en"', async ({
+    page,
+  }) => {
+    await answerWithALandingPage(page);
+    await page.goto('/en/');
+    const contact = contactForm(page);
+    await fillAsAVisitor(contact);
+    const request = await sendAndCatchThePost(page, contact);
+    const body = new URLSearchParams(request.postData() ?? '');
+    expect(body.get('lang'), 'the value sent for "lang"').toBe('en');
+  });
+
   test('without JavaScript, opening the home page at #contact-sent, where the endpoint sends the visitor back once the message is sent, shows the confirmation in view instead of the intro and the form; at /fr/ and /fr/#contact the confirmation is not shown', async ({
     page,
   }) => {
