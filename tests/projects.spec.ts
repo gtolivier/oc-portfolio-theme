@@ -2360,6 +2360,87 @@ test.describe('projects section of another site, holding projects of one kind on
   });
 });
 
+test.describe('site whose projectsSection site param names another section than projects', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('with projectsSection naming another section, that section’s page is the projects list, and the page of the projects/ section, no longer the configured one, lists no project', async ({
+    page,
+    context,
+  }) => {
+    /* tests/fixtures/one-kind-per-language/hugo.toml names ateliers/ in projectsSection; the
+       example site's projects/ section, whose projects all declare a valid kind, is still built,
+       in both languages. Only the configured section's page is the projects list: there, its
+       project is shown under a group heading, so that a site with no list at all does not pass.
+       The page of projects/ is still published, with its own title, but is no projects list: no
+       group, no project, none of its pages' titles. Both languages, so that a list dropped in one
+       language only does not pass. */
+    const site = SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE;
+    await serveSite(context, site, siteDirectory);
+    const configuredSections = [
+      { address: '/fr/ateliers/', title: 'Coucou de chalet' },
+      { address: '/en/ateliers/', title: 'Railway station clock' },
+    ];
+    for (const section of configuredSections) {
+      const response = await page.goto(`${site.origin}${section.address}`);
+      expect(response?.status(), `status of ${section.address}`).toBe(200);
+      const main = page.getByRole('main');
+      const projectHeading = main.getByRole('heading', { level: 3, name: section.title, exact: true });
+      await expect(projectHeading, `on ${section.address}, the configured section, the project's title`).toHaveCount(1);
+      await expect(projectHeading).toBeVisible();
+      await expect(
+        main.getByRole('heading', { level: 2 }),
+        `on ${section.address}, the configured section, a group heading`,
+      ).toHaveCount(1);
+    }
+    const otherSections = [
+      {
+        address: '/fr/projets/',
+        titles: [
+          'Régulateur de parquet en noyer',
+          'Restauration d’une pendule de cheminée',
+          'Horloge astronomique de l’atelier',
+          'Montre de poche à grande complication',
+        ],
+      },
+      {
+        address: '/en/projects/',
+        titles: [
+          'Walnut floor regulator',
+          'Restoration of a mantel clock',
+          'The workshop’s astronomical clock',
+          'Grand complication pocket watch',
+        ],
+      },
+    ];
+    for (const section of otherSections) {
+      const response = await page.goto(`${site.origin}${section.address}`);
+      expect(response?.status(), `status of ${section.address}`).toBe(200);
+      const main = page.getByRole('main');
+      await expect(main.getByRole('heading', { level: 1 }), `on ${section.address}, the page heading`).toHaveCount(1);
+      /* The page is static and already loaded once its heading is found: what it must not show is
+         counted once, rather than waited for, so that every absence is reported. */
+      expect
+        .soft(await main.getByRole('heading', { level: 2 }).count(), `on ${section.address}, group headings`)
+        .toBe(0);
+      expect
+        .soft(await main.getByRole('heading', { level: 3 }).count(), `on ${section.address}, project titles`)
+        .toBe(0);
+      expect.soft(await main.getByRole('article').count(), `on ${section.address}, project entries`).toBe(0);
+      for (const title of section.titles) {
+        expect
+          .soft(await main.getByText(title, { exact: true }).count(), `on ${section.address}, the title "${title}"`)
+          .toBe(0);
+      }
+    }
+  });
+});
+
 test.describe('projects section of another site, holding several weighted projects of each kind', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
