@@ -4,7 +4,7 @@
   <h1>{{ .Title }}</h1>
   {{ with .Description }}<p>{{ . }}</p>{{ end }}
   {{ .Content }}
-  {{ $shortProjects := where .Pages "Params.kind" "short" }}
+  {{ $shortProjects := where .RegularPages "Params.kind" "short" }}
   {{ with $shortProjects }}
     <h2>{{ i18n "shortProjects" }}</h2>
     {{ range . }}
@@ -15,7 +15,7 @@
       </article>
     {{ end }}
   {{ end }}
-  {{ $engagements := where .Pages "Params.kind" "engagement" }}
+  {{ $engagements := where .RegularPages "Params.kind" "engagement" }}
   {{ with $engagements }}
     <h2>{{ i18n "engagements" }}</h2>
     {{ range . }}
