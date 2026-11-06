@@ -455,6 +455,20 @@ test('with JavaScript, the background send posts the email, the message and the 
   expect(body.get('contact_reference'), 'the value sent for "contact_reference"').toBe('');
 });
 
+/* The endpoint words the subject of the mail it sends after "lang": the background send carries
+   it as the form post does without JavaScript. */
+test('with JavaScript, the background send from the English home page posts "lang" with the value "en", as without JavaScript', async ({
+  page,
+}) => {
+  await answerWithSuccess(page);
+  await page.goto('/en/');
+  const form = contactForm(page);
+  await fillAsAVisitor(form);
+  const request = await sendAndCatchThePost(page, form);
+  const body = new URLSearchParams(request.postData() ?? '');
+  expect(body.get('lang'), 'the value sent for "lang"').toBe('en');
+});
+
 test('with JavaScript, when the endpoint answers the background request with an error, the error message shows and the form keeps what the visitor wrote, still usable', async ({
   page,
 }) => {
