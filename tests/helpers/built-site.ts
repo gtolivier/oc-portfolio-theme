@@ -1337,6 +1337,16 @@ export const SITE_WITH_ANOTHER_CONTACT_ACTION = testSite('other-contact-address'
    look for. */
 export const SITE_WITHOUT_CONTACT_ACTION = testSite('unaddressed-form');
 
+/* The example site's projects section holds projects of both kinds in each language: this site
+   names ateliers/ in its projectsSection site param (see
+   tests/fixtures/one-kind-per-language/hugo.toml), replaces both home pages with ones that
+   feature no projects, and adds that section, titled "Ateliers" and "Workshops", published at
+   /fr/ateliers/ and /en/ateliers/. In French it holds a single short project, "Coucou de chalet"
+   (kind = 'short', French page only); in English a single engagement, "Railway station clock"
+   (kind = 'engagement', English page only). The example site's projects/ section is still
+   built. */
+export const SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE = testSite('one-kind-per-language');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

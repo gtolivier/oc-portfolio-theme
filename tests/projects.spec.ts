@@ -59,6 +59,7 @@ import {
   SITE_WITH_A_PROJECT_STACK_LEFT_BLANK_IN_YAML,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
   SITE_WITH_PROJECTS_UNDER_THE_HERO,
+  SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE,
   TEMPLATE_EXECUTION_ERROR,
   type BuiltSite,
   buildSite,
@@ -2258,6 +2259,56 @@ test('the projects section’s page shows, in each language, the site’s author
       ).toBeLessThanOrEqual(headingBox.y + 0.5);
     }
   }
+});
+
+test.describe('projects section of another site, holding projects of one kind only in each language', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('a group with no project shows no heading', async ({ page, context }) => {
+    /* tests/fixtures/one-kind-per-language/content/ateliers/ holds, in French, a single short
+       project and, in English, a single engagement. Each page must show its one project under the
+       one group heading it calls for, and no heading for the group that has no project: neither
+       the other group's heading, looked for by its name (the only handle a group heading has),
+       nor any other second level-2 heading. Both directions, so that a template that only drops
+       one of the two headings does not pass. */
+    const site = SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE;
+    await serveSite(context, site, siteDirectory);
+    const sections = [
+      {
+        address: '/fr/ateliers/',
+        title: 'Coucou de chalet',
+        emptyGroupHeading: 'Missions & applications métier',
+      },
+      {
+        address: '/en/ateliers/',
+        title: 'Railway station clock',
+        emptyGroupHeading: 'Short & interactive projects',
+      },
+    ];
+    for (const section of sections) {
+      await page.goto(`${site.origin}${section.address}`);
+      const main = page.getByRole('main');
+      const projectHeading = main.getByRole('heading', { level: 3, name: section.title, exact: true });
+      await expect(projectHeading, `on ${section.address}, the project's title`).toHaveCount(1);
+      await expect(projectHeading).toBeVisible();
+      await expect(
+        main.getByRole('heading', { name: section.emptyGroupHeading, exact: true }),
+        `on ${section.address}, the heading of the group that has no project`,
+      ).toHaveCount(0);
+      const groupHeadings = main.getByRole('heading', { level: 2 });
+      await expect(groupHeadings, `on ${section.address}, a single group heading`).toHaveCount(1);
+      expect(
+        await isUnderHeading(groupHeadings.first(), projectHeading),
+        `on ${section.address}, the project's title is under the one group heading`,
+      ).toBe(true);
+    }
+  });
 });
 
 test.describe('home page of another site, featuring only projects of one subsection of the projects section', () => {
