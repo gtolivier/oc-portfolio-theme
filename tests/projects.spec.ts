@@ -65,6 +65,7 @@ import {
   SITE_WITH_PROJECTS_LISTED_WITHOUT_WRITTEN_PAGES,
   SITE_WITH_PROJECTS_WITHOUT_A_VALID_KIND,
   SITE_WITH_LISTED_PROJECT_STACKS_AS_A_TEXT,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_UNRENDERED_HOME_PAGES,
   TEMPLATE_EXECUTION_ERROR,
   type BuiltSite,
   buildSite,
@@ -3196,6 +3197,42 @@ test.describe('projectsSection site param that names no section, a subsection or
         ),
         `with ${name}, projectsSection error messages that name a language`,
       ).toEqual([]);
+    }
+  });
+
+  test('an invalid projectsSection site param is reported once for the whole build, although both home pages and both list pages check it, and still once when no home page is rendered to check it', () => {
+    /* The projectsSection param belongs to the site, not to a language, and the section pages use
+       it to tell which section is the projects list: with an invalid value, they must not quietly
+       fall back to projects, so they check it as the home pages do. On the bilingual example site,
+       that makes four pages checking the same param: the person building the site must still get
+       a single error message about it. Two sites, with the same invalid value, 'realisatons', a
+       typo that names no section: tests/fixtures/misspelled-param-with-projects-elsewhere, whose
+       two home pages and two section pages are rendered, and
+       tests/fixtures/unrendered-homes-with-a-misspelled-param, whose home pages declare
+       [build] render = 'never', so that only the two section pages of projects/ are left to check
+       the param. The build must fail on both, and the param's problem is looked for as the lines
+       naming projectsSection and quoting its value as Go's %q does: there must be exactly one. */
+    const quoted = '"realisatons"';
+    const cases: { name: string; site: BuiltSite }[] = [
+      {
+        name: 'home pages and section pages rendered',
+        site: SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE,
+      },
+      {
+        name: 'section pages rendered, home pages not',
+        site: SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_UNRENDERED_HOME_PAGES,
+      },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const messages = build.errors
+        .split('\n')
+        .filter((line) => line.includes(quoted) && /\bprojectsSection\b/.test(line));
+      expect(
+        messages,
+        `with ${name}, one error message naming projectsSection and quoting its value as ${quoted}, in:\n${build.errors}`,
+      ).toHaveLength(1);
     }
   });
 });

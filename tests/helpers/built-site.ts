@@ -1395,6 +1395,15 @@ export const SITE_WITH_PROJECTS_WITHOUT_A_VALID_KIND = testSite('projects-withou
    stack = 'Brass, Glass'). */
 export const SITE_WITH_LISTED_PROJECT_STACKS_AS_A_TEXT = testSite('listed-materials-as-text');
 
+/* Like SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE, this site sets
+   projectsSection = 'realisatons', a typo that names no section of the site, but Hugo renders
+   neither of its home pages: tests/fixtures/unrendered-homes-with-a-misspelled-param/content
+   replaces both with pages that declare [build] render = 'never'. The section pages of the example
+   site's projects/ section, in both languages, are left to check the param. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_UNRENDERED_HOME_PAGES = testSite(
+  'unrendered-homes-with-a-misspelled-param',
+);
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

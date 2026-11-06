@@ -1,0 +1,8 @@
+# Configuration added to exampleSite/hugo.toml by the tests of a site whose
+# projectsSection site param is a well-formed text that names no section of
+# the site, 'realisatons', a typo, and whose home pages Hugo does not render:
+# the fixture's content/ replaces both home pages with pages that declare
+# [build] render = 'never'. Only the section pages, which list the projects,
+# are left to check the param.
+[params]
+  projectsSection = 'realisatons'
