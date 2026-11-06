@@ -1,4 +1,6 @@
 {{ define "main" }}
+  <p>{{ site.Params.author }}</p>
+  <p>{{ site.Params.footerNote }}</p>
   <h1>{{ .Title }}</h1>
   {{ with .Description }}<p>{{ . }}</p>{{ end }}
   {{ .Content }}
