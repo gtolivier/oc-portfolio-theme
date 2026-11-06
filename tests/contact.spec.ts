@@ -211,6 +211,11 @@ async function sendAndCatchThePost(page: Page, { sendButton }: ContactForm): Pro
   return request;
 }
 
+/* The fields a form-encoded POST carries, by name. */
+function postedFields(request: Request): URLSearchParams {
+  return new URLSearchParams(request.postData() ?? '');
+}
+
 test.describe('browser without JavaScript', () => {
   test.use({ javaScriptEnabled: false });
 
@@ -228,7 +233,7 @@ test.describe('browser without JavaScript', () => {
       'application/x-www-form-urlencoded',
     );
     /* The email and the message filled in, among whatever else the form may send. */
-    const body = Object.fromEntries(new URLSearchParams(request.postData() ?? ''));
+    const body = Object.fromEntries(postedFields(request));
     expect(body, 'the data sent').toEqual(
       expect.objectContaining({
         email: 'marie.horloge@exemple.fr',
@@ -281,7 +286,7 @@ test.describe('browser without JavaScript', () => {
     /* Sent as a visitor would: the visible fields filled in, the decoy left as it is. */
     await fillAsAVisitor(contact);
     const request = await sendAndCatchThePost(page, contact);
-    const body = new URLSearchParams(request.postData() ?? '');
+    const body = postedFields(request);
     expect(body.has('contact_reference'), 'the data sent includes the "contact_reference" field').toBe(true);
     expect(body.get('contact_reference'), 'the value sent for "contact_reference"').toBe('');
     /* Sent as a bot would: a program that reads the markup fills every text field of the form,
@@ -299,10 +304,49 @@ test.describe('browser without JavaScript', () => {
     }, 'https://montres-pas-cheres.example');
     expect(typedByBot, 'the decoy is a text field, which a bot fills').toBe(true);
     const botRequest = await sendAndCatchThePost(page, contact);
-    const botBody = new URLSearchParams(botRequest.postData() ?? '');
+    const botBody = postedFields(botRequest);
     expect(botBody.get('contact_reference'), 'the value a bot typed in "contact_reference", sent').toBe(
       'https://montres-pas-cheres.example',
     );
+  });
+
+  /* The endpoint, without JavaScript, sends the visitor back to /<lang>/#contact-sent or
+     /<lang>/#contact-error: it needs the language of the page the form was sent from. */
+  test('without JavaScript, sending the filled contact form from the French home page also posts a field "lang" with the value "fr", which the visitor does not see and assistive technologies do not expose', async ({
+    page,
+  }) => {
+    await answerWithALandingPage(page);
+    await page.goto('/fr/');
+    const contact = contactForm(page);
+    const { form, sendButton } = contact;
+    const langField = form.locator('[name="lang"]');
+    /* Assistive technologies: the form's textboxes stay the email and the message. */
+    const textboxes = form.getByRole('textbox');
+    expect(
+      await textboxes.evaluateAll((elements) => elements.map((element) => element.getAttribute('name'))),
+      'the fields behind the textboxes of the form, as assistive technologies see them',
+    ).toEqual(['email', 'message']);
+    /* The visitor: with the form in view, the "lang" field is nowhere on screen. */
+    await sendButton.scrollIntoViewIfNeeded();
+    const langOnScreen = (await langField.isVisible()) && (await isInViewport(langField));
+    expect(langOnScreen, 'the "lang" field is shown on screen').toBe(false);
+    /* Sent as a visitor would, from the French home page. */
+    await fillAsAVisitor(contact);
+    const request = await sendAndCatchThePost(page, contact);
+    const body = postedFields(request);
+    expect(body.get('lang'), 'the value sent for "lang"').toBe('fr');
+  });
+
+  test('without JavaScript, sending the filled contact form from the English home page posts "lang" with the value "en"', async ({
+    page,
+  }) => {
+    await answerWithALandingPage(page);
+    await page.goto('/en/');
+    const contact = contactForm(page);
+    await fillAsAVisitor(contact);
+    const request = await sendAndCatchThePost(page, contact);
+    const body = postedFields(request);
+    expect(body.get('lang'), 'the value sent for "lang"').toBe('en');
   });
 
   test('without JavaScript, opening the home page at #contact-sent, where the endpoint sends the visitor back once the message is sent, shows the confirmation in view instead of the intro and the form; at /fr/ and /fr/#contact the confirmation is not shown', async ({
@@ -401,12 +445,26 @@ test('with JavaScript, the background send posts the email, the message and the 
   const mediaType = (request.headers()['content-type'] ?? '').split(';')[0].trim().toLowerCase();
   expect(mediaType, 'the encoding of the form data').toBe('application/x-www-form-urlencoded');
   /* The same fields as without JavaScript: what the visitor filled in, and the decoy left empty. */
-  const body = new URLSearchParams(request.postData() ?? '');
+  const body = postedFields(request);
   expect(Object.fromEntries(body), 'the data sent').toEqual(
     expect.objectContaining({ email: VISITOR_EMAIL, message: VISITOR_MESSAGE }),
   );
   expect(body.has('contact_reference'), 'the data sent includes the "contact_reference" field').toBe(true);
   expect(body.get('contact_reference'), 'the value sent for "contact_reference"').toBe('');
+});
+
+/* The endpoint words the subject of the mail it sends after "lang": the background send carries
+   it as the form post does without JavaScript. */
+test('with JavaScript, the background send from the English home page posts "lang" with the value "en", as without JavaScript', async ({
+  page,
+}) => {
+  await answerWithSuccess(page);
+  await page.goto('/en/');
+  const form = contactForm(page);
+  await fillAsAVisitor(form);
+  const request = await sendAndCatchThePost(page, form);
+  const body = postedFields(request);
+  expect(body.get('lang'), 'the value sent for "lang"').toBe('en');
 });
 
 test('with JavaScript, when the endpoint answers the background request with an error, the error message shows and the form keeps what the visitor wrote, still usable', async ({
