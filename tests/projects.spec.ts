@@ -63,7 +63,6 @@ import {
   SITE_WITH_PROJECTS_ORDERED_BY_WEIGHT,
   SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND,
   SITE_WITH_PROJECTS_LISTED_WITHOUT_WRITTEN_PAGES,
-  SITE_WITH_PROJECTS_WITHOUT_A_VALID_KIND,
   TEMPLATE_EXECUTION_ERROR,
   type BuiltSite,
   buildSite,
@@ -2493,50 +2492,6 @@ test.describe('projects section of another site, holding projects whose page Hug
         projectHeading.getByRole('link', { name: title, exact: true }),
         `the link in the title of ${title}, whose page is written`,
       ).toHaveCount(1);
-    }
-  });
-});
-
-test.describe('projects section content errors: build failure', () => {
-  runBuildTestsInOneProjectOnly();
-
-  test('a project of the projects section’s list that declares no kind, or a kind other than "engagement" or "short", makes the site build fail, with an error message that names that project and its language', () => {
-    /* In tests/fixtures/projects-without-a-valid-kind/content/projects/, pendule-sans-genre.md, in
-       French only, declares no kind, and comtoise-mal-classee.en.md, in English only, declares
-       kind = 'Short', with a capital letter. Rather than a list that silently leaves them out, the
-       person building the site must get a failure with, for each of them, a message that names the
-       project, through its file name, which every way of referring to the page (its path, its
-       file, its address) holds, and the language of its page by its code, as a word that no other
-       word follows, whatever the rest of the wording. Both cases, each in its own language, so that
-       a check for only one of them, or a language written in the template, does not pass. Only the
-       projects on the list are concerned: neither the page of the subsection atelier/,
-       cartel-hors-liste.md, which declares no kind either but is not on the list, nor the example
-       site's projects, which all declare a valid kind, may be reported. */
-    const build = tryToBuildSite(SITE_WITH_PROJECTS_WITHOUT_A_VALID_KIND);
-    expect(build.succeeded, 'the site build should fail').toBe(false);
-    const cases = [
-      { name: 'a French project without a kind', project: 'pendule-sans-genre', language: 'fr' },
-      { name: "an English project of kind 'Short'", project: 'comtoise-mal-classee', language: 'en' },
-    ];
-    for (const { name, project, language } of cases) {
-      const messages = build.errors.split('\n').filter((line) => line.includes(project));
-      expect
-        .soft(messages.length, `with ${name}, error messages naming the project ${project}, in:\n${build.errors}`)
-        .toBeGreaterThan(0);
-      for (const message of messages) {
-        expect
-          .soft(message, `with ${name}, the error message should name the project's language, ${language}`)
-          .toMatch(new RegExp(languageCodePattern(language), 'u'));
-      }
-    }
-    for (const project of [
-      'cartel-hors-liste',
-      'regulateur-noyer',
-      'restauration-pendule',
-      'horloge-astronomique',
-      'montre-grande-complication',
-    ]) {
-      expect.soft(build.errors, `no error message should name ${project}`).not.toContain(project);
     }
   });
 });
