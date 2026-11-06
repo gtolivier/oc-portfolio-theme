@@ -2029,6 +2029,77 @@ test('the projects section’s page shows, in each language, the section’s tit
   }
 });
 
+/* Whether the element sits under the heading in the page's outline: it comes after the heading,
+   and no heading of the same or a higher rank (a lower or equal level) comes between them. */
+async function isUnderHeading(heading: Locator, element: Locator): Promise<boolean> {
+  const target = await element.elementHandle();
+  return heading.evaluate((start, end) => {
+    if (!end) return false;
+    const levelOf = (node: Element) => Number(node.getAttribute('aria-level') ?? node.tagName.slice(1));
+    const follows = (a: Node, b: Node) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    if (!follows(start, end)) return false;
+    const level = levelOf(start);
+    return !Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6, [role="heading"]')).some(
+      (other) =>
+        other !== start &&
+        other !== end &&
+        !other.contains(end) &&
+        follows(start, other) &&
+        follows(other, end) &&
+        levelOf(other) <= level,
+    );
+  }, target);
+}
+
+test('the projects section’s page shows, in each language, a short project (params.kind = "short") under the short-projects heading, with its title, its description and its stack joined by " · "', async ({
+  page,
+}) => {
+  /* exampleSite/content/projects/regulateur-noyer.md and .en.md declare kind = 'short' under
+     [params]; their title, description and stack are those below. */
+  const sections = [
+    {
+      address: '/fr/projets/',
+      groupHeading: 'Projets courts & interactifs',
+      title: 'Régulateur de parquet en noyer',
+      description: 'Régulateur à balancier compensé, logé dans une caisse en noyer massif sculptée à la main.',
+      stack: ['Noyer', 'Invar', 'Laiton'],
+    },
+    {
+      address: '/en/projects/',
+      groupHeading: 'Short & interactive projects',
+      title: 'Walnut floor regulator',
+      description: 'A regulator with a compensated pendulum, housed in a hand-carved solid walnut case.',
+      stack: ['Walnut', 'Invar', 'Brass'],
+    },
+  ];
+  for (const section of sections) {
+    await page.goto(section.address);
+    const main = page.getByRole('main');
+    const groupHeading = main.getByRole('heading', { level: 2, name: section.groupHeading, exact: true });
+    await expect(groupHeading, `on ${section.address}, the short-projects heading`).toHaveCount(1);
+    await expect(groupHeading).toBeVisible();
+    const projectHeading = main.getByRole('heading', { level: 3, name: section.title, exact: true });
+    await expect(projectHeading, `on ${section.address}, the project's title`).toHaveCount(1);
+    await expect(projectHeading).toBeVisible();
+    expect(
+      await isUnderHeading(groupHeading, projectHeading),
+      `on ${section.address}, the project's title is under the short-projects heading`,
+    ).toBe(true);
+    for (const [name, text] of [
+      ['description', section.description],
+      ['stack', section.stack.join(' · ')],
+    ] as const) {
+      const line = main.getByText(text, { exact: true });
+      await expect(line, `on ${section.address}, the project's ${name}, shown once`).toHaveCount(1);
+      await expect(line).toBeVisible();
+      expect(
+        await isUnderHeading(projectHeading, line),
+        `on ${section.address}, the project's ${name} is under its title`,
+      ).toBe(true);
+    }
+  }
+});
+
 test('the projects section’s page shows, in each language, the site’s author and its footer note above the page heading', async ({
   page,
 }) => {
