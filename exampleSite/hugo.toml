@@ -20,7 +20,11 @@ disableKinds = ['taxonomy', 'term']
   # language's home page, at /<lang>/#contact-sent or
   # /<lang>/#contact-error; when the request asks for JSON
   # (Accept: application/json), it answers with a 2xx status on success and
-  # any other on failure.
+  # any other on failure. That return address supposes each language's home
+  # page in its own folder at the domain's root, as here
+  # (defaultContentLanguageInSubdir = true, a baseURL without a subpath), and
+  # an endpoint that knows the site's languages, so that it never sends the
+  # visitor to an address the lang field alone chose.
   contactAction = '/api/contact'
   # The top-level section the home page's featured projects live in, and
   # that its all-projects link opens. Left out, it is projects; set it when
