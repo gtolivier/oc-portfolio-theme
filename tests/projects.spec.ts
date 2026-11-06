@@ -2100,6 +2100,59 @@ test('the projects section’s page shows, in each language, a short project (pa
   }
 });
 
+test('the projects section’s page shows, in each language, an engagement (params.kind = "engagement") under the engagements heading, with its title, its years, its mode and its duration', async ({
+  page,
+}) => {
+  /* exampleSite/content/projects/restauration-pendule.md and .en.md declare kind = 'engagement'
+     under [params]; their title, years, mode and duration are those below. The years, mode and
+     duration are each looked for as part of a text, so that they may share a line or not. */
+  const sections = [
+    {
+      address: '/fr/projets/',
+      groupHeading: 'Missions & applications métier',
+      title: 'Restauration d’une pendule de cheminée',
+      years: '2019 – 2020',
+      mode: 'Forfait',
+      duration: '14 mois',
+    },
+    {
+      address: '/en/projects/',
+      groupHeading: 'Engagements & business applications',
+      title: 'Restoration of a mantel clock',
+      years: '2019 – 2020',
+      mode: 'Fixed-price',
+      duration: '14 months',
+    },
+  ];
+  for (const section of sections) {
+    await page.goto(section.address);
+    const main = page.getByRole('main');
+    const groupHeading = main.getByRole('heading', { level: 2, name: section.groupHeading, exact: true });
+    await expect(groupHeading, `on ${section.address}, the engagements heading`).toHaveCount(1);
+    await expect(groupHeading).toBeVisible();
+    const projectHeading = main.getByRole('heading', { level: 3, name: section.title, exact: true });
+    await expect(projectHeading, `on ${section.address}, the engagement's title`).toHaveCount(1);
+    await expect(projectHeading).toBeVisible();
+    expect(
+      await isUnderHeading(groupHeading, projectHeading),
+      `on ${section.address}, the engagement's title is under the engagements heading`,
+    ).toBe(true);
+    for (const [name, text] of [
+      ['years', section.years],
+      ['mode', section.mode],
+      ['duration', section.duration],
+    ] as const) {
+      const line = main.getByText(text);
+      await expect(line, `on ${section.address}, the engagement's ${name}, shown once`).toHaveCount(1);
+      await expect(line).toBeVisible();
+      expect(
+        await isUnderHeading(projectHeading, line),
+        `on ${section.address}, the engagement's ${name} is under its title`,
+      ).toBe(true);
+    }
+  }
+});
+
 test('the projects section’s page shows, in each language, the site’s author and its footer note above the page heading', async ({
   page,
 }) => {
