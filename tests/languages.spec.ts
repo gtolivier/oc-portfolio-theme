@@ -21,7 +21,7 @@ async function setPreferredLanguages(page: Page, languages: string[]): Promise<v
 test('French pages are served under /fr/: /fr/ is the French home page', async ({ page, baseURL }) => {
   const response = await page.goto('/fr/');
   expect(response?.status()).toBe(200);
-  await expect(page.getByRole('main')).toContainText('Bienvenue sur ce site de démonstration');
+  await expect(page.getByRole('main')).toContainText('Horloger indépendant');
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
   /* Checked once the home page is displayed: the visitor stayed on /fr/, with no redirect. */
   await expect(page).toHaveURL(new URL('/fr/', baseURL).href);
@@ -131,7 +131,7 @@ test.describe('French browser, old address of an English page', () => {
     await page.goto(`${SITE_WITH_ALIASES.origin}/en/english/`);
     await expect(page).toHaveURL(`${SITE_WITH_ALIASES.origin}/en/`);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
-    await expect(page.getByRole('main')).toContainText('Welcome to this demo site');
+    await expect(page.getByRole('main')).toContainText('Independent clockmaker');
   });
 });
 
