@@ -13,7 +13,11 @@
     {{- $isFeatured := and (reflect.IsSlice $featuredReferences) (in $featuredReferences (strings.TrimPrefix "/" .Path)) }}
     {{- if and (not $isFeatured) (partial "projects/has-invalid-stack.html" .) }}{{ errorf "projects: the stack of the project %q must be a list (language: %s)" .File.Path .Language.Lang }}{{ end }}
   {{ end }}
-  {{ $shortProjects := where .RegularPages "Params.kind" $shortKind }}
+  {{- /* Only the section named by the projectsSection site param (projects by default) is the projects list; an invalid param is reported by the featured projects. */}}
+  {{ $projectsSection := "projects" }}
+  {{ if and (isset site.Params "projectssection") (eq (partial "text-problem.html" site.Params.projectsSection) "") }}{{ $projectsSection = lower site.Params.projectsSection }}{{ end }}
+  {{ $listedPages := cond (eq .Section $projectsSection) .RegularPages slice }}
+  {{ $shortProjects := where $listedPages "Params.kind" $shortKind }}
   {{ with $shortProjects }}
     <h2>{{ i18n "shortProjects" }}</h2>
     {{ range . }}
@@ -24,7 +28,7 @@
       </article>
     {{ end }}
   {{ end }}
-  {{ $engagements := where .RegularPages "Params.kind" $engagementKind }}
+  {{ $engagements := where $listedPages "Params.kind" $engagementKind }}
   {{ with $engagements }}
     <h2>{{ i18n "engagements" }}</h2>
     {{ range . }}
