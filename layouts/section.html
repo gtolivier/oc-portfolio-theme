@@ -4,6 +4,9 @@
   <h1>{{ .Title }}</h1>
   {{ with .Description }}<p>{{ . }}</p>{{ end }}
   {{ .Content }}
+  {{ range cond (and .Parent.IsHome (eq .Section "projects")) .RegularPages slice }}
+    {{- if not (in (slice "short" "engagement") .Params.kind) }}{{ errorf "projects: the project %q must declare a kind, either \"engagement\" or \"short\" (language: %s)" .File.Path .Language.Lang }}{{ end }}
+  {{ end }}
   {{ $shortProjects := where .RegularPages "Params.kind" "short" }}
   {{ with $shortProjects }}
     <h2>{{ i18n "shortProjects" }}</h2>
