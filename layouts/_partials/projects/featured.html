@@ -6,13 +6,7 @@
 {{- /* The section featured projects must live in. */}}
 {{- $projectsSection := partial "projects/section.html" }}
 {{- $sectionProblem := $projectsSection.problem }}
-{{- if eq $sectionProblem "not-text" }}{{ errorf "projects: the projectsSection site param must be a text, the name of a section" }}
-{{- else if eq $sectionProblem "empty" }}{{ errorf "projects: the projectsSection site param is empty: it must name a section" }}
-{{- else if eq $sectionProblem "padded" }}{{ errorf "projects: the projectsSection site param %q has whitespace at its start or end: it must be the name of a section" site.Params.projectsSection }}
-{{- else if eq $sectionProblem "slash-at-edge" }}{{ errorf "projects: the projectsSection site param %q has a slash at its start or end: it must be the name of a top-level section, without any slash" site.Params.projectsSection }}
-{{- else if eq $sectionProblem "no-section" }}{{ errorf "projects: the projectsSection site param %q names no section of the site: it must be the name of a section" site.Params.projectsSection }}
-{{- else if eq $sectionProblem "subsection" }}{{ errorf "projects: the projectsSection site param %q names a subsection: it must be the name of a top-level section" site.Params.projectsSection }}
-{{- end }}
+{{- partial "projects/report-section-problem.html" $projectsSection }}
 {{- /* A bad param names no section the theme can check against: no error per featured project then, which would send the person moving projects that may be where they meant them. */}}
 {{- $sectionIsKnown := eq $sectionProblem "" }}
 {{- $projects := slice }}
