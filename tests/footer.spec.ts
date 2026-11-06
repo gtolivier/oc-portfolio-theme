@@ -196,6 +196,33 @@ test("the footer logo is plain footer text: in the header logo's font, with the 
   );
 });
 
+test("on every page but the home page, the footer has a link back to the home page of its language; the home page's footer has none", async ({
+  page,
+}) => {
+  /* The link's arrow may be decorative: its name is the word alone, or the word after the arrow. */
+  const homeLinkNames = { fr: /^(←\s*)?Accueil$/, en: /^(←\s*)?Home$/ };
+  for (const { url, lang } of [
+    { url: '/fr/projets/', lang: 'fr' },
+    { url: '/en/projects/', lang: 'en' },
+    { url: '/fr/projets/horloge-astronomique/', lang: 'fr' },
+    { url: '/en/projects/horloge-astronomique/', lang: 'en' },
+    { url: '/fr/page-longue/', lang: 'fr' },
+  ] as const) {
+    await page.goto(url);
+    const homeLink = page.locator('footer').getByRole('link', { name: homeLinkNames[lang] });
+    await expect(homeLink, `footer home link on ${url}`).toBeVisible();
+    await expect(homeLink, `footer home link on ${url}`).toHaveAttribute('href', `/${lang}/`);
+  }
+
+  for (const lang of ['fr', 'en'] as const) {
+    await page.goto(`/${lang}/`);
+    await expect(
+      page.locator('footer').getByRole('link', { name: homeLinkNames[lang] }),
+      `footer home link on /${lang}/`,
+    ).toHaveCount(0);
+  }
+});
+
 test('the footer displays the site footer note in the page language', async ({ page }) => {
   await page.goto('/fr/');
   const frenchFooter = page.locator('footer');
