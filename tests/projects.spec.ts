@@ -2228,6 +2228,50 @@ test('the projects section’s page lists, in each language, an engagement’s p
   }
 });
 
+test('the projects section’s page links, in each language, each project’s title to that project’s own page in the same language, for a short project and for an engagement', async ({
+  page,
+}) => {
+  /* exampleSite/content/projects/regulateur-noyer.md (kind = 'short') and
+     restauration-pendule.md (kind = 'engagement'), each with an .en.md translation; their slug
+     is their file name. */
+  const sections = [
+    {
+      address: '/fr/projets/',
+      projects: [
+        { title: 'Régulateur de parquet en noyer', address: '/fr/projets/regulateur-noyer/' },
+        { title: 'Restauration d’une pendule de cheminée', address: '/fr/projets/restauration-pendule/' },
+      ],
+    },
+    {
+      address: '/en/projects/',
+      projects: [
+        { title: 'Walnut floor regulator', address: '/en/projects/regulateur-noyer/' },
+        { title: 'Restoration of a mantel clock', address: '/en/projects/restauration-pendule/' },
+      ],
+    },
+  ];
+  for (const section of sections) {
+    for (const project of section.projects) {
+      await page.goto(section.address);
+      const main = page.getByRole('main');
+      const projectHeading = main.getByRole('heading', { level: 3, name: project.title, exact: true });
+      await expect(projectHeading, `on ${section.address}, the title of ${project.title}`).toHaveCount(1);
+      const link = projectHeading.getByRole('link', { name: project.title, exact: true });
+      await expect(link, `on ${section.address}, the link in the title of ${project.title}`).toHaveCount(1);
+      await expect(link).toBeVisible();
+      const [response] = await Promise.all([
+        page.waitForResponse(
+          (candidate) => candidate.request().isNavigationRequest() && candidate.request().frame() === page.mainFrame(),
+        ),
+        link.click(),
+      ]);
+      expect(response.status(), `status of the page ${project.title}’s link opens`).toBe(200);
+      await expect(page).toHaveURL(project.address);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(project.title);
+    }
+  }
+});
+
 test('the projects section’s page shows, in each language, the site’s author and its footer note above the page heading', async ({
   page,
 }) => {
