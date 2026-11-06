@@ -4,4 +4,15 @@
   <h1>{{ .Title }}</h1>
   {{ with .Description }}<p>{{ . }}</p>{{ end }}
   {{ .Content }}
+  {{ $short := where .Pages "Params.kind" "short" }}
+  {{ with $short }}
+    <h2>{{ i18n "shortProjects" }}</h2>
+    {{ range . }}
+      <article>
+        <h3>{{ .Title }}</h3>
+        {{ with .Description }}<p>{{ . }}</p>{{ end }}
+        {{ with .Params.stack }}<p>{{ delimit . " · " }}</p>{{ end }}
+      </article>
+    {{ end }}
+  {{ end }}
 {{ end }}

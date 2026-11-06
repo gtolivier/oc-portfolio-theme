@@ -43,5 +43,8 @@ other = 'Tous les projets'
 [seeDetail]
 other = 'Voir le détail'
 
+[shortProjects]
+other = 'Projets courts & interactifs'
+
 [language]
 other = 'Langue'
