@@ -2000,6 +2000,35 @@ test.describe('home pages of the example site, served at the site root and under
   });
 });
 
+test('the projects section’s page shows, in each language, the section’s title as its page heading and the section’s description as an intro paragraph', async ({
+  page,
+}) => {
+  /* The title and description of exampleSite/content/projects/_index.md and _index.en.md. */
+  const sections = [
+    {
+      address: '/fr/projets/',
+      title: 'Projets',
+      description: 'Pendules, régulateurs et complications imaginaires, restaurés ou conçus pour la démonstration.',
+    },
+    {
+      address: '/en/projects/',
+      title: 'Projects',
+      description: 'Imaginary clocks, regulators and complications, restored or designed for the demo.',
+    },
+  ];
+  for (const section of sections) {
+    await page.goto(section.address);
+    const main = page.getByRole('main');
+    const heading = main.getByRole('heading', { level: 1 });
+    await expect(heading).toHaveCount(1);
+    await expect(heading).toHaveText(section.title);
+    const intro = main.getByText(section.description, { exact: true });
+    await expect(intro).toHaveCount(1);
+    await expect(intro).toBeVisible();
+    await expect(intro).toHaveRole('paragraph');
+  }
+});
+
 test.describe('home page of another site, featuring only projects of one subsection of the projects section', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
