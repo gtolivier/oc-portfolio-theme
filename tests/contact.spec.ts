@@ -211,6 +211,11 @@ async function sendAndCatchThePost(page: Page, { sendButton }: ContactForm): Pro
   return request;
 }
 
+/* The fields a form-encoded POST carries, by name. */
+function postedFields(request: Request): URLSearchParams {
+  return new URLSearchParams(request.postData() ?? '');
+}
+
 test.describe('browser without JavaScript', () => {
   test.use({ javaScriptEnabled: false });
 
@@ -228,7 +233,7 @@ test.describe('browser without JavaScript', () => {
       'application/x-www-form-urlencoded',
     );
     /* The email and the message filled in, among whatever else the form may send. */
-    const body = Object.fromEntries(new URLSearchParams(request.postData() ?? ''));
+    const body = Object.fromEntries(postedFields(request));
     expect(body, 'the data sent').toEqual(
       expect.objectContaining({
         email: 'marie.horloge@exemple.fr',
@@ -281,7 +286,7 @@ test.describe('browser without JavaScript', () => {
     /* Sent as a visitor would: the visible fields filled in, the decoy left as it is. */
     await fillAsAVisitor(contact);
     const request = await sendAndCatchThePost(page, contact);
-    const body = new URLSearchParams(request.postData() ?? '');
+    const body = postedFields(request);
     expect(body.has('contact_reference'), 'the data sent includes the "contact_reference" field').toBe(true);
     expect(body.get('contact_reference'), 'the value sent for "contact_reference"').toBe('');
     /* Sent as a bot would: a program that reads the markup fills every text field of the form,
@@ -299,7 +304,7 @@ test.describe('browser without JavaScript', () => {
     }, 'https://montres-pas-cheres.example');
     expect(typedByBot, 'the decoy is a text field, which a bot fills').toBe(true);
     const botRequest = await sendAndCatchThePost(page, contact);
-    const botBody = new URLSearchParams(botRequest.postData() ?? '');
+    const botBody = postedFields(botRequest);
     expect(botBody.get('contact_reference'), 'the value a bot typed in "contact_reference", sent').toBe(
       'https://montres-pas-cheres.example',
     );
@@ -335,7 +340,7 @@ test.describe('browser without JavaScript', () => {
     /* Sent as a visitor would, from the French home page. */
     await fillAsAVisitor(contact);
     const request = await sendAndCatchThePost(page, contact);
-    const body = new URLSearchParams(request.postData() ?? '');
+    const body = postedFields(request);
     expect(body.get('lang'), 'the value sent for "lang"').toBe('fr');
   });
 
@@ -347,7 +352,7 @@ test.describe('browser without JavaScript', () => {
     const contact = contactForm(page);
     await fillAsAVisitor(contact);
     const request = await sendAndCatchThePost(page, contact);
-    const body = new URLSearchParams(request.postData() ?? '');
+    const body = postedFields(request);
     expect(body.get('lang'), 'the value sent for "lang"').toBe('en');
   });
 
@@ -447,7 +452,7 @@ test('with JavaScript, the background send posts the email, the message and the 
   const mediaType = (request.headers()['content-type'] ?? '').split(';')[0].trim().toLowerCase();
   expect(mediaType, 'the encoding of the form data').toBe('application/x-www-form-urlencoded');
   /* The same fields as without JavaScript: what the visitor filled in, and the decoy left empty. */
-  const body = new URLSearchParams(request.postData() ?? '');
+  const body = postedFields(request);
   expect(Object.fromEntries(body), 'the data sent').toEqual(
     expect.objectContaining({ email: VISITOR_EMAIL, message: VISITOR_MESSAGE }),
   );
@@ -465,7 +470,7 @@ test('with JavaScript, the background send from the English home page posts "lan
   const form = contactForm(page);
   await fillAsAVisitor(form);
   const request = await sendAndCatchThePost(page, form);
-  const body = new URLSearchParams(request.postData() ?? '');
+  const body = postedFields(request);
   expect(body.get('lang'), 'the value sent for "lang"').toBe('en');
 });
 
