@@ -1,4 +1,4 @@
-{{- /* The section projects live in, from the projectsSection site param: its name, lowercased as Hugo's .Section is; the name as the site wrote it, for error messages; and what is wrong with the param, or "" when nothing is: a problem from text-problem.html, or "slash-at-edge", "no-section" or "subsection". The section is projects when the site names none, or names one the theme cannot check against. Each caller words its own error. */}}
+{{- /* The section projects live in, from the projectsSection site param: its name, lowercased as Hugo's .Section is; the name as the site wrote it, for error messages; and what is wrong with the param, or "" when nothing is: a problem from text-problem.html, or "slash-at-edge", "no-section" or "subsection". The section is projects when the site names none, or names one the theme cannot check against. report-section-problem.html words the error for each problem. */}}
 {{- $defaultSection := "projects" }}
 {{- /* What separates a section from its subsections in a section's path. */}}
 {{- $sectionPathSeparator := "/" }}
