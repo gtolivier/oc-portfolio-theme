@@ -305,6 +305,40 @@ test.describe('browser without JavaScript', () => {
     );
   });
 
+  /* The endpoint, without JavaScript, sends the visitor back to /<lang>/#contact-sent or
+     /<lang>/#contact-error: it needs the language of the page the form was sent from. */
+  test('without JavaScript, sending the filled contact form from the French home page also posts a field "lang" with the value "fr", which the visitor does not see and assistive technologies do not expose', async ({
+    page,
+  }) => {
+    await answerWithALandingPage(page);
+    await page.goto('/fr/');
+    const contact = contactForm(page);
+    const { form, sendButton } = contact;
+    const langField = form.locator('[name="lang"]');
+    /* Assistive technologies: the form's textboxes stay the email and the message, and no other
+       form control they expose is the "lang" field. */
+    const textboxes = form.getByRole('textbox');
+    expect(
+      await textboxes.evaluateAll((elements) => elements.map((element) => element.getAttribute('name'))),
+      'the fields behind the textboxes of the form, as assistive technologies see them',
+    ).toEqual(['email', 'message']);
+    for (const role of ['combobox', 'listbox', 'spinbutton', 'checkbox', 'radio', 'slider', 'searchbox'] as const) {
+      const exposed = await form
+        .getByRole(role)
+        .evaluateAll((elements) => elements.map((element) => element.getAttribute('name')));
+      expect(exposed, `the fields of the form exposed as ${role}`).not.toContain('lang');
+    }
+    /* The visitor: with the form in view, the "lang" field is nowhere on screen. */
+    await sendButton.scrollIntoViewIfNeeded();
+    const langOnScreen = (await langField.isVisible()) && (await isInViewport(langField));
+    expect(langOnScreen, 'the "lang" field is shown on screen').toBe(false);
+    /* Sent as a visitor would, from the French home page. */
+    await fillAsAVisitor(contact);
+    const request = await sendAndCatchThePost(page, contact);
+    const body = new URLSearchParams(request.postData() ?? '');
+    expect(body.get('lang'), 'the value sent for "lang"').toBe('fr');
+  });
+
   test('without JavaScript, opening the home page at #contact-sent, where the endpoint sends the visitor back once the message is sent, shows the confirmation in view instead of the intro and the form; at /fr/ and /fr/#contact the confirmation is not shown', async ({
     page,
   }) => {
