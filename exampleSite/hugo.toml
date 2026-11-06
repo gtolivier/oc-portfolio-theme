@@ -13,10 +13,12 @@ disableKinds = ['taxonomy', 'term']
   # The address the contact form posts to: a path on the site's own domain,
   # written from the domain's root, as the form posts to it as given (a
   # baseURL with a subpath does not prefix it).
-  # The endpoint gets the fields email, message and contact_reference (a
-  # decoy that must stay empty), form-encoded with or without JavaScript.
-  # Without JavaScript, it sends the visitor back with a 303 to the home
-  # page's #contact-sent or #contact-error; when the request asks for JSON
+  # The endpoint gets the fields email, message, contact_reference (a decoy
+  # that must stay empty) and lang (the language of the page the form was
+  # sent from, such as fr or en), form-encoded with or without JavaScript.
+  # Without JavaScript, it sends the visitor back with a 303 to that
+  # language's home page, at /<lang>/#contact-sent or
+  # /<lang>/#contact-error; when the request asks for JSON
   # (Accept: application/json), it answers with a 2xx status on success and
   # any other on failure.
   contactAction = '/api/contact'
