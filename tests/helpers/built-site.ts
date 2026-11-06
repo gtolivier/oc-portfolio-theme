@@ -1404,6 +1404,24 @@ export const SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_UNRENDERED
   'unrendered-homes-with-a-misspelled-param',
 );
 
+/* The example site's projects/ section is its projects section, and its projects all declare a
+   kind: this site names ateliers/ in its projectsSection site param (see
+   tests/fixtures/kindless-project-in-the-configured-section/hugo.toml), replaces both home pages
+   with ones that feature no projects, and adds that section, whose one project, in French only,
+   "Sablier sans genre" (ateliers/sablier-sans-genre.md), declares no kind. */
+export const SITE_WITH_A_KINDLESS_PROJECT_IN_THE_CONFIGURED_SECTION = testSite(
+  'kindless-project-in-the-configured-section',
+);
+
+/* Like SITE_WITH_A_KINDLESS_PROJECT_IN_THE_CONFIGURED_SECTION, this site names ateliers/ in its
+   projectsSection site param and replaces both home pages with ones that feature no projects, but
+   the one project of ateliers/, "Coucou de chalet", in French only, declares kind = 'short'; it
+   is the example site's projects/ section, no longer the configured one, that gets, in French
+   only, a project that declares no kind, "Sablier sans genre" (projects/sablier-sans-genre.md). */
+export const SITE_WITH_A_KINDLESS_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION = testSite(
+  'kindless-project-outside-the-configured-section',
+);
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

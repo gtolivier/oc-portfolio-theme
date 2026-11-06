@@ -64,6 +64,8 @@ import {
   SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND,
   SITE_WITH_PROJECTS_LISTED_WITHOUT_WRITTEN_PAGES,
   SITE_WITH_PROJECTS_WITHOUT_A_VALID_KIND,
+  SITE_WITH_A_KINDLESS_PROJECT_IN_THE_CONFIGURED_SECTION,
+  SITE_WITH_A_KINDLESS_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION,
   SITE_WITH_LISTED_PROJECT_STACKS_AS_A_TEXT,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_UNRENDERED_HOME_PAGES,
   TEMPLATE_EXECUTION_ERROR,
@@ -2692,6 +2694,43 @@ test.describe('projects section content errors: build failure', () => {
     ]) {
       expect.soft(build.errors, `no error message should name ${project}`).not.toContain(project);
     }
+  });
+
+  test('with projectsSection naming another section, a project of that section without a kind makes the site build fail, with an error message that names that project and its language, while a project without a kind in a projects/ section that is not the configured one breaks nothing', () => {
+    /* Both sites name ateliers/ in projectsSection and feature no projects on their home pages.
+       In tests/fixtures/kindless-project-in-the-configured-section/content/ateliers/,
+       sablier-sans-genre.md, in French only, declares no kind: it is on the projects list, and the
+       person building the site must get a failure with a message that names it, through its file
+       name, and the language of its page by its code. In
+       tests/fixtures/kindless-project-outside-the-configured-section/content/, the one project of
+       ateliers/ declares a valid kind, and it is projects/sablier-sans-genre.md, of a section the
+       site no longer uses for its projects, that declares none: no list holds it, so the site must
+       build. Both halves, so that a check left on projects/ alone, or one that drops the check,
+       does not pass. */
+    const project = 'sablier-sans-genre';
+    const inTheConfiguredSection = tryToBuildSite(SITE_WITH_A_KINDLESS_PROJECT_IN_THE_CONFIGURED_SECTION);
+    expect
+      .soft(inTheConfiguredSection.succeeded, 'with a project without a kind in ateliers/, the site build should fail')
+      .toBe(false);
+    const messages = inTheConfiguredSection.errors.split('\n').filter((line) => line.includes(project));
+    expect
+      .soft(
+        messages.length,
+        `with a project without a kind in ateliers/, error messages naming the project ${project}, in:\n${inTheConfiguredSection.errors}`,
+      )
+      .toBeGreaterThan(0);
+    for (const message of messages) {
+      expect
+        .soft(message, 'the error message should name the project’s language, fr')
+        .toMatch(new RegExp(languageCodePattern('fr'), 'u'));
+    }
+    const outsideTheConfiguredSection = tryToBuildSite(SITE_WITH_A_KINDLESS_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION);
+    expect
+      .soft(
+        outsideTheConfiguredSection.succeeded,
+        `with a project without a kind in projects/ only, the site should build, but Hugo reported:\n${outsideTheConfiguredSection.errors}`,
+      )
+      .toBe(true);
   });
 
   test('a short project of the projects section’s list, featured on neither home page, whose page writes its stack as a text rather than a list makes the site build fail, with an error message that names that project, says its stack must be a list and names its language', () => {

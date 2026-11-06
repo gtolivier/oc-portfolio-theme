@@ -1,0 +1,7 @@
+# Configuration added to exampleSite/hugo.toml by the test of a projects/
+# section that is not the one the projectsSection site param names and that
+# holds a project without a kind: this file names ateliers, and the fixture's
+# content/ adds that section, a project without a kind in projects/, and
+# replaces both home pages.
+[params]
+  projectsSection = 'ateliers'
