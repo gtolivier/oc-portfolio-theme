@@ -6,15 +6,15 @@
   {{ .Content }}
   {{ $shortKind := "short" }}
   {{ $engagementKind := "engagement" }}
+  {{ $projectsSection := partial "projects/section.html" }}
   {{ $featuredReferences := site.Home.Params.projects }}
-  {{ range cond (and .Parent.IsHome (eq .Section "projects")) .RegularPages slice }}
+  {{ range cond (and .Parent.IsHome (eq .Section $projectsSection.name)) .RegularPages slice }}
     {{- if not (in (slice $shortKind $engagementKind) .Params.kind) }}{{ errorf "projects: the project %q must declare a kind, either %q or %q (language: %s)" .File.Path $engagementKind $shortKind .Language.Lang }}{{ end }}
     {{- /* A featured project's stack is already reported by the featured projects. */}}
     {{- $isFeatured := and (reflect.IsSlice $featuredReferences) (in $featuredReferences (strings.TrimPrefix "/" .Path)) }}
     {{- if and (not $isFeatured) (partial "projects/has-invalid-stack.html" .) }}{{ errorf "projects: the stack of the project %q must be a list (language: %s)" .File.Path .Language.Lang }}{{ end }}
   {{ end }}
   {{- /* Only the projects section is the projects list. */}}
-  {{ $projectsSection := partial "projects/section.html" }}
   {{- partial "projects/report-section-problem.html" $projectsSection }}
   {{ $listedPages := cond (eq .Section $projectsSection.name) .RegularPages slice }}
   {{ $shortProjects := where $listedPages "Params.kind" $shortKind }}
