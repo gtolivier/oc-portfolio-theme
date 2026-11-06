@@ -15,4 +15,14 @@
       </article>
     {{ end }}
   {{ end }}
+  {{ $engagements := where .Pages "Params.kind" "engagement" }}
+  {{ with $engagements }}
+    <h2>{{ i18n "engagements" }}</h2>
+    {{ range . }}
+      <article>
+        <h3>{{ .Title }}</h3>
+        <p>{{ delimit (slice .Params.years .Params.mode .Params.duration) " · " }}</p>
+      </article>
+    {{ end }}
+  {{ end }}
 {{ end }}

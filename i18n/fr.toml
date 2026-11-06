@@ -46,5 +46,8 @@ other = 'Voir le détail'
 [shortProjects]
 other = 'Projets courts & interactifs'
 
+[engagements]
+other = 'Missions & applications métier'
+
 [language]
 other = 'Langue'
