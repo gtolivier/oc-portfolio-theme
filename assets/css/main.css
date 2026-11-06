@@ -593,8 +593,9 @@ tick-field > canvas {
 }
 
 /* The site footer: one ink band in small monospace, from the page gutter, like
-   the header. On a phone, the footer note takes its own line below the ©
-   line. */
+   the header. It sets its ink itself, though the body's background is ink
+   too: the band is ink in its own right, whatever the body's background. On
+   a phone, the footer note takes its own line below the © line. */
 .site-footer {
   display: flex;
   flex-direction: column;
