@@ -62,6 +62,7 @@ import {
   SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE,
   SITE_WITH_PROJECTS_ORDERED_BY_WEIGHT,
   SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND,
+  SITE_WITH_PROJECTS_LISTED_WITHOUT_WRITTEN_PAGES,
   TEMPLATE_EXECUTION_ERROR,
   type BuiltSite,
   buildSite,
@@ -2428,6 +2429,69 @@ test.describe('projects section of another site, holding a subsection whose kind
     await expect(directProject).toBeVisible();
     for (const title of ['Pendules marquetées', 'Pendule religieuse Boulle']) {
       await expect(main.getByText(title, { exact: true }), `the title "${title}" on the list`).toHaveCount(0);
+    }
+  });
+});
+
+test.describe('projects section of another site, holding projects whose page Hugo does not write', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_PROJECTS_LISTED_WITHOUT_WRITTEN_PAGES);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('a project whose page is not written ([build] render = "never" or "link") is listed without a link', async ({
+    page,
+    context,
+  }) => {
+    /* In tests/fixtures/projects-listed-without-pages/content/projects/, a short project and an
+       engagement declare render = 'never' (no address), and a short project and an engagement
+       render = 'link' (an address, but nothing written there). Each is still listed, its title
+       shown, with no link at all: none in its title, not even an empty one, and none anywhere on
+       the page to the address render = 'link' gives it. The example site's projects of both
+       kinds, whose pages are written, keep the link in their title, so that a list without any
+       link does not pass. */
+    const site = SITE_WITH_PROJECTS_LISTED_WITHOUT_WRITTEN_PAGES;
+    await serveSite(context, site, siteDirectory);
+    const response = await page.goto(`${site.origin}/fr/projets/`);
+    expect(response?.status(), 'status of the projects section’s page').toBe(200);
+    const main = page.getByRole('main');
+    const unwrittenProjects = [
+      { title: 'Pendulette de voyage', render: 'never' },
+      { title: 'Carillon de beffroi', render: 'never' },
+      { title: 'Horloge de gare', render: 'link', address: '/fr/projets/horloge-de-gare/' },
+      { title: 'Régulateur de marine', render: 'link', address: '/fr/projets/regulateur-de-marine/' },
+    ];
+    /* The page is static and already loaded once a title is found: the links are counted once,
+       rather than waited for, so that every project's failure is reported within the test's
+       timeout. */
+    for (const project of unwrittenProjects) {
+      const projectHeading = main.getByRole('heading', { level: 3, name: project.title, exact: true });
+      await expect(projectHeading, `the title of ${project.title} (render = "${project.render}")`).toHaveCount(1);
+      await expect(projectHeading).toBeVisible();
+      expect
+        .soft(
+          await projectHeading.locator('a').count(),
+          `links in the title of ${project.title} (render = "${project.render}")`,
+        )
+        .toBe(0);
+      if (project.address) {
+        expect
+          .soft(
+            await main.locator(`a[href$="${project.address}"]`).count(),
+            `links to ${project.address}, where no page is written`,
+          )
+          .toBe(0);
+      }
+    }
+    for (const title of ['Régulateur de parquet en noyer', 'Restauration d’une pendule de cheminée']) {
+      const projectHeading = main.getByRole('heading', { level: 3, name: title, exact: true });
+      await expect(
+        projectHeading.getByRole('link', { name: title, exact: true }),
+        `the link in the title of ${title}, whose page is written`,
+      ).toHaveCount(1);
     }
   });
 });

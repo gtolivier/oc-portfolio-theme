@@ -1368,6 +1368,16 @@ export const SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND
   'subsection-with-a-cascaded-kind',
 );
 
+/* Every project of the example site's projects section has a page: this site adds to that
+   section, in French only, the pages of tests/fixtures/projects-listed-without-pages/content,
+   four projects whose page Hugo does not write: a short project and an engagement that declare
+   [build] render = 'never' (no address at all), "Pendulette de voyage" and "Carillon de beffroi",
+   and a short project and an engagement that declare render = 'link' (an address, but no page
+   written there), "Horloge de gare" and "Régulateur de marine". The example site's projects,
+   such as its short project "Régulateur de parquet en noyer" and its engagement "Restauration
+   d’une pendule de cheminée", keep their pages. */
+export const SITE_WITH_PROJECTS_LISTED_WITHOUT_WRITTEN_PAGES = testSite('projects-listed-without-pages');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
