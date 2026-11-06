@@ -4,10 +4,12 @@
   <h1>{{ .Title }}</h1>
   {{ with .Description }}<p>{{ . }}</p>{{ end }}
   {{ .Content }}
+  {{ $shortKind := "short" }}
+  {{ $engagementKind := "engagement" }}
   {{ range cond (and .Parent.IsHome (eq .Section "projects")) .RegularPages slice }}
-    {{- if not (in (slice "short" "engagement") .Params.kind) }}{{ errorf "projects: the project %q must declare a kind, either \"engagement\" or \"short\" (language: %s)" .File.Path .Language.Lang }}{{ end }}
+    {{- if not (in (slice $shortKind $engagementKind) .Params.kind) }}{{ errorf "projects: the project %q must declare a kind, either %q or %q (language: %s)" .File.Path $engagementKind $shortKind .Language.Lang }}{{ end }}
   {{ end }}
-  {{ $shortProjects := where .RegularPages "Params.kind" "short" }}
+  {{ $shortProjects := where .RegularPages "Params.kind" $shortKind }}
   {{ with $shortProjects }}
     <h2>{{ i18n "shortProjects" }}</h2>
     {{ range . }}
@@ -18,7 +20,7 @@
       </article>
     {{ end }}
   {{ end }}
-  {{ $engagements := where .RegularPages "Params.kind" "engagement" }}
+  {{ $engagements := where .RegularPages "Params.kind" $engagementKind }}
   {{ with $engagements }}
     <h2>{{ i18n "engagements" }}</h2>
     {{ range . }}
