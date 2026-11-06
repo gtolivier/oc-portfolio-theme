@@ -2153,6 +2153,78 @@ test('the projects section’s page shows, in each language, an engagement (para
   }
 });
 
+test('the projects section’s page lists, in each language, an engagement’s parts ([[params.parts]]) under its description, in their front-matter order, each with its name and its description', async ({
+  page,
+}) => {
+  /* exampleSite/content/projects/restauration-pendule.md and .en.md give the engagement the
+     description and the [[params.parts]] below, in that order. Each item is checked to hold the
+     part's name and description, whatever separates them. */
+  const sections = [
+    {
+      address: '/fr/projets/',
+      title: 'Restauration d’une pendule de cheminée',
+      description:
+        'Remise en marche d’une pendule Empire en bronze doré : mouvement nettoyé, suspension refaite, cadran retouché.',
+      parts: [
+        { name: 'Mouvement à sonnerie', description: 'Démontage, nettoyage et huilage des rouages et du barillet.' },
+        { name: 'Suspension du balancier', description: 'Remplacement du fil de soie et réglage du battement.' },
+        { name: 'Émail du cadran', description: 'Reprise des chiffres effacés et du vernis fendillé.' },
+      ],
+    },
+    {
+      address: '/en/projects/',
+      title: 'Restoration of a mantel clock',
+      description:
+        'An Empire gilt-bronze clock brought back to life: movement cleaned, suspension rebuilt, dial touched up.',
+      parts: [
+        { name: 'Striking movement', description: 'Wheels and barrel taken apart, cleaned and oiled.' },
+        { name: 'Pendulum suspension', description: 'Silk thread replaced and beat adjusted.' },
+        { name: 'Dial enamel', description: 'Worn numerals restored and crazed varnish redone.' },
+      ],
+    },
+  ];
+  for (const section of sections) {
+    await page.goto(section.address);
+    const main = page.getByRole('main');
+    const projectHeading = main.getByRole('heading', { level: 3, name: section.title, exact: true });
+    await expect(projectHeading, `on ${section.address}, the engagement's title`).toHaveCount(1);
+    const list = main.getByRole('list').filter({ hasText: section.parts[0].name });
+    await expect(list, `on ${section.address}, the list of the engagement's parts`).toHaveCount(1);
+    await expect(list).toBeVisible();
+    const items = list.getByRole('listitem');
+    await expect(items, `on ${section.address}, one list item per part`).toHaveCount(section.parts.length);
+    for (const [index, part] of section.parts.entries()) {
+      const item = items.nth(index);
+      await expect(item, `on ${section.address}, item ${index + 1} gives part ${index + 1}'s name`).toContainText(
+        part.name,
+      );
+      await expect(
+        item,
+        `on ${section.address}, item ${index + 1} gives part ${index + 1}'s description`,
+      ).toContainText(part.description);
+    }
+    expect(
+      await isUnderHeading(projectHeading, list),
+      `on ${section.address}, the list of parts is under the engagement's title`,
+    ).toBe(true);
+    const description = main.getByText(section.description, { exact: true });
+    await expect(description, `on ${section.address}, the engagement's description, shown once`).toHaveCount(1);
+    await expect(description).toBeVisible();
+    expect(
+      await isUnderHeading(projectHeading, description),
+      `on ${section.address}, the engagement's description is under its title`,
+    ).toBe(true);
+    const descriptionHandle = await description.elementHandle();
+    expect(
+      await list.evaluate(
+        (parts, text) => !!text && (text.compareDocumentPosition(parts) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+        descriptionHandle,
+      ),
+      `on ${section.address}, the list of parts comes after the engagement's description`,
+    ).toBe(true);
+  }
+});
+
 test('the projects section’s page shows, in each language, the site’s author and its footer note above the page heading', async ({
   page,
 }) => {
