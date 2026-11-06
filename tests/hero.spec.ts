@@ -202,7 +202,7 @@ async function displayedExtent(element: Locator): Promise<{ left: number; right:
   });
 }
 
-/* The hero comes before the home page text: its action buttons are, in order, the first
+/* The hero opens the main content: its action buttons are, in order, the first
    links of the main content. They are looked up there, and not in the whole page, because
    the header has its own links, including a "Contact" one. */
 function firstHeroButton(page: Page): Locator {

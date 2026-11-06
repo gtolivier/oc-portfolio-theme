@@ -42,7 +42,7 @@ test('activating "Aller au contenu" with the Enter key moves focus to the main c
   await expect(content).toBeFocused();
 
   await page.keyboard.press(tab);
-  /* The hero, placed before the home page text, starts with its action
+  /* The hero, at the top of the main content, starts with its action
      buttons: the first one is the "Voir les projets" link. */
   await expect(content.getByRole('link', { name: 'Voir les projets', exact: true })).toBeFocused();
 });
