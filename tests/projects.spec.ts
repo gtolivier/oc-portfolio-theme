@@ -60,6 +60,7 @@ import {
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
   SITE_WITH_PROJECTS_UNDER_THE_HERO,
   SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE,
+  SITE_WITH_PROJECTS_ORDERED_BY_WEIGHT,
   TEMPLATE_EXECUTION_ERROR,
   type BuiltSite,
   buildSite,
@@ -2307,6 +2308,51 @@ test.describe('projects section of another site, holding projects of one kind on
         await isUnderHeading(groupHeadings.first(), projectHeading),
         `on ${section.address}, the project's title is under the one group heading`,
       ).toBe(true);
+    }
+  });
+});
+
+test.describe('projects section of another site, holding several weighted projects of each kind', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_PROJECTS_ORDERED_BY_WEIGHT);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('within each group, projects follow their weight', async ({ page, context }) => {
+    /* tests/fixtures/weighted-projects/content/vitrines/ holds three engagements and three short
+       projects, listed below in ascending front-matter weight. Within each group, that order is
+       neither the order of their titles, nor of their file names, nor of their dates, in either
+       direction. A group heading is found by its name, the only handle it has; the titles under it
+       are read in the page's order. */
+    const site = SITE_WITH_PROJECTS_ORDERED_BY_WEIGHT;
+    await serveSite(context, site, siteDirectory);
+    const groups = [
+      {
+        heading: 'Missions & applications métier',
+        titles: ['Horloge du beffroi', 'Comtoise de ferme', 'Pendule d’applique'],
+      },
+      {
+        heading: 'Projets courts & interactifs',
+        titles: ['Pendulette de bureau', 'Cadran solaire de terrasse', 'Sablier de marine'],
+      },
+    ];
+    await page.goto(`${site.origin}/fr/vitrines/`);
+    const main = page.getByRole('main');
+    const projectHeadings = main.getByRole('heading', { level: 3 });
+    await expect(projectHeadings, 'one title per project').toHaveCount(6);
+    for (const group of groups) {
+      const groupHeading = main.getByRole('heading', { level: 2, name: group.heading, exact: true });
+      await expect(groupHeading, `the "${group.heading}" heading`).toHaveCount(1);
+      const titlesUnderGroup: string[] = [];
+      for (const projectHeading of await projectHeadings.all()) {
+        if (await isUnderHeading(groupHeading, projectHeading)) {
+          titlesUnderGroup.push((await projectHeading.textContent())!.trim());
+        }
+      }
+      expect(titlesUnderGroup, `the titles under "${group.heading}", in the page's order`).toEqual(group.titles);
     }
   });
 });

@@ -1347,6 +1347,16 @@ export const SITE_WITHOUT_CONTACT_ACTION = testSite('unaddressed-form');
    built. */
 export const SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE = testSite('one-kind-per-language');
 
+/* The example site's projects section holds a single project of each kind per language: this site
+   names vitrines/ in its projectsSection site param (see tests/fixtures/weighted-projects/hugo.toml),
+   replaces both home pages with ones that feature no projects, and adds that section, titled
+   "Vitrines", in French only, published at /fr/vitrines/. It holds three engagements and three
+   short projects, each with a front-matter weight and date, chosen so that, within each group, the
+   weight order is neither the order of their titles nor of their file names, in either direction,
+   nor the order of their dates, in either direction. The example site's projects/ section is still
+   built. */
+export const SITE_WITH_PROJECTS_ORDERED_BY_WEIGHT = testSite('weighted-projects');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
