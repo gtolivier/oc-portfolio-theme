@@ -22,6 +22,14 @@
       <article>
         <h3>{{ .Title }}</h3>
         <p>{{ delimit (slice .Params.years .Params.mode .Params.duration) " · " }}</p>
+        {{ with .Description }}<p>{{ . }}</p>{{ end }}
+        {{ with .Params.parts }}
+          <ul>
+            {{ range . }}
+              <li><strong>{{ .name }}</strong> {{ .description }}</li>
+            {{ end }}
+          </ul>
+        {{ end }}
       </article>
     {{ end }}
   {{ end }}
