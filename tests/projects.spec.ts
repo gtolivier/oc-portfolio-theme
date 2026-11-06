@@ -61,6 +61,7 @@ import {
   SITE_WITH_PROJECTS_UNDER_THE_HERO,
   SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE,
   SITE_WITH_PROJECTS_ORDERED_BY_WEIGHT,
+  SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND,
   TEMPLATE_EXECUTION_ERROR,
   type BuiltSite,
   buildSite,
@@ -2353,6 +2354,36 @@ test.describe('projects section of another site, holding several weighted projec
         }
       }
       expect(titlesUnderGroup, `the titles under "${group.heading}", in the page's order`).toEqual(group.titles);
+    }
+  });
+});
+
+test.describe('projects section of another site, holding a subsection whose kind cascades to its pages', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('a page in a subsection of the projects section does not appear on the list', async ({ page, context }) => {
+    /* tests/fixtures/subsection-with-a-cascaded-kind/content/projects/marqueterie/_index.md, titled
+       "Pendules marquetées", gives kind = 'short' to itself and to its one page, "Pendule religieuse
+       Boulle", through [cascade]. Only the projects that sit directly in projects/ belong on the
+       list: neither the subsection nor its page, although both carry a kind. The example site's
+       short project "Régulateur de parquet en noyer", directly in projects/, is still listed, so
+       that an empty page does not pass. */
+    const site = SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND;
+    await serveSite(context, site, siteDirectory);
+    const response = await page.goto(`${site.origin}/fr/projets/`);
+    expect(response?.status(), 'status of the projects section’s page').toBe(200);
+    const main = page.getByRole('main');
+    const directProject = main.getByRole('heading', { level: 3, name: 'Régulateur de parquet en noyer', exact: true });
+    await expect(directProject, 'the title of a project directly in the section').toHaveCount(1);
+    await expect(directProject).toBeVisible();
+    for (const title of ['Pendules marquetées', 'Pendule religieuse Boulle']) {
+      await expect(main.getByText(title, { exact: true }), `the title "${title}" on the list`).toHaveCount(0);
     }
   });
 });

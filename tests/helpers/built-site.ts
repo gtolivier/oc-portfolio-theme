@@ -1357,6 +1357,17 @@ export const SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE = testSite('one-kind-pe
    built. */
 export const SITE_WITH_PROJECTS_ORDERED_BY_WEIGHT = testSite('weighted-projects');
 
+/* The example site's projects section holds its projects directly, without subsections: this
+   site adds, in French only, the pages of
+   tests/fixtures/subsection-with-a-cascaded-kind/content: a subsection of projects/,
+   marqueterie/, titled "Pendules marquetées", whose _index.md gives kind = 'short' to its whole
+   tree through [cascade] [cascade.params] (its own page included), and one page inside it,
+   "Pendule religieuse Boulle". The example site's projects, such as its short project
+   "Régulateur de parquet en noyer", still sit directly in projects/. */
+export const SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND = testSite(
+  'subsection-with-a-cascaded-kind',
+);
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
