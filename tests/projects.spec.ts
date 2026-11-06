@@ -64,6 +64,7 @@ import {
   SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND,
   SITE_WITH_PROJECTS_LISTED_WITHOUT_WRITTEN_PAGES,
   SITE_WITH_PROJECTS_WITHOUT_A_VALID_KIND,
+  SITE_WITH_LISTED_PROJECT_STACKS_AS_A_TEXT,
   TEMPLATE_EXECUTION_ERROR,
   type BuiltSite,
   buildSite,
@@ -2537,6 +2538,40 @@ test.describe('projects section content errors: build failure', () => {
       'montre-grande-complication',
     ]) {
       expect.soft(build.errors, `no error message should name ${project}`).not.toContain(project);
+    }
+  });
+
+  test('a short project of the projects section’s list, featured on neither home page, whose page writes its stack as a text rather than a list makes the site build fail, with an error message that names that project, says its stack must be a list and names its language', () => {
+    /* In tests/fixtures/listed-materials-as-text/content/projects/, carillon-de-poche.md, in French
+       only, and boussole-laiton.en.md, in English only, are short projects whose stack is a single
+       text ('Laiton, Verre', 'Brass, Glass') rather than a list. Neither home page features them,
+       so the check of the featured projects' cards cannot be what reports them: the projects
+       section's list must. Rather than a list that shows the text as it is, the person building
+       the site must get a failure with, for each of them, a message that names the project,
+       through its file name, says its stack must be a list, and names the language of its page by
+       its code, as a word that no other word follows, whatever the rest of the wording. One
+       project per language, so that a language written in the template does not pass. */
+    const build = tryToBuildSite(SITE_WITH_LISTED_PROJECT_STACKS_AS_A_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const cases = [
+      { project: 'carillon-de-poche', language: 'fr' },
+      { project: 'boussole-laiton', language: 'en' },
+    ];
+    for (const { project, language } of cases) {
+      const messages = build.errors
+        .split('\n')
+        .filter((line) => line.includes(project) && /\bstack\b.*\blist\b/.test(line));
+      expect
+        .soft(
+          messages.length,
+          `error messages naming the project ${project} and saying its stack must be a list, in:\n${build.errors}`,
+        )
+        .toBeGreaterThan(0);
+      for (const message of messages) {
+        expect
+          .soft(message, `the error message about ${project} should name its language, ${language}`)
+          .toMatch(new RegExp(languageCodePattern(language), 'u'));
+      }
     }
   });
 });

@@ -1387,6 +1387,14 @@ export const SITE_WITH_PROJECTS_LISTED_WITHOUT_WRITTEN_PAGES = testSite('project
    (projects/atelier/cartel-hors-liste.md), declares no kind either, and no kind cascades to it. */
 export const SITE_WITH_PROJECTS_WITHOUT_A_VALID_KIND = testSite('projects-without-a-valid-kind');
 
+/* Every project of the example site's projects section writes its stack as a list: this site adds
+   to that section the pages of tests/fixtures/listed-materials-as-text/content, two short projects
+   that neither home page features and whose stack is a single text rather than a list: a
+   French-only one, "Carillon de poche" (projects/carillon-de-poche.md, stack = 'Laiton, Verre'),
+   and an English-only one, "Brass compass" (projects/boussole-laiton.en.md,
+   stack = 'Brass, Glass'). */
+export const SITE_WITH_LISTED_PROJECT_STACKS_AS_A_TEXT = testSite('listed-materials-as-text');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
