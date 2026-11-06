@@ -3,6 +3,7 @@ title = 'Lanterne forgée'
 description = 'Lanterne de façade en fer forgé, vitrée et patinée à la cire.'
 
 [params]
+  kind = 'short'
   role = 'Ferronnière'
   stack = 'Laiton, Acier'
 +++

@@ -2,6 +2,7 @@
 title: Sablier de chapelle
 description: Sablier de chapelle en verre soufflé, monture de chêne ciré et sable de marbre tamisé.
 params:
+  kind: short
   stack:
 ---
 

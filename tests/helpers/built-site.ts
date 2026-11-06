@@ -1378,6 +1378,15 @@ export const SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND
    d’une pendule de cheminée", keep their pages. */
 export const SITE_WITH_PROJECTS_LISTED_WITHOUT_WRITTEN_PAGES = testSite('projects-listed-without-pages');
 
+/* Every project of the example site's projects section declares a kind, 'engagement' or 'short':
+   this site adds to that section the pages of tests/fixtures/projects-without-a-valid-kind/content,
+   a French-only project that declares no kind, "Pendule sans genre"
+   (projects/pendule-sans-genre.md), and an English-only project whose kind is 'Short', with a
+   capital letter, "Misfiled Comtoise clock" (projects/comtoise-mal-classee.en.md). It also adds,
+   in French only, a subsection of projects/, atelier/, whose one page, "Cartel hors liste"
+   (projects/atelier/cartel-hors-liste.md), declares no kind either, and no kind cascades to it. */
+export const SITE_WITH_PROJECTS_WITHOUT_A_VALID_KIND = testSite('projects-without-a-valid-kind');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

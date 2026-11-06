@@ -3,6 +3,7 @@ title = 'Girouette en cuivre'
 description = 'Girouette de toiture en cuivre repoussé, coq et flèche dorés à la feuille.'
 
 [params]
+  kind = 'short'
   role = 'Chaudronnière'
   stack = false
 +++
