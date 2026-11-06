@@ -2029,6 +2029,41 @@ test('the projects section’s page shows, in each language, the section’s tit
   }
 });
 
+test('the projects section’s page shows, in each language, the site’s author and its footer note above the page heading', async ({
+  page,
+}) => {
+  /* The author ([params] author) and the footer note of each language ([languages.<lang>.params]
+     footerNote) of exampleSite/hugo.toml. Both are looked for in the main content, so that the
+     footer, which shows them too, does not count; each must end above the page heading,
+     whatever separates them. */
+  const author = 'Jean Exemple';
+  const sections = [
+    { address: '/fr/projets/', footerNote: 'Horloger de démonstration' },
+    { address: '/en/projects/', footerNote: 'Sample clockmaker' },
+  ];
+  for (const section of sections) {
+    await page.goto(section.address);
+    const main = page.getByRole('main');
+    const heading = main.getByRole('heading', { level: 1 });
+    await expect(heading).toHaveCount(1);
+    const headingBox = (await heading.boundingBox())!;
+    for (const [name, text] of [
+      ['site’s author', author],
+      ['footer note', section.footerNote],
+    ] as const) {
+      const line = main.getByText(text);
+      await expect(line, `on ${section.address}, the main content should show the ${name} once`).toHaveCount(1);
+      await expect(line).toBeVisible();
+      const lineBox = (await line.boundingBox())!;
+      /* Compared with a 0.5 px tolerance: rendered box positions may carry sub-pixel rounding. */
+      expect(
+        lineBox.y + lineBox.height,
+        `on ${section.address}, bottom of the ${name} against the top of the page heading (${headingBox.y} px)`,
+      ).toBeLessThanOrEqual(headingBox.y + 0.5);
+    }
+  }
+});
+
 test.describe('home page of another site, featuring only projects of one subsection of the projects section', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
