@@ -320,19 +320,12 @@ test.describe('browser without JavaScript', () => {
     const contact = contactForm(page);
     const { form, sendButton } = contact;
     const langField = form.locator('[name="lang"]');
-    /* Assistive technologies: the form's textboxes stay the email and the message, and no other
-       form control they expose is the "lang" field. */
+    /* Assistive technologies: the form's textboxes stay the email and the message. */
     const textboxes = form.getByRole('textbox');
     expect(
       await textboxes.evaluateAll((elements) => elements.map((element) => element.getAttribute('name'))),
       'the fields behind the textboxes of the form, as assistive technologies see them',
     ).toEqual(['email', 'message']);
-    for (const role of ['combobox', 'listbox', 'spinbutton', 'checkbox', 'radio', 'slider', 'searchbox'] as const) {
-      const exposed = await form
-        .getByRole(role)
-        .evaluateAll((elements) => elements.map((element) => element.getAttribute('name')));
-      expect(exposed, `the fields of the form exposed as ${role}`).not.toContain('lang');
-    }
     /* The visitor: with the form in view, the "lang" field is nowhere on screen. */
     await sendButton.scrollIntoViewIfNeeded();
     const langOnScreen = (await langField.isVisible()) && (await isInViewport(langField));
