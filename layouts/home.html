@@ -193,8 +193,8 @@
     <p class="contact-error" id="contact-error">{{ i18n "contactError" }}</p>
     {{- if not site.Params.contactAction }}{{ errorf "contact: the contactAction site param is not set: it must be the address the contact form posts to" }}{{ end }}
     <form aria-labelledby="contact-heading" method="post" action="{{ site.Params.contactAction }}">
+      <input type="hidden" name="lang" value="{{ $lang }}">
       <div class="contact-fields">
-        <input type="hidden" name="lang" value="{{ $lang }}">
         <label for="contact-email">{{ i18n "contactEmail" }}</label>
         <input type="email" id="contact-email" name="email" autocomplete="email" required placeholder="{{ i18n "contactEmailPlaceholder" }}">
         <label for="contact-message">{{ i18n "contactMessage" }}</label>
