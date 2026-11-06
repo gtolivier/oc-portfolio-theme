@@ -2311,6 +2311,77 @@ test('the projects section’s page shows, in each language, the site’s author
   }
 });
 
+test.describe('projects section’s page without JavaScript', () => {
+  /* The theme rule: no JavaScript is required to read the content. A script may decode a
+     scrambled text or reveal a component: without it, nothing may stay hidden. */
+  test.use({ javaScriptEnabled: false });
+
+  test('without JavaScript, the projects section’s page shows, in each language, its title, its intro and the title of each of its projects, in clear and nothing left transparent', async ({
+    page,
+  }) => {
+    /* The title and description of exampleSite/content/projects/_index.md and _index.en.md, and
+       the titles of the section's four projects in each language, short projects and
+       engagements alike. */
+    const sections = [
+      {
+        address: '/fr/projets/',
+        title: 'Projets',
+        description: 'Pendules, régulateurs et complications imaginaires, restaurés ou conçus pour la démonstration.',
+        projects: [
+          'Régulateur de parquet en noyer',
+          'Montre de poche à grande complication',
+          'Restauration d’une pendule de cheminée',
+          'Horloge astronomique de l’atelier',
+        ],
+      },
+      {
+        address: '/en/projects/',
+        title: 'Projects',
+        description: 'Imaginary clocks, regulators and complications, restored or designed for the demo.',
+        projects: [
+          'Walnut floor regulator',
+          'Grand complication pocket watch',
+          'Restoration of a mantel clock',
+          'The workshop’s astronomical clock',
+        ],
+      },
+    ];
+    for (const section of sections) {
+      await page.goto(section.address);
+      const main = page.getByRole('main');
+      const heading = main.getByRole('heading', { level: 1 });
+      await expect(heading, `on ${section.address}, the page heading`).toHaveCount(1);
+      const intro = main.getByText(section.description, { exact: true });
+      await expect(intro, `on ${section.address}, the intro`).toHaveCount(1);
+      const elements: [string, Locator, string][] = [
+        ['page heading', heading, section.title],
+        ['intro', intro, section.description],
+      ];
+      for (const title of section.projects) {
+        const projectHeading = main.getByRole('heading', { level: 3, name: title, exact: true });
+        await expect(projectHeading, `on ${section.address}, the title of ${title}`).toHaveCount(1);
+        elements.push([`title of ${title}`, projectHeading, title]);
+      }
+      for (const [name, element, text] of elements) {
+        await expect(element, `on ${section.address}, the ${name}`).toBeVisible();
+        /* In clear: the element displays the text itself, not scrambled signs, whether in its
+           text or in generated content. */
+        expect(await displayedText(element), `on ${section.address}, text displayed by the ${name}`).toBe(text);
+        /* Readable: no element is left transparent, waiting for a script to reveal it. The
+           effective opacity multiplies those of the element and of its ancestors. */
+        const opacity = await element.evaluate((el) => {
+          let product = 1;
+          for (let node: Element | null = el; node; node = node.parentElement) {
+            product *= parseFloat(getComputedStyle(node).opacity);
+          }
+          return product;
+        });
+        expect.soft(opacity, `on ${section.address}, effective opacity of the ${name}`).toBe(1);
+      }
+    }
+  });
+});
+
 test.describe('projects section of another site, holding projects of one kind only in each language', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
