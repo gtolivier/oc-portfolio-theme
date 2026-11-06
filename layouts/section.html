@@ -9,7 +9,7 @@
     <h2>{{ i18n "shortProjects" }}</h2>
     {{ range . }}
       <article>
-        <h3>{{ if partial "is-published.html" . }}<a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ else }}{{ .Title }}{{ end }}</h3>
+        <h3>{{ partial "projects/title.html" . }}</h3>
         {{ with .Description }}<p>{{ . }}</p>{{ end }}
         {{ with .Params.stack }}<p>{{ delimit . (partial "stack-separator.html") }}</p>{{ end }}
       </article>
@@ -20,7 +20,7 @@
     <h2>{{ i18n "engagements" }}</h2>
     {{ range . }}
       <article>
-        <h3>{{ if partial "is-published.html" . }}<a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ else }}{{ .Title }}{{ end }}</h3>
+        <h3>{{ partial "projects/title.html" . }}</h3>
         <p>{{ delimit (slice .Params.years .Params.mode .Params.duration) " · " }}</p>
         {{ with .Description }}<p>{{ . }}</p>{{ end }}
         {{ with .Params.parts }}
