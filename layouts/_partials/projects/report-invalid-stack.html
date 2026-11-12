@@ -1,0 +1,2 @@
+{{- /* Raises the error for a project whose stack is written but is not a list, which has-invalid-stack.html tells; takes the project's page and the reference the error names it by. */}}
+{{- errorf "projects: the stack of the project %q must be a list (language: %s)" .reference .page.Language.Lang }}

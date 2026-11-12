@@ -1,2 +1,2 @@
-{{- /* Whether the project's stack is written but is not a list. YAML reads a stack: line left without a value as null, like an omitted key: a project without a stack. An empty text or false is a content mistake. Each caller words its own error. */}}
+{{- /* Whether the project's stack is written but is not a list. YAML reads a stack: line left without a value as null, like an omitted key: a project without a stack. An empty text or false is a content mistake. report-invalid-stack.html words the error. */}}
 {{- return and (ne .Params.stack nil) (not (reflect.IsSlice .Params.stack)) }}

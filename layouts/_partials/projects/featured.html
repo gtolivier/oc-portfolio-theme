@@ -5,10 +5,9 @@
 {{- $nonProjectKindWords := dict "home" "the home page itself" "section" "a section page" "term" "a taxonomy term page" "taxonomy" "a taxonomy page" "404" "the 404 error page" }}
 {{- /* The section featured projects must live in. */}}
 {{- $projectsSection := partial "projects/section.html" }}
-{{- $sectionProblem := $projectsSection.problem }}
 {{- partial "projects/report-section-problem.html" $projectsSection }}
 {{- /* A bad param names no section the theme can check against: no error per featured project then, which would send the person moving projects that may be where they meant them. */}}
-{{- $sectionIsKnown := eq $sectionProblem "" }}
+{{- $sectionIsKnown := eq $projectsSection.problem "" }}
 {{- $projects := slice }}
 {{- range $index, $entry := $featured }}
 {{- $entryNumber := add $index 1 }}
@@ -21,7 +20,7 @@
 {{- if not $page.IsPage }}{{ errorf "projects: the home page's projects parameter references %s, which is not a project (language: %s): %q" (index $nonProjectKindWords $page.Kind | default "a page of another type") $lang $entry }}{{ continue }}{{ end }}
 {{- if and $sectionIsKnown (ne $page.Section $projectsSection.name) (partial "is-published.html" $page.Parent) }}{{ errorf "projects: the project %q does not live in the %s section, which the home page's projects parameter requires (language: %s)" $entry $projectsSection.asWritten $lang }}{{ continue }}{{ end }}
 {{- if partial "has-custom-build-param.html" $page }}{{ errorf "projects: the project %q declares a custom parameter named build, which the theme reads as Hugo's build options (the [build] front matter): rename this parameter (language: %s)" $entry $lang }}{{ continue }}{{ end }}
-{{- if partial "projects/has-invalid-stack.html" $page }}{{ errorf "projects: the stack of the project %q must be a list (language: %s)" $entry $lang }}{{ continue }}{{ end }}
+{{- if partial "projects/has-invalid-stack.html" $page }}{{ partial "projects/report-invalid-stack.html" (dict "page" $page "reference" $entry) }}{{ continue }}{{ end }}
 {{- $projects = $projects | append $page }}
 {{- end }}
 {{- return dict "projects" $projects "section" $projectsSection.name }}
