@@ -1622,7 +1622,7 @@ tick-field > canvas {
   );
 }
 
-.page-hero > :not(.veil) {
+.page-hero > :not(.veil, canvas) {
   max-width: calc(1280px - 2 * var(--page-gutter));
 }
 

@@ -36,11 +36,13 @@
       {{ range . }}
         <article class="engagement">
           <h3>{{ partial "projects/title.html" . }}</h3>
-          <p class="engagement-facts">
-            {{- with .Params.years }}<span class="engagement-years">{{ . }}</span>{{ end }}
-            {{ with .Params.mode }}<span class="engagement-mode">{{ . }}</span>{{ end }}
-            {{ with .Params.duration }}<span class="engagement-duration">{{ . }}</span>{{ end -}}
-          </p>
+          {{ if or .Params.years .Params.mode .Params.duration }}
+            <p class="engagement-facts">
+              {{- with .Params.years }}<span class="engagement-years">{{ . }}</span>{{ end }}
+              {{ with .Params.mode }}<span class="engagement-mode">{{ . }}</span>{{ end }}
+              {{ with .Params.duration }}<span class="engagement-duration">{{ . }}</span>{{ end -}}
+            </p>
+          {{ end }}
           <div class="engagement-details">
             {{ with .Description }}<p class="engagement-description">{{ . }}</p>{{ end }}
             {{ with .Params.parts }}
