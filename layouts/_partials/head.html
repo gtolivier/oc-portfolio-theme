@@ -6,5 +6,8 @@
 {{- /* A subsection of the projects section is not a list of its own: it sends the visitor to the projects list, and stays out of search engines. */}}
 {{- if and .IsSection (not .Parent.IsHome) (eq .Section (partial "projects/section.html").name) }}
 <meta name="robots" content="noindex">
+{{- /* When Hugo does not write the list, there is nowhere to send the visitor. */}}
+{{- if partial "is-published.html" .FirstSection }}
 <meta http-equiv="refresh" content="0; url={{ .FirstSection.RelPermalink }}">
+{{- end }}
 {{- end }}
