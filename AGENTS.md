@@ -19,8 +19,8 @@ The roadmap (one conversation per feature) lives in the private repository
 
 - `npm run dev`: example site, locally, without the browser's HTTP cache
   (see `package.json`): a style or script change shows at the next reload,
-  without a hard reload. Like the tests, it needs Hugo extended installed
-  apart from npm, in the version the CI pins (0.168.0).
+  without a hard reload. Like the tests, it needs Hugo installed apart from
+  npm, in the version `.github/workflows/playwright.yml` pins.
 - `npx playwright test --project=chromium --project=mobile-chrome`: the
   test command — desktop and mobile Chromium. The TDD cycles run this one.
 - `npx playwright test --project=chromium {files}`: the focused test
