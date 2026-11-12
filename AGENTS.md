@@ -18,8 +18,9 @@ The roadmap (one conversation per feature) lives in the private repository
 ## Commands
 
 - `npm run dev`: example site, locally, without the browser's HTTP cache
-  (`hugo server --source exampleSite --noHTTPCache`): a style or script
-  change shows at the next reload, without a hard reload.
+  (see `package.json`): a style or script change shows at the next reload,
+  without a hard reload. Like the tests, it needs Hugo extended installed
+  apart from npm, in the version the CI pins (0.168.0).
 - `npx playwright test --project=chromium --project=mobile-chrome`: the
   test command — desktop and mobile Chromium. The TDD cycles run this one.
 - `npx playwright test --project=chromium {files}`: the focused test
