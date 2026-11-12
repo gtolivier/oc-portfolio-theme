@@ -1,0 +1,6 @@
+# Configuration added to exampleSite/hugo.toml by the test of the order of
+# the projects within each group of a projects section: this file names that
+# section, vitrines, in the projectsSection site param, and the fixture's
+# content/ adds it and replaces both home pages.
+[params]
+  projectsSection = 'vitrines'

@@ -3,6 +3,7 @@ title = 'Pendule squelette'
 description = 'Pendule à mouvement apparent, platines ajourées et globe de verre.'
 
 [params]
+  kind = 'short'
   role = 'Horloger'
   build = '2020'
 +++

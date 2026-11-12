@@ -1337,6 +1337,120 @@ export const SITE_WITH_ANOTHER_CONTACT_ACTION = testSite('other-contact-address'
    look for. */
 export const SITE_WITHOUT_CONTACT_ACTION = testSite('unaddressed-form');
 
+/* The example site's projects section holds projects of both kinds in each language: this site
+   names ateliers/ in its projectsSection site param (see
+   tests/fixtures/one-kind-per-language/hugo.toml), replaces both home pages with ones that
+   feature no projects, and adds that section, titled "Ateliers" and "Workshops", published at
+   /fr/ateliers/ and /en/ateliers/. In French it holds a single short project, "Coucou de chalet"
+   (kind = 'short', French page only); in English a single engagement, "Railway station clock"
+   (kind = 'engagement', English page only). The example site's projects/ section is still
+   built. */
+export const SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE = testSite('one-kind-per-language');
+
+/* The example site's projects section holds a single project of each kind per language: this site
+   names vitrines/ in its projectsSection site param (see tests/fixtures/weighted-projects/hugo.toml),
+   replaces both home pages with ones that feature no projects, and adds that section, titled
+   "Vitrines", in French only, published at /fr/vitrines/. It holds three engagements and three
+   short projects, each with a front-matter weight and date, chosen so that, within each group, the
+   weight order is neither the order of their titles nor of their file names, in either direction,
+   nor the order of their dates, in either direction. The example site's projects/ section is still
+   built. */
+export const SITE_WITH_PROJECTS_ORDERED_BY_WEIGHT = testSite('weighted-projects');
+
+/* The example site's projects section holds its projects directly, without subsections: this
+   site adds, in French and in English, the pages of
+   tests/fixtures/subsection-with-a-cascaded-kind/content: a subsection of projects/,
+   marqueterie/, titled "Pendules marquetées" ("Marquetry clocks" in English), whose _index.md
+   gives kind = 'short' to its whole tree through [cascade] [cascade.params] (its own page
+   included), and one page inside it, "Pendule religieuse Boulle" ("Boulle religieuse clock").
+   The example site's projects, such as its short project "Régulateur de parquet en noyer"
+   ("Walnut floor regulator"), still sit directly in projects/. */
+export const SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND = testSite(
+  'subsection-with-a-cascaded-kind',
+);
+
+/* The example site writes the page of its projects section, the projects list, in both
+   languages: this site replaces that section's pages with those of
+   tests/fixtures/unwritten-projects-list/content, whose French one declares a plain [build]
+   render = 'never' (no address at all) and whose English one render = 'link' (an address,
+   /en/projects/, but no page written there), and adds a subsection of projects/, marqueterie/,
+   titled "Pendules marquetées" ("Marquetry clocks" in English), whose own page is written, at
+   /fr/projets/marqueterie/ and /en/projects/marqueterie/. Both home pages are replaced with ones
+   without a hero nor featured projects, whose buttons and links would lead to the unwritten list.
+   The example site's projects still sit directly in projects/, with their pages. */
+export const SITE_WITH_A_SUBSECTION_OF_AN_UNWRITTEN_PROJECTS_LIST = testSite('unwritten-projects-list');
+
+/* Every project of the example site's projects section has a page: this site adds to that
+   section, in French only, the pages of tests/fixtures/projects-listed-without-pages/content,
+   four projects whose page Hugo does not write: a short project and an engagement that declare
+   [build] render = 'never' (no address at all), "Pendulette de voyage" and "Carillon de beffroi",
+   and a short project and an engagement that declare render = 'link' (an address, but no page
+   written there), "Horloge de gare" and "Régulateur de marine". The example site's projects,
+   such as its short project "Régulateur de parquet en noyer" and its engagement "Restauration
+   d’une pendule de cheminée", keep their pages. */
+export const SITE_WITH_PROJECTS_LISTED_WITHOUT_WRITTEN_PAGES = testSite('projects-listed-without-pages');
+
+/* Every project of the example site's projects section declares a kind, 'engagement' or 'short':
+   this site adds to that section the pages of tests/fixtures/projects-without-a-valid-kind/content,
+   a French-only project that declares no kind, "Pendule sans genre"
+   (projects/pendule-sans-genre.md), and an English-only project whose kind is 'Short', with a
+   capital letter, "Misfiled Comtoise clock" (projects/comtoise-mal-classee.en.md). It also adds,
+   in French only, a subsection of projects/, atelier/, whose one page, "Cartel hors liste"
+   (projects/atelier/cartel-hors-liste.md), declares no kind either, and no kind cascades to it. */
+export const SITE_WITH_PROJECTS_WITHOUT_A_VALID_KIND = testSite('projects-without-a-valid-kind');
+
+/* Every project of the example site's projects section writes its stack as a list: this site adds
+   to that section the pages of tests/fixtures/listed-materials-as-text/content, two short projects
+   that neither home page features and whose stack is a single text rather than a list: a
+   French-only one, "Carillon de poche" (projects/carillon-de-poche.md, stack = 'Laiton, Verre'),
+   and an English-only one, "Brass compass" (projects/boussole-laiton.en.md,
+   stack = 'Brass, Glass'). */
+export const SITE_WITH_LISTED_PROJECT_STACKS_AS_A_TEXT = testSite('listed-materials-as-text');
+
+/* The example site's English home page is written and features projects whose stack is a list: this
+   site replaces it with the one of tests/fixtures/unrendered-home-featuring-a-stack-as-text/content,
+   which declares [build] render = 'never' and features a single project, which it adds to the
+   projects section: "Brass sextant" (projects/sextant-laiton.en.md), in English only, a short
+   project whose stack is a single text, stack = 'Brass', rather than a list. With that home page
+   not written, the check of the featured projects' cards never runs. */
+export const SITE_WITH_AN_UNRENDERED_HOME_FEATURING_A_PROJECT_STACK_AS_A_TEXT = testSite(
+  'unrendered-home-featuring-a-stack-as-text',
+);
+
+/* Like SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE, this site sets
+   projectsSection = 'realisatons', a typo that names no section of the site, but Hugo renders
+   neither of its home pages: tests/fixtures/unrendered-homes-with-a-misspelled-param/content
+   replaces both with pages that declare [build] render = 'never'. The section pages of the example
+   site's projects/ section, in both languages, are left to check the param. */
+export const SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_UNRENDERED_HOME_PAGES = testSite(
+  'unrendered-homes-with-a-misspelled-param',
+);
+
+/* The example site's projects/ section is its projects section, and its projects all declare a
+   kind: this site names ateliers/ in its projectsSection site param (see
+   tests/fixtures/kindless-project-in-the-configured-section/hugo.toml), replaces both home pages
+   with ones that feature no projects, and adds that section, whose one project, in French only,
+   "Sablier sans genre" (ateliers/sablier-sans-genre.md), declares no kind. */
+export const SITE_WITH_A_KINDLESS_PROJECT_IN_THE_CONFIGURED_SECTION = testSite(
+  'kindless-project-in-the-configured-section',
+);
+
+/* Like SITE_WITH_A_KINDLESS_PROJECT_IN_THE_CONFIGURED_SECTION, this site names ateliers/ in its
+   projectsSection site param and replaces both home pages with ones that feature no projects, but
+   the one project of ateliers/, "Coucou de chalet", in French only, declares kind = 'short'; it
+   is the example site's projects/ section, no longer the configured one, that gets, in French
+   only, a project that declares no kind, "Sablier sans genre" (projects/sablier-sans-genre.md). */
+export const SITE_WITH_A_KINDLESS_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION = testSite(
+  'kindless-project-outside-the-configured-section',
+);
+
+/* The example site writes both of its home pages: this site replaces them with those of
+   tests/fixtures/unwritten-home-pages/content, which Hugo does not write. The French one declares
+   [build] render = 'never': Hugo gives it no address. The English one declares [build] render =
+   'link': Hugo gives it the address /en/ but writes no page there. The example site's other pages,
+   in both languages, are unchanged. */
+export const SITE_WITH_UNWRITTEN_HOME_PAGES = testSite('unwritten-home-pages');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

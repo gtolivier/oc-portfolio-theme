@@ -168,6 +168,24 @@ test('only the navigation link of the current page is marked as the current page
   }
 });
 
+test('on the projects list page, in French and in English, only the Projects navigation link is marked as the current page', async ({
+  page,
+}) => {
+  for (const { url, names, current } of [
+    { url: '/fr/projets/', names: ['Accueil', 'Projets', 'Contact'], current: 'Projets' },
+    { url: '/en/projects/', names: ['Home', 'Projects', 'Contact'], current: 'Projects' },
+  ]) {
+    await page.goto(url);
+    const links = navigationLinks(page);
+    await expect(links, `navigation links on ${url}`).toHaveText(names);
+    for (const name of names) {
+      const link = links.getByText(name, { exact: true });
+      if (name === current) await expect(link, `${name} on ${url}`).toHaveAttribute('aria-current', 'page');
+      else await expect(link, `${name} on ${url}`).not.toHaveAttribute('aria-current');
+    }
+  }
+});
+
 test('the navigation link marked as the current page is underlined with an accent-colored line', async ({ page }) => {
   await page.goto('/fr/');
   const current = page.locator('header nav').getByRole('link', { name: 'Accueil', exact: true });

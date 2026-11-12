@@ -104,7 +104,7 @@ import {
   pixelsChangedPerColumnInRectangle,
   pixelsNotOfBackgroundPerRow,
 } from './helpers/pixels';
-import { SIGNS, displayedText, textOnScreen } from './helpers/text-on-screen';
+import { SIGNS, displayedText, effectiveOpacity, textOnScreen } from './helpers/text-on-screen';
 
 /* Checks that each tagline line is visible in the area, and that each one starts below the
    previous one, in the given order. */
@@ -1425,15 +1425,8 @@ test.describe('home page without JavaScript', () => {
     };
     for (const [name, element] of Object.entries(elements)) {
       await expect(element, name).toBeVisible();
-      /* Readable: no element is left transparent, waiting for a script to reveal it. The
-         effective opacity multiplies those of the element and of its ancestors. */
-      const opacity = await element.evaluate((el) => {
-        let product = 1;
-        for (let node: Element | null = el; node; node = node.parentElement) {
-          product *= parseFloat(getComputedStyle(node).opacity);
-        }
-        return product;
-      });
+      /* Readable: no element is left transparent, waiting for a script to reveal it. */
+      const opacity = await effectiveOpacity(element);
       expect.soft(opacity, `effective opacity: ${name}`).toBe(1);
     }
   });

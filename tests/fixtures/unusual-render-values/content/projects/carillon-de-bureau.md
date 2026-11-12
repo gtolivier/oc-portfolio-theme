@@ -2,6 +2,9 @@
 title = 'Carillon de bureau'
 description = 'Pendule de bureau à carillon, quatre marteaux et timbres en acier.'
 
+[params]
+  kind = 'short'
+
 [build]
 render = 'false'
 +++

@@ -2,6 +2,9 @@
 title = 'Montre de gousset'
 description = 'Montre de poche à remontoir, boîtier en argent et cadran émaillé.'
 
+[params]
+  kind = 'short'
+
 [build]
 render = 0
 +++

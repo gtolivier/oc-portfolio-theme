@@ -7,7 +7,7 @@ import { copyFileSync, mkdirSync } from 'node:fs';
 // add a weight here when a step needs it, and declare it there.
 const families = {
   'ibm-plex-mono': [400, 600, 700],
-  'ibm-plex-sans': [400],
+  'ibm-plex-sans': [400, 600],
 };
 const target = 'static/fonts';
 mkdirSync(target, { recursive: true });

@@ -1,6 +1,5 @@
 {{ define "main" }}
-  {{- /* The hero and the project cards list a stack the same way. */}}
-  {{- $stackSeparator := " · " }}
+  {{- $stackSeparator := partial "stack-separator.html" }}
   {{- $lang := site.Language.Lang }}
   {{- $clients := partial "param-list-or-empty.html" (dict "params" .Params "key" "clients" "error" (printf "clients: the home page's clients parameter must be a list of names (language: %s)" $lang)) }}
   {{- if reflect.IsMap .Params.hero }}

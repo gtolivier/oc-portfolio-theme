@@ -59,6 +59,17 @@ import {
   SITE_WITH_A_PROJECT_STACK_LEFT_BLANK_IN_YAML,
   SITE_WITH_AN_ENGLISH_HOME_FEATURING_BAD_ENTRIES,
   SITE_WITH_PROJECTS_UNDER_THE_HERO,
+  SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE,
+  SITE_WITH_PROJECTS_ORDERED_BY_WEIGHT,
+  SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND,
+  SITE_WITH_A_SUBSECTION_OF_AN_UNWRITTEN_PROJECTS_LIST,
+  SITE_WITH_PROJECTS_LISTED_WITHOUT_WRITTEN_PAGES,
+  SITE_WITH_PROJECTS_WITHOUT_A_VALID_KIND,
+  SITE_WITH_A_KINDLESS_PROJECT_IN_THE_CONFIGURED_SECTION,
+  SITE_WITH_A_KINDLESS_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION,
+  SITE_WITH_LISTED_PROJECT_STACKS_AS_A_TEXT,
+  SITE_WITH_AN_UNRENDERED_HOME_FEATURING_A_PROJECT_STACK_AS_A_TEXT,
+  SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_UNRENDERED_HOME_PAGES,
   TEMPLATE_EXECUTION_ERROR,
   type BuiltSite,
   buildSite,
@@ -78,7 +89,7 @@ import {
   verticalBands,
 } from './helpers/pixels';
 import { type Rgb, colorComponents, contrastRatio } from './helpers/colors';
-import { displayedText } from './helpers/text-on-screen';
+import { displayedText, effectiveOpacity } from './helpers/text-on-screen';
 import { tabUntilFocused } from './helpers/keyboard';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { DELAY_AFTER_MOVE_MS, moveToScreenOfDensity } from './helpers/screen-density';
@@ -2000,6 +2011,935 @@ test.describe('home pages of the example site, served at the site root and under
   });
 });
 
+test('the projects section’s page shows, in each language, the section’s title as its page heading and the section’s description as an intro paragraph', async ({
+  page,
+}) => {
+  /* The title and description of exampleSite/content/projects/_index.md and _index.en.md. */
+  const sections = [
+    {
+      address: '/fr/projets/',
+      title: 'Projets',
+      description: 'Pendules, régulateurs et complications imaginaires, restaurés ou conçus pour la démonstration.',
+    },
+    {
+      address: '/en/projects/',
+      title: 'Projects',
+      description: 'Imaginary clocks, regulators and complications, restored or designed for the demo.',
+    },
+  ];
+  for (const section of sections) {
+    await page.goto(section.address);
+    const main = page.getByRole('main');
+    const heading = main.getByRole('heading', { level: 1 });
+    await expect(heading).toHaveCount(1);
+    await expect(heading).toHaveText(section.title);
+    const intro = main.getByText(section.description, { exact: true });
+    await expect(intro).toHaveCount(1);
+    await expect(intro).toBeVisible();
+    await expect(intro).toHaveRole('paragraph');
+  }
+});
+
+/* Whether the element sits under the heading in the page's outline: it comes after the heading,
+   and no heading of the same or a higher rank (a lower or equal level) comes between them. */
+async function isUnderHeading(heading: Locator, element: Locator): Promise<boolean> {
+  const target = await element.elementHandle();
+  return heading.evaluate((start, end) => {
+    if (!end) return false;
+    const levelOf = (node: Element) => Number(node.getAttribute('aria-level') ?? node.tagName.slice(1));
+    const follows = (a: Node, b: Node) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    if (!follows(start, end)) return false;
+    const level = levelOf(start);
+    return !Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6, [role="heading"]')).some(
+      (other) =>
+        other !== start &&
+        other !== end &&
+        !other.contains(end) &&
+        follows(start, other) &&
+        follows(other, end) &&
+        levelOf(other) <= level,
+    );
+  }, target);
+}
+
+test('the projects section’s page shows, in each language, a short project (params.kind = "short") under the short-projects heading, with its title, its description and its stack joined by " · "', async ({
+  page,
+}) => {
+  /* exampleSite/content/projects/regulateur-noyer.md and .en.md declare kind = 'short' under
+     [params]; their title, description and stack are those below. */
+  const sections = [
+    {
+      address: '/fr/projets/',
+      groupHeading: 'Projets courts & interactifs',
+      title: 'Régulateur de parquet en noyer',
+      description: 'Régulateur à balancier compensé, logé dans une caisse en noyer massif sculptée à la main.',
+      stack: ['Noyer', 'Invar', 'Laiton'],
+    },
+    {
+      address: '/en/projects/',
+      groupHeading: 'Short & interactive projects',
+      title: 'Walnut floor regulator',
+      description: 'A regulator with a compensated pendulum, housed in a hand-carved solid walnut case.',
+      stack: ['Walnut', 'Invar', 'Brass'],
+    },
+  ];
+  for (const section of sections) {
+    await page.goto(section.address);
+    const main = page.getByRole('main');
+    const groupHeading = main.getByRole('heading', { level: 2, name: section.groupHeading, exact: true });
+    await expect(groupHeading, `on ${section.address}, the short-projects heading`).toHaveCount(1);
+    await expect(groupHeading).toBeVisible();
+    const projectHeading = main.getByRole('heading', { level: 3, name: section.title, exact: true });
+    await expect(projectHeading, `on ${section.address}, the project's title`).toHaveCount(1);
+    await expect(projectHeading).toBeVisible();
+    expect(
+      await isUnderHeading(groupHeading, projectHeading),
+      `on ${section.address}, the project's title is under the short-projects heading`,
+    ).toBe(true);
+    for (const [name, text] of [
+      ['description', section.description],
+      ['stack', section.stack.join(' · ')],
+    ] as const) {
+      const line = main.getByText(text, { exact: true });
+      await expect(line, `on ${section.address}, the project's ${name}, shown once`).toHaveCount(1);
+      await expect(line).toBeVisible();
+      expect(
+        await isUnderHeading(projectHeading, line),
+        `on ${section.address}, the project's ${name} is under its title`,
+      ).toBe(true);
+    }
+  }
+});
+
+test('the projects section’s page shows, in each language, an engagement (params.kind = "engagement") under the engagements heading, with its title, its years, its mode and its duration', async ({
+  page,
+}) => {
+  /* exampleSite/content/projects/restauration-pendule.md and .en.md declare kind = 'engagement'
+     under [params]; their title, years, mode and duration are those below. The years, mode and
+     duration are each looked for as part of a text, so that they may share a line or not. */
+  const sections = [
+    {
+      address: '/fr/projets/',
+      groupHeading: 'Missions & applications métier',
+      title: 'Restauration d’une pendule de cheminée',
+      years: '2019 – 2020',
+      mode: 'Forfait',
+      duration: '14 mois',
+    },
+    {
+      address: '/en/projects/',
+      groupHeading: 'Engagements & business applications',
+      title: 'Restoration of a mantel clock',
+      years: '2019 – 2020',
+      mode: 'Fixed-price',
+      duration: '14 months',
+    },
+  ];
+  for (const section of sections) {
+    await page.goto(section.address);
+    const main = page.getByRole('main');
+    const groupHeading = main.getByRole('heading', { level: 2, name: section.groupHeading, exact: true });
+    await expect(groupHeading, `on ${section.address}, the engagements heading`).toHaveCount(1);
+    await expect(groupHeading).toBeVisible();
+    const projectHeading = main.getByRole('heading', { level: 3, name: section.title, exact: true });
+    await expect(projectHeading, `on ${section.address}, the engagement's title`).toHaveCount(1);
+    await expect(projectHeading).toBeVisible();
+    expect(
+      await isUnderHeading(groupHeading, projectHeading),
+      `on ${section.address}, the engagement's title is under the engagements heading`,
+    ).toBe(true);
+    for (const [name, text] of [
+      ['years', section.years],
+      ['mode', section.mode],
+      ['duration', section.duration],
+    ] as const) {
+      const line = main.getByText(text);
+      await expect(line, `on ${section.address}, the engagement's ${name}, shown once`).toHaveCount(1);
+      await expect(line).toBeVisible();
+      expect(
+        await isUnderHeading(projectHeading, line),
+        `on ${section.address}, the engagement's ${name} is under its title`,
+      ).toBe(true);
+    }
+  }
+});
+
+test('the projects section’s page lists, in each language, an engagement’s parts ([[params.parts]]) under its description, in their front-matter order, each with its name and its description', async ({
+  page,
+}) => {
+  /* exampleSite/content/projects/restauration-pendule.md and .en.md give the engagement the
+     description and the [[params.parts]] below, in that order. Each item is checked to hold the
+     part's name and description, whatever separates them. */
+  const sections = [
+    {
+      address: '/fr/projets/',
+      title: 'Restauration d’une pendule de cheminée',
+      description:
+        'Remise en marche d’une pendule Empire en bronze doré : mouvement nettoyé, suspension refaite, cadran retouché.',
+      parts: [
+        { name: 'Mouvement à sonnerie', description: 'Démontage, nettoyage et huilage des rouages et du barillet.' },
+        { name: 'Suspension du balancier', description: 'Remplacement du fil de soie et réglage du battement.' },
+        { name: 'Émail du cadran', description: 'Reprise des chiffres effacés et du vernis fendillé.' },
+      ],
+    },
+    {
+      address: '/en/projects/',
+      title: 'Restoration of a mantel clock',
+      description:
+        'An Empire gilt-bronze clock brought back to life: movement cleaned, suspension rebuilt, dial touched up.',
+      parts: [
+        { name: 'Striking movement', description: 'Wheels and barrel taken apart, cleaned and oiled.' },
+        { name: 'Pendulum suspension', description: 'Silk thread replaced and beat adjusted.' },
+        { name: 'Dial enamel', description: 'Worn numerals restored and crazed varnish redone.' },
+      ],
+    },
+  ];
+  for (const section of sections) {
+    await page.goto(section.address);
+    const main = page.getByRole('main');
+    const projectHeading = main.getByRole('heading', { level: 3, name: section.title, exact: true });
+    await expect(projectHeading, `on ${section.address}, the engagement's title`).toHaveCount(1);
+    const list = main.getByRole('list').filter({ hasText: section.parts[0].name });
+    await expect(list, `on ${section.address}, the list of the engagement's parts`).toHaveCount(1);
+    await expect(list).toBeVisible();
+    const items = list.getByRole('listitem');
+    await expect(items, `on ${section.address}, one list item per part`).toHaveCount(section.parts.length);
+    for (const [index, part] of section.parts.entries()) {
+      const item = items.nth(index);
+      await expect(item, `on ${section.address}, item ${index + 1} gives part ${index + 1}'s name`).toContainText(
+        part.name,
+      );
+      await expect(
+        item,
+        `on ${section.address}, item ${index + 1} gives part ${index + 1}'s description`,
+      ).toContainText(part.description);
+    }
+    expect(
+      await isUnderHeading(projectHeading, list),
+      `on ${section.address}, the list of parts is under the engagement's title`,
+    ).toBe(true);
+    const description = main.getByText(section.description, { exact: true });
+    await expect(description, `on ${section.address}, the engagement's description, shown once`).toHaveCount(1);
+    await expect(description).toBeVisible();
+    expect(
+      await isUnderHeading(projectHeading, description),
+      `on ${section.address}, the engagement's description is under its title`,
+    ).toBe(true);
+    const descriptionHandle = await description.elementHandle();
+    expect(
+      await list.evaluate(
+        (parts, text) => !!text && (text.compareDocumentPosition(parts) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+        descriptionHandle,
+      ),
+      `on ${section.address}, the list of parts comes after the engagement's description`,
+    ).toBe(true);
+  }
+});
+
+test('the projects section’s page links, in each language, each project’s title to that project’s own page in the same language, for a short project and for an engagement', async ({
+  page,
+}) => {
+  /* exampleSite/content/projects/regulateur-noyer.md (kind = 'short') and
+     restauration-pendule.md (kind = 'engagement'), each with an .en.md translation; their slug
+     is their file name. */
+  const sections = [
+    {
+      address: '/fr/projets/',
+      projects: [
+        { title: 'Régulateur de parquet en noyer', address: '/fr/projets/regulateur-noyer/' },
+        { title: 'Restauration d’une pendule de cheminée', address: '/fr/projets/restauration-pendule/' },
+      ],
+    },
+    {
+      address: '/en/projects/',
+      projects: [
+        { title: 'Walnut floor regulator', address: '/en/projects/regulateur-noyer/' },
+        { title: 'Restoration of a mantel clock', address: '/en/projects/restauration-pendule/' },
+      ],
+    },
+  ];
+  for (const section of sections) {
+    for (const project of section.projects) {
+      await page.goto(section.address);
+      const main = page.getByRole('main');
+      const projectHeading = main.getByRole('heading', { level: 3, name: project.title, exact: true });
+      await expect(projectHeading, `on ${section.address}, the title of ${project.title}`).toHaveCount(1);
+      const link = projectHeading.getByRole('link', { name: project.title, exact: true });
+      await expect(link, `on ${section.address}, the link in the title of ${project.title}`).toHaveCount(1);
+      await expect(link).toBeVisible();
+      const [response] = await Promise.all([
+        page.waitForResponse(
+          (candidate) => candidate.request().isNavigationRequest() && candidate.request().frame() === page.mainFrame(),
+        ),
+        link.click(),
+      ]);
+      expect(response.status(), `status of the page ${project.title}’s link opens`).toBe(200);
+      await expect(page).toHaveURL(project.address);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(project.title);
+    }
+  }
+});
+
+test('the projects section’s page shows, in each language, the site’s author and its footer note above the page heading', async ({
+  page,
+}) => {
+  /* The author ([params] author) and the footer note of each language ([languages.<lang>.params]
+     footerNote) of exampleSite/hugo.toml. Both are looked for in the main content, so that the
+     footer, which shows them too, does not count; each must end above the page heading,
+     whatever separates them. */
+  const author = 'Jean Exemple';
+  const sections = [
+    { address: '/fr/projets/', footerNote: 'Horloger de démonstration' },
+    { address: '/en/projects/', footerNote: 'Sample clockmaker' },
+  ];
+  for (const section of sections) {
+    await page.goto(section.address);
+    const main = page.getByRole('main');
+    const heading = main.getByRole('heading', { level: 1 });
+    await expect(heading).toHaveCount(1);
+    const headingBox = (await heading.boundingBox())!;
+    for (const [name, text] of [
+      ['site’s author', author],
+      ['footer note', section.footerNote],
+    ] as const) {
+      const line = main.getByText(text);
+      await expect(line, `on ${section.address}, the main content should show the ${name} once`).toHaveCount(1);
+      await expect(line).toBeVisible();
+      const lineBox = (await line.boundingBox())!;
+      /* Compared with a 0.5 px tolerance: rendered box positions may carry sub-pixel rounding. */
+      expect(
+        lineBox.y + lineBox.height,
+        `on ${section.address}, bottom of the ${name} against the top of the page heading (${headingBox.y} px)`,
+      ).toBeLessThanOrEqual(headingBox.y + 0.5);
+    }
+  }
+});
+
+test('the line above the projects section’s page heading shows, in each language, the "//" marker before the site’s author and its footer note, while assistive technologies get the author and the footer note alone', async ({
+  page,
+}) => {
+  /* The author ([params] author) and the footer note of each language ([languages.<lang>.params]
+     footerNote) of exampleSite/hugo.toml. The line is the paragraph of the main content that
+     gives the author: the footer, which shows it too, does not count. Whatever separates the
+     author from the footer note, it holds no letter and no slash. */
+  const author = 'Jean Exemple';
+  const sections = [
+    { address: '/fr/projets/', footerNote: 'Horloger de démonstration' },
+    { address: '/en/projects/', footerNote: 'Sample clockmaker' },
+  ];
+  for (const section of sections) {
+    await page.goto(section.address);
+    const line = page.getByRole('main').getByRole('paragraph').filter({ hasText: author });
+    await expect(line, `on ${section.address}, the line giving the site’s author`).toHaveCount(1);
+    await expect(line).toBeVisible();
+    /* On screen: the marker, then the author and the footer note, whether the marker is text in
+       the page or generated by the stylesheet. */
+    expect(await displayedText(line), `on ${section.address}, text displayed by the line`).toMatch(
+      new RegExp(`^// ?${author}[^/\\p{L}]*${section.footerNote}$`, 'u'),
+    );
+    /* For assistive technologies: the author and the footer note, without the marker. */
+    expect(
+      (await line.ariaSnapshot()).trim(),
+      `on ${section.address}, what assistive technologies get from the line`,
+    ).toMatch(new RegExp(`^- paragraph: "?${author}[^/\\p{L}]*${section.footerNote}"?$`, 'u'));
+  }
+});
+
+test.describe('projects section’s page without JavaScript', () => {
+  /* The theme rule: no JavaScript is required to read the content. A script may decode a
+     scrambled text or reveal a component: without it, nothing may stay hidden. */
+  test.use({ javaScriptEnabled: false });
+
+  test('without JavaScript, the projects section’s page shows, in each language, its title, its intro and the title of each of its projects, in clear and nothing left transparent', async ({
+    page,
+  }) => {
+    /* The title and description of exampleSite/content/projects/_index.md and _index.en.md, and
+       the titles of the section's four projects in each language, short projects and
+       engagements alike. */
+    const sections = [
+      {
+        address: '/fr/projets/',
+        title: 'Projets',
+        description: 'Pendules, régulateurs et complications imaginaires, restaurés ou conçus pour la démonstration.',
+        projects: [
+          'Régulateur de parquet en noyer',
+          'Montre de poche à grande complication',
+          'Restauration d’une pendule de cheminée',
+          'Horloge astronomique de l’atelier',
+        ],
+      },
+      {
+        address: '/en/projects/',
+        title: 'Projects',
+        description: 'Imaginary clocks, regulators and complications, restored or designed for the demo.',
+        projects: [
+          'Walnut floor regulator',
+          'Grand complication pocket watch',
+          'Restoration of a mantel clock',
+          'The workshop’s astronomical clock',
+        ],
+      },
+    ];
+    for (const section of sections) {
+      await page.goto(section.address);
+      const main = page.getByRole('main');
+      const heading = main.getByRole('heading', { level: 1 });
+      await expect(heading, `on ${section.address}, the page heading`).toHaveCount(1);
+      const intro = main.getByText(section.description, { exact: true });
+      await expect(intro, `on ${section.address}, the intro`).toHaveCount(1);
+      const elements: [string, Locator, string][] = [
+        ['page heading', heading, section.title],
+        ['intro', intro, section.description],
+      ];
+      for (const title of section.projects) {
+        const projectHeading = main.getByRole('heading', { level: 3, name: title, exact: true });
+        await expect(projectHeading, `on ${section.address}, the title of ${title}`).toHaveCount(1);
+        elements.push([`title of ${title}`, projectHeading, title]);
+      }
+      for (const [name, element, text] of elements) {
+        await expect(element, `on ${section.address}, the ${name}`).toBeVisible();
+        /* In clear: the element displays the text itself, not scrambled signs, whether in its
+           text or in generated content. */
+        expect(await displayedText(element), `on ${section.address}, text displayed by the ${name}`).toBe(text);
+        /* Readable: no element is left transparent, waiting for a script to reveal it. */
+        const opacity = await effectiveOpacity(element);
+        expect.soft(opacity, `on ${section.address}, effective opacity of the ${name}`).toBe(1);
+      }
+    }
+  });
+});
+
+test.describe('projects section of another site, named by its projectsSection site param instead of projects, holding projects of one kind only in each language', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('a group with no project shows no heading', async ({ page, context }) => {
+    /* tests/fixtures/one-kind-per-language/content/ateliers/ holds, in French, a single short
+       project and, in English, a single engagement. Each page must show its one project under the
+       one group heading it calls for, and no heading for the group that has no project: neither
+       the other group's heading, looked for by its name (the only handle a group heading has),
+       nor any other second level-2 heading. Both directions, so that a template that only drops
+       one of the two headings does not pass. */
+    const site = SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE;
+    await serveSite(context, site, siteDirectory);
+    const sections = [
+      {
+        address: '/fr/ateliers/',
+        title: 'Coucou de chalet',
+        emptyGroupHeading: 'Missions & applications métier',
+      },
+      {
+        address: '/en/ateliers/',
+        title: 'Railway station clock',
+        emptyGroupHeading: 'Short & interactive projects',
+      },
+    ];
+    for (const section of sections) {
+      await page.goto(`${site.origin}${section.address}`);
+      const main = page.getByRole('main');
+      const projectHeading = main.getByRole('heading', { level: 3, name: section.title, exact: true });
+      await expect(projectHeading, `on ${section.address}, the project's title`).toHaveCount(1);
+      await expect(projectHeading).toBeVisible();
+      await expect(
+        main.getByRole('heading', { name: section.emptyGroupHeading, exact: true }),
+        `on ${section.address}, the heading of the group that has no project`,
+      ).toHaveCount(0);
+      const groupHeadings = main.getByRole('heading', { level: 2 });
+      await expect(groupHeadings, `on ${section.address}, a single group heading`).toHaveCount(1);
+      expect(
+        await isUnderHeading(groupHeadings.first(), projectHeading),
+        `on ${section.address}, the project's title is under the one group heading`,
+      ).toBe(true);
+    }
+  });
+
+  test('with projectsSection naming another section, that section’s page is the projects list, and the page of the projects/ section, no longer the configured one, lists no project', async ({
+    page,
+    context,
+  }) => {
+    /* tests/fixtures/one-kind-per-language/hugo.toml names ateliers/ in projectsSection; the
+       example site's projects/ section, whose projects all declare a valid kind, is still built,
+       in both languages. Only the configured section's page is the projects list: there, its
+       project is shown under a group heading, so that a site with no list at all does not pass.
+       The page of projects/ is still published, with its own title, but is no projects list: no
+       group, no project, none of its pages' titles. Both languages, so that a list dropped in one
+       language only does not pass. */
+    const site = SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE;
+    await serveSite(context, site, siteDirectory);
+    const configuredSections = [
+      { address: '/fr/ateliers/', title: 'Coucou de chalet' },
+      { address: '/en/ateliers/', title: 'Railway station clock' },
+    ];
+    for (const section of configuredSections) {
+      const response = await page.goto(`${site.origin}${section.address}`);
+      expect(response?.status(), `status of ${section.address}`).toBe(200);
+      const main = page.getByRole('main');
+      const projectHeading = main.getByRole('heading', { level: 3, name: section.title, exact: true });
+      await expect(projectHeading, `on ${section.address}, the configured section, the project's title`).toHaveCount(1);
+      await expect(projectHeading).toBeVisible();
+      await expect(
+        main.getByRole('heading', { level: 2 }),
+        `on ${section.address}, the configured section, a group heading`,
+      ).toHaveCount(1);
+    }
+    const otherSections = [
+      {
+        address: '/fr/projets/',
+        titles: [
+          'Régulateur de parquet en noyer',
+          'Restauration d’une pendule de cheminée',
+          'Horloge astronomique de l’atelier',
+          'Montre de poche à grande complication',
+        ],
+      },
+      {
+        address: '/en/projects/',
+        titles: [
+          'Walnut floor regulator',
+          'Restoration of a mantel clock',
+          'The workshop’s astronomical clock',
+          'Grand complication pocket watch',
+        ],
+      },
+    ];
+    for (const section of otherSections) {
+      const response = await page.goto(`${site.origin}${section.address}`);
+      expect(response?.status(), `status of ${section.address}`).toBe(200);
+      const main = page.getByRole('main');
+      await expect(main.getByRole('heading', { level: 1 }), `on ${section.address}, the page heading`).toHaveCount(1);
+      /* The page is static and already loaded once its heading is found: what it must not show is
+         counted once, rather than waited for, so that every absence is reported. */
+      expect
+        .soft(await main.getByRole('heading', { level: 2 }).count(), `on ${section.address}, group headings`)
+        .toBe(0);
+      expect
+        .soft(await main.getByRole('heading', { level: 3 }).count(), `on ${section.address}, project titles`)
+        .toBe(0);
+      expect.soft(await main.getByRole('article').count(), `on ${section.address}, project entries`).toBe(0);
+      for (const title of section.titles) {
+        expect
+          .soft(await main.getByText(title, { exact: true }).count(), `on ${section.address}, the title "${title}"`)
+          .toBe(0);
+      }
+    }
+  });
+});
+
+test.describe('projects section of another site, holding several weighted projects of each kind', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_PROJECTS_ORDERED_BY_WEIGHT);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('within each group, projects follow their weight', async ({ page, context }) => {
+    /* tests/fixtures/weighted-projects/content/vitrines/ holds three engagements and three short
+       projects, listed below in ascending front-matter weight. Within each group, that order is
+       neither the order of their titles, nor of their file names, nor of their dates, in either
+       direction. A group heading is found by its name, the only handle it has; the titles under it
+       are read in the page's order. */
+    const site = SITE_WITH_PROJECTS_ORDERED_BY_WEIGHT;
+    await serveSite(context, site, siteDirectory);
+    const groups = [
+      {
+        heading: 'Missions & applications métier',
+        titles: ['Horloge du beffroi', 'Comtoise de ferme', 'Pendule d’applique'],
+      },
+      {
+        heading: 'Projets courts & interactifs',
+        titles: ['Pendulette de bureau', 'Cadran solaire de terrasse', 'Sablier de marine'],
+      },
+    ];
+    await page.goto(`${site.origin}/fr/vitrines/`);
+    const main = page.getByRole('main');
+    const projectHeadings = main.getByRole('heading', { level: 3 });
+    await expect(projectHeadings, 'one title per project').toHaveCount(6);
+    for (const group of groups) {
+      const groupHeading = main.getByRole('heading', { level: 2, name: group.heading, exact: true });
+      await expect(groupHeading, `the "${group.heading}" heading`).toHaveCount(1);
+      const titlesUnderGroup: string[] = [];
+      for (const projectHeading of await projectHeadings.all()) {
+        if (await isUnderHeading(groupHeading, projectHeading)) {
+          titlesUnderGroup.push((await projectHeading.textContent())!.trim());
+        }
+      }
+      expect(titlesUnderGroup, `the titles under "${group.heading}", in the page's order`).toEqual(group.titles);
+    }
+  });
+});
+
+test.describe('projects section of another site, holding a subsection whose kind cascades to its pages', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('a page in a subsection of the projects section does not appear on the list', async ({ page, context }) => {
+    /* tests/fixtures/subsection-with-a-cascaded-kind/content/projects/marqueterie/_index.md, titled
+       "Pendules marquetées", gives kind = 'short' to itself and to its one page, "Pendule religieuse
+       Boulle", through [cascade]. Only the projects that sit directly in projects/ belong on the
+       list: neither the subsection nor its page, although both carry a kind. The example site's
+       short project "Régulateur de parquet en noyer", directly in projects/, is still listed, so
+       that an empty page does not pass. */
+    const site = SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND;
+    await serveSite(context, site, siteDirectory);
+    const response = await page.goto(`${site.origin}/fr/projets/`);
+    expect(response?.status(), 'status of the projects section’s page').toBe(200);
+    const main = page.getByRole('main');
+    const directProject = main.getByRole('heading', { level: 3, name: 'Régulateur de parquet en noyer', exact: true });
+    await expect(directProject, 'the title of a project directly in the section').toHaveCount(1);
+    await expect(directProject).toBeVisible();
+    for (const title of ['Pendules marquetées', 'Pendule religieuse Boulle']) {
+      await expect(main.getByText(title, { exact: true }), `the title "${title}" on the list`).toHaveCount(0);
+    }
+  });
+
+  test('the page of a subsection of the projects section sends the visitor, without JavaScript, to the projects list of its language, and asks search engines not to index it', async ({
+    page,
+    context,
+    browser,
+    viewport,
+  }) => {
+    /* The subsection marqueterie/, titled "Pendules marquetées" in French and "Marquetry clocks"
+       in English, is not a list of its own: its page sends the visitor on to the projects list of
+       its language, /fr/projets/ or /en/projects/, even without JavaScript. That list is
+       recognised by a project sitting directly in projects/, "Régulateur de parquet en noyer" or
+       "Walnut floor regulator", so that landing on any other page does not pass. */
+    const site = SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND;
+    const languages = [
+      {
+        subsection: '/fr/projets/marqueterie/',
+        list: '/fr/projets/',
+        lang: 'fr-FR',
+        directProject: 'Régulateur de parquet en noyer',
+      },
+      {
+        subsection: '/en/projects/marqueterie/',
+        list: '/en/projects/',
+        lang: 'en-US',
+        directProject: 'Walnut floor regulator',
+      },
+    ];
+    const withoutJavaScript = await browser.newContext({ viewport, javaScriptEnabled: false });
+    try {
+      await serveSite(withoutJavaScript, site, siteDirectory);
+      const visitor = await withoutJavaScript.newPage();
+      for (const { subsection, list, lang, directProject } of languages) {
+        await visitor.goto(`${site.origin}${subsection}`);
+        await expect(visitor, `without JavaScript, the page reached from ${subsection}`).toHaveURL(
+          `${site.origin}${list}`,
+        );
+        await expect(visitor.locator('html'), `the language of the page reached from ${subsection}`).toHaveAttribute(
+          'lang',
+          lang,
+        );
+        const main = visitor.getByRole('main');
+        await expect(
+          main.getByRole('heading', { level: 1 }),
+          `the list’s title, reached from ${subsection}`,
+        ).toBeVisible();
+        await expect(
+          main.getByRole('heading', { level: 3, name: directProject, exact: true }),
+          `a project of the list, reached from ${subsection}`,
+        ).toBeVisible();
+      }
+    } finally {
+      await withoutJavaScript.close();
+    }
+    /* What a crawler reads: the document served at the subsection's address, fetched, then
+       parsed without being run. */
+    await serveSite(context, site, siteDirectory);
+    await page.goto(`${site.origin}/fr/`);
+    for (const { subsection } of languages) {
+      const robots = await page.evaluate(async (address) => {
+        const response = await fetch(address);
+        const document = new DOMParser().parseFromString(await response.text(), 'text/html');
+        return Array.from(
+          document.querySelectorAll('head meta[name="robots" i]'),
+          (meta) => meta.getAttribute('content') ?? '',
+        );
+      }, subsection);
+      expect(
+        robots.some((content) =>
+          content
+            .split(',')
+            .map((directive) => directive.trim().toLowerCase())
+            .includes('noindex'),
+        ),
+        `the robots directives of the document served at ${subsection}: ${JSON.stringify(robots)}`,
+      ).toBe(true);
+    }
+  });
+});
+
+test.describe('projects section of another site, whose list Hugo does not write, holding a subsection', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_SUBSECTION_OF_AN_UNWRITTEN_PROJECTS_LIST);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('when the projects list is not written ([build] render = "never" or "link"), the page of a subsection of the projects section does not send the visitor anywhere, even without JavaScript', async ({
+    browser,
+    viewport,
+  }) => {
+    /* In tests/fixtures/unwritten-projects-list/content/projects/, the French list declares
+       render = 'never' (no address: a redirect there would only reload the subsection's page,
+       again and again) and the English one render = 'link' (an address, but nothing written
+       there: a redirect would lead to a missing page). The subsection marqueterie/ then has
+       nowhere to send the visitor: its page stays at its own address, loaded once, its title
+       shown. */
+    const site = SITE_WITH_A_SUBSECTION_OF_AN_UNWRITTEN_PROJECTS_LIST;
+    const subsections = ['/fr/projets/marqueterie/', '/en/projects/marqueterie/'];
+    const withoutJavaScript = await browser.newContext({ viewport, javaScriptEnabled: false });
+    try {
+      await serveSite(withoutJavaScript, site, siteDirectory);
+      const visitor = await withoutJavaScript.newPage();
+      for (const subsection of subsections) {
+        const documentsRequested: string[] = [];
+        const recordDocument = (request: { resourceType(): string; url(): string }) => {
+          if (request.resourceType() === 'document') documentsRequested.push(request.url());
+        };
+        visitor.on('request', recordDocument);
+        const response = await visitor.goto(`${site.origin}${subsection}`);
+        expect(response?.status(), `status of ${subsection}`).toBe(200);
+        /* Leave a redirect, immediate as it is, the time to happen. */
+        await visitor.waitForTimeout(1500);
+        visitor.off('request', recordDocument);
+        expect(documentsRequested, `the documents loaded from ${subsection}`).toEqual([`${site.origin}${subsection}`]);
+        await expect(visitor, `without JavaScript, the page reached from ${subsection}`).toHaveURL(
+          `${site.origin}${subsection}`,
+        );
+        await expect(
+          visitor.getByRole('main').getByRole('heading', { level: 1 }),
+          `the subsection’s title, at ${subsection}`,
+        ).toBeVisible();
+      }
+    } finally {
+      await withoutJavaScript.close();
+    }
+  });
+});
+
+test.describe('projects section of another site, holding projects whose page Hugo does not write', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_PROJECTS_LISTED_WITHOUT_WRITTEN_PAGES);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('a project whose page is not written ([build] render = "never" or "link") is listed without a link', async ({
+    page,
+    context,
+  }) => {
+    /* In tests/fixtures/projects-listed-without-pages/content/projects/, a short project and an
+       engagement declare render = 'never' (no address), and a short project and an engagement
+       render = 'link' (an address, but nothing written there). Each is still listed, its title
+       shown, with no link at all: none in its title, not even an empty one, and none anywhere on
+       the page to the address render = 'link' gives it. The example site's projects of both
+       kinds, whose pages are written, keep the link in their title, so that a list without any
+       link does not pass. */
+    const site = SITE_WITH_PROJECTS_LISTED_WITHOUT_WRITTEN_PAGES;
+    await serveSite(context, site, siteDirectory);
+    const response = await page.goto(`${site.origin}/fr/projets/`);
+    expect(response?.status(), 'status of the projects section’s page').toBe(200);
+    const main = page.getByRole('main');
+    const unwrittenProjects = [
+      { title: 'Pendulette de voyage', render: 'never' },
+      { title: 'Carillon de beffroi', render: 'never' },
+      { title: 'Horloge de gare', render: 'link', address: '/fr/projets/horloge-de-gare/' },
+      { title: 'Régulateur de marine', render: 'link', address: '/fr/projets/regulateur-de-marine/' },
+    ];
+    /* The page is static and already loaded once a title is found: the links are counted once,
+       rather than waited for, so that every project's failure is reported within the test's
+       timeout. */
+    for (const project of unwrittenProjects) {
+      const projectHeading = main.getByRole('heading', { level: 3, name: project.title, exact: true });
+      await expect(projectHeading, `the title of ${project.title} (render = "${project.render}")`).toHaveCount(1);
+      await expect(projectHeading).toBeVisible();
+      expect
+        .soft(
+          await projectHeading.locator('a').count(),
+          `links in the title of ${project.title} (render = "${project.render}")`,
+        )
+        .toBe(0);
+      if (project.address) {
+        expect
+          .soft(
+            await main.locator(`a[href$="${project.address}"]`).count(),
+            `links to ${project.address}, where no page is written`,
+          )
+          .toBe(0);
+      }
+    }
+    for (const title of ['Régulateur de parquet en noyer', 'Restauration d’une pendule de cheminée']) {
+      const projectHeading = main.getByRole('heading', { level: 3, name: title, exact: true });
+      await expect(
+        projectHeading.getByRole('link', { name: title, exact: true }),
+        `the link in the title of ${title}, whose page is written`,
+      ).toHaveCount(1);
+    }
+  });
+});
+
+test.describe('projects section content errors: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a project of the projects section’s list that declares no kind, or a kind other than "engagement" or "short", makes the site build fail, with an error message that names that project and its language', () => {
+    /* In tests/fixtures/projects-without-a-valid-kind/content/projects/, pendule-sans-genre.md, in
+       French only, declares no kind, and comtoise-mal-classee.en.md, in English only, declares
+       kind = 'Short', with a capital letter. Rather than a list that silently leaves them out, the
+       person building the site must get a failure with, for each of them, a message that names the
+       project, through its file name, which every way of referring to the page (its path, its
+       file, its address) holds, and the language of its page by its code, as a word that no other
+       word follows, whatever the rest of the wording. Both cases, each in its own language, so that
+       a check for only one of them, or a language written in the template, does not pass. Only the
+       projects on the list are concerned: neither the page of the subsection atelier/,
+       cartel-hors-liste.md, which declares no kind either but is not on the list, nor the example
+       site's projects, which all declare a valid kind, may be reported. */
+    const build = tryToBuildSite(SITE_WITH_PROJECTS_WITHOUT_A_VALID_KIND);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const cases = [
+      { name: 'a French project without a kind', project: 'pendule-sans-genre', language: 'fr' },
+      { name: "an English project of kind 'Short'", project: 'comtoise-mal-classee', language: 'en' },
+    ];
+    for (const { name, project, language } of cases) {
+      const messages = build.errors.split('\n').filter((line) => line.includes(project));
+      expect
+        .soft(messages.length, `with ${name}, error messages naming the project ${project}, in:\n${build.errors}`)
+        .toBeGreaterThan(0);
+      for (const message of messages) {
+        expect
+          .soft(message, `with ${name}, the error message should name the project's language, ${language}`)
+          .toMatch(new RegExp(languageCodePattern(language), 'u'));
+      }
+    }
+    for (const project of [
+      'cartel-hors-liste',
+      'regulateur-noyer',
+      'restauration-pendule',
+      'horloge-astronomique',
+      'montre-grande-complication',
+    ]) {
+      expect.soft(build.errors, `no error message should name ${project}`).not.toContain(project);
+    }
+  });
+
+  test('with projectsSection naming another section, a project of that section without a kind makes the site build fail, with an error message that names that project and its language, while a project without a kind in a projects/ section that is not the configured one breaks nothing', () => {
+    /* Both sites name ateliers/ in projectsSection and feature no projects on their home pages.
+       In tests/fixtures/kindless-project-in-the-configured-section/content/ateliers/,
+       sablier-sans-genre.md, in French only, declares no kind: it is on the projects list, and the
+       person building the site must get a failure with a message that names it, through its file
+       name, and the language of its page by its code. In
+       tests/fixtures/kindless-project-outside-the-configured-section/content/, the one project of
+       ateliers/ declares a valid kind, and it is projects/sablier-sans-genre.md, of a section the
+       site no longer uses for its projects, that declares none: no list holds it, so the site must
+       build. Both halves, so that a check left on projects/ alone, or one that drops the check,
+       does not pass. */
+    const project = 'sablier-sans-genre';
+    const inTheConfiguredSection = tryToBuildSite(SITE_WITH_A_KINDLESS_PROJECT_IN_THE_CONFIGURED_SECTION);
+    expect
+      .soft(inTheConfiguredSection.succeeded, 'with a project without a kind in ateliers/, the site build should fail')
+      .toBe(false);
+    const messages = inTheConfiguredSection.errors.split('\n').filter((line) => line.includes(project));
+    expect
+      .soft(
+        messages.length,
+        `with a project without a kind in ateliers/, error messages naming the project ${project}, in:\n${inTheConfiguredSection.errors}`,
+      )
+      .toBeGreaterThan(0);
+    for (const message of messages) {
+      expect
+        .soft(message, 'the error message should name the project’s language, fr')
+        .toMatch(new RegExp(languageCodePattern('fr'), 'u'));
+    }
+    const outsideTheConfiguredSection = tryToBuildSite(SITE_WITH_A_KINDLESS_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION);
+    expect
+      .soft(
+        outsideTheConfiguredSection.succeeded,
+        `with a project without a kind in projects/ only, the site should build, but Hugo reported:\n${outsideTheConfiguredSection.errors}`,
+      )
+      .toBe(true);
+  });
+
+  test('a short project of the projects section’s list, featured on neither home page, whose page writes its stack as a text rather than a list makes the site build fail, with an error message that names that project, says its stack must be a list and names its language', () => {
+    /* In tests/fixtures/listed-materials-as-text/content/projects/, carillon-de-poche.md, in French
+       only, and boussole-laiton.en.md, in English only, are short projects whose stack is a single
+       text ('Laiton, Verre', 'Brass, Glass') rather than a list. Neither home page features them,
+       so the check of the featured projects' cards cannot be what reports them: the projects
+       section's list must. Rather than a list that shows the text as it is, the person building
+       the site must get a failure with, for each of them, a message that names the project,
+       through its file name, says its stack must be a list, and names the language of its page by
+       its code, as a word that no other word follows, whatever the rest of the wording. One
+       project per language, so that a language written in the template does not pass. */
+    const build = tryToBuildSite(SITE_WITH_LISTED_PROJECT_STACKS_AS_A_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const cases = [
+      { project: 'carillon-de-poche', language: 'fr' },
+      { project: 'boussole-laiton', language: 'en' },
+    ];
+    for (const { project, language } of cases) {
+      const messages = build.errors
+        .split('\n')
+        .filter((line) => line.includes(project) && /\bstack\b.*\blist\b/.test(line));
+      expect
+        .soft(
+          messages.length,
+          `error messages naming the project ${project} and saying its stack must be a list, in:\n${build.errors}`,
+        )
+        .toBeGreaterThan(0);
+      for (const message of messages) {
+        expect
+          .soft(message, `the error message about ${project} should name its language, ${language}`)
+          .toMatch(new RegExp(languageCodePattern(language), 'u'));
+      }
+    }
+  });
+
+  test('a short project of the projects section’s list, featured on a home page that is not written, whose page writes its stack as a text rather than a list makes the site build fail, with an error message that names that project, says its stack must be a list and names its language, without a template execution error after it', () => {
+    /* tests/fixtures/unrendered-home-featuring-a-stack-as-text/content/_index.en.md, the English
+       home page, declares [build] render = 'never' and features projects/sextant-laiton, an
+       English-only short project whose stack is a single text, 'Brass', rather than a list. The
+       home page being not written, the check of the featured projects' cards never runs: the
+       projects section's list must still report that stack. The person building the site must
+       get a failure with a message, on one line, that names the project through its file name,
+       says its stack must be a list, and names the language of its page, en, by its code,
+       whatever the rest of the wording, and no Go template execution error that would follow it
+       and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_AN_UNRENDERED_HOME_FEATURING_A_PROJECT_STACK_AS_A_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors
+      .split('\n')
+      .filter((line) => line.includes('sextant-laiton') && /\bstack\b.*\blist\b/.test(line));
+    expect(
+      messages.length,
+      `error messages naming the project sextant-laiton and saying its stack must be a list, in:\n${build.errors}`,
+    ).toBeGreaterThan(0);
+    for (const message of messages) {
+      expect(message, 'the error message should name the project’s language, en').toMatch(
+        new RegExp(languageCodePattern('en'), 'u'),
+      );
+    }
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
+  });
+});
+
 test.describe('home page of another site, featuring only projects of one subsection of the projects section', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
@@ -2539,6 +3479,42 @@ test.describe('projectsSection site param that names no section, a subsection or
         ),
         `with ${name}, projectsSection error messages that name a language`,
       ).toEqual([]);
+    }
+  });
+
+  test('an invalid projectsSection site param is reported once for the whole build, although both home pages and both list pages check it, and still once when no home page is rendered to check it', () => {
+    /* The projectsSection param belongs to the site, not to a language, and the section pages use
+       it to tell which section is the projects list: with an invalid value, they must not quietly
+       fall back to projects, so they check it as the home pages do. On the bilingual example site,
+       that makes four pages checking the same param: the person building the site must still get
+       a single error message about it. Two sites, with the same invalid value, 'realisatons', a
+       typo that names no section: tests/fixtures/misspelled-param-with-projects-elsewhere, whose
+       two home pages and two section pages are rendered, and
+       tests/fixtures/unrendered-homes-with-a-misspelled-param, whose home pages declare
+       [build] render = 'never', so that only the two section pages of projects/ are left to check
+       the param. The build must fail on both, and the param's problem is looked for as the lines
+       naming projectsSection and quoting its value as Go's %q does: there must be exactly one. */
+    const quoted = '"realisatons"';
+    const cases: { name: string; site: BuiltSite }[] = [
+      {
+        name: 'home pages and section pages rendered',
+        site: SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE,
+      },
+      {
+        name: 'section pages rendered, home pages not',
+        site: SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_UNRENDERED_HOME_PAGES,
+      },
+    ];
+    for (const { name, site } of cases) {
+      const build = tryToBuildSite(site);
+      expect(build.succeeded, `with ${name}, the site build should fail`).toBe(false);
+      const messages = build.errors
+        .split('\n')
+        .filter((line) => line.includes(quoted) && /\bprojectsSection\b/.test(line));
+      expect(
+        messages,
+        `with ${name}, one error message naming projectsSection and quoting its value as ${quoted}, in:\n${build.errors}`,
+      ).toHaveLength(1);
     }
   });
 });

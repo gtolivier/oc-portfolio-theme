@@ -3,6 +3,7 @@ title = 'Skeleton clock'
 description = 'Clock with a visible movement, pierced plates and a glass dome.'
 
 [params]
+  kind = 'short'
   role = 'Clockmaker'
   build = '2020'
 +++

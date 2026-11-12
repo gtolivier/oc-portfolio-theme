@@ -3,6 +3,7 @@ title = 'Cadran solaire'
 description = 'Cadran solaire mural en pierre, gnomon de laiton et lignes horaires gravées.'
 
 [params]
+  kind = 'short'
   role = 'Gnomoniste'
   stack = ''
 +++

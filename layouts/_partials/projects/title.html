@@ -1,0 +1,2 @@
+{{- /* A project's title, as a link to its page only when Hugo writes that page: is-published.html says whether it does. */}}
+{{- if partial "is-published.html" . }}<a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ else }}{{ .Title }}{{ end -}}
