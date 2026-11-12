@@ -2571,6 +2571,27 @@ test.describe('projects section of another site, holding a subsection whose kind
       await expect(main.getByText(title, { exact: true }), `the title "${title}" on the list`).toHaveCount(0);
     }
   });
+
+  test('the page of a subsection of the projects section shows its title but none of the projects it holds', async ({
+    page,
+    context,
+  }) => {
+    /* The subsection marqueterie/, titled "Pendules marquetées", holds one page, "Pendule
+       religieuse Boulle", which its [cascade] makes a short project. The projects list is the
+       projects section's page alone: the subsection's page shows its own title, so that a missing
+       page does not pass, but no project, neither its own page nor any other. */
+    const site = SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND;
+    await serveSite(context, site, siteDirectory);
+    const response = await page.goto(`${site.origin}/fr/projets/marqueterie/`);
+    expect(response?.status(), 'status of the subsection’s page').toBe(200);
+    const main = page.getByRole('main');
+    await expect(main.getByRole('heading', { level: 1 }), 'the subsection’s title').toHaveText('Pendules marquetées');
+    await expect(
+      main.getByText('Pendule religieuse Boulle', { exact: true }),
+      'the title of the page the subsection holds',
+    ).toHaveCount(0);
+    await expect(main.getByRole('heading', { level: 3 }), 'project titles on the subsection’s page').toHaveCount(0);
+  });
 });
 
 test.describe('projects section of another site, holding projects whose page Hugo does not write', () => {
