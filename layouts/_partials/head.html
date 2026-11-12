@@ -3,3 +3,8 @@
 <title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ printf "%s | %s" .Title site.Title }}{{ end }}</title>
 {{ partialCached "head/css.html" . }}
 {{ partialCached "head/js.html" . }}
+{{- /* A subsection of the projects section is not a list of its own: it sends the visitor to the projects list, and stays out of search engines. */}}
+{{- if and .IsSection (not .Parent.IsHome) (eq .Section (partial "projects/section.html").name) }}
+<meta name="robots" content="noindex">
+<meta http-equiv="refresh" content="0; url={{ .FirstSection.RelPermalink }}">
+{{- end }}
