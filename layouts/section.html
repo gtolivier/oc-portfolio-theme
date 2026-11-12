@@ -7,7 +7,7 @@
   {{ $shortKind := "short" }}
   {{ $engagementKind := "engagement" }}
   {{ $projectsSection := partial "projects/section.html" }}
-  {{ $isProjectsSection := eq .Section $projectsSection.name }}
+  {{ $isProjectsSection := and .Parent.IsHome (eq .Section $projectsSection.name) }}
   {{ $featuredReferences := site.Home.Params.projects }}
   {{ range cond (and .Parent.IsHome $isProjectsSection) .RegularPages slice }}
     {{- if not (in (slice $shortKind $engagementKind) .Params.kind) }}{{ errorf "projects: the project %q must declare a kind, either %q or %q (language: %s)" .File.Path $engagementKind $shortKind .Language.Lang }}{{ end }}
