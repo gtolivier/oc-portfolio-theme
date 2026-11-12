@@ -4,7 +4,7 @@
 {{ partialCached "head/css.html" . }}
 {{ partialCached "head/js.html" . }}
 {{- /* A subsection of the projects section is not a list of its own: it sends the visitor to the projects list, and stays out of search engines. */}}
-{{- if and .IsSection (not .Parent.IsHome) (eq .Section (partial "projects/section.html").name) }}
+{{- if and .IsSection (not .Parent.IsHome) (eq .Section (partialCached "projects/section.html" . site.Language.Lang).name) }}
 <meta name="robots" content="noindex">
 {{- /* When Hugo does not write the list, there is nowhere to send the visitor. */}}
 {{- if partial "is-published.html" .FirstSection }}

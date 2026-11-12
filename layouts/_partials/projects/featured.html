@@ -4,7 +4,7 @@
 {{- /* Only regular pages are projects. The words the error uses for each other kind of page an entry may reference; a kind missing here gets the generic wording, so that it is still rejected. */}}
 {{- $nonProjectKindWords := dict "home" "the home page itself" "section" "a section page" "term" "a taxonomy term page" "taxonomy" "a taxonomy page" "404" "the 404 error page" }}
 {{- /* The section featured projects must live in. */}}
-{{- $projectsSection := partial "projects/section.html" }}
+{{- $projectsSection := partialCached "projects/section.html" . site.Language.Lang }}
 {{- partial "projects/report-section-problem.html" $projectsSection }}
 {{- /* A bad param names no section the theme can check against: no error per featured project then, which would send the person moving projects that may be where they meant them. */}}
 {{- $sectionIsKnown := eq $projectsSection.problem "" }}

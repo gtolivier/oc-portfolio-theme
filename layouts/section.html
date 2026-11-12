@@ -17,7 +17,7 @@
   </tick-field>
   {{ $shortKind := "short" }}
   {{ $engagementKind := "engagement" }}
-  {{ $projectsSection := partial "projects/section.html" }}
+  {{ $projectsSection := partialCached "projects/section.html" . site.Language.Lang }}
   {{ $isProjectsSection := and .Parent.IsHome (eq .Section $projectsSection.name) }}
   {{- /* Only the projects section is the projects list. */}}
   {{ $listedPages := cond $isProjectsSection .RegularPages slice }}
@@ -56,6 +56,7 @@
     </section>
   {{ end }}
   {{ $shortProjects := where $listedPages "Params.kind" $shortKind }}
+  {{ $stackSeparator := partial "stack-separator.html" }}
   {{ with $shortProjects }}
     <section class="short-projects">
       <h2>{{ i18n "shortProjects" }}</h2>
@@ -64,7 +65,7 @@
           <article class="short-project">
             <h3>{{ partial "projects/title.html" . }}</h3>
             {{ with .Description }}<p class="short-project-description">{{ . }}</p>{{ end }}
-            {{ with .Params.stack }}<p class="short-project-stack">{{ delimit . (partial "stack-separator.html") }}</p>{{ end }}
+            {{ with .Params.stack }}<p class="short-project-stack">{{ delimit . $stackSeparator }}</p>{{ end }}
           </article>
         {{ end }}
       </div>
