@@ -1622,7 +1622,9 @@ tick-field > canvas {
   );
 }
 
-.page-hero > :not(.veil, canvas) {
+/* :where() keeps this cap at the specificity of one class, so that the
+   intro's own, narrower cap below wins. */
+.page-hero > :where(:not(.veil, canvas)) {
   max-width: calc(1280px - 2 * var(--page-gutter));
 }
 
