@@ -1,6 +1,7 @@
 {{- /* The logo and the © line on the left, the footer note after them; on
   every page but the home page, a link back to the home page comes last,
-  at the right. The "—" between the logo and the © line is drawn by the
+  at the right, unless Hugo does not write the home page, which would
+  leave the link dead. The "—" between the logo and the © line is drawn by the
   CSS, inside the logo, which screen readers skip, and so is the arrow
   before the link. */ -}}
 <p>{{ partial "logo.html" . }} <small>© {{ now.Year }} {{ site.Params.author }}</small></p>
