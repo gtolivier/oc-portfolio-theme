@@ -1,3 +1,8 @@
+{{- /* WebKit does not paint a page, while its deferred theme script is still
+  loading, until every font face of main.css has loaded, even one the page does
+  not use. IBM Plex Sans 600 is used on the projects list page alone: preload it,
+  so that every other page paints before the script too. */ -}}
+<link rel="preload" href="{{ "fonts/ibm-plex-sans-latin-600-normal.woff2" | relURL }}" as="font" type="font/woff2" crossorigin>
 {{- with resources.Get "css/main.css" }}
   {{- $opts := dict
     "minify" (cond hugo.IsDevelopment false true)
