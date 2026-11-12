@@ -1444,6 +1444,13 @@ export const SITE_WITH_A_KINDLESS_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION = testS
   'kindless-project-outside-the-configured-section',
 );
 
+/* The example site writes both of its home pages: this site replaces them with those of
+   tests/fixtures/unwritten-home-pages/content, which Hugo does not write. The French one declares
+   [build] render = 'never': Hugo gives it no address. The English one declares [build] render =
+   'link': Hugo gives it the address /en/ but writes no page there. The example site's other pages,
+   in both languages, are unchanged. */
+export const SITE_WITH_UNWRITTEN_HOME_PAGES = testSite('unwritten-home-pages');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
