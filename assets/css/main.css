@@ -1855,10 +1855,12 @@ tick-field > canvas {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
   gap: 1px;
-  border: 1px solid rgb(var(--color-paper-channels) / 0.18);
-  background: rgb(var(--color-paper-channels) / 0.18);
+  padding: 1px;
 }
 
+/* Each card draws its own lines, in an opaque colour so that the lines of
+   two neighbours, which overlap in the gap, do not darken: the empty cells
+   of a partly filled last row stay unpainted. */
 .short-project {
   display: flex;
   flex-direction: column;
@@ -1866,6 +1868,7 @@ tick-field > canvas {
   min-width: 0;
   padding: 26px 28px;
   background: var(--color-ink);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-paper) 18%, var(--color-ink));
 }
 
 .short-project h3 {
