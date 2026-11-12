@@ -1,2 +1,5 @@
-{{- /* Raises the error for a project whose stack is written but is not a list, which has-invalid-stack.html tells; takes the project's page and the reference the error names it by. */}}
-{{- errorf "projects: the stack of the project %q must be a list (language: %s)" .reference .page.Language.Lang }}
+{{- /* Raises the error for a project whose stack is written but is not a list, and returns whether it did, so that the caller can skip the project; takes the project's page and the reference the error names it by. YAML reads a stack: line left without a value as null, like an omitted key: a project without a stack. An empty text or false is a content mistake. */}}
+{{- $stack := .page.Params.stack }}
+{{- $isInvalid := and (ne $stack nil) (not (reflect.IsSlice $stack)) }}
+{{- if $isInvalid }}{{ errorf "projects: the stack of the project %q must be a list (language: %s)" .reference .page.Language.Lang }}{{ end }}
+{{- return $isInvalid }}

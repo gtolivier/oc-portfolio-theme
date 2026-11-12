@@ -27,7 +27,7 @@
   {{ range $listedPages }}
     {{- if not (in (slice $shortKind $engagementKind) .Params.kind) }}{{ errorf "projects: the project %q must declare a kind, either %q or %q (language: %s)" .File.Path $engagementKind $shortKind .Language.Lang }}{{ end }}
     {{- $isFeatured := and $homeFeaturesProjects (in $featuredReferences (strings.TrimPrefix "/" .Path)) }}
-    {{- if and (not $isFeatured) (partial "projects/has-invalid-stack.html" .) }}{{ partial "projects/report-invalid-stack.html" (dict "page" . "reference" .File.Path) }}{{ end }}
+    {{- if not $isFeatured }}{{ $_ := partial "projects/report-invalid-stack.html" (dict "page" . "reference" .File.Path) }}{{ end }}
   {{ end }}
   {{- partial "projects/report-section-problem.html" $projectsSection }}
   {{ $engagements := where $listedPages "Params.kind" $engagementKind }}
