@@ -87,7 +87,7 @@ import {
   verticalBands,
 } from './helpers/pixels';
 import { type Rgb, colorComponents, contrastRatio } from './helpers/colors';
-import { displayedText } from './helpers/text-on-screen';
+import { displayedText, effectiveOpacity } from './helpers/text-on-screen';
 import { tabUntilFocused } from './helpers/keyboard';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { DELAY_AFTER_MOVE_MS, moveToScreenOfDensity } from './helpers/screen-density';
@@ -2369,22 +2369,15 @@ test.describe('projects section’s page without JavaScript', () => {
         /* In clear: the element displays the text itself, not scrambled signs, whether in its
            text or in generated content. */
         expect(await displayedText(element), `on ${section.address}, text displayed by the ${name}`).toBe(text);
-        /* Readable: no element is left transparent, waiting for a script to reveal it. The
-           effective opacity multiplies those of the element and of its ancestors. */
-        const opacity = await element.evaluate((el) => {
-          let product = 1;
-          for (let node: Element | null = el; node; node = node.parentElement) {
-            product *= parseFloat(getComputedStyle(node).opacity);
-          }
-          return product;
-        });
+        /* Readable: no element is left transparent, waiting for a script to reveal it. */
+        const opacity = await effectiveOpacity(element);
         expect.soft(opacity, `on ${section.address}, effective opacity of the ${name}`).toBe(1);
       }
     }
   });
 });
 
-test.describe('projects section of another site, holding projects of one kind only in each language', () => {
+test.describe('projects section of another site, named by its projectsSection site param instead of projects, holding projects of one kind only in each language', () => {
   let siteDirectory: string;
   test.beforeAll(() => {
     siteDirectory = buildSite(SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE);
@@ -2431,16 +2424,6 @@ test.describe('projects section of another site, holding projects of one kind on
         `on ${section.address}, the project's title is under the one group heading`,
       ).toBe(true);
     }
-  });
-});
-
-test.describe('site whose projectsSection site param names another section than projects', () => {
-  let siteDirectory: string;
-  test.beforeAll(() => {
-    siteDirectory = buildSite(SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE);
-  });
-  test.afterAll(() => {
-    removeDirectory(siteDirectory);
   });
 
   test('with projectsSection naming another section, that section’s page is the projects list, and the page of the projects/ section, no longer the configured one, lists no project', async ({

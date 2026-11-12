@@ -52,6 +52,18 @@ async function textOnScreenWithSpaces(element: Locator): Promise<string> {
   return text.replace(/\s+/g, ' ').trim();
 }
 
+/* The opacity an element is seen with: the product of its own opacity and those of its
+   ancestors. */
+export async function effectiveOpacity(element: Locator): Promise<number> {
+  return element.evaluate((el) => {
+    let product = 1;
+    for (let node: Element | null = el; node; node = node.parentElement) {
+      product *= parseFloat(getComputedStyle(node).opacity);
+    }
+    return product;
+  });
+}
+
 /* Text an element displays on screen, in rendering order: its text nodes and the generated
    content of its ::before and ::after pseudo-elements (without the alternative text of a
    `content: "…" / "…"`), hidden elements excluded. Independent of the chosen markup. Unlike
