@@ -1396,6 +1396,16 @@ export const SITE_WITH_PROJECTS_WITHOUT_A_VALID_KIND = testSite('projects-withou
    stack = 'Brass, Glass'). */
 export const SITE_WITH_LISTED_PROJECT_STACKS_AS_A_TEXT = testSite('listed-materials-as-text');
 
+/* The example site's English home page is written and features projects whose stack is a list: this
+   site replaces it with the one of tests/fixtures/unrendered-home-featuring-a-stack-as-text/content,
+   which declares [build] render = 'never' and features a single project, which it adds to the
+   projects section: "Brass sextant" (projects/sextant-laiton.en.md), in English only, a short
+   project whose stack is a single text, stack = 'Brass', rather than a list. With that home page
+   not written, the check of the featured projects' cards never runs. */
+export const SITE_WITH_AN_UNRENDERED_HOME_FEATURING_A_PROJECT_STACK_AS_A_TEXT = testSite(
+  'unrendered-home-featuring-a-stack-as-text',
+);
+
 /* Like SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_PROJECTS_ELSEWHERE, this site sets
    projectsSection = 'realisatons', a typo that names no section of the site, but Hugo renders
    neither of its home pages: tests/fixtures/unrendered-homes-with-a-misspelled-param/content

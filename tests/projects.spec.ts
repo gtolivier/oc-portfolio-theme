@@ -67,6 +67,7 @@ import {
   SITE_WITH_A_KINDLESS_PROJECT_IN_THE_CONFIGURED_SECTION,
   SITE_WITH_A_KINDLESS_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION,
   SITE_WITH_LISTED_PROJECT_STACKS_AS_A_TEXT,
+  SITE_WITH_AN_UNRENDERED_HOME_FEATURING_A_PROJECT_STACK_AS_A_TEXT,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_UNRENDERED_HOME_PAGES,
   TEMPLATE_EXECUTION_ERROR,
   type BuiltSite,
@@ -2825,6 +2826,35 @@ test.describe('projects section content errors: build failure', () => {
           .toMatch(new RegExp(languageCodePattern(language), 'u'));
       }
     }
+  });
+
+  test('a short project of the projects section’s list, featured on a home page that is not written, whose page writes its stack as a text rather than a list makes the site build fail, with an error message that names that project, says its stack must be a list and names its language, without a template execution error after it', () => {
+    /* tests/fixtures/unrendered-home-featuring-a-stack-as-text/content/_index.en.md, the English
+       home page, declares [build] render = 'never' and features projects/sextant-laiton, an
+       English-only short project whose stack is a single text, 'Brass', rather than a list. The
+       home page being not written, the check of the featured projects' cards never runs: the
+       projects section's list must still report that stack. The person building the site must
+       get a failure with a message, on one line, that names the project through its file name,
+       says its stack must be a list, and names the language of its page, en, by its code,
+       whatever the rest of the wording, and no Go template execution error that would follow it
+       and bury it in technical jargon. */
+    const build = tryToBuildSite(SITE_WITH_AN_UNRENDERED_HOME_FEATURING_A_PROJECT_STACK_AS_A_TEXT);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const messages = build.errors
+      .split('\n')
+      .filter((line) => line.includes('sextant-laiton') && /\bstack\b.*\blist\b/.test(line));
+    expect(
+      messages.length,
+      `error messages naming the project sextant-laiton and saying its stack must be a list, in:\n${build.errors}`,
+    ).toBeGreaterThan(0);
+    for (const message of messages) {
+      expect(message, 'the error message should name the project’s language, en').toMatch(
+        new RegExp(languageCodePattern('en'), 'u'),
+      );
+    }
+    expect(build.errors, 'no template execution error should follow the error message').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
   });
 });
 
