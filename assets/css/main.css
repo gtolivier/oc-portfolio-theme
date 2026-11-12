@@ -1849,8 +1849,9 @@ tick-field > canvas {
   }
 }
 
-/* Short projects: cards on a grid, 1 px lines between them drawn by the
-   grid's background showing through its gaps. */
+/* Short projects: cards on a grid, 1 px lines between and around them. The
+   grid's 1 px gap and padding only leave room for the lines, which the cards
+   draw themselves (below); the grid paints nothing. */
 .short-project-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
