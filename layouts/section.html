@@ -5,7 +5,7 @@
     {{- with site.Params.author }}{{ $eyebrow = $eyebrow | append . }}{{ end }}
     {{- with site.Params.footerNote }}{{ $eyebrow = $eyebrow | append . }}{{ end }}
     {{- with $eyebrow }}
-    <p class="page-eyebrow">// {{ delimit . " — " }}</p>
+    <p class="page-eyebrow"><span aria-hidden="true">//</span> {{ delimit . " — " }}</p>
     {{- end }}
     <h1>{{ .Title }}</h1>
     {{- with .Description }}
