@@ -2572,25 +2572,81 @@ test.describe('projects section of another site, holding a subsection whose kind
     }
   });
 
-  test('the page of a subsection of the projects section shows its title but none of the projects it holds', async ({
+  test('the page of a subsection of the projects section sends the visitor, without JavaScript, to the projects list of its language, and asks search engines not to index it', async ({
     page,
     context,
+    browser,
+    viewport,
   }) => {
-    /* The subsection marqueterie/, titled "Pendules marquetées", holds one page, "Pendule
-       religieuse Boulle", which its [cascade] makes a short project. The projects list is the
-       projects section's page alone: the subsection's page shows its own title, so that a missing
-       page does not pass, but no project, neither its own page nor any other. */
+    /* The subsection marqueterie/, titled "Pendules marquetées" in French and "Marquetry clocks"
+       in English, is not a list of its own: its page sends the visitor on to the projects list of
+       its language, /fr/projets/ or /en/projects/, even without JavaScript. That list is
+       recognised by a project sitting directly in projects/, "Régulateur de parquet en noyer" or
+       "Walnut floor regulator", so that landing on any other page does not pass. */
     const site = SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND;
+    const languages = [
+      {
+        subsection: '/fr/projets/marqueterie/',
+        list: '/fr/projets/',
+        lang: 'fr-FR',
+        directProject: 'Régulateur de parquet en noyer',
+      },
+      {
+        subsection: '/en/projects/marqueterie/',
+        list: '/en/projects/',
+        lang: 'en-US',
+        directProject: 'Walnut floor regulator',
+      },
+    ];
+    const withoutJavaScript = await browser.newContext({ viewport, javaScriptEnabled: false });
+    try {
+      await serveSite(withoutJavaScript, site, siteDirectory);
+      const visitor = await withoutJavaScript.newPage();
+      for (const { subsection, list, lang, directProject } of languages) {
+        await visitor.goto(`${site.origin}${subsection}`);
+        await expect(visitor, `without JavaScript, the page reached from ${subsection}`).toHaveURL(
+          `${site.origin}${list}`,
+        );
+        await expect(visitor.locator('html'), `the language of the page reached from ${subsection}`).toHaveAttribute(
+          'lang',
+          lang,
+        );
+        const main = visitor.getByRole('main');
+        await expect(
+          main.getByRole('heading', { level: 1 }),
+          `the list’s title, reached from ${subsection}`,
+        ).toBeVisible();
+        await expect(
+          main.getByRole('heading', { level: 3, name: directProject, exact: true }),
+          `a project of the list, reached from ${subsection}`,
+        ).toBeVisible();
+      }
+    } finally {
+      await withoutJavaScript.close();
+    }
+    /* What a crawler reads: the document served at the subsection's address, fetched, then
+       parsed without being run. */
     await serveSite(context, site, siteDirectory);
-    const response = await page.goto(`${site.origin}/fr/projets/marqueterie/`);
-    expect(response?.status(), 'status of the subsection’s page').toBe(200);
-    const main = page.getByRole('main');
-    await expect(main.getByRole('heading', { level: 1 }), 'the subsection’s title').toHaveText('Pendules marquetées');
-    await expect(
-      main.getByText('Pendule religieuse Boulle', { exact: true }),
-      'the title of the page the subsection holds',
-    ).toHaveCount(0);
-    await expect(main.getByRole('heading', { level: 3 }), 'project titles on the subsection’s page').toHaveCount(0);
+    await page.goto(`${site.origin}/fr/`);
+    for (const { subsection } of languages) {
+      const robots = await page.evaluate(async (address) => {
+        const response = await fetch(address);
+        const document = new DOMParser().parseFromString(await response.text(), 'text/html');
+        return Array.from(
+          document.querySelectorAll('head meta[name="robots" i]'),
+          (meta) => meta.getAttribute('content') ?? '',
+        );
+      }, subsection);
+      expect(
+        robots.some((content) =>
+          content
+            .split(',')
+            .map((directive) => directive.trim().toLowerCase())
+            .includes('noindex'),
+        ),
+        `the robots directives of the document served at ${subsection}: ${JSON.stringify(robots)}`,
+      ).toBe(true);
+    }
   });
 });
 
