@@ -22,10 +22,11 @@
   {{- /* Only the projects section is the projects list. */}}
   {{ $listedPages := cond $isProjectsSection .RegularPages slice }}
   {{ $featuredReferences := site.Home.Params.projects }}
+  {{- /* A featured project's stack is already reported by the featured projects, when the home page that features it is written. */}}
+  {{ $homeFeaturesProjects := and (partial "is-published.html" site.Home) (reflect.IsSlice $featuredReferences) }}
   {{ range $listedPages }}
     {{- if not (in (slice $shortKind $engagementKind) .Params.kind) }}{{ errorf "projects: the project %q must declare a kind, either %q or %q (language: %s)" .File.Path $engagementKind $shortKind .Language.Lang }}{{ end }}
-    {{- /* A featured project's stack is already reported by the featured projects, when the home page that features it is written. */}}
-    {{- $isFeatured := and (partial "is-published.html" site.Home) (reflect.IsSlice $featuredReferences) (in $featuredReferences (strings.TrimPrefix "/" .Path)) }}
+    {{- $isFeatured := and $homeFeaturesProjects (in $featuredReferences (strings.TrimPrefix "/" .Path)) }}
     {{- if and (not $isFeatured) (partial "projects/has-invalid-stack.html" .) }}{{ partial "projects/report-invalid-stack.html" (dict "page" . "reference" .File.Path) }}{{ end }}
   {{ end }}
   {{- partial "projects/report-section-problem.html" $projectsSection }}

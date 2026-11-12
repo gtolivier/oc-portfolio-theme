@@ -6,4 +6,4 @@
   before the link. */ -}}
 <p>{{ partial "logo.html" . }} <small>© {{ now.Year }} {{ site.Params.author }}</small></p>
 <small>{{ site.Params.footerNote }}</small>
-{{ if and (not .IsHome) (partial "is-published.html" site.Home) }}<a class="home-link" href="{{ site.Home.RelPermalink }}">{{ i18n "home" }}</a>{{ end }}
+{{ if and (not .IsHome) (partialCached "is-published.html" site.Home site.Language.Lang) }}<a class="home-link" href="{{ site.Home.RelPermalink }}">{{ i18n "home" }}</a>{{ end }}
