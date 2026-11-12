@@ -17,7 +17,9 @@ The roadmap (one conversation per feature) lives in the private repository
 
 ## Commands
 
-- `hugo server --source exampleSite`: example site, locally.
+- `npm run dev`: example site, locally, without the browser's HTTP cache
+  (`hugo server --source exampleSite --noHTTPCache`): a style or script
+  change shows at the next reload, without a hard reload.
 - `npx playwright test --project=chromium --project=mobile-chrome`: the
   test command — desktop and mobile Chromium. The TDD cycles run this one.
 - `npx playwright test --project=chromium {files}`: the focused test

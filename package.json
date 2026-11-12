@@ -7,7 +7,8 @@
     "fonts": "node scripts/fonts.mjs",
     "typecheck": "tsc --noEmit && tsc --noEmit -p assets/js",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "dev": "hugo server --source exampleSite --noHTTPCache"
   },
   "keywords": [],
   "author": "",
