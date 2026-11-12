@@ -62,6 +62,7 @@ import {
   SITE_WITH_PROJECTS_OF_ONE_KIND_PER_LANGUAGE,
   SITE_WITH_PROJECTS_ORDERED_BY_WEIGHT,
   SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND,
+  SITE_WITH_A_SUBSECTION_OF_AN_UNWRITTEN_PROJECTS_LIST,
   SITE_WITH_PROJECTS_LISTED_WITHOUT_WRITTEN_PAGES,
   SITE_WITH_PROJECTS_WITHOUT_A_VALID_KIND,
   SITE_WITH_A_KINDLESS_PROJECT_IN_THE_CONFIGURED_SECTION,
@@ -2647,6 +2648,57 @@ test.describe('projects section of another site, holding a subsection whose kind
         ),
         `the robots directives of the document served at ${subsection}: ${JSON.stringify(robots)}`,
       ).toBe(true);
+    }
+  });
+});
+
+test.describe('projects section of another site, whose list Hugo does not write, holding a subsection', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_A_SUBSECTION_OF_AN_UNWRITTEN_PROJECTS_LIST);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('when the projects list is not written ([build] render = "never" or "link"), the page of a subsection of the projects section does not send the visitor anywhere, even without JavaScript', async ({
+    browser,
+    viewport,
+  }) => {
+    /* In tests/fixtures/unwritten-projects-list/content/projects/, the French list declares
+       render = 'never' (no address: a redirect there would only reload the subsection's page,
+       again and again) and the English one render = 'link' (an address, but nothing written
+       there: a redirect would lead to a missing page). The subsection marqueterie/ then has
+       nowhere to send the visitor: its page stays at its own address, loaded once, its title
+       shown. */
+    const site = SITE_WITH_A_SUBSECTION_OF_AN_UNWRITTEN_PROJECTS_LIST;
+    const subsections = ['/fr/projets/marqueterie/', '/en/projects/marqueterie/'];
+    const withoutJavaScript = await browser.newContext({ viewport, javaScriptEnabled: false });
+    try {
+      await serveSite(withoutJavaScript, site, siteDirectory);
+      const visitor = await withoutJavaScript.newPage();
+      for (const subsection of subsections) {
+        const documentsRequested: string[] = [];
+        const recordDocument = (request: { resourceType(): string; url(): string }) => {
+          if (request.resourceType() === 'document') documentsRequested.push(request.url());
+        };
+        visitor.on('request', recordDocument);
+        const response = await visitor.goto(`${site.origin}${subsection}`);
+        expect(response?.status(), `status of ${subsection}`).toBe(200);
+        /* Leave a redirect, immediate as it is, the time to happen. */
+        await visitor.waitForTimeout(1500);
+        visitor.off('request', recordDocument);
+        expect(documentsRequested, `the documents loaded from ${subsection}`).toEqual([`${site.origin}${subsection}`]);
+        await expect(visitor, `without JavaScript, the page reached from ${subsection}`).toHaveURL(
+          `${site.origin}${subsection}`,
+        );
+        await expect(
+          visitor.getByRole('main').getByRole('heading', { level: 1 }),
+          `the subsection’s title, at ${subsection}`,
+        ).toBeVisible();
+      }
+    } finally {
+      await withoutJavaScript.close();
     }
   });
 });

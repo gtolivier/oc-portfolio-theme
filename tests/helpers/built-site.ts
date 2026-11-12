@@ -1369,6 +1369,17 @@ export const SITE_WITH_A_SUBSECTION_OF_THE_PROJECTS_SECTION_WITH_A_CASCADED_KIND
   'subsection-with-a-cascaded-kind',
 );
 
+/* The example site writes the page of its projects section, the projects list, in both
+   languages: this site replaces that section's pages with those of
+   tests/fixtures/unwritten-projects-list/content, whose French one declares a plain [build]
+   render = 'never' (no address at all) and whose English one render = 'link' (an address,
+   /en/projects/, but no page written there), and adds a subsection of projects/, marqueterie/,
+   titled "Pendules marquetées" ("Marquetry clocks" in English), whose own page is written, at
+   /fr/projets/marqueterie/ and /en/projects/marqueterie/. Both home pages are replaced with ones
+   without a hero nor featured projects, whose buttons and links would lead to the unwritten list.
+   The example site's projects still sit directly in projects/, with their pages. */
+export const SITE_WITH_A_SUBSECTION_OF_AN_UNWRITTEN_PROJECTS_LIST = testSite('unwritten-projects-list');
+
 /* Every project of the example site's projects section has a page: this site adds to that
    section, in French only, the pages of tests/fixtures/projects-listed-without-pages/content,
    four projects whose page Hugo does not write: a short project and an engagement that declare
