@@ -472,8 +472,8 @@ h1 {
 }
 
 /* The accent underline of a hovered header link, which the footer's home
-   link, the projects' titles and a project page's links take too, also on
-   keyboard focus. */
+   link, the projects' titles, a project page's links and the error page's
+   home link take too, also on keyboard focus. */
 @media (hover: hover) {
   .site-header nav a:not([aria-current]):hover,
   .site-footer .home-link:hover,
