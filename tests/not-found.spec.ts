@@ -156,6 +156,33 @@ test('on the error page, the header language switcher leads to the other languag
   }
 });
 
+test('on the error page, which has no contact section of its own, the header’s "Contact" link leads to the contact section of the home page of its language: /fr/#contact from the French page, /en/#contact from the English one', async ({
+  page,
+  baseURL,
+}) => {
+  for (const [url, home, lang] of [
+    [FRENCH_UNKNOWN_ADDRESS, '/fr/', 'fr-FR'],
+    [ENGLISH_UNKNOWN_ADDRESS, '/en/', 'en-US'],
+  ]) {
+    await page.goto(url);
+    /* The error page has no contact section the link could stay on. */
+    await expect(page.locator('#contact'), `contact section on ${url}`).toHaveCount(0);
+    /* exampleSite/hugo.toml names the main menu's entry 'Contact' in both languages. */
+    const link = page.locator('header nav').getByRole('link', { name: 'Contact', exact: true });
+    await expect(link, `the header’s Contact link on ${url}`).toHaveCount(1);
+    /* Followed, it leads to the home page of the error page's language, at its contact section. */
+    await link.click();
+    await expect(page, `page reached from the Contact link of ${url}`).toHaveURL(
+      new URL(`${home}#contact`, baseURL).href,
+    );
+    await expect(page.locator('html')).toHaveAttribute('lang', lang);
+    await expect(
+      page.getByRole('main').getByRole('region', { name: 'Contact', exact: true }),
+      `contact section of the home page reached from ${url}`,
+    ).toBeInViewport();
+  }
+});
+
 test('the error pages, opened at /fr/404.html and /en/404.html, ask search engines not to index them (meta robots noindex)', async ({
   page,
   request,
