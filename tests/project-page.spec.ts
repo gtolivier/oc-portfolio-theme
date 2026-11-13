@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import {
   SITE_WITH_A_PROJECT_AGENCY_LEFT_BLANK_IN_YAML,
+  SITE_WITH_A_PROJECT_WITHOUT_FACTS,
   SITE_WITH_HOME_PAGES_WITHOUT_CONTACT_INTRO,
   SITE_WITH_LOGOS_MISSING_FROM_THE_PAGE_BUNDLE,
   SITE_WITH_LOGOS_THAT_ARE_NOT_IMAGES,
@@ -821,6 +822,35 @@ test('on a phone (390 px), a project page fits within the screen width, without 
   expect
     .soft(body.y, 'at 1280 px, top of the body’s first heading above the bottom of the first fact')
     .toBeLessThan(firstFactBottom);
+});
+
+test('on a desktop (1280 px), a project page without a logo, a fact or a stack shows no facts column: its body starts at the left edge of the content, level with its title', async ({
+  page,
+  context,
+}) => {
+  /* SITE_WITH_A_PROJECT_WITHOUT_FACTS: horloge-clocher fills in no logo, no fact and no stack; its
+     body opens on the level-2 heading "Le mécanisme". With nothing to show beside it, the body
+     takes the place of the facts column, rather than leaving that column empty. */
+  const site = SITE_WITH_A_PROJECT_WITHOUT_FACTS;
+  const siteDirectory = buildSite(site);
+  try {
+    await serveSite(context, site, siteDirectory);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const url = `${site.origin}/fr/projets/horloge-clocher/`;
+    const response = await page.goto(url);
+    expect(response?.status(), url).toBe(200);
+    const main = page.getByRole('main');
+    await expect(main.getByRole('term'), `facts listed on ${url}`).toHaveCount(0);
+    await expect(main.getByRole('img'), `logos on ${url}`).toHaveCount(0);
+    const title = (await main.getByRole('heading', { level: 1 }).boundingBox())!;
+    const body = (await main.getByRole('heading', { level: 2, name: 'Le mécanisme', exact: true }).boundingBox())!;
+    expect(
+      Math.abs(body.x - title.x),
+      `at 1280 px, body level with the title’s left edge on ${url}`,
+    ).toBeLessThanOrEqual(2);
+  } finally {
+    removeDirectory(siteDirectory);
+  }
 });
 
 test('after its body, a project page shows a link back to the projects list of its language and a "Discuter d’un projet similaire" link (English: "Discuss a similar project") to the contact section of the page', async ({

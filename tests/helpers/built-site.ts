@@ -1495,6 +1495,13 @@ export const SITE_WITH_PROJECT_FACTS_READ_AS_EMPTY = testSite('facts-read-as-emp
    which YAML reads as null. Neither home page features it. */
 export const SITE_WITH_A_PROJECT_AGENCY_LEFT_BLANK_IN_YAML = testSite('workshop-left-unset-in-yaml');
 
+/* Every project of the example site fills in some facts (a role, a period, a stack…): this site
+   adds to its projects section the project of tests/fixtures/project-without-facts/content,
+   "Horloge de clocher du village" (projects/horloge-clocher.md), in French only, which sets its
+   kind and nothing else: no logo, no client, agency, role, years, duration, mode or format, no
+   stack. Its body opens on a level-2 heading, "Le mécanisme". Neither home page features it. */
+export const SITE_WITH_A_PROJECT_WITHOUT_FACTS = testSite('project-without-facts');
+
 /* The example site's home pages both declare a contact intro ([params.contact] table, intro key):
    this site replaces them with those of tests/fixtures/home-pages-without-contact-intro/content,
    which declare none. The French one has no contact params at all; the English one has a
