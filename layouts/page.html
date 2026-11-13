@@ -19,6 +19,8 @@
     (dict "param" "mode" "label" "contract")
     (dict "param" "format" "label" "format")
   }}
+  <div class="project-page">
+  <div class="project-facts">
   <dl>
     {{- range $facts }}
     {{- $label := .label }}
@@ -54,8 +56,16 @@
   {{- with .Params.stack }}
   <p>{{ delimit . (partial "stack-separator.html") }}</p>
   {{- end }}
+  </div>
   {{- end }}
+  {{- if $isProject }}
+  <div class="project-body">
   {{ .Content }}
+  </div>
+  </div>
+  {{- else }}
+  {{ .Content }}
+  {{- end }}
   {{- if $isProject }}
   {{ partial "projects/all-projects-link.html" . }}
   {{- /* The contact section needs the home page's contact intro: without it, no section and no link to it. */}}

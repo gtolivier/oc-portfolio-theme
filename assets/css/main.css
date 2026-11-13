@@ -1896,3 +1896,19 @@ tick-field > canvas {
   overflow-wrap: anywhere;
   color: rgb(var(--color-paper-channels) / 0.75);
 }
+
+/* A project page: the facts above the body on a phone, in a column to the
+   left of the body on wider screens. Images never overflow their column. */
+.project-page img {
+  max-width: 100%;
+  height: auto;
+}
+
+@media (min-width: 900px) {
+  .project-page {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 48px;
+    align-items: start;
+  }
+}
