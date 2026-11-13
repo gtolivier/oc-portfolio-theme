@@ -1,6 +1,12 @@
 [skipToContent]
 other = 'Aller au contenu'
 
+[notFoundTitle]
+other = 'Page introuvable'
+
+[notFoundMessage]
+other = 'La page que vous cherchez n’existe pas ou a été déplacée.'
+
 [clients]
 other = 'Ils me font confiance'
 
