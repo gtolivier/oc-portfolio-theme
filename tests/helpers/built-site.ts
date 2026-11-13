@@ -1535,6 +1535,14 @@ export const SITE_WITH_A_PROJECTS_LIST_WITHOUT_CONTACT_INTRO = testSite('project
    site's home pages, which declare a contact intro, and its projects list are unchanged. */
 export const SITE_WITH_A_SECTION_SETTING_A_CONTACT_INTRO = testSite('section-with-a-contact-intro');
 
+/* The example site's French home page shows its featured projects, its background, then its
+   contact section: this site replaces that home page with the one of
+   tests/fixtures/projects-and-contact-without-background/content, without a hero, clients nor
+   background, which features two of the example site's projects and declares a fictional
+   clockmaker's contact intro, so that the contact section comes right after the featured
+   projects. */
+export const SITE_WITH_PROJECTS_AND_CONTACT_WITHOUT_BACKGROUND = testSite('projects-and-contact-without-background');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
