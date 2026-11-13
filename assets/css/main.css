@@ -1753,6 +1753,22 @@ tick-field > canvas {
   }
 }
 
+/* The contact section that ends the projects list keeps the home page's look,
+   a little tighter, as in the mockup. */
+:is(.engagements, .short-projects) ~ .contact > h2 {
+  margin-bottom: 20px;
+}
+
+:is(.engagements, .short-projects) ~ .contact :is(.contact-intro, .contact-sent, .contact-status) {
+  font-size: 19px;
+}
+
+@media (min-width: 768px) {
+  :is(.engagements, .short-projects) ~ .contact {
+    padding-block: 96px;
+  }
+}
+
 /* A project's title links to its page in the colour of the text, underlined
    like the header's links when hovered or focused. */
 :is(.engagement, .short-project) h3 a {
