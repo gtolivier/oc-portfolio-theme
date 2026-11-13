@@ -28,14 +28,18 @@
     {{- end }}
     {{- end }}
   </dl>
-  {{- range slice (dict "param" "clientLogo" "name" "client" "label" "client") (dict "param" "agencyLogo" "name" "agency" "label" "agency") }}
+  {{- $logos := slice
+    (dict "param" "clientLogo" "ownerParam" "client" "label" "client")
+    (dict "param" "agencyLogo" "ownerParam" "agency" "label" "agency")
+  }}
+  {{- range $logos }}
   {{- $label := .label }}
-  {{- $name := index $.Params .name }}
+  {{- $owner := index $.Params .ownerParam }}
   {{- with index $.Params .param }}
   {{- with $.Resources.Get . }}
   <div>
     <p>{{ i18n $label }}</p>
-    <img src="{{ .RelPermalink }}" alt="{{ $name }}">
+    <img src="{{ .RelPermalink }}" alt="{{ $owner }}">
   </div>
   {{- end }}
   {{- end }}
