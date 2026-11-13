@@ -918,14 +918,15 @@ tick-field > canvas {
   }
 }
 
-/* The frame the home page's sections share, and the projects list page's
-   groups: the page gutter, wider on a screen wide enough to centre the
-   content within the sections' maximum width. */
+/* The frame the home page's sections share, the projects list page's groups
+   and a project page's body: the page gutter, wider on a screen wide enough
+   to centre the content within the sections' maximum width. */
 .projects,
 .background,
 .contact,
 .engagements,
-.short-projects {
+.short-projects,
+.project-page {
   --section-max-width: 1280px;
   padding: 56px max(var(--page-gutter), (100% - var(--section-max-width)) / 2);
 }
@@ -1946,8 +1947,7 @@ tick-field > canvas {
   --project-logos-padding: 24px;
   /* Between the facts column and the body. */
   --project-page-column-gap: 64px;
-  --section-max-width: 1280px;
-  padding: 48px max(var(--page-gutter), (100% - var(--section-max-width)) / 2) 64px;
+  padding-block: 48px 64px;
   background: var(--color-paper);
   color: var(--color-ink);
 }
@@ -1998,10 +1998,6 @@ tick-field > canvas {
 .project-facts dl {
   margin: 0;
   font-size: 14px;
-}
-
-.project-facts dl:not(:has(dt)) {
-  display: none;
 }
 
 .project-facts dd {

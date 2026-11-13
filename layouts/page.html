@@ -20,13 +20,14 @@
     (dict "param" "mode" "label" "contract")
     (dict "param" "format" "label" "format")
   }}
+  {{- /* The owner's param name is also the i18n key of the logo's label. */}}
   {{- $logoParams := slice
-    (dict "param" "clientLogo" "ownerParam" "client" "label" "client")
-    (dict "param" "agencyLogo" "ownerParam" "agency" "label" "agency")
+    (dict "param" "clientLogo" "ownerParam" "client")
+    (dict "param" "agencyLogo" "ownerParam" "agency")
   }}
   {{- $logos := slice }}
   {{- range $logoParams }}
-  {{- $label := .label }}
+  {{- $label := .ownerParam }}
   {{- $owner := index $.Params .ownerParam }}
   {{- $param := .param }}
   {{- with index $.Params .param }}
@@ -41,6 +42,15 @@
   {{- end }}
   {{- /* Without a contact section, no link to it. */}}
   {{- $contact := partial "contact.html" (dict "home" site.Home "introOverride" $.Params.contactIntro) }}
+  {{- $filledFacts := slice }}
+  {{- range $facts }}
+  {{- $param := .param }}
+  {{- $fact := index $.Params $param }}
+  {{- if and (isset $.Params $param) (eq (partial "text-problem.html" $fact) "not-text") }}{{ errorf "projects: the %s param of the page %s must be a text (language: %s)" $param $.Path $.Language.Lang }}
+  {{- else if $fact }}
+  {{- $filledFacts = $filledFacts | append (dict "label" .label "value" $fact) }}
+  {{- end }}
+  {{- end }}
   <div class="project-page">
     <div class="project-facts">
       {{- with $logos }}
@@ -53,20 +63,14 @@
         {{- end }}
       </div>
       {{- end }}
+      {{- with $filledFacts }}
       <dl>
-        {{- range $facts }}
-        {{- $label := .label }}
-        {{- $param := .param }}
-        {{- $fact := index $.Params .param }}
-        {{- if and (isset $.Params $param) (eq (partial "text-problem.html" $fact) "not-text") }}{{ errorf "projects: the %s param of the page %s must be a text (language: %s)" $param $.Path $.Language.Lang }}
-        {{- else }}
-        {{- with $fact }}
-        <dt>{{ i18n $label }}</dt>
-        <dd>{{ . }}</dd>
-        {{- end }}
-        {{- end }}
+        {{- range . }}
+        <dt>{{ i18n .label }}</dt>
+        <dd>{{ .value }}</dd>
         {{- end }}
       </dl>
+      {{- end }}
       {{- with .Params.stack }}
       <p class="project-stack">{{ delimit . (partial "stack-separator.html") }}</p>
       {{- end }}
