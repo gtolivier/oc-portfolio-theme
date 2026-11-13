@@ -43,7 +43,7 @@
   {{- range $facts }}
   {{- $param := .param }}
   {{- $fact := index $.Params $param }}
-  {{- if and (isset $.Params $param) (eq (partial "text-problem.html" $fact) "not-text") }}{{ errorf "projects: the %s param of the page %s must be a text (language: %s)" $param $.Path $.Language.Lang }}
+  {{- if and (isset $.Params $param) (ne (printf "%T" $fact) "<nil>") (eq (partial "text-problem.html" $fact) "not-text") }}{{ errorf "projects: the %s param of the page %s must be a text (language: %s)" $param $.Path $.Language.Lang }}
   {{- else if and $fact (not (in $shownLogoOwnerParams $param)) }}
   {{- $filledFacts = $filledFacts | append (dict "label" .label "value" $fact) }}
   {{- end }}
