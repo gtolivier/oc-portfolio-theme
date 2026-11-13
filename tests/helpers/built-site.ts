@@ -1553,6 +1553,14 @@ export const SITE_WITH_PROJECTS_AND_CONTACT_WITHOUT_BACKGROUND = testSite('proje
    still built. */
 export const SITE_WITH_SHORT_PROJECTS_ONLY_AND_CONTACT = testSite('short-projects-and-contact');
 
+/* Like SITE_WITH_SHORT_PROJECTS_ONLY_AND_CONTACT, this site names ateliers/ in its projectsSection
+   site param (see tests/fixtures/empty-projects-list-and-contact/hugo.toml) and replaces both home
+   pages with ones that feature no projects but declare a fictional clockmaker's contact intro; but
+   the section it adds, titled "Ateliers" and published at /fr/ateliers/, holds no project at all:
+   its page shows neither engagements nor short projects, only the contact section. The example
+   site's projects/ section is still built. */
+export const SITE_WITH_AN_EMPTY_PROJECTS_LIST_AND_CONTACT = testSite('empty-projects-list-and-contact');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

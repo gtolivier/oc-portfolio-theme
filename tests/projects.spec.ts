@@ -74,6 +74,7 @@ import {
   SITE_WITH_HOME_PAGES_WITHOUT_CONTACT_INTRO,
   SITE_WITH_A_SECTION_SETTING_A_CONTACT_INTRO,
   SITE_WITH_SHORT_PROJECTS_ONLY_AND_CONTACT,
+  SITE_WITH_AN_EMPTY_PROJECTS_LIST_AND_CONTACT,
   TEMPLATE_EXECUTION_ERROR,
   type BuiltSite,
   buildSite,
@@ -2940,6 +2941,41 @@ test.describe('projects section of another site, holding short projects only, fo
       .poll(() => displayedText(contactHeading), 'text displayed by the contact heading')
       .toMatch(/^02 ?\/\/ ?Contact$/i);
     await expect(groupHeading).toHaveAccessibleName('Projets courts & interactifs');
+    await expect(contactHeading).toHaveAccessibleName('Contact');
+  });
+});
+
+test.describe('projects section of another site, holding no project, followed by its contact section', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_AN_EMPTY_PROJECTS_LIST_AND_CONTACT);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a projects list with no project, the heading of its contact section, the only numbered section, shows the section number "01 //", while assistive technologies get the title alone', async ({
+    page,
+    context,
+  }) => {
+    /* tests/fixtures/empty-projects-list-and-contact/content/ateliers/ holds no project, and its
+       home page declares a contact intro: the list shows no project group, only the contact
+       section, which is then the first numbered section. */
+    const site = SITE_WITH_AN_EMPTY_PROJECTS_LIST_AND_CONTACT;
+    await serveSite(context, site, siteDirectory);
+    await page.goto(`${site.origin}/fr/ateliers/`);
+    const main = page.getByRole('main');
+    await expect(main.getByRole('heading', { level: 3 }), 'no project title').toHaveCount(0);
+    const contactHeading = contactSection(page).getByRole('heading', { level: 2 });
+    await expect(contactHeading).toBeVisible();
+    await expect(main.getByRole('heading', { level: 2 }), 'the contact heading, the only section heading').toHaveCount(
+      1,
+    );
+    /* On screen: the first number, then "Contact" (its case left to the stylesheet). For assistive
+       technologies, the title alone. */
+    await expect
+      .poll(() => displayedText(contactHeading), 'text displayed by the contact heading')
+      .toMatch(/^01 ?\/\/ ?Contact$/i);
     await expect(contactHeading).toHaveAccessibleName('Contact');
   });
 });
