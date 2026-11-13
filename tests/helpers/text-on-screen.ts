@@ -17,7 +17,7 @@ export async function textOnScreen(element: Locator): Promise<string> {
    whitespace becomes a single space, as the browser renders it, and leading and trailing
    whitespace is dropped. */
 async function renderedText(element: Locator, onScreenOnly: boolean): Promise<string> {
-  const pieces = await renderedPieces(element, onScreenOnly);
+  const pieces = await renderedPieces(element, { onScreenOnly, painted: false });
   return pieces
     .map(({ text }) => text)
     .join('')
@@ -28,13 +28,27 @@ async function renderedText(element: Locator, onScreenOnly: boolean): Promise<st
 type Pseudo = '::before' | '::after';
 
 /* A piece of the text an element displays: a text node, as written, or the generated content of
-   a ::before or ::after (pseudo). `element` is the index of the element that holds it among the
-   root and its descendants, in document order (`[root, ...root.querySelectorAll('*')]`). */
-export type DisplayedPiece = { text: string; element: number; pseudo: Pseudo | null };
+   a ::before or ::after (pseudo). */
+type Piece = { text: string; pseudo: Pseudo | null };
 
-/* The pieces of the text of textOnScreen (onScreenOnly) or displayedText, in rendering order. */
-async function renderedPieces(element: Locator, onScreenOnly: boolean): Promise<DisplayedPiece[]> {
-  return element.evaluate((root, onScreenOnly) => {
+/* A piece of displayedText with how it is painted: its text color, the background colors behind
+   it, nearest first (for a pseudo-element, its own, then those of the element that holds it and
+   its ancestors; for a text node, those of its element and its ancestors), its font size in px
+   and its font weight. */
+export type DisplayedPiece = Piece & { color: string; backgrounds: string[]; fontSize: number; fontWeight: number };
+
+/* The pieces of the text of textOnScreen (onScreenOnly) or displayedText, in rendering order,
+   with how each is painted when asked (painted). */
+async function renderedPieces(
+  element: Locator,
+  options: { onScreenOnly: boolean; painted: true },
+): Promise<DisplayedPiece[]>;
+async function renderedPieces(element: Locator, options: { onScreenOnly: boolean; painted: false }): Promise<Piece[]>;
+async function renderedPieces(
+  element: Locator,
+  options: { onScreenOnly: boolean; painted: boolean },
+): Promise<Piece[]> {
+  return element.evaluate((root, { onScreenOnly, painted }) => {
     const STRING = /"(?:[^"\\]|\\.)*"/.source;
     /* An element or pseudo-element that is not displayed or invisible shows nothing, nor, on
        screen, one fully transparent. */
@@ -44,7 +58,8 @@ async function renderedPieces(element: Locator, onScreenOnly: boolean): Promise<
        most 1px with its overflow hidden. */
     const hides = (el: Element) => {
       const style = getComputedStyle(el);
-      if (invisible(style) || !onScreenOnly) return invisible(style);
+      if (invisible(style)) return true;
+      if (!onScreenOnly) return false;
       const box = el.getBoundingClientRect();
       return (
         style.clipPath !== 'none' ||
@@ -85,10 +100,13 @@ async function renderedPieces(element: Locator, onScreenOnly: boolean): Promise<
         counter.value = update(counter.value);
       };
       /* The `name [integer]` pairs of a computed counter property, with the default integer. */
-      const pairs = (property: string, implicit: number) =>
-        Array.from(style.getPropertyValue(property).matchAll(/([\w-]+)(?:\s+(-?\d+))?/g))
+      const pairs = (property: string, implicit: number) => {
+        const value = style.getPropertyValue(property);
+        if (value.includes('(')) throw new Error(`text-on-screen: cannot read ${property}: ${value}`);
+        return Array.from(value.matchAll(/([\w-]+)(?:\s+(-?\d+))?/g))
           .filter(([, name]) => name !== 'none')
-          .map(([, name, value]) => [name, value === undefined ? implicit : Number(value)] as const);
+          .map(([, name, integer]) => [name, integer === undefined ? implicit : Number(integer)] as const);
+      };
       for (const [name, value] of pairs('counter-reset', 0)) instantiate(name, value);
       for (const [name, value] of pairs('counter-increment', 1)) change(name, (current) => current + value);
       for (const [name, value] of pairs('counter-set', 0)) change(name, () => value);
@@ -161,25 +179,42 @@ async function renderedPieces(element: Locator, onScreenOnly: boolean): Promise<
       }
       return text;
     };
-    const indexes = new Map([root, ...Array.from(root.querySelectorAll('*'))].map((el, index) => [el, index]));
-    const pieces: DisplayedPiece[] = [];
+    /* Background colors of an element and its ancestors, nearest first. */
+    const chainOf = (el: Element) => {
+      const chain: string[] = [];
+      for (let current: Element | null = el; current; current = current.parentElement)
+        chain.push(getComputedStyle(current).backgroundColor);
+      return chain;
+    };
+    /* How a piece held by an element, in a pseudo-element or not, is painted (see DisplayedPiece). */
+    const paintingOf = (el: Element, pseudo: Pseudo | null) => {
+      const style = getComputedStyle(el, pseudo);
+      return {
+        color: style.color,
+        backgrounds: pseudo ? [style.backgroundColor, ...chainOf(el)] : chainOf(el),
+        fontSize: parseFloat(style.fontSize),
+        fontWeight: parseFloat(style.fontWeight),
+      };
+    };
+    const pieces: (Piece | DisplayedPiece)[] = [];
+    const add = (el: Element, text: string, pseudo: Pseudo | null) =>
+      pieces.push(painted ? { text, pseudo, ...paintingOf(el, pseudo) } : { text, pseudo });
     const walk = (el: Element) => {
       if (hides(el)) return;
-      const element = indexes.get(el)!;
       const addGenerated = (pseudo: Pseudo) => {
         const text = generated(el, pseudo);
-        if (text) pieces.push({ text, element, pseudo });
+        if (text) add(el, text, pseudo);
       };
       addGenerated('::before');
       for (const child of Array.from(el.childNodes)) {
-        if (child.nodeType === Node.TEXT_NODE) pieces.push({ text: child.textContent ?? '', element, pseudo: null });
+        if (child.nodeType === Node.TEXT_NODE) add(el, child.textContent ?? '', null);
         else if (child.nodeType === Node.ELEMENT_NODE) walk(child as Element);
       }
       addGenerated('::after');
     };
     walk(root);
     return pieces;
-  }, onScreenOnly);
+  }, options);
 }
 
 /* The opacity an element is seen with: the product of its own opacity and those of its
@@ -204,7 +239,7 @@ export async function displayedText(element: Locator): Promise<string> {
   return renderedText(element, false);
 }
 
-/* The pieces of displayedText, in rendering order, each with the element that holds it. */
+/* The pieces of displayedText, in rendering order, each with how it is painted. */
 export async function displayedPieces(element: Locator): Promise<DisplayedPiece[]> {
-  return renderedPieces(element, false);
+  return renderedPieces(element, { onScreenOnly: false, painted: true });
 }

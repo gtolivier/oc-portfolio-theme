@@ -316,29 +316,11 @@ async function backgroundChain(element: Locator): Promise<string[]> {
    first. */
 async function displayedTexts(root: Locator): Promise<{ text: string; color: string; backgrounds: string[] }[]> {
   const pieces = await displayedPieces(root);
-  return root.evaluate((rootElement, pieces) => {
-    const elements = [rootElement, ...Array.from(rootElement.querySelectorAll('*'))];
-    /* As backgroundChain, inside the page. */
-    const chainOf = (el: Element) => {
-      const chain: string[] = [];
-      for (let current: Element | null = el; current; current = current.parentElement)
-        chain.push(getComputedStyle(current).backgroundColor);
-      return chain;
-    };
-    return pieces.flatMap(({ text, element, pseudo }) => {
-      const el = elements[element];
-      const style = getComputedStyle(el, pseudo);
-      const shown = pseudo ? text.trim() : text.replace(/\s+/g, ' ').trim();
-      if (!shown) return [];
-      return [
-        {
-          text: pseudo ? `${pseudo} ${shown}` : shown,
-          color: style.color,
-          backgrounds: pseudo ? [style.backgroundColor, ...chainOf(el)] : chainOf(el),
-        },
-      ];
-    });
-  }, pieces);
+  return pieces.flatMap(({ text, pseudo, color, backgrounds }) => {
+    const shown = pseudo ? text.trim() : text.replace(/\s+/g, ' ').trim();
+    if (!shown) return [];
+    return [{ text: pseudo ? `${pseudo} ${shown}` : shown, color, backgrounds }];
+  });
 }
 
 /* Measured inside a card's tick pattern, this far from each edge of its box, so that a border, a

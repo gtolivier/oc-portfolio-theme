@@ -1161,30 +1161,11 @@ async function displayedTexts(
   root: Locator,
 ): Promise<{ text: string; color: string; backgrounds: string[]; fontSize: number; fontWeight: number }[]> {
   const pieces = await displayedPieces(root);
-  return root.evaluate((rootElement, pieces) => {
-    const elements = [rootElement, ...Array.from(rootElement.querySelectorAll('*'))];
-    const chainOf = (el: Element) => {
-      const chain: string[] = [];
-      for (let current: Element | null = el; current; current = current.parentElement)
-        chain.push(getComputedStyle(current).backgroundColor);
-      return chain;
-    };
-    return pieces.flatMap(({ text, element, pseudo }) => {
-      const el = elements[element];
-      const style = getComputedStyle(el, pseudo);
-      const shown = pseudo ? text.trim() : text.replace(/\s+/g, ' ').trim();
-      if (!shown) return [];
-      return [
-        {
-          text: pseudo ? `${pseudo} ${shown}` : shown,
-          color: style.color,
-          backgrounds: pseudo ? [style.backgroundColor, ...chainOf(el)] : chainOf(el),
-          fontSize: parseFloat(style.fontSize),
-          fontWeight: parseFloat(style.fontWeight),
-        },
-      ];
-    });
-  }, pieces);
+  return pieces.flatMap(({ text, pseudo, color, backgrounds, fontSize, fontWeight }) => {
+    const shown = pseudo ? text.trim() : text.replace(/\s+/g, ' ').trim();
+    if (!shown) return [];
+    return [{ text: pseudo ? `${pseudo} ${shown}` : shown, color, backgrounds, fontSize, fontWeight }];
+  });
 }
 
 /* Large text, as WCAG defines it: at least 18pt (24px), or at least 14pt (about 18.67px) bold. */
