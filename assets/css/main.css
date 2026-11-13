@@ -1404,6 +1404,11 @@ tick-field > canvas {
   color: var(--color-ink);
 }
 
+/* Without the background section, the contact section follows the projects. */
+.projects + .contact {
+  --section-number: '02 // ';
+}
+
 .contact > h2 {
   margin: 0 0 24px;
   font-family: var(--font-mono);
