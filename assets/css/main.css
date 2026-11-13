@@ -2143,10 +2143,14 @@ tick-field > canvas {
     align-items: start;
   }
 
-  /* The facts stay in view beside a long body, below the sticky header. */
+  /* The facts stay in view beside a long body, below the sticky header.
+     On a short window, the column scrolls on its own rather than hiding
+     its last facts below the window. */
   .project-facts {
     position: sticky;
     top: var(--sticky-header-clearance);
+    max-height: calc(100vh - var(--sticky-header-clearance));
+    overflow-y: auto;
     margin-bottom: 0;
   }
 
