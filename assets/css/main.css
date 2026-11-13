@@ -1177,6 +1177,11 @@ tick-field > canvas {
   }
 }
 
+/* Without the projects section, the background section is the first one. */
+main:not(:has(.projects)) .background {
+  --section-number: '01 // ';
+}
+
 /* The mockup's gap between the columns, once the left one is wide enough
    for the key figures side by side. */
 @media (min-width: 1024px) {
