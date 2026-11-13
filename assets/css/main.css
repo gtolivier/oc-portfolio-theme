@@ -1762,6 +1762,11 @@ main:not(:has(.engagements)) .short-projects + .contact {
   --section-number: '02 // ';
 }
 
+/* Without any project, the contact section is the first section. */
+main:not(:has(.engagements, .short-projects)) .page-hero ~ .contact {
+  --section-number: '01 // ';
+}
+
 @media (min-width: 768px) {
   .engagements {
     padding-block: 80px;
