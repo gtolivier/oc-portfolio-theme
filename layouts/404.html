@@ -1,7 +1,10 @@
 {{ define "main" }}
-  {{ partial "page-hero.html" (dict "page" . "description" (i18n "notFoundMessage") "content" (cond (partialCached "is-published.html" site.Home site.Language.Lang) (partial "inline/not-found-home-link.html" .) "") "contentClass" "is-apart") }}
+  {{ partial "page-hero.html" (dict "page" . "description" (i18n "notFoundMessage") "content" (partial "inline/not-found-home-link.html" .) "contentClass" "is-apart") }}
 {{ end }}
 
+{{- /* No link when Hugo does not write the home page, which would leave it dead, as in the footer; the partial then renders nothing, and the hero no further intro. */}}
 {{- define "_partials/inline/not-found-home-link.html" }}
+{{- if partialCached "is-published.html" site.Home site.Language.Lang }}
 <a class="not-found-home-link" href="{{ site.Home.RelPermalink }}">{{ i18n "notFoundHomeLink" }}</a>
+{{- end }}
 {{- end }}
