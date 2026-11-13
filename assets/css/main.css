@@ -1415,15 +1415,15 @@ tick-field > canvas {
 }
 
 /* The intro, the confirmation and the status message that types it share
-   one place, so that the section keeps its height while one replaces the
-   other. The status message takes that place only once the intro is gone
+   one place, as tall as its text: no reserved height, which would leave an
+   empty line under a one-line intro (the mockup reserves two lines). The
+   status message takes that place only once the intro is gone
    (is-confirmed): it already holds the hidden whole sentence while the
    intro is erased. */
 .contact-intro,
 .contact-sent,
 .contact.is-confirmed .contact-status {
   max-width: 560px;
-  min-height: 62px;
   margin: 0 0 40px;
   font-size: 18px;
   line-height: 1.55;
