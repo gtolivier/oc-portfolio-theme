@@ -104,6 +104,25 @@ test('the error page’s main content links back to the home page of its own lan
   }
 });
 
+test('on the error page, the header language switcher leads to the other language’s home page: /en/ from the French page, /fr/ from the English one', async ({
+  page,
+  baseURL,
+}) => {
+  for (const [url, otherHome, otherLang] of [
+    ['/fr/page-qui-n-existe-pas/', '/en/', 'en-US'],
+    ['/en/page-that-does-not-exist/', '/fr/', 'fr-FR'],
+  ]) {
+    await page.goto(url);
+    /* The header's language switcher: its only link is the other language's entry. */
+    const otherLanguageLink = page.locator('header').getByRole('group').getByRole('link');
+    await expect(otherLanguageLink, `language switch link on ${url}`).toHaveCount(1);
+    /* Followed, it leads to the other language's home page, not to its error page. */
+    await otherLanguageLink.click();
+    await expect(page, `page reached from the language switcher of ${url}`).toHaveURL(new URL(otherHome, baseURL).href);
+    await expect(page.locator('html')).toHaveAttribute('lang', otherLang);
+  }
+});
+
 test('the error pages, opened at /fr/404.html and /en/404.html, ask search engines not to index them (meta robots noindex)', async ({
   page,
   request,
