@@ -2515,6 +2515,46 @@ test.describe('projects section’s page without JavaScript', () => {
   });
 });
 
+test('with JavaScript, sending the filled contact form from the projects section’s page posts it in the background to the contactAction address, without leaving the page, and on a successful answer shows the confirmation in place of the list’s contactIntro', async ({
+  page,
+  baseURL,
+}) => {
+  /* exampleSite/hugo.toml gives the form the address /api/contact; the endpoint answers the
+     background request with success, in JSON. content/projects/_index.md sets the list's
+     contactIntro; the confirmation is the theme's default French one, the home page giving none. */
+  const contactAction = '/api/contact';
+  await page.route(`**${contactAction}`, (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
+  );
+  const listIntro = 'Un projet similaire ? Parlons-en.';
+  const confirmation = 'Merci, je vous réponds sous 48 heures ouvrées.';
+  await page.goto('/fr/projets/');
+  const urlBefore = page.url();
+  /* A mark left on the page as loaded: a reload or a navigation would wipe it out. */
+  await page.evaluate(() => {
+    (window as unknown as { samePageMark?: boolean }).samePageMark = true;
+  });
+  const section = page.getByRole('main').getByRole('region', { name: 'Contact', exact: true });
+  const form = section.getByRole('form');
+  await expect(section.getByText(listIntro, { exact: true }), 'the list’s contact intro before sending').toBeVisible();
+  await form.locator('[name="email"]').fill('marie.horloge@exemple.fr');
+  await form.locator('[name="message"]').fill('Bonjour, je cherche une restauration comme celles de la liste.');
+  const [request] = await Promise.all([
+    page.waitForRequest((sent) => sent.method() === 'POST'),
+    form.getByRole('button').click(),
+  ]);
+  expect(request.url(), 'the address the form posts to').toBe(new URL(contactAction, baseURL).href);
+  /* On success, the confirmation shows in place of the list's intro… */
+  await expect(section.getByText(confirmation), 'the confirmation').toBeVisible();
+  await expect(section.getByText(listIntro), 'the list’s contact intro').not.toBeVisible();
+  /* …on the same page: same address, not reloaded. */
+  expect(page.url(), 'the page address').toBe(urlBefore);
+  expect(
+    await page.evaluate(() => (window as unknown as { samePageMark?: boolean }).samePageMark === true),
+    'the page is the one loaded before sending',
+  ).toBe(true);
+});
+
 test.describe('projects section of another site, whose projects list sets no contactIntro', () => {
   test('when the projects list sets no contactIntro param, its contact section shows, in each language, the intro the home page of its language declares', async ({
     page,
