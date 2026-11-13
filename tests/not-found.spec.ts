@@ -84,3 +84,22 @@ test('the error page’s title in the browser tab is its heading, in its own lan
   /* Two languages, two titles: a single hard-coded title cannot pass. */
   expect(headings[1]).not.toBe(headings[0]);
 });
+
+test('the error page’s main content links back to the home page of its own language: /fr/ from the French page, /en/ from the English one', async ({
+  page,
+  baseURL,
+}) => {
+  for (const [url, home, lang] of [
+    ['/fr/page-qui-n-existe-pas/', '/fr/', 'fr-FR'],
+    ['/en/page-that-does-not-exist/', '/en/', 'en-US'],
+  ]) {
+    await page.goto(url);
+    /* In the page's main content, not the header's logo or menu nor the footer's home link. */
+    const homeLink = page.getByRole('main').getByRole('link');
+    await expect(homeLink, `link in the main content of ${url}`).toHaveCount(1);
+    /* Followed, it leads to the home page of the error page's language. */
+    await homeLink.click();
+    await expect(page, `home page reached from ${url}`).toHaveURL(new URL(home, baseURL).href);
+    await expect(page.locator('html')).toHaveAttribute('lang', lang);
+  }
+});
