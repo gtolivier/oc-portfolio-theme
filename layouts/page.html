@@ -39,8 +39,8 @@
   {{- end }}
   {{- end }}
   {{- end }}
-  {{- /* A level-3 heading keeps the contact section out of the level-2 headings of the project's body. Without a contact section, no link to it. */}}
-  {{- $contact := partial "contact.html" (dict "home" site.Home "headingLevel" 2 "introOverride" $.Params.contactIntro) }}
+  {{- /* Without a contact section, no link to it. */}}
+  {{- $contact := partial "contact.html" (dict "home" site.Home "introOverride" $.Params.contactIntro) }}
   <div class="project-page">
     <div class="project-facts">
       {{- with $logos }}
