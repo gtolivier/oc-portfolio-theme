@@ -605,7 +605,11 @@ test('a project page shows its body, in its language: its section headings, para
   for (const { url, headings, paragraphs, listItems, captures } of pages) {
     await page.goto(url);
     const main = page.getByRole('main');
-    const sectionHeadings = main.getByRole('heading', { level: 2 });
+    /* The body's section headings only: the contact section, the #contact anchor that ends the
+       page, has a level-2 heading of its own. */
+    const sectionHeadings = main
+      .getByRole('heading', { level: 2 })
+      .and(page.locator('xpath=//*[not(ancestor::*[@id="contact"])]'));
     await expect(sectionHeadings, `section headings on ${url}`).toHaveText(headings);
     for (const heading of await sectionHeadings.all()) {
       await heading.scrollIntoViewIfNeeded();
@@ -905,6 +909,44 @@ test('a project page whose contactIntro param is set shows it as the contact int
     await expect(section.getByText(intro, { exact: true }), `the page's contact intro on ${url}`).toBeVisible();
     for (const other of [...homeIntros, ...projectIntros].filter((text) => text !== intro)) {
       await expect(section.getByText(other), `another intro on ${url}`).toHaveCount(0);
+    }
+  }
+});
+
+test('the contact section of a project page is titled by a level-2 heading, like the sections of its body, so that the page’s headings skip no level', async ({
+  page,
+}) => {
+  /* The example site's horloge-astronomique has level-2 section headings in its body;
+     regulateur-noyer has none, so that its contact heading directly follows its level-1 title. The
+     section is found as on the home page: a region named by its title. */
+  for (const project of PROJECTS) {
+    for (const url of [`/fr/projets/${project.slug}/`, `/en/projects/${project.slug}/`]) {
+      await page.goto(url);
+      const main = page.getByRole('main');
+      const section = main.getByRole('region', { name: 'Contact', exact: true });
+      await expect(section, `contact section on ${url}`).toHaveCount(1);
+
+      /* The section's only heading, its title, is a level-2 one. */
+      await expect(section.getByRole('heading'), `headings of the contact section on ${url}`).toHaveCount(1);
+      await expect(
+        section.getByRole('heading', { level: 2 }),
+        `level-2 title of the contact section on ${url}`,
+      ).toHaveCount(1);
+
+      /* In reading order, no heading of the main content goes more than one level deeper than the
+         one before it. */
+      const levels = await main.evaluate((element) =>
+        Array.from(element.querySelectorAll('h1, h2, h3, h4, h5, h6, [role="heading"]')).map((heading) => {
+          const ariaLevel = heading.getAttribute('aria-level');
+          return ariaLevel ? Number(ariaLevel) : Number(heading.tagName.slice(1));
+        }),
+      );
+      for (let index = 1; index < levels.length; index++) {
+        expect(
+          levels[index],
+          `heading ${index + 1} on ${url}, after a level-${levels[index - 1]} one (levels: ${levels.join(', ')})`,
+        ).toBeLessThanOrEqual(levels[index - 1] + 1);
+      }
     }
   }
 });
