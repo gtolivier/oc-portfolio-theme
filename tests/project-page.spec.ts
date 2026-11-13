@@ -31,3 +31,22 @@ test('on the example site, a project page is served at /fr/projets/<page>/ and i
     }
   }
 });
+
+test('on a project page, the header "EN" link leads to the English translation of the project, and the "FR" link of that translation back to the French page', async ({
+  page,
+}) => {
+  for (const project of PROJECTS) {
+    const frenchUrl = `/fr/projets/${project.slug}/`;
+    const englishUrl = `/en/projects/${project.slug}/`;
+    const mainHeading = page.getByRole('main').getByRole('heading', { level: 1 });
+
+    await page.goto(frenchUrl);
+    await page.locator('header').getByRole('link', { name: 'EN', exact: true }).click();
+    await expect(page, `EN link on ${frenchUrl}`).toHaveURL(englishUrl);
+    await expect(mainHeading, `heading after EN on ${frenchUrl}`).toHaveText(project.englishTitle);
+
+    await page.locator('header').getByRole('link', { name: 'FR', exact: true }).click();
+    await expect(page, `FR link on ${englishUrl}`).toHaveURL(frenchUrl);
+    await expect(mainHeading, `heading after FR on ${englishUrl}`).toHaveText(project.frenchTitle);
+  }
+});
