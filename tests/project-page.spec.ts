@@ -21,6 +21,8 @@ const PROJECTS = [
       'A wall clock showing the phases of the moon, the equation of time and sunrise at the workshop’s latitude.',
     frenchRole: 'Horloger principal',
     englishRole: 'Lead clockmaker',
+    frenchStack: ['Laiton', 'Acier', 'Verre'],
+    englishStack: ['Brass', 'Steel', 'Glass'],
   },
   {
     slug: 'regulateur-noyer',
@@ -30,6 +32,8 @@ const PROJECTS = [
     englishDescription: 'A regulator with a compensated pendulum, housed in a hand-carved solid walnut case.',
     frenchRole: 'Ébéniste et horloger',
     englishRole: 'Cabinetmaker and clockmaker',
+    frenchStack: ['Noyer', 'Invar', 'Laiton'],
+    englishStack: ['Walnut', 'Invar', 'Brass'],
   },
 ];
 
@@ -267,6 +271,31 @@ test('an engagement’s page lists, after its period, its duration and its contr
       ).toBeGreaterThan(shownLabels.indexOf(period));
     }
     expect(shownLabels, `"${period}" term on ${url}`).toContain(period);
+  }
+});
+
+test('a project page shows the stack of its front matter, in its language, after its list of facts, its entries separated by " · "', async ({
+  page,
+}) => {
+  for (const project of PROJECTS) {
+    for (const { url, stack } of [
+      { url: `/fr/projets/${project.slug}/`, stack: project.frenchStack },
+      { url: `/en/projects/${project.slug}/`, stack: project.englishStack },
+    ]) {
+      await page.goto(url);
+      const main = page.getByRole('main');
+      const stackText = main.getByText(stack.join(' · '), { exact: true });
+      await expect(stackText, `stack on ${url}`).toHaveCount(1);
+      await expect(stackText, `stack on ${url}`).toBeVisible();
+
+      /* After the list of facts: after its last value, in reading order. */
+      const lastFact = await main.getByRole('definition').last().elementHandle();
+      const comesAfterFacts = await stackText.evaluate(
+        (element, fact) => (fact!.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+        lastFact,
+      );
+      expect(comesAfterFacts, `stack after the list of facts on ${url}`).toBe(true);
+    }
   }
 });
 
