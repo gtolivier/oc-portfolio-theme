@@ -40,6 +40,9 @@ other = 'Selected projects'
 [allProjects]
 other = 'All projects'
 
+[discussSimilarProject]
+other = 'Discuss a similar project'
+
 [caseStudy]
 other = 'Case study'
 
