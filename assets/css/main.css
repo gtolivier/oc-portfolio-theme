@@ -478,7 +478,7 @@ h1 {
 }
 
 /* The link of the current page, or of the section the page belongs to. */
-.site-header nav a:is([aria-current='page'], [aria-current='true']) {
+.site-header nav a[aria-current] {
   border-bottom-color: var(--color-accent);
 }
 

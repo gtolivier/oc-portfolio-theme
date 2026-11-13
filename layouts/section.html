@@ -1,20 +1,5 @@
 {{ define "main" }}
-  <tick-field class="page-hero">
-    <div class="veil" aria-hidden="true"></div>
-    {{- $eyebrow := slice }}
-    {{- with site.Params.author }}{{ $eyebrow = $eyebrow | append . }}{{ end }}
-    {{- with site.Params.footerNote }}{{ $eyebrow = $eyebrow | append . }}{{ end }}
-    {{- with $eyebrow }}
-    <p class="page-eyebrow">{{ delimit . " — " }}</p>
-    {{- end }}
-    <h1>{{ .Title }}</h1>
-    {{- with .Description }}
-    <p class="page-intro">{{ . }}</p>
-    {{- end }}
-    {{- with .Content }}
-    <div class="page-intro">{{ . }}</div>
-    {{- end }}
-  </tick-field>
+  {{ partial "page-hero.html" (dict "page" . "lead" (partial "inline/section-hero-lead.html" .) "content" .Content) }}
   {{ $shortKind := "short" }}
   {{ $engagementKind := "engagement" }}
   {{ $projectsSection := partialCached "projects/section.html" . site.Language.Lang }}
@@ -75,3 +60,13 @@
     </section>
   {{ end }}
 {{ end }}
+
+{{- /* What a section's hero shows before its title: the eyebrow, from the author and the footer note. */}}
+{{- define "_partials/inline/section-hero-lead.html" }}
+    {{- $eyebrow := slice }}
+    {{- with site.Params.author }}{{ $eyebrow = $eyebrow | append . }}{{ end }}
+    {{- with site.Params.footerNote }}{{ $eyebrow = $eyebrow | append . }}{{ end }}
+    {{- with $eyebrow }}
+    <p class="page-eyebrow">{{ delimit . " — " }}</p>
+    {{- end }}
+{{- end }}
