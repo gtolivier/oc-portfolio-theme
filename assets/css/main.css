@@ -1419,7 +1419,8 @@ main:not(:has(.projects)) .background + .contact {
   --section-number: '02 // ';
 }
 
-/* Alone in the main content, the contact section is the first one. */
+/* Alone in the main content, the contact section is the first one: on the
+   home page, on the projects list without any project, on a project's page. */
 main:not(:has(.projects, .background, .engagements, .short-projects)) .contact {
   --section-number: '01 // ';
 }
@@ -1770,11 +1771,6 @@ main:not(:has(.engagements)) .short-projects {
 
 main:not(:has(.engagements)) .short-projects + .contact {
   --section-number: '02 // ';
-}
-
-/* Without any project, the contact section is the first section. */
-main:not(:has(.engagements, .short-projects)) .page-hero ~ .contact {
-  --section-number: '01 // ';
 }
 
 @media (min-width: 768px) {
