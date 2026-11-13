@@ -1773,6 +1773,11 @@ main:not(:has(.engagements)) .short-projects + .contact {
   --section-number: '02 // ';
 }
 
+/* Without short projects, the contact section follows the engagements alone. */
+main:not(:has(.short-projects)) .engagements + .contact {
+  --section-number: '02 // ';
+}
+
 @media (min-width: 768px) {
   .engagements {
     padding-block: 80px;
