@@ -1753,6 +1753,15 @@ main:not(:has(.projects)) .background {
   color: var(--color-paper);
 }
 
+/* Without engagements, the short projects are the first section. */
+main:not(:has(.engagements)) .short-projects {
+  --section-number: '01 // ';
+}
+
+main:not(:has(.engagements)) .short-projects + .contact {
+  --section-number: '02 // ';
+}
+
 @media (min-width: 768px) {
   .engagements {
     padding-block: 80px;
