@@ -60,3 +60,15 @@ other = 'Accueil'
 
 [role]
 other = 'Rôle'
+
+[client]
+other = 'Client'
+
+[agency]
+other = 'Agence'
+
+[period]
+other = 'Période'
+
+[format]
+other = 'Format'

@@ -9,10 +9,28 @@
   {{- if and $isProject .Description }}
   <p>{{ .Description }}</p>
   {{- end }}
-  {{- with and $isProject .Params.role }}
+  {{- if $isProject }}
   <dl>
+    {{- with .Params.client }}
+    <dt>{{ i18n "client" }}</dt>
+    <dd>{{ . }}</dd>
+    {{- end }}
+    {{- with .Params.agency }}
+    <dt>{{ i18n "agency" }}</dt>
+    <dd>{{ . }}</dd>
+    {{- end }}
+    {{- with .Params.role }}
     <dt>{{ i18n "role" }}</dt>
     <dd>{{ . }}</dd>
+    {{- end }}
+    {{- with .Params.years }}
+    <dt>{{ i18n "period" }}</dt>
+    <dd>{{ . }}</dd>
+    {{- end }}
+    {{- with .Params.format }}
+    <dt>{{ i18n "format" }}</dt>
+    <dd>{{ . }}</dd>
+    {{- end }}
   </dl>
   {{- end }}
   {{ .Content }}
