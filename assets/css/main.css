@@ -1683,8 +1683,9 @@ tick-field > canvas {
   margin-top: 16px;
 }
 
-/* The error page's link home stands apart from its message. */
-.page-intro:has(> .not-found-home-link) {
+/* A further intro that stands apart from the one before it, such as the error
+   page's link home below its message. */
+.page-intro + .page-intro.is-apart {
   margin-top: 36px;
 }
 
