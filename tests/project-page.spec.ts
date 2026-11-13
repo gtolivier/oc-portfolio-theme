@@ -64,6 +64,30 @@ test('a project page opens with a link back to the projects list of its language
   }
 });
 
+test('a project page shows the kicker "// Étude de cas" (English: "// Case study") before its title', async ({
+  page,
+}) => {
+  /* The kicker's "//" may be decorative: its text is the words alone, or the words after it. */
+  for (const project of PROJECTS) {
+    for (const { url, text } of [
+      { url: `/fr/projets/${project.slug}/`, text: /^(\/\/\s*)?Étude de cas$/ },
+      { url: `/en/projects/${project.slug}/`, text: /^(\/\/\s*)?Case study$/ },
+    ]) {
+      await page.goto(url);
+      const main = page.getByRole('main');
+      const kicker = main.getByText(text);
+      await expect(kicker, `kicker on ${url}`).toBeVisible();
+
+      const heading = await main.getByRole('heading', { level: 1 }).elementHandle();
+      const comesBeforeHeading = await kicker.evaluate(
+        (element, title) => (element.compareDocumentPosition(title!) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+        heading,
+      );
+      expect(comesBeforeHeading, `kicker before the main heading on ${url}`).toBe(true);
+    }
+  }
+});
+
 test('a page outside the projects section keeps the plain layout, without a link back to the projects list', async ({
   page,
 }) => {
