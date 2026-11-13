@@ -1488,6 +1488,13 @@ export const SITE_WITH_PROJECT_FACTS_NOT_AS_TEXTS = testSite('facts-not-as-texts
    Neither home page features it. */
 export const SITE_WITH_PROJECT_FACTS_READ_AS_EMPTY = testSite('facts-read-as-empty');
 
+/* The example site's projects write their front matter in TOML: this site adds to its projects
+   section the project of tests/fixtures/workshop-left-unset-in-yaml/content, "Pendule de voyage
+   du capitaine" (projects/pendule-voyage.md), in French only, whose front matter, written in
+   YAML, fills in client, role and years as texts and leaves its agency: line without a value,
+   which YAML reads as null. Neither home page features it. */
+export const SITE_WITH_A_PROJECT_AGENCY_LEFT_BLANK_IN_YAML = testSite('workshop-left-unset-in-yaml');
+
 /* The example site's home pages both declare a contact intro ([params.contact] table, intro key):
    this site replaces them with those of tests/fixtures/home-pages-without-contact-intro/content,
    which declare none. The French one has no contact params at all; the English one has a

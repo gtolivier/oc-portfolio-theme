@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import {
+  SITE_WITH_A_PROJECT_AGENCY_LEFT_BLANK_IN_YAML,
   SITE_WITH_HOME_PAGES_WITHOUT_CONTACT_INTRO,
   SITE_WITH_LOGOS_MISSING_FROM_THE_PAGE_BUNDLE,
   SITE_WITH_LOGOS_THAT_ARE_NOT_IMAGES,
@@ -560,6 +561,35 @@ test.describe('project pages whose facts are not texts: build failure', () => {
       ).toEqual([]);
     }
   });
+});
+
+test('a project page written with a YAML front matter whose agency is left without a value (agency: alone on its line) does not make the site build fail, and its list of facts shows its filled facts without an "Agence" entry', async ({
+  page,
+  context,
+}) => {
+  /* tests/fixtures/workshop-left-unset-in-yaml/content/projects/pendule-voyage.md (see
+     SITE_WITH_A_PROJECT_AGENCY_LEFT_BLANK_IN_YAML) leaves its agency: line without a value, which
+     YAML reads as null. Unlike a value that is not a text, the person who wrote it left the fact
+     unfilled: the site must build, and the page must list its other facts as if it declared no
+     agency at all. */
+  const site = SITE_WITH_A_PROJECT_AGENCY_LEFT_BLANK_IN_YAML;
+  const build = tryToBuildSite(site);
+  expect(build.succeeded, `the site build should succeed, but Hugo reported:\n${build.errors}`).toBe(true);
+  const siteDirectory = buildSite(site);
+  try {
+    await serveSite(context, site, siteDirectory);
+    const url = `${site.origin}/fr/projets/pendule-voyage/`;
+    await page.goto(url);
+    const labels = ['Client', 'Agence', 'Rôle', 'Période', 'Durée', 'Contrat', 'Format'];
+    const terms = page.getByRole('main').getByRole('term');
+    await expect(terms.first(), `list of facts on ${url}`).toBeVisible();
+    const shownLabels = (await terms.allTextContents())
+      .map((text) => text.trim())
+      .filter((text) => labels.includes(text));
+    expect(shownLabels, `facts listed on ${url}`).toEqual(['Client', 'Rôle', 'Période']);
+  } finally {
+    removeDirectory(siteDirectory);
+  }
 });
 
 test('an engagement’s page lists, after its period, its duration and its contract mode, labelled "Durée" and "Contrat" (English: "Duration", "Contract"), each with its value', async ({
