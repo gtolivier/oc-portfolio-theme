@@ -42,12 +42,15 @@
   {{- end }}
   {{- /* Without a contact section, no link to it. */}}
   {{- $contact := partial "contact.html" (dict "home" site.Home "introOverride" $.Params.contactIntro) }}
+  {{- /* A shown logo's alternative text gives the owner's name: no fact repeats it. */}}
+  {{- $shownLogoLabels := slice }}
+  {{- range $logos }}{{ $shownLogoLabels = $shownLogoLabels | append .label }}{{ end }}
   {{- $filledFacts := slice }}
   {{- range $facts }}
   {{- $param := .param }}
   {{- $fact := index $.Params $param }}
   {{- if and (isset $.Params $param) (eq (partial "text-problem.html" $fact) "not-text") }}{{ errorf "projects: the %s param of the page %s must be a text (language: %s)" $param $.Path $.Language.Lang }}
-  {{- else if $fact }}
+  {{- else if and $fact (not (in $shownLogoLabels .label)) }}
   {{- $filledFacts = $filledFacts | append (dict "label" .label "value" $fact) }}
   {{- end }}
   {{- end }}
