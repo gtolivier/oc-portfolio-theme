@@ -32,6 +32,7 @@
   {{- with index $.Params .param }}
   {{- $file := . }}
   {{- with $.Resources.Get $file }}
+  {{- if ne .MediaType.MainType "image" }}{{ errorf "projects: the %s param of the page %s names %s, which is not an image" $param $.Path $file }}{{ end }}
   {{- $logos = $logos | append (dict "label" $label "owner" $owner "image" .) }}
   {{- else }}{{ errorf "projects: the %s param of the page %s names %s, which is not an image of its page bundle" $param $.Path $file }}
   {{- end }}
