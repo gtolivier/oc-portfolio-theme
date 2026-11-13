@@ -2555,6 +2555,40 @@ test('with JavaScript, sending the filled contact form from the projects section
   ).toBe(true);
 });
 
+test('on the projects section’s page, in each language, the header’s "Contact" link leads to the page’s own contact section (#contact): following it keeps the visitor on the list and brings the heading of that section fully into view, below the sticky header', async ({
+  page,
+}) => {
+  /* exampleSite/hugo.toml's main menu points its Contact entry at the home page's #contact
+     ('/fr/#contact', '/en/#contact'); the projects list ends with its own contact section. */
+  for (const address of ['/fr/projets/', '/en/projects/']) {
+    await page.goto(address);
+    const heading = page
+      .getByRole('main')
+      .getByRole('region', { name: 'Contact', exact: true })
+      .getByRole('heading', { level: 2 });
+    await expect(heading, `heading of the contact section on ${address}`).toHaveCount(1);
+    /* Below the first screen on load, so that the link has to bring it into view. */
+    await expect(heading, `heading of the contact section on load on ${address}`).not.toBeInViewport();
+    const link = page.locator('header nav').getByRole('link', { name: 'Contact', exact: true });
+    await expect(link, `the header’s Contact link on ${address}`).toHaveAttribute('href', '#contact');
+    await link.click();
+    /* Still on the list: same path, now at the anchor. */
+    await expect(page, `the page reached from the Contact link of ${address}`).toHaveURL(`${address}#contact`);
+    await expect(heading, `the heading is fully in view on ${address}`).toBeInViewport({ ratio: 1 });
+    /* Below the sticky header, not hidden under it; polled, as the scroll may be smooth. */
+    await expect
+      .poll(
+        async () => {
+          const headerBox = (await page.locator('header').boundingBox())!;
+          const headingBox = (await heading.boundingBox())!;
+          return headingBox.y - (headerBox.y + headerBox.height);
+        },
+        { message: `gap between the bottom of the header and the top of the heading on ${address}` },
+      )
+      .toBeGreaterThanOrEqual(0);
+  }
+});
+
 test.describe('projects section of another site, whose projects list sets no contactIntro', () => {
   test('when the projects list sets no contactIntro param, its contact section shows, in each language, the intro the home page of its language declares', async ({
     page,
