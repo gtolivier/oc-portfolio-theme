@@ -1496,6 +1496,16 @@ export const SITE_WITH_PROJECT_FACTS_READ_AS_EMPTY = testSite('facts-read-as-emp
    horloge-astronomique none. */
 export const SITE_WITH_HOME_PAGES_WITHOUT_CONTACT_INTRO = testSite('home-pages-without-contact-intro');
 
+/* The example site's one project with logos, horloge-astronomique, shows both its client's and
+   its agency's: this site adds to its projects section the page bundles of
+   tests/fixtures/one-logo-per-project/content, two short projects, in French and English, that
+   each fill in both their client and their agency but show only one of their logos.
+   "Pendule de cheminée en marbre" (projects/pendule-cheminee/, English slug mantel-clock) sets
+   clientLogo = 'logo-chateau.svg' and no agencyLogo; "Horloge de gare à double cadran"
+   (projects/horloge-gare/, English slug station-clock) sets agencyLogo = 'logo-quai-nord.svg' and
+   no clientLogo. */
+export const SITE_WITH_PROJECTS_SHOWING_ONE_LOGO = testSite('one-logo-per-project');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

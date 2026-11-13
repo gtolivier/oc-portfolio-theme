@@ -8,6 +8,7 @@ import {
   SITE_WITH_A_SUBSECTION_OF_AN_UNWRITTEN_PROJECTS_LIST,
   SITE_WITH_PROJECTS_IN_A_SUBSECTION,
   SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION,
+  SITE_WITH_PROJECTS_SHOWING_ONE_LOGO,
   TEMPLATE_EXECUTION_ERROR,
   buildSite,
   languageCodePattern,
@@ -195,14 +196,15 @@ test('a project page lists, in this order and only those filled in, the facts Cl
 }) => {
   /* The example site's horloge-astronomique fills in all five facts; regulateur-noyer has no
      agency and no format. Other facts (an engagement's mode or duration, for instance) may sit
-     among them: only these five labels are checked, in their relative order. */
+     among them: only the labels listed for each page are checked, in their relative order.
+     horloge-astronomique shows its client's and its agency's logos, which name them: whether its
+     Client and Agence facts are listed is the subject of another test, so only its other three
+     labels are checked here. */
   const pages = [
     {
       url: '/fr/projets/horloge-astronomique/',
-      labels: ['Client', 'Agence', 'Rôle', 'Période', 'Format'],
+      labels: ['Rôle', 'Période', 'Format'],
       facts: [
-        ['Client', 'Musée des Arts du Temps'],
-        ['Agence', 'Balancier & Associés'],
         ['Rôle', 'Horloger principal'],
         ['Période', '2016 – 2018'],
         ['Format', 'Pièce unique'],
@@ -210,10 +212,8 @@ test('a project page lists, in this order and only those filled in, the facts Cl
     },
     {
       url: '/en/projects/astronomical-clock/',
-      labels: ['Client', 'Agency', 'Role', 'Period', 'Format'],
+      labels: ['Role', 'Period', 'Format'],
       facts: [
-        ['Client', 'Museum of the Arts of Time'],
-        ['Agency', 'Balancier & Partners'],
         ['Role', 'Lead clockmaker'],
         ['Period', '2016 – 2018'],
         ['Format', 'One-off piece'],
@@ -326,6 +326,90 @@ test('a project page whose clientLogo and agencyLogo params name images of its p
     await expect(main.getByText(clientLabel, { exact: true }), `"${clientLabel}" labels on ${url}`).toHaveCount(1);
     await expect(main.getByText(agencyLabel, { exact: true }), `"${agencyLabel}" labels on ${url}`).toHaveCount(0);
   }
+});
+
+test.describe('project pages of another site, some of whose projects show only one of their two logos', () => {
+  test('when a project page shows the client’s logo, its list of facts leaves out the Client fact, whose name the logo’s alternative text gives, and likewise the agency’s logo and the Agence fact (English: Agency); a fact whose logo is not shown stays in the list', async ({
+    page,
+    context,
+  }) => {
+    /* SITE_WITH_PROJECTS_SHOWING_ONE_LOGO: the example site's horloge-astronomique shows both its
+       logos; pendule-cheminee (English slug mantel-clock) shows its client's alone, horloge-gare
+       (English slug station-clock) its agency's alone. Each fills in both its client and its
+       agency. */
+    const site = SITE_WITH_PROJECTS_SHOWING_ONE_LOGO;
+    const pages = [
+      {
+        path: '/fr/projets/horloge-astronomique/',
+        logos: ['Musée des Arts du Temps', 'Balancier & Associés'],
+        leftOut: ['Client', 'Agence'],
+        kept: [],
+      },
+      {
+        path: '/en/projects/astronomical-clock/',
+        logos: ['Museum of the Arts of Time', 'Balancier & Partners'],
+        leftOut: ['Client', 'Agency'],
+        kept: [],
+      },
+      {
+        path: '/fr/projets/pendule-cheminee/',
+        logos: ['Château de Valromey'],
+        leftOut: ['Client'],
+        kept: [['Agence', 'Cabinet Rouages & Fils']],
+      },
+      {
+        path: '/en/projects/mantel-clock/',
+        logos: ['Valromey Castle'],
+        leftOut: ['Client'],
+        kept: [['Agency', 'Rouages & Sons Studio']],
+      },
+      {
+        path: '/fr/projets/horloge-gare/',
+        logos: ['Atelier Quai Nord'],
+        leftOut: ['Agence'],
+        kept: [['Client', 'Compagnie des Chemins de Fer du Jura']],
+      },
+      {
+        path: '/en/projects/station-clock/',
+        logos: ['North Platform Workshop'],
+        leftOut: ['Agency'],
+        kept: [['Client', 'Jura Railway Company']],
+      },
+    ];
+    const siteDirectory = buildSite(site);
+    try {
+      await serveSite(context, site, siteDirectory);
+      for (const { path: address, logos, leftOut, kept } of pages) {
+        const url = `${site.origin}${address}`;
+        const response = await page.goto(url);
+        expect(response?.status(), url).toBe(200);
+        const main = page.getByRole('main');
+        for (const name of logos) {
+          const logo = main.getByRole('img', { name, exact: true });
+          await expect(logo, `logo "${name}" on ${url}`).toHaveCount(1);
+          await logo.scrollIntoViewIfNeeded();
+          await expect(logo, `logo "${name}" on ${url}`).toBeVisible();
+        }
+        const terms = main.getByRole('term');
+        for (const label of leftOut) {
+          await expect(
+            terms.filter({ hasText: new RegExp(`^\\s*${label}\\s*$`) }),
+            `"${label}" fact on ${url}, whose logo is shown`,
+          ).toHaveCount(0);
+        }
+        for (const [label, value] of kept) {
+          const term = terms.filter({ hasText: new RegExp(`^\\s*${label}\\s*$`) });
+          await expect(term, `"${label}" fact on ${url}, whose logo is not shown`).toHaveCount(1);
+          await expect(term, `"${label}" fact on ${url}, whose logo is not shown`).toBeVisible();
+          const definition = term.locator('xpath=following-sibling::*[1]');
+          await expect(definition, `value of "${label}" on ${url}`).toHaveRole('definition');
+          await expect(definition, `value of "${label}" on ${url}`).toHaveText(value);
+        }
+      }
+    } finally {
+      removeDirectory(siteDirectory);
+    }
+  });
 });
 
 test.describe('project pages whose logo params name no image of their page bundle: build failure', () => {
