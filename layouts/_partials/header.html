@@ -4,11 +4,14 @@
 </a>
 {{- if .hasMainMenu }}
 <nav>
+  {{- $contactAnchor := "#contact" }}
+  {{- $homeContactURL := printf "%s%s" site.Home.RelPermalink $contactAnchor }}
+  {{- /* The projects list ends with its own contact section: the Contact entry pointing at the home page's contact section stays on the list. */}}
+  {{- $hasOwnContactSection := and (partial "projects/is-list.html" $page) site.Home.Params.contact.intro }}
   {{- range site.Menus.main }}
   {{- $isInSection := and .Page (not .Page.IsHome) ($page.IsDescendant .Page) }}
   {{- $url := .URL }}
-  {{- /* The projects list ends with its own contact section: the Contact entry pointing at the home page's #contact stays on the list. */}}
-  {{- if and (eq $url (printf "%s#contact" site.Home.RelPermalink)) $page.IsSection $page.Parent.IsHome (eq $page.Section (partialCached "projects/section.html" $page site.Language.Lang).name) site.Home.Params.contact.intro }}{{ $url = "#contact" }}{{ end }}
+  {{- if and $hasOwnContactSection (eq $url $homeContactURL) }}{{ $url = $contactAnchor }}{{ end }}
   <a href="{{ $url }}"{{ if eq .URL $page.RelPermalink }} aria-current="page"{{ else if $isInSection }} aria-current="true"{{ end }}>{{ .Name }}</a>
   {{- end }}
 </nav>

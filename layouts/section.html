@@ -3,7 +3,7 @@
   {{ $shortKind := "short" }}
   {{ $engagementKind := "engagement" }}
   {{ $projectsSection := partialCached "projects/section.html" . site.Language.Lang }}
-  {{ $isProjectsSection := and .Parent.IsHome (eq .Section $projectsSection.name) }}
+  {{ $isProjectsSection := partial "projects/is-list.html" . }}
   {{- /* Only the projects section is the projects list. */}}
   {{ $listedPages := cond $isProjectsSection .RegularPages slice }}
   {{ $featuredReferences := site.Home.Params.projects }}
