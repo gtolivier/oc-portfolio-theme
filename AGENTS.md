@@ -13,7 +13,7 @@ design comes from the Claude Design project "Portfolio".
 - `tests/`: Playwright e2e tests, run against `exampleSite`.
 
 The roadmap (one conversation per feature) lives in the private repository
-`oc-portfolio-site`, next to this one: `../site/ROADMAP.md`.
+`oc-portfolio-site`, next to this one: `../oc-portfolio-site/ROADMAP.md`.
 
 ## Commands
 
@@ -131,15 +131,16 @@ The roadmap (one conversation per feature) lives in the private repository
   roadmap step the PR delivers and the working rules shared by both
   repositories. Still allowed: versions the repository pins itself (CI,
   `package.json`), paths relative to the repository (such as
-  `../site/ROADMAP.md`) and the attribution lines of commits and PRs. If
-  such a detail shows up in the diff, a commit or the branch name, do not
-  push and tell the user, who decides how to fix it; in the title, the
-  description, a review or a reply, remove it before publishing, rewording
-  review findings without dropping any. If it is already public (pushed,
-  in `main`, or published by Claude or by CodeRabbit, whose reviews are
-  reread as soon as they arrive), tell the user at once, who decides what
-  comes next. The site repository has the same rule, adapted to a private
-  repository: any change to what they share is carried over to the other.
+  `../oc-portfolio-site/ROADMAP.md`) and the attribution lines of commits
+  and PRs. If such a detail shows up in the diff, a commit or the branch
+  name, do not push and tell the user, who decides how to fix it; in the
+  title, the description, a review or a reply, remove it before publishing,
+  rewording review findings without dropping any. If it is already public
+  (pushed, in `main`, or published by Claude or by CodeRabbit, whose reviews
+  are reread as soon as they arrive), tell the user at once, who decides
+  what comes next. The site repository has the same rule, adapted to a
+  private repository: any change to what they share is carried over to the
+  other.
 - **CodeRabbit**: its policy for small open-source repositories keeps it
   from reviewing PRs on its own ("Review skipped"). Start it by commenting
   `@coderabbitai review` when the PR opens. If commits followed that first
