@@ -2,6 +2,7 @@
   {{- $projectsSection := partialCached "projects/section.html" . site.Language.Lang }}
   {{- if and (not .Parent.IsHome) (eq .Section $projectsSection.name) }}
   <a href="{{ .FirstSection.RelPermalink }}">← {{ i18n "allProjects" }}</a>
+  <p>// {{ i18n "caseStudy" }}</p>
   {{- end }}
   <h1>{{ .Title }}</h1>
   {{ .Content }}

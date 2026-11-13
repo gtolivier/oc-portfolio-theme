@@ -40,6 +40,9 @@ other = 'Projets sélectionnés'
 [allProjects]
 other = 'Tous les projets'
 
+[caseStudy]
+other = 'Étude de cas'
+
 [seeDetail]
 other = 'Voir le détail'
 
