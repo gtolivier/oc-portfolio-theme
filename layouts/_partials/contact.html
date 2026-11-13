@@ -3,7 +3,7 @@
 {{- $headingLevel := .headingLevel }}
 {{- with .home.Params.contact }}
 {{- $sent := .sent }}
-{{- with .intro }}
+{{- with $.introOverride | default .intro }}
 <section class="contact" id="contact" aria-labelledby="contact-heading">
   <h{{ $headingLevel }} id="contact-heading">{{ i18n "contact" }}</h{{ $headingLevel }}>
   <p class="contact-intro">{{ . }}</p>
