@@ -66,3 +66,21 @@ test('an unknown address under /en/ answers with a 404 status and the English er
   await expect(main.getByRole('paragraph').first()).not.toHaveText('');
   await expect(main.getByRole('paragraph').first()).not.toHaveText(frenchMessage);
 });
+
+test('the error page’s title in the browser tab is its heading, in its own language, followed by the site’s name, in French and in English', async ({
+  page,
+}) => {
+  /* The site's name, the example site's title, which the header's logo also shows. */
+  const siteName = 'Exemple';
+  const headings: string[] = [];
+  for (const url of ['/fr/page-qui-n-existe-pas/', '/en/page-that-does-not-exist/']) {
+    await page.goto(url);
+    const heading = (await page.getByRole('main').getByRole('heading', { level: 1 }).textContent())?.trim() ?? '';
+    expect(heading, `heading on ${url}`).not.toBe('');
+    headings.push(heading);
+    /* The same separator as the other pages: "<page title> | <site title>". */
+    await expect(page, `tab title on ${url}`).toHaveTitle(`${heading} | ${siteName}`);
+  }
+  /* Two languages, two titles: a single hard-coded title cannot pass. */
+  expect(headings[1]).not.toBe(headings[0]);
+});
