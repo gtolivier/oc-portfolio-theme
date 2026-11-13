@@ -20,3 +20,27 @@ test('an unknown address under /fr/ answers with a 404 status and the theme’s 
   await expect(main.getByRole('heading', { level: 1 })).not.toHaveText('');
   await expect(main.getByRole('paragraph').first()).not.toHaveText('');
 });
+
+test('an unknown address under /en/ answers with a 404 status and the English error page: its heading and message in English, the page in English', async ({
+  page,
+}) => {
+  /* The French error page's heading and message, which the English page must not show. */
+  await page.goto('/fr/page-qui-n-existe-pas/');
+  const frenchMain = page.getByRole('main');
+  const frenchHeading = (await frenchMain.getByRole('heading', { level: 1 }).textContent())?.trim() ?? '';
+  const frenchMessage = (await frenchMain.getByRole('paragraph').first().textContent())?.trim() ?? '';
+  expect(frenchHeading).not.toBe('');
+  expect(frenchMessage).not.toBe('');
+
+  const response = await page.goto('/en/page-that-does-not-exist/');
+  expect(response?.status()).toBe(404);
+  /* A page of the English site. */
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+  /* Its heading and message, translated: present, and not the French ones. */
+  const main = page.getByRole('main');
+  await expect(main.getByRole('heading', { level: 1 })).toHaveCount(1);
+  await expect(main.getByRole('heading', { level: 1 })).not.toHaveText('');
+  await expect(main.getByRole('heading', { level: 1 })).not.toHaveText(frenchHeading);
+  await expect(main.getByRole('paragraph').first()).not.toHaveText('');
+  await expect(main.getByRole('paragraph').first()).not.toHaveText(frenchMessage);
+});
