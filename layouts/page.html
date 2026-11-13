@@ -47,11 +47,13 @@
   {{- end }}
   {{- end }}
   <div class="project-page">
+    {{- /* Nothing to show beside the body: no facts column. */}}
+    {{- if or $logos $filledFacts .Params.stack }}
     <div class="project-facts">
       {{- with $logos }}
       <div class="project-logos">
         {{- range . }}
-        <div>
+        <div class="project-logo-{{ .label }}">
           <p>{{ i18n .label }}</p>
           <img src="{{ .image.RelPermalink }}" alt="{{ .owner }}">
         </div>
@@ -70,16 +72,21 @@
       <p class="project-stack">{{ delimit . (partial "stack-separator.html") }}</p>
       {{- end }}
     </div>
+    {{- end }}
     <div class="project-main">
       <div class="project-body">
         {{ .Content }}
       </div>
+      {{- /* No links row without a link in it. */}}
+      {{- $allProjectsLink := strings.TrimSpace (partial "projects/all-projects-link.html" .) }}
+      {{- if or $allProjectsLink $contact }}
       <div class="project-links">
-        {{ partial "projects/all-projects-link.html" . }}
+        {{ $allProjectsLink | safeHTML }}
         {{- with $contact }}
         <a href="#contact">{{ i18n "discussSimilarProject" }} <span aria-hidden="true">→</span></a>
         {{- end }}
       </div>
+      {{- end }}
     </div>
   </div>
   {{ $contact }}

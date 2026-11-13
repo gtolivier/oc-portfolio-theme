@@ -1991,7 +1991,7 @@ tick-field > canvas {
   background: rgb(var(--color-ink-channels) / 0.05);
 }
 
-.project-logos div + div img {
+.project-logo-agency img {
   height: 56px;
 }
 
@@ -2138,7 +2138,8 @@ tick-field > canvas {
 }
 
 @media (min-width: 900px) {
-  .project-page {
+  /* Without a facts column, the body keeps the whole width. */
+  .project-page:has(> .project-facts) {
     display: grid;
     grid-template-columns: var(--project-facts-width) minmax(0, 1fr);
     gap: var(--project-page-column-gap);
