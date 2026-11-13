@@ -1,9 +1,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width">
-{{- /* The error page has no title of its own: Hugo's default is in English, whatever the language. */}}
 {{- $isErrorPage := partial "is-error-page.html" . }}
-{{- $pageTitle := cond $isErrorPage (i18n "notFoundTitle") .Title }}
-<title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ printf "%s | %s" $pageTitle site.Title }}{{ end }}</title>
+<title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ printf "%s | %s" (partial "page-title.html" .) site.Title }}{{ end }}</title>
 {{ partialCached "head/css.html" . }}
 {{ partialCached "head/js.html" . }}
 {{- /* A subsection of the projects section is not a list of its own: it sends the visitor to the projects list, and stays out of search engines. */}}

@@ -1,6 +1,5 @@
 {{ define "main" }}
-  {{- /* Hugo's own title of the error page is in English, whatever the language. */}}
-  {{ partial "page-hero.html" (dict "page" . "title" (i18n "notFoundTitle") "description" (i18n "notFoundMessage") "content" (partial "inline/not-found-home-link.html" .)) }}
+  {{ partial "page-hero.html" (dict "page" . "description" (i18n "notFoundMessage") "content" (partial "inline/not-found-home-link.html" .)) }}
 {{ end }}
 
 {{- define "_partials/inline/not-found-home-link.html" }}

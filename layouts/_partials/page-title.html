@@ -1,0 +1,2 @@
+{{- /* The title the page shows, in the browser tab and in its hero. Hugo's own title of the error page is in English, whatever the language: the error page shows its translated one. */}}
+{{- return cond (partial "is-error-page.html" .) (i18n "notFoundTitle") .Title }}
