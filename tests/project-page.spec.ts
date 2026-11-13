@@ -3,6 +3,7 @@ import {
   SITE_WITH_HOME_PAGES_WITHOUT_CONTACT_INTRO,
   SITE_WITH_LOGOS_MISSING_FROM_THE_PAGE_BUNDLE,
   SITE_WITH_PROJECT_FACTS_NOT_AS_TEXTS,
+  SITE_WITH_PROJECT_FACTS_READ_AS_EMPTY,
   SITE_WITH_PROJECTS_IN_A_SUBSECTION,
   SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION,
   TEMPLATE_EXECUTION_ERROR,
@@ -364,6 +365,43 @@ test.describe('project pages whose facts are not texts: build failure', () => {
       { page: 'projects/remontoir-egalite', param: 'duration', language: 'fr', otherLanguage: 'en' },
       { page: 'projects/remontoir-egalite', param: 'mode', language: 'en', otherLanguage: 'fr' },
     ]) {
+      expect(
+        messagesAbout(page, param, language),
+        `one error message citing ${param}, ${page} and ${language}, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messagesAbout(page, param, otherLanguage),
+        `no error message citing ${param}, ${page} and ${otherLanguage}, whose ${param} is a text, in:\n${build.errors}`,
+      ).toEqual([]);
+    }
+  });
+
+  test('a project page whose fact is not a text but a value Go templates read as empty (0, false, an empty list) makes the site build fail too, with an error message that cites that param, the page and its language', () => {
+    /* tests/fixtures/facts-read-as-empty/content/projects/ holds a bilingual engagement whose
+       versions each write two facts as 0, false or an empty list (see
+       SITE_WITH_PROJECT_FACTS_READ_AS_EMPTY). Rather than those facts being left out of the page
+       silently, the person building the site must get, for each, the same failure as for any
+       other fact that is not a text: a message that, on one line, cites the param, the page by
+       its path and the page's language. The same param of the other version, written as a
+       text, must not be reported in that version's language. Three values on four params, so
+       that a fix for a single value does not pass. */
+    const build = tryToBuildSite(SITE_WITH_PROJECT_FACTS_READ_AS_EMPTY);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const lines = build.errors.split('\n');
+    const messagesAbout = (page: string, param: string, language: string) =>
+      lines.filter(
+        (line) =>
+          line.includes(page) &&
+          new RegExp(`\\b${param}\\b`).test(line) &&
+          new RegExp(languageCodePattern(language), 'u').test(line),
+      );
+    for (const { param, language, otherLanguage } of [
+      { param: 'role', language: 'fr', otherLanguage: 'en' },
+      { param: 'duration', language: 'fr', otherLanguage: 'en' },
+      { param: 'client', language: 'en', otherLanguage: 'fr' },
+      { param: 'mode', language: 'en', otherLanguage: 'fr' },
+    ]) {
+      const page = 'projects/echappement-ancre';
       expect(
         messagesAbout(page, param, language),
         `one error message citing ${param}, ${page} and ${language}, in:\n${build.errors}`,

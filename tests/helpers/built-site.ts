@@ -1471,6 +1471,14 @@ export const SITE_WITH_LOGOS_MISSING_FROM_THE_PAGE_BUNDLE = testSite('logos-miss
    duration = 18; its English version sets mode = 2. Neither home page features them. */
 export const SITE_WITH_PROJECT_FACTS_NOT_AS_TEXTS = testSite('facts-not-as-texts');
 
+/* Like SITE_WITH_PROJECT_FACTS_NOT_AS_TEXTS, but the facts that are not texts are values Go
+   templates treat as empty: this site adds to its projects section the bilingual engagement of
+   tests/fixtures/facts-read-as-empty/content. "Échappement à ancre de la pendule du notaire"
+   (projects/echappement-ancre.md) sets role = false and duration = 0; its English version
+   (.en.md) sets client = [] and mode = false. Each version writes its other facts as texts.
+   Neither home page features it. */
+export const SITE_WITH_PROJECT_FACTS_READ_AS_EMPTY = testSite('facts-read-as-empty');
+
 /* The example site's home pages both declare a contact intro ([params.contact] table, intro key):
    this site replaces them with those of tests/fixtures/home-pages-without-contact-intro/content,
    which declare none. The French one has no contact params at all; the English one has a
