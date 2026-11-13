@@ -139,8 +139,10 @@ const FEATURED_PROJECTS = [
 ];
 
 /* The same projects, as the English home page features them: the title and description their
-   English pages (content/projects/<slug>.en.md) declare, each different from the French one. Their
-   English pages live in the projects/ section's English address, /en/projects/<slug>/. */
+   English pages (content/projects/<page>.en.md) declare, each different from the French one. Their
+   English pages live in the projects/ section's English address, /en/projects/<slug>/, where the
+   slug is the page's file name unless its front matter sets one: horloge-astronomique's English
+   page sets slug = 'astronomical-clock'. */
 const FEATURED_PROJECTS_IN_ENGLISH = [
   {
     slug: 'restauration-pendule',
@@ -154,7 +156,7 @@ const FEATURED_PROJECTS_IN_ENGLISH = [
     description: 'A perpetual calendar and minute repeater calibre, designed then assembled part by part.',
   },
   {
-    slug: 'horloge-astronomique',
+    slug: 'astronomical-clock',
     title: 'The workshop’s astronomical clock',
     description:
       'A wall clock showing the phases of the moon, the equation of time and sunrise at the workshop’s latitude.',

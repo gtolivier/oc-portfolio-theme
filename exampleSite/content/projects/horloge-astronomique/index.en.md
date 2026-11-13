@@ -1,5 +1,6 @@
 +++
 title = 'The workshop’s astronomical clock'
+slug = 'astronomical-clock'
 description = 'A wall clock showing the phases of the moon, the equation of time and sunrise at the workshop’s latitude.'
 
 [params]

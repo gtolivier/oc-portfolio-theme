@@ -19,11 +19,14 @@ import {
 import { displayedText } from './helpers/text-on-screen';
 
 /* Two projects of the example site (content/projects/<slug>.md and its .en.md translation): the
-   slug is the page's file name, and each title differs from the other project's and from its
+   slug is the page's file name, which sets the French address. The English address takes
+   englishSlug: the file name too, unless the translation's front matter sets a slug of its own, as
+   horloge-astronomique's does. Each title differs from the other project's and from its
    translation's, so that a page showing another project's or another language's title fails. */
 const PROJECTS = [
   {
     slug: 'horloge-astronomique',
+    englishSlug: 'astronomical-clock',
     frenchTitle: 'Horloge astronomique de l’atelier',
     englishTitle: 'The workshop’s astronomical clock',
     frenchDescription:
@@ -37,6 +40,7 @@ const PROJECTS = [
   },
   {
     slug: 'regulateur-noyer',
+    englishSlug: 'regulateur-noyer',
     frenchTitle: 'Régulateur de parquet en noyer',
     englishTitle: 'Walnut floor regulator',
     frenchDescription: 'Régulateur à balancier compensé, logé dans une caisse en noyer massif sculptée à la main.',
@@ -48,13 +52,13 @@ const PROJECTS = [
   },
 ];
 
-test('on the example site, a project page is served at /fr/projets/<page>/ and its translation at /en/projects/<page>/, each with the project title as its main heading', async ({
+test('on the example site, a project page is served at /fr/projets/<page>/ and its translation at /en/projects/<its English slug>/, each with the project title as its main heading', async ({
   page,
 }) => {
   for (const project of PROJECTS) {
     for (const { url, title } of [
       { url: `/fr/projets/${project.slug}/`, title: project.frenchTitle },
-      { url: `/en/projects/${project.slug}/`, title: project.englishTitle },
+      { url: `/en/projects/${project.englishSlug}/`, title: project.englishTitle },
     ]) {
       const response = await page.goto(url);
       expect(response?.status(), url).toBe(200);
@@ -71,7 +75,7 @@ test('a project page opens with a link back to the projects list of its language
   for (const project of PROJECTS) {
     for (const { url, name, href } of [
       { url: `/fr/projets/${project.slug}/`, name: /^(←\s*)?Tous les projets$/, href: '/fr/projets/' },
-      { url: `/en/projects/${project.slug}/`, name: /^(←\s*)?All projects$/, href: '/en/projects/' },
+      { url: `/en/projects/${project.englishSlug}/`, name: /^(←\s*)?All projects$/, href: '/en/projects/' },
     ]) {
       await page.goto(url);
       const main = page.getByRole('main');
@@ -96,7 +100,7 @@ test('a project page shows the kicker "// Étude de cas" (English: "// Case stud
   for (const project of PROJECTS) {
     for (const { url, text } of [
       { url: `/fr/projets/${project.slug}/`, text: /^(\/\/\s*)?Étude de cas$/ },
-      { url: `/en/projects/${project.slug}/`, text: /^(\/\/\s*)?Case study$/ },
+      { url: `/en/projects/${project.englishSlug}/`, text: /^(\/\/\s*)?Case study$/ },
     ]) {
       await page.goto(url);
       const main = page.getByRole('main');
@@ -121,7 +125,7 @@ test('a project page’s kicker shows the "//" marker before "Étude de cas" (En
   for (const project of PROJECTS) {
     for (const { url, words } of [
       { url: `/fr/projets/${project.slug}/`, words: 'Étude de cas' },
-      { url: `/en/projects/${project.slug}/`, words: 'Case study' },
+      { url: `/en/projects/${project.englishSlug}/`, words: 'Case study' },
     ]) {
       await page.goto(url);
       const kicker = page.getByRole('main').getByText(new RegExp(`^(//\\s*)?${words}$`));
@@ -145,7 +149,7 @@ test('a project page shows the description of its front matter, in its language,
   for (const project of PROJECTS) {
     for (const { url, description } of [
       { url: `/fr/projets/${project.slug}/`, description: project.frenchDescription },
-      { url: `/en/projects/${project.slug}/`, description: project.englishDescription },
+      { url: `/en/projects/${project.englishSlug}/`, description: project.englishDescription },
     ]) {
       await page.goto(url);
       const main = page.getByRole('main');
@@ -169,7 +173,7 @@ test('a project page lists its role in a list of facts, labelled "Rôle" (Englis
   for (const project of PROJECTS) {
     for (const { url, label, role } of [
       { url: `/fr/projets/${project.slug}/`, label: 'Rôle', role: project.frenchRole },
-      { url: `/en/projects/${project.slug}/`, label: 'Role', role: project.englishRole },
+      { url: `/en/projects/${project.englishSlug}/`, label: 'Role', role: project.englishRole },
     ]) {
       await page.goto(url);
       const term = page
@@ -205,7 +209,7 @@ test('a project page lists, in this order and only those filled in, the facts Cl
       ],
     },
     {
-      url: '/en/projects/horloge-astronomique/',
+      url: '/en/projects/astronomical-clock/',
       labels: ['Client', 'Agency', 'Role', 'Period', 'Format'],
       facts: [
         ['Client', 'Museum of the Arts of Time'],
@@ -268,7 +272,7 @@ test('a project page whose clientLogo and agencyLogo params name images of its p
       ],
     },
     {
-      url: '/en/projects/horloge-astronomique/',
+      url: '/en/projects/astronomical-clock/',
       logos: [
         ['Client', 'Museum of the Arts of Time'],
         ['Agency', 'Balancier & Partners'],
@@ -490,7 +494,7 @@ test('an engagement’s page lists, after its period, its duration and its contr
       ],
     },
     {
-      url: '/en/projects/horloge-astronomique/',
+      url: '/en/projects/astronomical-clock/',
       period: 'Period',
       facts: [
         ['Duration', '26 months'],
@@ -541,7 +545,7 @@ test('a project page shows the stack of its front matter, in its language, after
   for (const project of PROJECTS) {
     for (const { url, stack } of [
       { url: `/fr/projets/${project.slug}/`, stack: project.frenchStack },
-      { url: `/en/projects/${project.slug}/`, stack: project.englishStack },
+      { url: `/en/projects/${project.englishSlug}/`, stack: project.englishStack },
     ]) {
       await page.goto(url);
       const main = page.getByRole('main');
@@ -586,7 +590,7 @@ test('a project page shows its body, in its language: its section headings, para
       ],
     },
     {
-      url: '/en/projects/horloge-astronomique/',
+      url: '/en/projects/astronomical-clock/',
       headings: ['The need', 'The mechanism'],
       paragraphs: [
         'The museum wanted a clock that tells the sky above the workshop, readable by a hurried visitor as well as by an astronomer.',
@@ -720,7 +724,7 @@ test('after its body, a project page shows a link back to the projects list of i
       lastCapture: 'Rouages de l’équation du temps, vus de dos, la came en avant-plan',
     },
     {
-      url: '/en/projects/horloge-astronomique/',
+      url: '/en/projects/astronomical-clock/',
       backName: /^(←\s*)?All projects$/,
       discussName: /^Discuss a similar project(\s*→)?$/,
       href: '/en/projects/',
@@ -773,7 +777,7 @@ test.describe('project page in a browser without JavaScript', () => {
       discussName: /^Discuter d['’]un projet similaire(\s*→)?$/,
     },
     {
-      url: '/en/projects/horloge-astronomique/',
+      url: '/en/projects/astronomical-clock/',
       lang: 'en',
       title: astronomicalClock.englishTitle,
       description: astronomicalClock.englishDescription,
@@ -921,7 +925,7 @@ test('the contact section of a project page is titled by a level-2 heading, like
      regulateur-noyer has none, so that its contact heading directly follows its level-1 title. The
      section is found as on the home page: a region named by its title. */
   for (const project of PROJECTS) {
-    for (const url of [`/fr/projets/${project.slug}/`, `/en/projects/${project.slug}/`]) {
+    for (const url of [`/fr/projets/${project.slug}/`, `/en/projects/${project.englishSlug}/`]) {
       await page.goto(url);
       const main = page.getByRole('main');
       const section = main.getByRole('region', { name: 'Contact', exact: true });
@@ -970,7 +974,7 @@ test.describe('project pages of another site, whose home pages declare no contac
           backName: /^(←\s*)?Tous les projets$/,
           discussName: /^Discuter d['’]un projet similaire(\s*→)?$/,
         })),
-        ...['horloge-astronomique', 'regulateur-noyer'].map((slug) => ({
+        ...['astronomical-clock', 'regulateur-noyer'].map((slug) => ({
           path: `/en/projects/${slug}/`,
           backName: /^(←\s*)?All projects$/,
           discussName: /^Discuss a similar project(\s*→)?$/,
@@ -1103,7 +1107,7 @@ test.describe('pages of another site, whose projects list Hugo does not publish'
             backName: /^(←\s*)?Tous les projets$/,
           },
           {
-            url: `${site.origin}/en/projects/${project.slug}/`,
+            url: `${site.origin}/en/projects/${project.englishSlug}/`,
             title: project.englishTitle,
             backName: /^(←\s*)?All projects$/,
           },
@@ -1127,7 +1131,7 @@ test('on a project page, in French and in English, the Projects navigation link 
   for (const project of PROJECTS) {
     for (const { url, section } of [
       { url: `/fr/projets/${project.slug}/`, section: 'Projets' },
-      { url: `/en/projects/${project.slug}/`, section: 'Projects' },
+      { url: `/en/projects/${project.englishSlug}/`, section: 'Projects' },
     ]) {
       await page.goto(url);
       const nav = page.locator('header nav');
@@ -1143,7 +1147,7 @@ test('on a project page, the header "EN" link leads to the English translation o
 }) => {
   for (const project of PROJECTS) {
     const frenchUrl = `/fr/projets/${project.slug}/`;
-    const englishUrl = `/en/projects/${project.slug}/`;
+    const englishUrl = `/en/projects/${project.englishSlug}/`;
     const mainHeading = page.getByRole('main').getByRole('heading', { level: 1 });
 
     await page.goto(frenchUrl);
