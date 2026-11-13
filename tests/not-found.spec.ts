@@ -5,17 +5,40 @@ import { SITE_WITH_UNWRITTEN_HOME_PAGES, buildSite, removeDirectory, serveSite }
 const FRENCH_UNKNOWN_ADDRESS = '/fr/page-qui-n-existe-pas/';
 const ENGLISH_UNKNOWN_ADDRESS = '/en/page-that-does-not-exist/';
 
+/* The addresses Hugo writes the French and English error pages at. */
+const ERROR_PAGE_ADDRESSES = ['/fr/404.html', '/en/404.html'];
+
 async function trimmedText(element: Locator): Promise<string> {
   return (await element.textContent())?.trim() ?? '';
+}
+
+/* The error page's heading, in its main content. */
+function errorHeading(page: Page): Locator {
+  return page.getByRole('main').getByRole('heading', { level: 1 });
+}
+
+/* The error page's message: the first paragraph of its main content. */
+function errorMessage(page: Page): Locator {
+  return page.getByRole('main').getByRole('paragraph').first();
+}
+
+/* The content of every robots meta tag in the head of an HTML document, parsed in the browser without being run. */
+async function robotsMetaContents(page: Page, html: string): Promise<string[]> {
+  return page.evaluate((source) => {
+    const document = new DOMParser().parseFromString(source, 'text/html');
+    return Array.from(
+      document.querySelectorAll('head meta[name="robots" i]'),
+      (meta) => meta.getAttribute('content') ?? '',
+    );
+  }, html);
 }
 
 /* Opens the French error page and reads its heading and message, for a test that compares another page with them. */
 async function frenchErrorPageTexts(page: Page): Promise<{ heading: string; message: string }> {
   await page.goto(FRENCH_UNKNOWN_ADDRESS);
-  const main = page.getByRole('main');
   return {
-    heading: await trimmedText(main.getByRole('heading', { level: 1 })),
-    message: await trimmedText(main.getByRole('paragraph').first()),
+    heading: await trimmedText(errorHeading(page)),
+    message: await trimmedText(errorMessage(page)),
   };
 }
 
@@ -34,10 +57,9 @@ test('an unknown address under /fr/ answers with a 404 status and the theme’s 
   /* The French site's footer, with its French note. */
   await expect(page.locator('footer').getByText('Horloger de démonstration', { exact: true })).toBeVisible();
   /* Between them, a heading and a message. */
-  const main = page.getByRole('main');
-  await expect(main.getByRole('heading', { level: 1 })).toHaveCount(1);
-  await expect(main.getByRole('heading', { level: 1 })).not.toHaveText('');
-  await expect(main.getByRole('paragraph').first()).not.toHaveText('');
+  await expect(errorHeading(page)).toHaveCount(1);
+  await expect(errorHeading(page)).not.toHaveText('');
+  await expect(errorMessage(page)).not.toHaveText('');
 });
 
 test('an unknown address with no language prefix answers with a 404 status and the French error page, the default language’s: the same heading and message as under /fr/, the page in French', async ({
@@ -53,10 +75,9 @@ test('an unknown address with no language prefix answers with a 404 status and t
   /* A page of the French site, not Hugo's own "Page Not Found" page. */
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
   /* The French error page's heading and message. */
-  const main = page.getByRole('main');
-  await expect(main.getByRole('heading', { level: 1 })).toHaveCount(1);
-  await expect(main.getByRole('heading', { level: 1 })).toHaveText(frenchHeading);
-  await expect(main.getByRole('paragraph').first()).toHaveText(frenchMessage);
+  await expect(errorHeading(page)).toHaveCount(1);
+  await expect(errorHeading(page)).toHaveText(frenchHeading);
+  await expect(errorMessage(page)).toHaveText(frenchMessage);
 });
 
 test('an unknown address under /en/ answers with a 404 status and the English error page: its heading and message in English, the page in English', async ({
@@ -72,12 +93,11 @@ test('an unknown address under /en/ answers with a 404 status and the English er
   /* A page of the English site. */
   await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
   /* Its heading and message, translated: present, and not the French ones. */
-  const main = page.getByRole('main');
-  await expect(main.getByRole('heading', { level: 1 })).toHaveCount(1);
-  await expect(main.getByRole('heading', { level: 1 })).not.toHaveText('');
-  await expect(main.getByRole('heading', { level: 1 })).not.toHaveText(frenchHeading);
-  await expect(main.getByRole('paragraph').first()).not.toHaveText('');
-  await expect(main.getByRole('paragraph').first()).not.toHaveText(frenchMessage);
+  await expect(errorHeading(page)).toHaveCount(1);
+  await expect(errorHeading(page)).not.toHaveText('');
+  await expect(errorHeading(page)).not.toHaveText(frenchHeading);
+  await expect(errorMessage(page)).not.toHaveText('');
+  await expect(errorMessage(page)).not.toHaveText(frenchMessage);
 });
 
 test('the error page’s title in the browser tab is its heading, in its own language, followed by the site’s name, in French and in English', async ({
@@ -88,7 +108,7 @@ test('the error page’s title in the browser tab is its heading, in its own lan
   const headings: string[] = [];
   for (const url of [FRENCH_UNKNOWN_ADDRESS, ENGLISH_UNKNOWN_ADDRESS]) {
     await page.goto(url);
-    const heading = await trimmedText(page.getByRole('main').getByRole('heading', { level: 1 }));
+    const heading = await trimmedText(errorHeading(page));
     expect(heading, `heading on ${url}`).not.toBe('');
     headings.push(heading);
     /* The same separator as the other pages: "<page title> | <site title>". */
@@ -140,18 +160,11 @@ test('the error pages, opened at /fr/404.html and /en/404.html, ask search engin
   page,
   request,
 }) => {
-  for (const url of ['/fr/404.html', '/en/404.html']) {
+  for (const url of ERROR_PAGE_ADDRESSES) {
     /* What a crawler reads: the document served at the error page's own address, parsed without being run. */
     const response = await request.get(url);
     expect(response.ok(), `the response for ${url}`).toBe(true);
-    const html = await response.text();
-    const robots = await page.evaluate((source) => {
-      const document = new DOMParser().parseFromString(source, 'text/html');
-      return Array.from(
-        document.querySelectorAll('head meta[name="robots" i]'),
-        (meta) => meta.getAttribute('content') ?? '',
-      );
-    }, html);
+    const robots = await robotsMetaContents(page, await response.text());
     expect(
       robots.some((content) =>
         content
@@ -178,15 +191,14 @@ test.describe('site whose home pages are not written', () => {
     context,
   }) => {
     await serveSite(context, SITE_WITH_UNWRITTEN_HOME_PAGES, siteDirectory);
-    for (const url of ['/fr/404.html', '/en/404.html']) {
+    for (const url of ERROR_PAGE_ADDRESSES) {
       const response = await page.goto(`${SITE_WITH_UNWRITTEN_HOME_PAGES.origin}${url}`);
       expect(response?.ok(), `the response for ${url}`).toBe(true);
-      const main = page.getByRole('main');
       /* The error page is displayed, its heading in its main content… */
-      await expect(main.getByRole('heading', { level: 1 }), `heading on ${url}`).toBeVisible();
-      await expect(main.getByRole('heading', { level: 1 }), `heading on ${url}`).not.toHaveText('');
+      await expect(errorHeading(page), `heading on ${url}`).toBeVisible();
+      await expect(errorHeading(page), `heading on ${url}`).not.toHaveText('');
       /* …without a link to the home page, which does not exist. */
-      await expect(main.getByRole('link'), `link in the main content of ${url}`).toHaveCount(0);
+      await expect(page.getByRole('main').getByRole('link'), `link in the main content of ${url}`).toHaveCount(0);
     }
   });
 });

@@ -263,8 +263,7 @@ test("on a page shorter than the screen, the error page, the footer sits at the 
 }) => {
   /* Run on every project, at its own window size: a phone's and a desktop's. */
   await page.goto('/fr/page-qui-n-existe-pas/');
-  const footer = page.locator('footer');
-  await expect(footer.getByText('Horloger de démonstration', { exact: true })).toBeVisible();
+  await expect(footerNote(page)).toBeVisible();
 
   const viewportHeight = await page.evaluate(() => window.innerHeight);
   /* The page is shorter than the screen: the whole of it fits without scrolling. */
@@ -274,7 +273,7 @@ test("on a page shorter than the screen, the error page, the footer sits at the 
   );
 
   /* Compared with a 1 px tolerance: rendered box positions may carry sub-pixel rounding. */
-  const footerBox = (await footer.boundingBox())!;
+  const footerBox = (await page.locator('footer').boundingBox())!;
   const footerBottom = footerBox.y + footerBox.height;
   expect(
     Math.abs(footerBottom - viewportHeight),
