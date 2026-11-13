@@ -151,6 +151,30 @@ test('served under /portfolio/, the "Contact" link of the header leads to /portf
   }
 });
 
+test('served under /portfolio/, the "Contact" link of the header leads, on the projects list, to the list’s own contact section (#contact), and on the error page, to /portfolio/{lang}/#contact, in French and in English', async ({
+  page,
+}) => {
+  /* exampleSite/hugo.toml's main menu points its Contact entry at the home page's #contact
+     ('/fr/#contact', '/en/#contact'); the projects list ends with its own contact section,
+     the error page has none. Under a subpath, `hugo server` answers every unknown address with
+     the default language's error page, so the error pages are opened at their own addresses. */
+  for (const { address, href, reached } of [
+    { address: 'fr/projets/', href: '#contact', reached: 'fr/projets/#contact' },
+    { address: 'en/projects/', href: '#contact', reached: 'en/projects/#contact' },
+    { address: 'fr/404.html', href: '/portfolio/fr/#contact', reached: 'fr/#contact' },
+    { address: 'en/404.html', href: '/portfolio/en/#contact', reached: 'en/#contact' },
+  ]) {
+    const url = `${EXAMPLE_SITE_UNDER_PORTFOLIO}${address}`;
+    await page.goto(url);
+    const contact = page.locator('header nav').getByRole('link', { name: 'Contact', exact: true });
+    await expect(contact, `the header’s Contact link on ${url}`).toHaveAttribute('href', href);
+    await contact.click();
+    await expect(page, `page reached from the Contact link of ${url}`).toHaveURL(
+      `${EXAMPLE_SITE_UNDER_PORTFOLIO}${reached}`,
+    );
+  }
+});
+
 test('only the navigation link of the current page is marked as the current page, on the home page and on the Projets page', async ({
   page,
 }) => {

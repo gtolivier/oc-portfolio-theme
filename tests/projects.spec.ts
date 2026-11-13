@@ -70,6 +70,9 @@ import {
   SITE_WITH_LISTED_PROJECT_STACKS_AS_A_TEXT,
   SITE_WITH_AN_UNRENDERED_HOME_FEATURING_A_PROJECT_STACK_AS_A_TEXT,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_UNRENDERED_HOME_PAGES,
+  SITE_WITH_A_PROJECTS_LIST_WITHOUT_CONTACT_INTRO,
+  SITE_WITH_HOME_PAGES_WITHOUT_CONTACT_INTRO,
+  SITE_WITH_A_SECTION_SETTING_A_CONTACT_INTRO,
   TEMPLATE_EXECUTION_ERROR,
   type BuiltSite,
   buildSite,
@@ -181,6 +184,16 @@ const TABS_TO_REACH_THE_PROJECTS_LINKS = 60;
 function projectsSection(page: Page): Locator {
   return page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
 }
+
+/* The contact section of the page's main content: a region named by its title, as on the home
+   page and a project page. */
+function contactSection(page: Page): Locator {
+  return page.getByRole('main').getByRole('region', { name: 'Contact', exact: true });
+}
+
+/* The address the example site's contact form posts to: its contactAction site param
+   (exampleSite/hugo.toml). */
+const CONTACT_ACTION = '/api/contact';
 
 /* The card of a section that is headed by the given project title. */
 function cardTitled(section: Locator, title: string): Locator {
@@ -2407,6 +2420,320 @@ test.describe('projects section’s page without JavaScript', () => {
         const opacity = await effectiveOpacity(element);
         expect.soft(opacity, `on ${section.address}, effective opacity of the ${name}`).toBe(1);
       }
+    }
+  });
+
+  test('the projects section’s page ends, in each language, with the contact section (anchor #contact) after its projects, showing the contactIntro its front matter sets instead of the home page’s intro, above a form that posts the email, the message and the page’s language to the address the site’s contactAction param gives', async ({
+    page,
+    baseURL,
+  }) => {
+    /* exampleSite/content/projects/_index.md and _index.en.md set contactIntro, each in its own
+       language; the home pages declare their own intro in content/_index.md and _index.en.md
+       ([params.contact] intro). exampleSite/hugo.toml gives the form the address /api/contact.
+       No endpoint answers on the test servers: the post gets a page here, so that the browser has
+       somewhere to land. */
+    await page.route(`**${CONTACT_ACTION}`, (route) =>
+      route.fulfill({ status: 200, contentType: 'text/html', body: '<p>Merci</p>' }),
+    );
+    const homeIntros = [
+      'Disponible pour de nouvelles restaurations, à l’atelier ou à domicile. Parlons de votre pendule.',
+      'Available for new restorations, at the workshop or at your home. Let us talk about your clock.',
+    ];
+    const listIntros = ['Un projet similaire ? Parlons-en.', "A similar project in mind? Let's talk."];
+    const sections = [
+      {
+        address: '/fr/projets/',
+        lang: 'fr',
+        intro: listIntros[0],
+        projectTitles: ['Restauration d’une pendule de cheminée', 'Régulateur de parquet en noyer'],
+      },
+      {
+        address: '/en/projects/',
+        lang: 'en',
+        intro: listIntros[1],
+        projectTitles: ['Restoration of a mantel clock', 'Walnut floor regulator'],
+      },
+    ];
+    for (const { address, lang, intro, projectTitles } of sections) {
+      await page.goto(address);
+      const main = page.getByRole('main');
+      const section = contactSection(page);
+      await expect(section, `contact section on ${address}`).toHaveCount(1);
+      await expect(section, `anchor of the contact section on ${address}`).toHaveAttribute('id', 'contact');
+
+      /* It ends the page: after the projects, an engagement and a short project, and nothing of
+         the main content shows after it. */
+      for (const title of projectTitles) {
+        const projectHeading = await main.getByRole('heading', { level: 3, name: title, exact: true }).elementHandle();
+        expect(
+          await section.evaluate(
+            (contact, heading) =>
+              (heading!.compareDocumentPosition(contact) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0 &&
+              !contact.contains(heading),
+            projectHeading,
+          ),
+          `contact section after ${title} on ${address}`,
+        ).toBe(true);
+      }
+      const textAfter = await section.evaluate((contact) => {
+        const walker = document.createTreeWalker(contact.closest('main')!, NodeFilter.SHOW_TEXT);
+        const found: string[] = [];
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const isAfter =
+            !contact.contains(node) && (contact.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+          if (isAfter && node.textContent!.trim() !== '') found.push(node.textContent!.trim());
+        }
+        return found;
+      });
+      expect(textAfter, `text of the main content after the contact section on ${address}`).toEqual([]);
+
+      /* The list's own intro, not the home pages' nor the other language's, above the form. */
+      const introText = section.getByText(intro, { exact: true });
+      await introText.scrollIntoViewIfNeeded();
+      await expect(introText, `contact intro on ${address}`).toBeVisible();
+      for (const other of [...homeIntros, ...listIntros].filter((text) => text !== intro)) {
+        await expect(section.getByText(other), `another intro on ${address}`).toHaveCount(0);
+      }
+      const form = section.getByRole('form');
+      await expect(form, `contact form on ${address}`).toBeVisible();
+      const introBox = (await introText.boundingBox())!;
+      const formBox = (await form.boundingBox())!;
+      expect(introBox.y + introBox.height, `contact intro above the form on ${address}`).toBeLessThanOrEqual(
+        formBox.y + 1,
+      );
+
+      /* Sent as a visitor would: the email and the message, with the page's language, posted to
+         the contactAction address. */
+      await form.locator('[name="email"]').fill('marie.horloge@exemple.fr');
+      await form.locator('[name="message"]').fill('Bonjour, je cherche une restauration comme celles de la liste.');
+      const [request] = await Promise.all([
+        page.waitForRequest((sent) => sent.method() === 'POST'),
+        form.getByRole('button').click(),
+      ]);
+      expect(request.url(), `the address the form posts to from ${address}`).toBe(
+        new URL(CONTACT_ACTION, baseURL).href,
+      );
+      const body = Object.fromEntries(new URLSearchParams(request.postData() ?? ''));
+      expect(body, `the data sent from ${address}`).toEqual(
+        expect.objectContaining({
+          email: 'marie.horloge@exemple.fr',
+          message: 'Bonjour, je cherche une restauration comme celles de la liste.',
+          lang,
+        }),
+      );
+    }
+  });
+});
+
+test('with JavaScript, sending the filled contact form from the projects section’s page posts it in the background to the contactAction address, without leaving the page, and on a successful answer shows the confirmation in place of the list’s contactIntro', async ({
+  page,
+  baseURL,
+}) => {
+  /* exampleSite/hugo.toml gives the form the address /api/contact; the endpoint answers the
+     background request with success, in JSON. content/projects/_index.md sets the list's
+     contactIntro; the confirmation is the theme's default French one, the home page giving none. */
+  await page.route(`**${CONTACT_ACTION}`, (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
+  );
+  const listIntro = 'Un projet similaire ? Parlons-en.';
+  const confirmation = 'Merci, je vous réponds sous 48 heures ouvrées.';
+  await page.goto('/fr/projets/');
+  const urlBefore = page.url();
+  /* A mark left on the page as loaded: a reload or a navigation would wipe it out. */
+  await page.evaluate(() => {
+    (window as unknown as { samePageMark?: boolean }).samePageMark = true;
+  });
+  const section = contactSection(page);
+  const form = section.getByRole('form');
+  await expect(section.getByText(listIntro, { exact: true }), 'the list’s contact intro before sending').toBeVisible();
+  await form.locator('[name="email"]').fill('marie.horloge@exemple.fr');
+  await form.locator('[name="message"]').fill('Bonjour, je cherche une restauration comme celles de la liste.');
+  const [request] = await Promise.all([
+    page.waitForRequest((sent) => sent.method() === 'POST'),
+    form.getByRole('button').click(),
+  ]);
+  expect(request.url(), 'the address the form posts to').toBe(new URL(CONTACT_ACTION, baseURL).href);
+  /* On success, the confirmation shows in place of the list's intro… */
+  await expect(section.getByText(confirmation), 'the confirmation').toBeVisible();
+  await expect(section.getByText(listIntro), 'the list’s contact intro').not.toBeVisible();
+  /* …on the same page: same address, not reloaded. */
+  expect(page.url(), 'the page address').toBe(urlBefore);
+  expect(
+    await page.evaluate(() => (window as unknown as { samePageMark?: boolean }).samePageMark === true),
+    'the page is the one loaded before sending',
+  ).toBe(true);
+});
+
+test('on the projects section’s page, in each language, the header’s "Contact" link leads to the page’s own contact section (#contact): following it keeps the visitor on the list and brings the heading of that section fully into view, below the sticky header', async ({
+  page,
+}) => {
+  /* exampleSite/hugo.toml's main menu points its Contact entry at the home page's #contact
+     ('/fr/#contact', '/en/#contact'); the projects list ends with its own contact section. */
+  for (const address of ['/fr/projets/', '/en/projects/']) {
+    await page.goto(address);
+    const heading = contactSection(page).getByRole('heading', { level: 2 });
+    await expect(heading, `heading of the contact section on ${address}`).toHaveCount(1);
+    /* Below the first screen on load, so that the link has to bring it into view. */
+    await expect(heading, `heading of the contact section on load on ${address}`).not.toBeInViewport();
+    const link = page.locator('header nav').getByRole('link', { name: 'Contact', exact: true });
+    await expect(link, `the header’s Contact link on ${address}`).toHaveAttribute('href', '#contact');
+    await link.click();
+    /* Still on the list: same path, now at the anchor. */
+    await expect(page, `the page reached from the Contact link of ${address}`).toHaveURL(`${address}#contact`);
+    await expect(heading, `the heading is fully in view on ${address}`).toBeInViewport({ ratio: 1 });
+    /* Below the sticky header, not hidden under it; polled, as the scroll may be smooth. */
+    await expect
+      .poll(
+        async () => {
+          const headerBox = (await page.locator('header').boundingBox())!;
+          const headingBox = (await heading.boundingBox())!;
+          return headingBox.y - (headerBox.y + headerBox.height);
+        },
+        { message: `gap between the bottom of the header and the top of the heading on ${address}` },
+      )
+      .toBeGreaterThanOrEqual(0);
+  }
+});
+
+test.describe('projects section of another site, whose projects list sets no contactIntro', () => {
+  test('when the projects list sets no contactIntro param, its contact section shows, in each language, the intro the home page of its language declares', async ({
+    page,
+    context,
+  }) => {
+    /* SITE_WITH_A_PROJECTS_LIST_WITHOUT_CONTACT_INTRO: neither projects list sets contactIntro;
+       each home page declares a violin maker's intro in its own language, unlike the example
+       site's clockmaker's intros. */
+    const site = SITE_WITH_A_PROJECTS_LIST_WITHOUT_CONTACT_INTRO;
+    const homeIntros = [
+      'Ouvert aux commandes de violons et d’altos, neufs ou restaurés. Écrivez-moi pour une visite de l’atelier.',
+      'Open to orders for new or restored violins and violas. Write to me to visit the workshop.',
+    ];
+    /* The example site's intros: those of its home pages and those its projects list sets. */
+    const exampleSiteIntros = [
+      'Disponible pour de nouvelles restaurations, à l’atelier ou à domicile. Parlons de votre pendule.',
+      'Available for new restorations, at the workshop or at your home. Let us talk about your clock.',
+      'Un projet similaire ? Parlons-en.',
+      "A similar project in mind? Let's talk.",
+    ];
+    const siteDirectory = buildSite(site);
+    try {
+      await serveSite(context, site, siteDirectory);
+      for (const { address, intro } of [
+        { address: '/fr/projets/', intro: homeIntros[0] },
+        { address: '/en/projects/', intro: homeIntros[1] },
+      ]) {
+        const url = `${site.origin}${address}`;
+        const response = await page.goto(url);
+        expect(response?.status(), url).toBe(200);
+        const section = contactSection(page);
+        await expect(section, `contact section on ${url}`).toHaveCount(1);
+        const introText = section.getByText(intro, { exact: true });
+        await introText.scrollIntoViewIfNeeded();
+        await expect(introText, `home page’s contact intro on ${url}`).toBeVisible();
+        for (const other of [...homeIntros, ...exampleSiteIntros].filter((text) => text !== intro)) {
+          await expect(section.getByText(other), `another intro on ${url}`).toHaveCount(0);
+        }
+        await expect(section.getByRole('form'), `contact form on ${url}`).toBeVisible();
+      }
+    } finally {
+      removeDirectory(siteDirectory);
+    }
+  });
+});
+
+test.describe('projects section of another site, whose home pages declare no contact intro', () => {
+  test('when the home page of its language declares no contact intro, the projects list shows no contact section, in each language, even when it sets its own contactIntro param, and keeps its projects', async ({
+    page,
+    context,
+  }) => {
+    /* SITE_WITH_HOME_PAGES_WITHOUT_CONTACT_INTRO: the French home page has no contact params, the
+       English one contact params without an intro. The projects lists are the example site's,
+       whose content/projects/_index.md and _index.en.md each set a contactIntro, which must not
+       bring the section back. */
+    const site = SITE_WITH_HOME_PAGES_WITHOUT_CONTACT_INTRO;
+    /* The example site's intros: those of its home pages and those its projects lists set. */
+    const intros = [
+      'Disponible pour de nouvelles restaurations, à l’atelier ou à domicile. Parlons de votre pendule.',
+      'Available for new restorations, at the workshop or at your home. Let us talk about your clock.',
+      'Un projet similaire ? Parlons-en.',
+      "A similar project in mind? Let's talk.",
+    ];
+    const siteDirectory = buildSite(site);
+    try {
+      await serveSite(context, site, siteDirectory);
+      for (const { address, projectTitles } of [
+        {
+          address: '/fr/projets/',
+          projectTitles: ['Restauration d’une pendule de cheminée', 'Régulateur de parquet en noyer'],
+        },
+        { address: '/en/projects/', projectTitles: ['Restoration of a mantel clock', 'Walnut floor regulator'] },
+      ]) {
+        const url = `${site.origin}${address}`;
+        const response = await page.goto(url);
+        expect(response?.status(), url).toBe(200);
+        const main = page.getByRole('main');
+        /* The list still shows its projects… */
+        for (const title of projectTitles) {
+          await expect(
+            main.getByRole('heading', { level: 3, name: title, exact: true }),
+            `project ${title} on ${url}`,
+          ).toBeVisible();
+        }
+        /* …but offers no contact: no section, no anchor, no form, none of the intros. */
+        await expect(contactSection(page), `contact section on ${url}`).toHaveCount(0);
+        await expect(page.locator('#contact'), `#contact anchor on ${url}`).toHaveCount(0);
+        await expect(main.getByRole('form'), `contact form on ${url}`).toHaveCount(0);
+        for (const intro of intros) {
+          await expect(page.getByText(intro), `contact intro "${intro}" on ${url}`).toHaveCount(0);
+        }
+      }
+    } finally {
+      removeDirectory(siteDirectory);
+    }
+  });
+});
+
+test.describe('section of another site that is not the projects list, setting a contactIntro param', () => {
+  test('a section page other than the projects list shows no contact section, in each language, even when it sets its own contactIntro param, while the projects list of the same site shows one', async ({
+    page,
+    context,
+  }) => {
+    /* SITE_WITH_A_SECTION_SETTING_A_CONTACT_INTRO: the example site, whose home pages declare a
+       contact intro, plus a journal/ section whose pages each set a contactIntro. Only the
+       absence of the contact section on the journal can tell it from the projects list. */
+    const site = SITE_WITH_A_SECTION_SETTING_A_CONTACT_INTRO;
+    const journalIntros = [
+      'Une question sur ces notes ? Écrivez-moi depuis le journal.',
+      'A question about these notes? Write to me from the journal.',
+    ];
+    const siteDirectory = buildSite(site);
+    try {
+      await serveSite(context, site, siteDirectory);
+      for (const { journal, projectsList } of [
+        { journal: '/fr/journal/', projectsList: '/fr/projets/' },
+        { journal: '/en/journal/', projectsList: '/en/projects/' },
+      ]) {
+        /* The projects list of the same site still ends with the contact section… */
+        const listUrl = `${site.origin}${projectsList}`;
+        expect((await page.goto(listUrl))?.status(), listUrl).toBe(200);
+        await expect(contactSection(page), `contact section on ${listUrl}`).toHaveCount(1);
+        await expect(page.locator('#contact'), `#contact anchor on ${listUrl}`).toHaveCount(1);
+
+        /* …while the journal, a section page, offers no contact: no section, no anchor, no form,
+           none of its intros. */
+        const url = `${site.origin}${journal}`;
+        expect((await page.goto(url))?.status(), url).toBe(200);
+        const main = page.getByRole('main');
+        await expect(main.getByRole('heading', { level: 1 }), `title of ${url}`).toHaveCount(1);
+        await expect(contactSection(page), `contact section on ${url}`).toHaveCount(0);
+        await expect(page.locator('#contact'), `#contact anchor on ${url}`).toHaveCount(0);
+        await expect(main.getByRole('form'), `contact form on ${url}`).toHaveCount(0);
+        for (const intro of journalIntros) {
+          await expect(page.getByText(intro), `contact intro "${intro}" on ${url}`).toHaveCount(0);
+        }
+      }
+    } finally {
+      removeDirectory(siteDirectory);
     }
   });
 });

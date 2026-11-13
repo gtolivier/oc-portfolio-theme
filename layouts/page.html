@@ -1,7 +1,5 @@
 {{ define "main" }}
-  {{- $projectsSection := partialCached "projects/section.html" . site.Language.Lang }}
-  {{- $isProject := and (not .Parent.IsHome) (eq .Section $projectsSection.name) }}
-  {{- if $isProject }}
+  {{- if partial "projects/is-project.html" . }}
   {{- $allProjectsLink := partial "projects/all-projects-link.html" . }}
   {{ partial "page-hero.html" (dict "page" . "class" "project-hero" "lead" (partial "inline/project-hero-lead.html" (dict "allProjectsLink" $allProjectsLink))) }}
   {{- $facts := slice

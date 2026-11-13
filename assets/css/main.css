@@ -1415,15 +1415,15 @@ tick-field > canvas {
 }
 
 /* The intro, the confirmation and the status message that types it share
-   one place, so that the section keeps its height while one replaces the
-   other. The status message takes that place only once the intro is gone
+   one place, as tall as its text: no reserved height, which would leave an
+   empty line under a one-line intro (the mockup reserves two lines). The
+   status message takes that place only once the intro is gone
    (is-confirmed): it already holds the hidden whole sentence while the
    intro is erased. */
 .contact-intro,
 .contact-sent,
 .contact.is-confirmed .contact-status {
   max-width: 560px;
-  min-height: 62px;
   margin: 0 0 40px;
   font-size: 18px;
   line-height: 1.55;
@@ -1750,6 +1750,24 @@ tick-field > canvas {
 
   .short-projects {
     padding-block: 88px;
+  }
+}
+
+/* The contact section that ends the projects list keeps the home page's look,
+   a little tighter from 768 px, as in the mockup; on a phone, the home page's
+   values. The section follows the list's hero, even when the list is empty;
+   a project page's hero is project-hero. */
+@media (min-width: 768px) {
+  .page-hero:not(.project-hero) ~ .contact {
+    padding-block: 96px;
+  }
+
+  .page-hero:not(.project-hero) ~ .contact > h2 {
+    margin-bottom: 20px;
+  }
+
+  .page-hero:not(.project-hero) ~ .contact :is(.contact-intro, .contact-sent, .contact-status) {
+    font-size: 19px;
   }
 }
 
