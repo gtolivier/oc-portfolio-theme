@@ -185,6 +185,16 @@ function projectsSection(page: Page): Locator {
   return page.getByRole('main').getByRole('region', { name: 'Projets sélectionnés' });
 }
 
+/* The contact section of the page's main content: a region named by its title, as on the home
+   page and a project page. */
+function contactSection(page: Page): Locator {
+  return page.getByRole('main').getByRole('region', { name: 'Contact', exact: true });
+}
+
+/* The address the example site's contact form posts to: its contactAction site param
+   (exampleSite/hugo.toml). */
+const CONTACT_ACTION = '/api/contact';
+
 /* The card of a section that is headed by the given project title. */
 function cardTitled(section: Locator, title: string): Locator {
   return section
@@ -2422,8 +2432,7 @@ test.describe('projects section’s page without JavaScript', () => {
        ([params.contact] intro). exampleSite/hugo.toml gives the form the address /api/contact.
        No endpoint answers on the test servers: the post gets a page here, so that the browser has
        somewhere to land. */
-    const contactAction = '/api/contact';
-    await page.route(`**${contactAction}`, (route) =>
+    await page.route(`**${CONTACT_ACTION}`, (route) =>
       route.fulfill({ status: 200, contentType: 'text/html', body: '<p>Merci</p>' }),
     );
     const homeIntros = [
@@ -2448,8 +2457,7 @@ test.describe('projects section’s page without JavaScript', () => {
     for (const { address, lang, intro, projectTitles } of sections) {
       await page.goto(address);
       const main = page.getByRole('main');
-      /* The contact section, a region named by its title, as on the home page and a project page. */
-      const section = main.getByRole('region', { name: 'Contact', exact: true });
+      const section = contactSection(page);
       await expect(section, `contact section on ${address}`).toHaveCount(1);
       await expect(section, `anchor of the contact section on ${address}`).toHaveAttribute('id', 'contact');
 
@@ -2502,7 +2510,9 @@ test.describe('projects section’s page without JavaScript', () => {
         page.waitForRequest((sent) => sent.method() === 'POST'),
         form.getByRole('button').click(),
       ]);
-      expect(request.url(), `the address the form posts to from ${address}`).toBe(new URL(contactAction, baseURL).href);
+      expect(request.url(), `the address the form posts to from ${address}`).toBe(
+        new URL(CONTACT_ACTION, baseURL).href,
+      );
       const body = Object.fromEntries(new URLSearchParams(request.postData() ?? ''));
       expect(body, `the data sent from ${address}`).toEqual(
         expect.objectContaining({
@@ -2522,8 +2532,7 @@ test('with JavaScript, sending the filled contact form from the projects section
   /* exampleSite/hugo.toml gives the form the address /api/contact; the endpoint answers the
      background request with success, in JSON. content/projects/_index.md sets the list's
      contactIntro; the confirmation is the theme's default French one, the home page giving none. */
-  const contactAction = '/api/contact';
-  await page.route(`**${contactAction}`, (route) =>
+  await page.route(`**${CONTACT_ACTION}`, (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
   );
   const listIntro = 'Un projet similaire ? Parlons-en.';
@@ -2534,7 +2543,7 @@ test('with JavaScript, sending the filled contact form from the projects section
   await page.evaluate(() => {
     (window as unknown as { samePageMark?: boolean }).samePageMark = true;
   });
-  const section = page.getByRole('main').getByRole('region', { name: 'Contact', exact: true });
+  const section = contactSection(page);
   const form = section.getByRole('form');
   await expect(section.getByText(listIntro, { exact: true }), 'the list’s contact intro before sending').toBeVisible();
   await form.locator('[name="email"]').fill('marie.horloge@exemple.fr');
@@ -2543,7 +2552,7 @@ test('with JavaScript, sending the filled contact form from the projects section
     page.waitForRequest((sent) => sent.method() === 'POST'),
     form.getByRole('button').click(),
   ]);
-  expect(request.url(), 'the address the form posts to').toBe(new URL(contactAction, baseURL).href);
+  expect(request.url(), 'the address the form posts to').toBe(new URL(CONTACT_ACTION, baseURL).href);
   /* On success, the confirmation shows in place of the list's intro… */
   await expect(section.getByText(confirmation), 'the confirmation').toBeVisible();
   await expect(section.getByText(listIntro), 'the list’s contact intro').not.toBeVisible();
@@ -2562,10 +2571,7 @@ test('on the projects section’s page, in each language, the header’s "Contac
      ('/fr/#contact', '/en/#contact'); the projects list ends with its own contact section. */
   for (const address of ['/fr/projets/', '/en/projects/']) {
     await page.goto(address);
-    const heading = page
-      .getByRole('main')
-      .getByRole('region', { name: 'Contact', exact: true })
-      .getByRole('heading', { level: 2 });
+    const heading = contactSection(page).getByRole('heading', { level: 2 });
     await expect(heading, `heading of the contact section on ${address}`).toHaveCount(1);
     /* Below the first screen on load, so that the link has to bring it into view. */
     await expect(heading, `heading of the contact section on load on ${address}`).not.toBeInViewport();
@@ -2619,8 +2625,7 @@ test.describe('projects section of another site, whose projects list sets no con
         const url = `${site.origin}${address}`;
         const response = await page.goto(url);
         expect(response?.status(), url).toBe(200);
-        /* The contact section, a region named by its title, as on the home page and a project page. */
-        const section = page.getByRole('main').getByRole('region', { name: 'Contact', exact: true });
+        const section = contactSection(page);
         await expect(section, `contact section on ${url}`).toHaveCount(1);
         const introText = section.getByText(intro, { exact: true });
         await introText.scrollIntoViewIfNeeded();
@@ -2675,10 +2680,7 @@ test.describe('projects section of another site, whose home pages declare no con
           ).toBeVisible();
         }
         /* …but offers no contact: no section, no anchor, no form, none of the intros. */
-        await expect(
-          main.getByRole('region', { name: 'Contact', exact: true }),
-          `contact section on ${url}`,
-        ).toHaveCount(0);
+        await expect(contactSection(page), `contact section on ${url}`).toHaveCount(0);
         await expect(page.locator('#contact'), `#contact anchor on ${url}`).toHaveCount(0);
         await expect(main.getByRole('form'), `contact form on ${url}`).toHaveCount(0);
         for (const intro of intros) {
@@ -2714,10 +2716,7 @@ test.describe('section of another site that is not the projects list, setting a 
         /* The projects list of the same site still ends with the contact section… */
         const listUrl = `${site.origin}${projectsList}`;
         expect((await page.goto(listUrl))?.status(), listUrl).toBe(200);
-        await expect(
-          page.getByRole('main').getByRole('region', { name: 'Contact', exact: true }),
-          `contact section on ${listUrl}`,
-        ).toHaveCount(1);
+        await expect(contactSection(page), `contact section on ${listUrl}`).toHaveCount(1);
         await expect(page.locator('#contact'), `#contact anchor on ${listUrl}`).toHaveCount(1);
 
         /* …while the journal, a section page, offers no contact: no section, no anchor, no form,
@@ -2726,10 +2725,7 @@ test.describe('section of another site that is not the projects list, setting a 
         expect((await page.goto(url))?.status(), url).toBe(200);
         const main = page.getByRole('main');
         await expect(main.getByRole('heading', { level: 1 }), `title of ${url}`).toHaveCount(1);
-        await expect(
-          main.getByRole('region', { name: 'Contact', exact: true }),
-          `contact section on ${url}`,
-        ).toHaveCount(0);
+        await expect(contactSection(page), `contact section on ${url}`).toHaveCount(0);
         await expect(page.locator('#contact'), `#contact anchor on ${url}`).toHaveCount(0);
         await expect(main.getByRole('form'), `contact form on ${url}`).toHaveCount(0);
         for (const intro of journalIntros) {
