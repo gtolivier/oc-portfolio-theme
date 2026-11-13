@@ -1,9 +1,13 @@
 {{ define "main" }}
   {{- $projectsSection := partialCached "projects/section.html" . site.Language.Lang }}
-  {{- if and (not .Parent.IsHome) (eq .Section $projectsSection.name) }}
+  {{- $isProject := and (not .Parent.IsHome) (eq .Section $projectsSection.name) }}
+  {{- if $isProject }}
   <a href="{{ .FirstSection.RelPermalink }}">← {{ i18n "allProjects" }}</a>
   <p>// {{ i18n "caseStudy" }}</p>
   {{- end }}
   <h1>{{ .Title }}</h1>
+  {{- if and $isProject .Description }}
+  <p>{{ .Description }}</p>
+  {{- end }}
   {{ .Content }}
 {{ end }}
