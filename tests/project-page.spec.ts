@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import {
+  SITE_WITH_PROJECTS_IN_A_SUBSECTION,
   SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION,
   buildSite,
   removeDirectory,
@@ -104,6 +105,36 @@ test.describe('pages of another site, whose projectsSection param names the sect
         await expect(main.getByRole('heading', { level: 1 }), `main heading on ${url}`).toBeVisible();
         await expect(main.getByRole('link', { name }), `back link on ${url}`).toHaveCount(0);
       }
+    } finally {
+      removeDirectory(siteDirectory);
+    }
+  });
+});
+
+test.describe('pages of another site, whose projects are filed in a subsection of the projects section', () => {
+  test('the "Tous les projets" link of a project filed in a subsection of the projects section leads to the projects list, not to the subsection', async ({
+    page,
+    context,
+  }) => {
+    /* tests/fixtures/projects-in-a-subsection/content/projects/horlogerie/ holds two projects, in
+       a subsection titled "Horlogerie" and published at /fr/projets/horlogerie/. The projects list
+       is the example site's content/projects/, titled "Projets" and published at /fr/projets/. */
+    const site = SITE_WITH_PROJECTS_IN_A_SUBSECTION;
+    const siteDirectory = buildSite(site);
+    try {
+      await serveSite(context, site, siteDirectory);
+      const subsectionResponse = await page.goto(`${site.origin}/fr/projets/horlogerie/`);
+      expect(subsectionResponse?.status(), 'status of the subsection page').toBe(200);
+      const url = `${site.origin}/fr/projets/horlogerie/pendule-de-voyage/`;
+      const response = await page.goto(url);
+      expect(response?.status(), url).toBe(200);
+      const backLink = page.getByRole('main').getByRole('link', { name: /^(←\s*)?Tous les projets$/ });
+      await expect(backLink, `back link on ${url}`).toBeVisible();
+      /* The link itself leads to the projects list: no stop on the subsection's page. */
+      await expect(backLink, `back link on ${url}`).toHaveAttribute('href', '/fr/projets/');
+      await backLink.click();
+      await expect(page).toHaveURL(`${site.origin}/fr/projets/`);
+      await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toHaveText('Projets');
     } finally {
       removeDirectory(siteDirectory);
     }
