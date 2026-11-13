@@ -57,3 +57,6 @@ other = 'Language'
 
 [home]
 other = 'Home'
+
+[role]
+other = 'Role'

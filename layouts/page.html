@@ -9,5 +9,11 @@
   {{- if and $isProject .Description }}
   <p>{{ .Description }}</p>
   {{- end }}
+  {{- with and $isProject .Params.role }}
+  <dl>
+    <dt>{{ i18n "role" }}</dt>
+    <dd>{{ . }}</dd>
+  </dl>
+  {{- end }}
   {{ .Content }}
 {{ end }}
