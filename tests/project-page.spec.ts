@@ -209,6 +209,67 @@ test('a project page lists, in this order and only those filled in, the facts Cl
   }
 });
 
+test('an engagement’s page lists, after its period, its duration and its contract mode, labelled "Durée" and "Contrat" (English: "Duration", "Contract"), each with its value', async ({
+  page,
+}) => {
+  /* The example site's horloge-astronomique and restauration-pendule are engagements: their front
+     matter sets params.kind = 'engagement', with params.duration and params.mode. Only the
+     position of each new fact after the period is checked, not their order between them. */
+  const pages = [
+    {
+      url: '/fr/projets/horloge-astronomique/',
+      period: 'Période',
+      facts: [
+        ['Durée', '26 mois'],
+        ['Contrat', 'Régie'],
+      ],
+    },
+    {
+      url: '/en/projects/horloge-astronomique/',
+      period: 'Period',
+      facts: [
+        ['Duration', '26 months'],
+        ['Contract', 'Time and materials'],
+      ],
+    },
+    {
+      url: '/fr/projets/restauration-pendule/',
+      period: 'Période',
+      facts: [
+        ['Durée', '14 mois'],
+        ['Contrat', 'Forfait'],
+      ],
+    },
+    {
+      url: '/en/projects/restauration-pendule/',
+      period: 'Period',
+      facts: [
+        ['Duration', '14 months'],
+        ['Contract', 'Fixed-price'],
+      ],
+    },
+  ];
+  for (const { url, period, facts } of pages) {
+    await page.goto(url);
+    const terms = page.getByRole('main').getByRole('term');
+    const shownLabels = (await terms.allTextContents()).map((text) => text.trim());
+    for (const [label, value] of facts) {
+      const term = terms.filter({ hasText: new RegExp(`^\\s*${label}\\s*$`) });
+      await expect(term, `"${label}" term on ${url}`).toHaveCount(1);
+      await expect(term, `"${label}" term on ${url}`).toBeVisible();
+      const definition = term.locator('xpath=following-sibling::*[1]');
+      await expect(definition, `value of "${label}" on ${url}`).toHaveRole('definition');
+      await expect(definition, `value of "${label}" on ${url}`).toHaveText(value);
+      await expect(definition, `value of "${label}" on ${url}`).toBeVisible();
+      expect(
+        shownLabels.indexOf(label),
+        `"${label}" after "${period}" on ${url} (facts listed: ${shownLabels.join(', ')})`,
+      ).toBeGreaterThan(shownLabels.indexOf(period));
+    }
+    expect(shownLabels, `"${period}" term on ${url}`).toContain(period);
+  }
+});
+
 test('a page outside the projects section keeps the plain layout, without a link back to the projects list', async ({
   page,
 }) => {
