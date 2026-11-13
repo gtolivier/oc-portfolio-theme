@@ -15,11 +15,17 @@ const PROJECTS = [
     slug: 'horloge-astronomique',
     frenchTitle: 'Horloge astronomique de l’atelier',
     englishTitle: 'The workshop’s astronomical clock',
+    frenchDescription:
+      'Horloge murale qui affiche les phases de la lune, l’équation du temps et le lever du soleil à la latitude de l’atelier.',
+    englishDescription:
+      'A wall clock showing the phases of the moon, the equation of time and sunrise at the workshop’s latitude.',
   },
   {
     slug: 'regulateur-noyer',
     frenchTitle: 'Régulateur de parquet en noyer',
     englishTitle: 'Walnut floor regulator',
+    frenchDescription: 'Régulateur à balancier compensé, logé dans une caisse en noyer massif sculptée à la main.',
+    englishDescription: 'A regulator with a compensated pendulum, housed in a hand-carved solid walnut case.',
   },
 ];
 
@@ -84,6 +90,26 @@ test('a project page shows the kicker "// Étude de cas" (English: "// Case stud
         heading,
       );
       expect(comesBeforeHeading, `kicker before the main heading on ${url}`).toBe(true);
+    }
+  }
+});
+
+test('a project page shows the description of its front matter, in its language, below its title', async ({ page }) => {
+  for (const project of PROJECTS) {
+    for (const { url, description } of [
+      { url: `/fr/projets/${project.slug}/`, description: project.frenchDescription },
+      { url: `/en/projects/${project.slug}/`, description: project.englishDescription },
+    ]) {
+      await page.goto(url);
+      const main = page.getByRole('main');
+      const descriptionText = main.getByText(description, { exact: true });
+      await expect(descriptionText, `description on ${url}`).toBeVisible();
+
+      const headingBox = await main.getByRole('heading', { level: 1 }).boundingBox();
+      const descriptionBox = await descriptionText.boundingBox();
+      expect(descriptionBox!.y, `description below the main heading on ${url}`).toBeGreaterThanOrEqual(
+        headingBox!.y + headingBox!.height - 1,
+      );
     }
   }
 });
