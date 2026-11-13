@@ -22,9 +22,13 @@
   <dl>
     {{- range $facts }}
     {{- $label := .label }}
+    {{- $param := .param }}
     {{- with index $.Params .param }}
+    {{- if eq (partial "text-problem.html" .) "not-text" }}{{ errorf "projects: the %s param of the page %s must be a text (language: %s)" $param $.Path $.Language.Lang }}
+    {{- else }}
     <dt>{{ i18n $label }}</dt>
     <dd>{{ . }}</dd>
+    {{- end }}
     {{- end }}
     {{- end }}
   </dl>
