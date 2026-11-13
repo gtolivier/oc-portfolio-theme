@@ -960,22 +960,35 @@ tick-field > canvas {
   font-weight: 600;
 }
 
-/* The section number is decorative: its empty alternative text keeps it out
-   of the heading's accessible name, and so out of the region's. Each section,
-   and each group of the projects list page, sets its number and colour. */
+/* Sections are numbered from 01 in the order they appear, so that a section
+   left out leaves no gap. The number is decorative: its empty alternative
+   text keeps it out of the heading's accessible name, and so out of the
+   region's. Each section, and each group of the projects list page, sets its
+   colour. */
+main {
+  counter-reset: page-section;
+}
+
+.projects,
+.background,
+.contact,
+.engagements,
+.short-projects {
+  counter-increment: page-section;
+}
+
 .projects h2::before,
 .background > h2::before,
 .contact > h2::before,
 .engagements h2::before,
 .short-projects h2::before {
-  content: var(--section-number) / '';
+  content: counter(page-section, decimal-leading-zero) ' // ' / '';
   color: var(--section-number-color);
 }
 
 /* Dark section, below the light projects section. Each part is a direct
    child, spaced by its top margin, so that a part left out leaves no gap. */
 .background {
-  --section-number: '02 // ';
   --section-number-color: var(--color-accent);
   /* From the heading to the first part. */
   --background-heading-space: 40px;
@@ -1177,11 +1190,6 @@ tick-field > canvas {
   }
 }
 
-/* Without the projects section, the background section is the first one. */
-main:not(:has(.projects)) .background {
-  --section-number: '01 // ';
-}
-
 /* The mockup's gap between the columns, once the left one is wide enough
    for the key figures side by side. */
 @media (min-width: 1024px) {
@@ -1193,7 +1201,6 @@ main:not(:has(.projects)) .background {
 /* Light section: dark cards on the paper background. The header takes a
    line of its own, then the cards fill one line each, two from 1024 px. */
 .projects {
-  --section-number: '01 // ';
   --section-number-color: var(--color-accent-dark);
   /* Between two cards, and between two lines of the section. */
   --projects-gap: 24px;
@@ -1403,26 +1410,9 @@ main:not(:has(.projects)) .background {
 /* Light section, after the dark background one. Its heading is a small
    label rather than a title, as in the mockup. */
 .contact {
-  --section-number: '03 // ';
   --section-number-color: var(--color-accent-dark);
   background: var(--color-paper);
   color: var(--color-ink);
-}
-
-/* Without the background section, the contact section follows the projects. */
-.projects + .contact {
-  --section-number: '02 // ';
-}
-
-/* Without the projects section, the contact section follows the background. */
-main:not(:has(.projects)) .background + .contact {
-  --section-number: '02 // ';
-}
-
-/* Alone in the main content, the contact section is the first one: on the
-   home page, on the projects list without any project, on a project's page. */
-main:not(:has(.projects, .background, .engagements, .short-projects)) .contact {
-  --section-number: '01 // ';
 }
 
 .contact > h2 {
@@ -1751,31 +1741,15 @@ main:not(:has(.projects, .background, .engagements, .short-projects)) .contact {
 }
 
 .engagements {
-  --section-number: '01 // ';
   --section-number-color: var(--color-accent);
   background: var(--color-paper);
   color: var(--color-ink);
 }
 
 .short-projects {
-  --section-number: '02 // ';
   --section-number-color: var(--color-accent);
   background: var(--color-ink);
   color: var(--color-paper);
-}
-
-/* Without engagements, the short projects are the first section. */
-main:not(:has(.engagements)) .short-projects {
-  --section-number: '01 // ';
-}
-
-main:not(:has(.engagements)) .short-projects + .contact {
-  --section-number: '02 // ';
-}
-
-/* Without short projects, the contact section follows the engagements alone. */
-main:not(:has(.short-projects)) .engagements + .contact {
-  --section-number: '02 // ';
 }
 
 @media (min-width: 768px) {
