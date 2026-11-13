@@ -2,7 +2,7 @@
   {{- $projectsSection := partialCached "projects/section.html" . site.Language.Lang }}
   {{- $isProject := and (not .Parent.IsHome) (eq .Section $projectsSection.name) }}
   {{- if $isProject }}
-  <a href="{{ .FirstSection.RelPermalink }}">← {{ i18n "allProjects" }}</a>
+  {{ partial "projects/all-projects-link.html" . }}
   <p>// {{ i18n "caseStudy" }}</p>
   {{- end }}
   <h1>{{ .Title }}</h1>
@@ -57,7 +57,7 @@
   {{- end }}
   {{ .Content }}
   {{- if $isProject }}
-  <a href="{{ .FirstSection.RelPermalink }}">← {{ i18n "allProjects" }}</a>
+  {{ partial "projects/all-projects-link.html" . }}
   <a href="#contact">{{ i18n "discussSimilarProject" }} →</a>
   {{- end }}
 {{ end }}
