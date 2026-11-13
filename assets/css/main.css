@@ -1754,18 +1754,20 @@ tick-field > canvas {
 }
 
 /* The contact section that ends the projects list keeps the home page's look,
-   a little tighter, as in the mockup. */
-:is(.engagements, .short-projects) ~ .contact > h2 {
-  margin-bottom: 20px;
-}
-
-:is(.engagements, .short-projects) ~ .contact :is(.contact-intro, .contact-sent, .contact-status) {
-  font-size: 19px;
-}
-
+   a little tighter from 768 px, as in the mockup; on a phone, the home page's
+   values. The section follows the list's hero, even when the list is empty;
+   a project page's hero is project-hero. */
 @media (min-width: 768px) {
-  :is(.engagements, .short-projects) ~ .contact {
+  .page-hero:not(.project-hero) ~ .contact {
     padding-block: 96px;
+  }
+
+  .page-hero:not(.project-hero) ~ .contact > h2 {
+    margin-bottom: 20px;
+  }
+
+  .page-hero:not(.project-hero) ~ .contact :is(.contact-intro, .contact-sent, .contact-status) {
+    font-size: 19px;
   }
 }
 
