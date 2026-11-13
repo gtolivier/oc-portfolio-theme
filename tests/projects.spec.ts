@@ -75,6 +75,7 @@ import {
   SITE_WITH_A_SECTION_SETTING_A_CONTACT_INTRO,
   SITE_WITH_SHORT_PROJECTS_ONLY_AND_CONTACT,
   SITE_WITH_AN_EMPTY_PROJECTS_LIST_AND_CONTACT,
+  SITE_WITH_ENGAGEMENTS_ONLY_AND_CONTACT,
   TEMPLATE_EXECUTION_ERROR,
   type BuiltSite,
   buildSite,
@@ -2976,6 +2977,41 @@ test.describe('projects section of another site, holding no project, followed by
     await expect
       .poll(() => displayedText(contactHeading), 'text displayed by the contact heading')
       .toMatch(/^01 ?\/\/ ?Contact$/i);
+    await expect(contactHeading).toHaveAccessibleName('Contact');
+  });
+});
+
+test.describe('projects section of another site, holding engagements only, followed by its contact section', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_ENGAGEMENTS_ONLY_AND_CONTACT);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a projects list with engagements but no short projects, the heading of the contact section after the engagements shows the section number "02 //", while assistive technologies get the title alone', async ({
+    page,
+    context,
+  }) => {
+    /* tests/fixtures/engagements-and-contact/content/ateliers/ holds two engagements and no short
+       project, and its home page declares a contact intro: the list shows the engagements' group,
+       the first numbered section, then the contact section, the second one. The group heading is
+       found by its name, the only handle it has. */
+    const site = SITE_WITH_ENGAGEMENTS_ONLY_AND_CONTACT;
+    await serveSite(context, site, siteDirectory);
+    await page.goto(`${site.origin}/fr/ateliers/`);
+    const main = page.getByRole('main');
+    await expect(main.getByRole('heading', { level: 2, name: 'Projets courts & interactifs' })).toHaveCount(0);
+    const groupHeading = main.getByRole('heading', { level: 2, name: 'Missions & applications métier', exact: true });
+    await expect(groupHeading).toBeVisible();
+    const contactHeading = contactSection(page).getByRole('heading', { level: 2 });
+    await expect(contactHeading).toBeVisible();
+    /* On screen: the next number after the engagements' one, then "Contact" (its case left to the
+       stylesheet). For assistive technologies, the title alone. */
+    await expect
+      .poll(() => displayedText(contactHeading), 'text displayed by the contact heading')
+      .toMatch(/^02 ?\/\/ ?Contact$/i);
     await expect(contactHeading).toHaveAccessibleName('Contact');
   });
 });
