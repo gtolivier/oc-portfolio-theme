@@ -1,2 +1,2 @@
-{{- /* The link from a project page back to the projects list, in one place so that the link above the title and the one after the body stay the same. Its context is the project page. */ -}}
-<a href="{{ .FirstSection.RelPermalink }}">← {{ i18n "allProjects" }}</a>
+{{- /* The link from a project page back to the projects list, in one place so that the link above the title and the one after the body stay the same. Its context is the project page. The arrow is decorative. */ -}}
+<a class="project-back-link" href="{{ .FirstSection.RelPermalink }}"><span aria-hidden="true">←</span> {{ i18n "allProjects" }}</a>
