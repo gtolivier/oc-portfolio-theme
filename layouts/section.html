@@ -4,7 +4,6 @@
   {{ $engagementKind := "engagement" }}
   {{ $projectsSection := partialCached "projects/section.html" . site.Language.Lang }}
   {{ $isProjectsList := partial "projects/is-list.html" . }}
-  {{- /* Only the projects section is the projects list. */}}
   {{ $listedPages := cond $isProjectsList .RegularPages slice }}
   {{ $featuredReferences := site.Home.Params.projects }}
   {{- /* A featured project's stack is already reported by the featured projects, when the home page that features it is written. */}}
