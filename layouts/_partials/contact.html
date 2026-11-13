@@ -1,4 +1,4 @@
-{{- /* The contact section of a home page: the context is a dict with the home page and the level of the section's heading. */}}
+{{- /* The contact section of a home page: the context is a dict with the home page, the level of the section's heading and, optionally, an introOverride that replaces the home page's intro. */}}
 {{- $lang := site.Language.Lang }}
 {{- $headingLevel := .headingLevel }}
 {{- with .home.Params.contact }}
