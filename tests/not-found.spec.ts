@@ -103,3 +103,31 @@ test('the error page’s main content links back to the home page of its own lan
     await expect(page.locator('html')).toHaveAttribute('lang', lang);
   }
 });
+
+test('the error pages, opened at /fr/404.html and /en/404.html, ask search engines not to index them (meta robots noindex)', async ({
+  page,
+  request,
+}) => {
+  for (const url of ['/fr/404.html', '/en/404.html']) {
+    /* What a crawler reads: the document served at the error page's own address, parsed without being run. */
+    const response = await request.get(url);
+    expect(response.ok(), `the response for ${url}`).toBe(true);
+    const html = await response.text();
+    const robots = await page.evaluate((source) => {
+      const document = new DOMParser().parseFromString(source, 'text/html');
+      return Array.from(
+        document.querySelectorAll('head meta[name="robots" i]'),
+        (meta) => meta.getAttribute('content') ?? '',
+      );
+    }, html);
+    expect(
+      robots.some((content) =>
+        content
+          .split(',')
+          .map((directive) => directive.trim().toLowerCase())
+          .includes('noindex'),
+      ),
+      `the robots directives of the document served at ${url}: ${JSON.stringify(robots)}`,
+    ).toBe(true);
+  }
+});
