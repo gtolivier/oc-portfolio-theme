@@ -1,9 +1,27 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
+
+/* Addresses the example site has no page for, under each language. */
+const FRENCH_UNKNOWN_ADDRESS = '/fr/page-qui-n-existe-pas/';
+const ENGLISH_UNKNOWN_ADDRESS = '/en/page-that-does-not-exist/';
+
+async function trimmedText(element: Locator): Promise<string> {
+  return (await element.textContent())?.trim() ?? '';
+}
+
+/* Opens the French error page and reads its heading and message, for a test that compares another page with them. */
+async function frenchErrorPageTexts(page: Page): Promise<{ heading: string; message: string }> {
+  await page.goto(FRENCH_UNKNOWN_ADDRESS);
+  const main = page.getByRole('main');
+  return {
+    heading: await trimmedText(main.getByRole('heading', { level: 1 })),
+    message: await trimmedText(main.getByRole('paragraph').first()),
+  };
+}
 
 test('an unknown address under /fr/ answers with a 404 status and the theme’s French error page: the site’s header and footer around a heading and a message', async ({
   page,
 }) => {
-  const response = await page.goto('/fr/page-qui-n-existe-pas/');
+  const response = await page.goto(FRENCH_UNKNOWN_ADDRESS);
   expect(response?.status()).toBe(404);
   /* A page of the French site, not Hugo's own "Page Not Found" page. */
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
@@ -25,10 +43,7 @@ test('an unknown address with no language prefix answers with a 404 status and t
   page,
 }) => {
   /* The French error page's heading and message, which this page must show. */
-  await page.goto('/fr/page-qui-n-existe-pas/');
-  const frenchMain = page.getByRole('main');
-  const frenchHeading = (await frenchMain.getByRole('heading', { level: 1 }).textContent())?.trim() ?? '';
-  const frenchMessage = (await frenchMain.getByRole('paragraph').first().textContent())?.trim() ?? '';
+  const { heading: frenchHeading, message: frenchMessage } = await frenchErrorPageTexts(page);
   expect(frenchHeading).not.toBe('');
   expect(frenchMessage).not.toBe('');
 
@@ -47,14 +62,11 @@ test('an unknown address under /en/ answers with a 404 status and the English er
   page,
 }) => {
   /* The French error page's heading and message, which the English page must not show. */
-  await page.goto('/fr/page-qui-n-existe-pas/');
-  const frenchMain = page.getByRole('main');
-  const frenchHeading = (await frenchMain.getByRole('heading', { level: 1 }).textContent())?.trim() ?? '';
-  const frenchMessage = (await frenchMain.getByRole('paragraph').first().textContent())?.trim() ?? '';
+  const { heading: frenchHeading, message: frenchMessage } = await frenchErrorPageTexts(page);
   expect(frenchHeading).not.toBe('');
   expect(frenchMessage).not.toBe('');
 
-  const response = await page.goto('/en/page-that-does-not-exist/');
+  const response = await page.goto(ENGLISH_UNKNOWN_ADDRESS);
   expect(response?.status()).toBe(404);
   /* A page of the English site. */
   await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
@@ -73,9 +85,9 @@ test('the error page’s title in the browser tab is its heading, in its own lan
   /* The site's name, the example site's title, which the header's logo also shows. */
   const siteName = 'Exemple';
   const headings: string[] = [];
-  for (const url of ['/fr/page-qui-n-existe-pas/', '/en/page-that-does-not-exist/']) {
+  for (const url of [FRENCH_UNKNOWN_ADDRESS, ENGLISH_UNKNOWN_ADDRESS]) {
     await page.goto(url);
-    const heading = (await page.getByRole('main').getByRole('heading', { level: 1 }).textContent())?.trim() ?? '';
+    const heading = await trimmedText(page.getByRole('main').getByRole('heading', { level: 1 }));
     expect(heading, `heading on ${url}`).not.toBe('');
     headings.push(heading);
     /* The same separator as the other pages: "<page title> | <site title>". */
@@ -90,8 +102,8 @@ test('the error page’s main content links back to the home page of its own lan
   baseURL,
 }) => {
   for (const [url, home, lang] of [
-    ['/fr/page-qui-n-existe-pas/', '/fr/', 'fr-FR'],
-    ['/en/page-that-does-not-exist/', '/en/', 'en-US'],
+    [FRENCH_UNKNOWN_ADDRESS, '/fr/', 'fr-FR'],
+    [ENGLISH_UNKNOWN_ADDRESS, '/en/', 'en-US'],
   ]) {
     await page.goto(url);
     /* In the page's main content, not the header's logo or menu nor the footer's home link. */
@@ -109,8 +121,8 @@ test('on the error page, the header language switcher leads to the other languag
   baseURL,
 }) => {
   for (const [url, otherHome, otherLang] of [
-    ['/fr/page-qui-n-existe-pas/', '/en/', 'en-US'],
-    ['/en/page-that-does-not-exist/', '/fr/', 'fr-FR'],
+    [FRENCH_UNKNOWN_ADDRESS, '/en/', 'en-US'],
+    [ENGLISH_UNKNOWN_ADDRESS, '/fr/', 'fr-FR'],
   ]) {
     await page.goto(url);
     /* The header's language switcher: its only link is the other language's entry. */
