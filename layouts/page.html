@@ -58,8 +58,13 @@
   {{ .Content }}
   {{- if $isProject }}
   {{ partial "projects/all-projects-link.html" . }}
+  {{- /* The contact section needs the home page's contact intro: without it, no section and no link to it. */}}
+  {{- with site.Home.Params.contact }}
+  {{- if .intro }}
   <a href="#contact">{{ i18n "discussSimilarProject" }} →</a>
   {{- /* A level-3 heading keeps the contact section out of the level-2 headings of the project's body. */}}
-  {{ partial "contact.html" (dict "home" site.Home "headingLevel" 3 "introOverride" .Params.contactIntro) }}
+  {{ partial "contact.html" (dict "home" site.Home "headingLevel" 3 "introOverride" $.Params.contactIntro) }}
+  {{- end }}
+  {{- end }}
   {{- end }}
 {{ end }}
