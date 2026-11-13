@@ -2066,27 +2066,42 @@ tick-field > canvas {
   color: rgb(var(--color-ink-channels) / 0.88);
 }
 
-.project-body ul {
+.project-body :is(ul, ol) {
   display: flex;
   flex-direction: column;
   gap: 12px;
   max-width: 680px;
+}
+
+.project-body ul {
   padding: 0;
   list-style: none;
 }
 
-/* The marker is set in the item's padding rather than as a flex item, so that
-   the item's text and its inline elements stay on one line box. */
+/* A numbered list keeps its numbers, in place of the ">" markers. */
+.project-body ol {
+  padding-left: 1.5em;
+}
+
 .project-body li {
-  position: relative;
-  padding-left: 18px;
   font-size: 15px;
   line-height: 1.6;
   color: rgb(var(--color-ink-channels) / 0.85);
 }
 
+.project-body li > :is(ul, ol) {
+  margin-top: 12px;
+}
+
+/* The marker is set in the item's padding rather than as a flex item, so that
+   the item's text and its inline elements stay on one line box. */
+.project-body ul > li {
+  position: relative;
+  padding-left: 18px;
+}
+
 /* Decorative, as the projects list page's markers are. */
-.project-body li::before {
+.project-body ul > li::before {
   content: '>' / '';
   position: absolute;
   left: 0;
@@ -2129,6 +2144,18 @@ tick-field > canvas {
 .project-links a {
   color: var(--color-accent-dark);
   text-decoration: none;
+}
+
+/* Alone in the row, the link to the contact section keeps its end. */
+.project-links .project-contact-link {
+  margin-inline-start: auto;
+}
+
+/* Without a body above it, the row has nothing to set apart from. */
+.project-links:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
 }
 
 @media (min-width: 768px) {

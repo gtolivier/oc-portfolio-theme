@@ -76,16 +76,18 @@
     </div>
     {{- end }}
     <div class="project-main">
+      {{- with .Content }}
       <div class="project-body">
-        {{ .Content }}
+        {{ . }}
       </div>
+      {{- end }}
       {{- /* No links row without a link in it. */}}
       {{- $trimmedAllProjectsLink := strings.TrimSpace $allProjectsLink }}
       {{- if or $trimmedAllProjectsLink $contact }}
       <div class="project-links">
         {{ $trimmedAllProjectsLink | safeHTML }}
         {{- with $contact }}
-        <a href="#contact">{{ i18n "discussSimilarProject" }} <span aria-hidden="true">→</span></a>
+        <a class="project-contact-link" href="#contact">{{ i18n "discussSimilarProject" }} <span aria-hidden="true">→</span></a>
         {{- end }}
       </div>
       {{- end }}
