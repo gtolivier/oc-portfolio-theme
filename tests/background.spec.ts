@@ -1399,6 +1399,26 @@ test.describe('home page of another site, with another background', () => {
       await expect(section.getByText(text), `the example site's "${text}"`).toHaveCount(0);
     }
   });
+
+  test('on a home page without featured projects, the heading of the section "Parcours", the first numbered section, shows the section number "01 //" before its title', async ({
+    page,
+    context,
+  }) => {
+    await serveSite(context, SITE_WITH_ANOTHER_BACKGROUND, siteDirectory);
+    await page.goto(`${SITE_WITH_ANOTHER_BACKGROUND.origin}/fr/`);
+    const main = page.getByRole('main');
+    /* tests/fixtures/other-background/content/_index.md declares a background and no featured
+       projects: "Parcours" is the first region of the main content, with no "Projets sélectionnés"
+       before it. */
+    const section = backgroundSection(page);
+    await expect(section).toBeVisible();
+    await expect(main.getByRole('region', { name: 'Projets sélectionnés' })).toHaveCount(0);
+    await expect(main.getByRole('region').first()).toHaveAccessibleName('Parcours');
+    /* On screen: the first number, then the title; for assistive technologies, the title alone. */
+    const heading = section.getByRole('heading', { level: 2 });
+    await expect.poll(() => displayedText(heading), 'text displayed by the heading').toMatch(/^01 ?\/\/ ?Parcours$/);
+    await expect(heading).toHaveAccessibleName('Parcours');
+  });
 });
 
 /* What tests/fixtures/skills-only-background/content/_index.md declares for its background: a
