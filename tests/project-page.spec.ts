@@ -1,10 +1,14 @@
 import { test, expect } from '@playwright/test';
 import {
+  SITE_WITH_LOGOS_MISSING_FROM_THE_PAGE_BUNDLE,
   SITE_WITH_PROJECTS_IN_A_SUBSECTION,
   SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION,
+  TEMPLATE_EXECUTION_ERROR,
   buildSite,
   removeDirectory,
+  runBuildTestsInOneProjectOnly,
   serveSite,
+  tryToBuildSite,
 } from './helpers/built-site';
 
 /* Two projects of the example site (content/projects/<slug>.md and its .en.md translation): the
@@ -283,6 +287,46 @@ test('a project page whose clientLogo and agencyLogo params name images of its p
     await expect(main.getByText(clientLabel, { exact: true }), `"${clientLabel}" labels on ${url}`).toHaveCount(1);
     await expect(main.getByText(agencyLabel, { exact: true }), `"${agencyLabel}" labels on ${url}`).toHaveCount(0);
   }
+});
+
+test.describe('project pages whose logo params name no image of their page bundle: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a project page whose clientLogo or agencyLogo param names no image of its page bundle makes the site build fail, with an error message that cites that param, the file it names and the page, without a template execution error after it', () => {
+    /* tests/fixtures/logos-missing-from-the-bundle/content/projects/ holds two page bundles whose
+       logo params each name, once, an image the bundle does not hold: carillon-beffroi's
+       clientLogo names logo-ville.png (its bundle holds logo-ville.svg), chronometre-marine's
+       agencyLogo names logo-atelier-naval.svg. Rather than a page quietly showing no logo, the
+       person building the site must get, for each, a failure whose message, on one line, cites
+       the param, the file it names and the page by its path, whatever the rest of the wording,
+       and not the other logo param, which names an image the bundle holds. Neither of those
+       images may be reported. Two pages and two params, so that no fixed message passes. */
+    const build = tryToBuildSite(SITE_WITH_LOGOS_MISSING_FROM_THE_PAGE_BUNDLE);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    for (const { page, param, otherParam, file } of [
+      { page: 'projects/carillon-beffroi', param: 'clientLogo', otherParam: 'agencyLogo', file: 'logo-ville.png' },
+      {
+        page: 'projects/chronometre-marine',
+        param: 'agencyLogo',
+        otherParam: 'clientLogo',
+        file: 'logo-atelier-naval.svg',
+      },
+    ]) {
+      const messages = build.errors
+        .split('\n')
+        .filter((line) => line.includes(page) && line.includes(file) && new RegExp(`\\b${param}\\b`).test(line));
+      expect(messages, `one error message citing ${param}, ${file} and ${page}, in:\n${build.errors}`).toHaveLength(1);
+      expect(messages[0], `the error message about ${page} should not cite ${otherParam}`).not.toMatch(
+        new RegExp(`\\b${otherParam}\\b`),
+      );
+    }
+    for (const file of ['logo-fonderie.svg', 'logo-port.svg']) {
+      expect(build.errors, `${file}, which its page bundle holds, should not be reported`).not.toContain(file);
+    }
+    expect(build.errors, 'no template execution error should follow the error messages').not.toMatch(
+      TEMPLATE_EXECUTION_ERROR,
+    );
+  });
 });
 
 test('an engagement’s page lists, after its period, its duration and its contract mode, labelled "Durée" and "Contrat" (English: "Duration", "Contract"), each with its value', async ({

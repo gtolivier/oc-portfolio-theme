@@ -1451,6 +1451,16 @@ export const SITE_WITH_A_KINDLESS_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION = testS
    in both languages, are unchanged. */
 export const SITE_WITH_UNWRITTEN_HOME_PAGES = testSite('unwritten-home-pages');
 
+/* The example site's one project with logos, horloge-astronomique, names images its page bundle
+   holds: this site adds to its projects section the French-only page bundles of
+   tests/fixtures/logos-missing-from-the-bundle/content, two short projects whose logo params each
+   name, once, an image their bundle does not hold. "Carillon du beffroi"
+   (projects/carillon-beffroi/) sets clientLogo = 'logo-ville.png' while its bundle holds
+   logo-ville.svg, and agencyLogo = 'logo-fonderie.svg', which it holds; "Chronomètre de marine"
+   (projects/chronometre-marine/) sets clientLogo = 'logo-port.svg', which it holds, and
+   agencyLogo = 'logo-atelier-naval.svg', which it does not. */
+export const SITE_WITH_LOGOS_MISSING_FROM_THE_PAGE_BUNDLE = testSite('logos-missing-from-the-bundle');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
