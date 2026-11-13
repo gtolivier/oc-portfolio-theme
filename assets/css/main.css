@@ -1922,7 +1922,8 @@ tick-field > canvas {
   text-transform: uppercase;
 }
 
-/* Decorative marker, with an empty alternative text. */
+/* Decorative, as the page eyebrow's marker is: assistive technologies get
+   the words alone. */
 .project-kicker::before {
   content: '// ' / '';
 }
