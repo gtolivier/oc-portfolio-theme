@@ -59,5 +59,6 @@
   {{- if $isProject }}
   {{ partial "projects/all-projects-link.html" . }}
   <a href="#contact">{{ i18n "discussSimilarProject" }} →</a>
+  {{ partial "contact.html" (dict "home" site.Home "level" 3) }}
   {{- end }}
 {{ end }}
