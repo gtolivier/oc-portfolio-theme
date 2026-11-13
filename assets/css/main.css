@@ -1899,6 +1899,12 @@ tick-field > canvas {
 
 /* A project page: the facts above the body on a phone, in a column to the
    left of the body on wider screens. Images never overflow their column. */
+.project-page {
+  --project-facts-width: 280px;
+  /* Between the facts column and the body. */
+  --project-page-column-gap: 48px;
+}
+
 .project-page img {
   max-width: 100%;
   height: auto;
@@ -1907,8 +1913,8 @@ tick-field > canvas {
 @media (min-width: 900px) {
   .project-page {
     display: grid;
-    grid-template-columns: 280px minmax(0, 1fr);
-    gap: 48px;
+    grid-template-columns: var(--project-facts-width) minmax(0, 1fr);
+    gap: var(--project-page-column-gap);
     align-items: start;
   }
 }
