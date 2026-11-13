@@ -70,7 +70,7 @@ test('a project page opens with a link back to the projects list of its language
     ]) {
       await page.goto(url);
       const main = page.getByRole('main');
-      const backLink = main.getByRole('link', { name });
+      const backLink = main.getByRole('link', { name }).first();
       await expect(backLink, `back link on ${url}`).toBeVisible();
       await expect(backLink, `back link on ${url}`).toHaveAttribute('href', href);
 
@@ -540,6 +540,51 @@ test('a project page shows its body, in its language: its section headings, para
   }
 });
 
+test('after its body, a project page shows a link back to the projects list of its language and a "Discuter d’un projet similaire" link (English: "Discuss a similar project") to the contact section of the page', async ({
+  page,
+}) => {
+  /* The example site's horloge-astronomique ends its body with a capture. The links' arrows may be
+     decorative: each name is the words alone, or the words with their arrow. The page has no
+     contact section yet: the second link must lead to the #contact fragment of the page itself. */
+  for (const { url, backName, discussName, href, lastCapture } of [
+    {
+      url: '/fr/projets/horloge-astronomique/',
+      backName: /^(←\s*)?Tous les projets$/,
+      discussName: /^Discuter d['’]un projet similaire(\s*→)?$/,
+      href: '/fr/projets/',
+      lastCapture: 'Rouages de l’équation du temps, vus de dos, la came en avant-plan',
+    },
+    {
+      url: '/en/projects/horloge-astronomique/',
+      backName: /^(←\s*)?All projects$/,
+      discussName: /^Discuss a similar project(\s*→)?$/,
+      href: '/en/projects/',
+      lastCapture: 'The equation-of-time gearing, seen from the back, the cam in the foreground',
+    },
+  ]) {
+    await page.goto(url);
+    const main = page.getByRole('main');
+    const capture = await main.getByRole('img', { name: lastCapture, exact: true }).elementHandle();
+    const comesAfterBody = (link: Element, image: Element | null) =>
+      (image!.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+
+    /* The page already opens with a link back to the projects list: this one is the last. */
+    const backLink = main.getByRole('link', { name: backName }).last();
+    await backLink.scrollIntoViewIfNeeded();
+    await expect(backLink, `back link after the body on ${url}`).toBeVisible();
+    await expect(backLink, `back link after the body on ${url}`).toHaveAttribute('href', href);
+    expect(await backLink.evaluate(comesAfterBody, capture), `back link after the body on ${url}`).toBe(true);
+
+    const discussLink = main.getByRole('link', { name: discussName });
+    await expect(discussLink, `contact link on ${url}`).toHaveCount(1);
+    await discussLink.scrollIntoViewIfNeeded();
+    await expect(discussLink, `contact link on ${url}`).toBeVisible();
+    const target = await discussLink.evaluate((link) => (link as HTMLAnchorElement).href);
+    expect(target, `contact link target on ${url}`).toBe(new URL('#contact', page.url()).href);
+    expect(await discussLink.evaluate(comesAfterBody, capture), `contact link after the body on ${url}`).toBe(true);
+  }
+});
+
 test('a page outside the projects section keeps the plain layout, without a link back to the projects list', async ({
   page,
 }) => {
@@ -569,7 +614,7 @@ test.describe('pages of another site, whose projectsSection param names the sect
         const url = `${site.origin}/fr/realisations/${slug}/`;
         const response = await page.goto(url);
         expect(response?.status(), url).toBe(200);
-        const backLink = page.getByRole('main').getByRole('link', { name });
+        const backLink = page.getByRole('main').getByRole('link', { name }).first();
         await expect(backLink, `back link on ${url}`).toBeVisible();
         await expect(backLink, `back link on ${url}`).toHaveAttribute('href', '/fr/realisations/');
       }
@@ -608,7 +653,10 @@ test.describe('pages of another site, whose projects are filed in a subsection o
       const url = `${site.origin}/fr/projets/horlogerie/pendule-de-voyage/`;
       const response = await page.goto(url);
       expect(response?.status(), url).toBe(200);
-      const backLink = page.getByRole('main').getByRole('link', { name: /^(←\s*)?Tous les projets$/ });
+      const backLink = page
+        .getByRole('main')
+        .getByRole('link', { name: /^(←\s*)?Tous les projets$/ })
+        .first();
       await expect(backLink, `back link on ${url}`).toBeVisible();
       /* The link itself leads to the projects list: no stop on the subsection's page. */
       await expect(backLink, `back link on ${url}`).toHaveAttribute('href', '/fr/projets/');
