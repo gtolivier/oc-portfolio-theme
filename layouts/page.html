@@ -2,7 +2,8 @@
   {{- $projectsSection := partialCached "projects/section.html" . site.Language.Lang }}
   {{- $isProject := and (not .Parent.IsHome) (eq .Section $projectsSection.name) }}
   {{- if $isProject }}
-  {{ partial "page-hero.html" (dict "page" . "class" "project-hero" "lead" (partial "inline/project-hero-lead.html" .)) }}
+  {{- $allProjectsLink := partial "projects/all-projects-link.html" . }}
+  {{ partial "page-hero.html" (dict "page" . "class" "project-hero" "lead" (partial "inline/project-hero-lead.html" (dict "allProjectsLink" $allProjectsLink))) }}
   {{- $facts := slice
     (dict "param" "client" "label" "client")
     (dict "param" "agency" "label" "agency")
@@ -20,7 +21,8 @@
   {{- $logos := slice }}
   {{- range $logoParams }}
   {{- $label := .ownerParam }}
-  {{- $owner := index $.Params .ownerParam }}
+  {{- $ownerParam := .ownerParam }}
+  {{- $owner := index $.Params $ownerParam }}
   {{- $param := .param }}
   {{- with index $.Params .param }}
   {{- $file := . }}
@@ -28,21 +30,21 @@
   {{- if not $logo }}{{ errorf "projects: the %s param of the page %s names %s, which is not an image of its page bundle" $param $.Path $file }}
   {{- else if ne $logo.MediaType.MainType "image" }}{{ errorf "projects: the %s param of the page %s names %s, which is not an image" $param $.Path $file }}
   {{- else }}
-  {{- $logos = $logos | append (dict "label" $label "owner" $owner "image" $logo) }}
+  {{- $logos = $logos | append (dict "label" $label "ownerParam" $ownerParam "owner" $owner "image" $logo) }}
   {{- end }}
   {{- end }}
   {{- end }}
   {{- /* Without a contact section, no link to it. */}}
   {{- $contact := partial "contact.html" (dict "home" site.Home "introOverride" $.Params.contactIntro) }}
   {{- /* A shown logo's alternative text gives the owner's name: no fact repeats it. */}}
-  {{- $shownLogoLabels := slice }}
-  {{- range $logos }}{{ $shownLogoLabels = $shownLogoLabels | append .label }}{{ end }}
+  {{- $shownLogoOwnerParams := slice }}
+  {{- range $logos }}{{ $shownLogoOwnerParams = $shownLogoOwnerParams | append .ownerParam }}{{ end }}
   {{- $filledFacts := slice }}
   {{- range $facts }}
   {{- $param := .param }}
   {{- $fact := index $.Params $param }}
   {{- if and (isset $.Params $param) (eq (partial "text-problem.html" $fact) "not-text") }}{{ errorf "projects: the %s param of the page %s must be a text (language: %s)" $param $.Path $.Language.Lang }}
-  {{- else if and $fact (not (in $shownLogoLabels .label)) }}
+  {{- else if and $fact (not (in $shownLogoOwnerParams $param)) }}
   {{- $filledFacts = $filledFacts | append (dict "label" .label "value" $fact) }}
   {{- end }}
   {{- end }}
@@ -78,10 +80,10 @@
         {{ .Content }}
       </div>
       {{- /* No links row without a link in it. */}}
-      {{- $allProjectsLink := strings.TrimSpace (partial "projects/all-projects-link.html" .) }}
-      {{- if or $allProjectsLink $contact }}
+      {{- $trimmedAllProjectsLink := strings.TrimSpace $allProjectsLink }}
+      {{- if or $trimmedAllProjectsLink $contact }}
       <div class="project-links">
-        {{ $allProjectsLink | safeHTML }}
+        {{ $trimmedAllProjectsLink | safeHTML }}
         {{- with $contact }}
         <a href="#contact">{{ i18n "discussSimilarProject" }} <span aria-hidden="true">→</span></a>
         {{- end }}
@@ -96,8 +98,8 @@
   {{- end }}
 {{ end }}
 
-{{- /* What a project's hero shows before its title: the link back to the projects list and the kicker. */}}
+{{- /* What a project's hero shows before its title: the link back to the projects list, already rendered, and the kicker. */}}
 {{- define "_partials/inline/project-hero-lead.html" }}
-    {{ partial "projects/all-projects-link.html" . }}
+    {{ .allProjectsLink }}
     <p class="project-kicker">{{ i18n "caseStudy" }}</p>
 {{- end }}
