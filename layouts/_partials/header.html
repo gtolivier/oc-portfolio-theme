@@ -19,7 +19,10 @@
   <span lang="{{ $lang }}" aria-current="true">{{ upper $lang }}</span>
   {{- else }}
   {{- $url := .Home.RelPermalink }}
+  {{- /* The error page has no translation: the other language's home page stands in. */}}
+  {{- if ne $page.Kind "404" }}
   {{- with where $page.Translations "Language.Lang" $lang }}{{ $url = (index . 0).RelPermalink }}{{ end }}
+  {{- end }}
   <a href="{{ $url }}" hreflang="{{ $lang }}" lang="{{ $lang }}">{{ upper $lang }}</a>
   {{- end }}
   {{- end }}
