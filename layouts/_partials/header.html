@@ -6,7 +6,10 @@
 <nav>
   {{- range site.Menus.main }}
   {{- $isInSection := and .Page (not .Page.IsHome) ($page.IsDescendant .Page) }}
-  <a href="{{ .URL }}"{{ if eq .URL $page.RelPermalink }} aria-current="page"{{ else if $isInSection }} aria-current="true"{{ end }}>{{ .Name }}</a>
+  {{- $url := .URL }}
+  {{- /* The projects list ends with its own contact section: the Contact entry pointing at the home page's #contact stays on the list. */}}
+  {{- if and (eq $url (printf "%s#contact" site.Home.RelPermalink)) $page.IsSection $page.Parent.IsHome (eq $page.Section (partialCached "projects/section.html" $page site.Language.Lang).name) site.Home.Params.contact.intro }}{{ $url = "#contact" }}{{ end }}
+  <a href="{{ $url }}"{{ if eq .URL $page.RelPermalink }} aria-current="page"{{ else if $isInSection }} aria-current="true"{{ end }}>{{ .Name }}</a>
   {{- end }}
 </nav>
 {{- end }}
