@@ -2180,18 +2180,20 @@ tick-field > canvas {
   }
 }
 
-.project-page ~ .contact > h3 {
+.project-page ~ .contact > h2 {
   margin: 0 0 20px;
   font-family: var(--font-mono);
   font-size: 14px;
   font-weight: 400;
   letter-spacing: 0.22em;
   text-transform: uppercase;
+  color: inherit;
 }
 
 /* Decorative, as the home page's section numbers are. */
-.project-page ~ .contact > h3::before {
+.project-page ~ .contact > h2::before {
   content: '// ' / '';
+  color: inherit;
 }
 
 .project-page ~ .contact :is(.contact-intro, .contact-sent, .contact-status) {
