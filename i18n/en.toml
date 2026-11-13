@@ -70,5 +70,11 @@ other = 'Agency'
 [period]
 other = 'Period'
 
+[duration]
+other = 'Duration'
+
+[contract]
+other = 'Contract'
+
 [format]
 other = 'Format'
