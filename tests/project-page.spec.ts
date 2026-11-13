@@ -32,6 +32,23 @@ test('on the example site, a project page is served at /fr/projets/<page>/ and i
   }
 });
 
+test('on a project page, in French and in English, the Projects navigation link is marked as the current section, and no navigation link as the current page', async ({
+  page,
+}) => {
+  for (const project of PROJECTS) {
+    for (const { url, section } of [
+      { url: `/fr/projets/${project.slug}/`, section: 'Projets' },
+      { url: `/en/projects/${project.slug}/`, section: 'Projects' },
+    ]) {
+      await page.goto(url);
+      const nav = page.locator('header nav');
+      const sectionLink = nav.getByRole('link', { name: section, exact: true });
+      await expect(sectionLink, `${section} on ${url}`).toHaveAttribute('aria-current', 'true');
+      await expect(nav.locator('a[aria-current="page"]'), `current page links on ${url}`).toHaveCount(0);
+    }
+  }
+});
+
 test('on a project page, the header "EN" link leads to the English translation of the project, and the "FR" link of that translation back to the French page', async ({
   page,
 }) => {
