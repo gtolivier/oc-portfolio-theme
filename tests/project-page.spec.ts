@@ -1304,3 +1304,39 @@ test('on a project page, the header "EN" link leads to the English translation o
     await expect(mainHeading, `heading after FR on ${englishUrl}`).toHaveText(project.frenchTitle);
   }
 });
+
+test('on a project page that shows its contact section, in each language, the header’s "Contact" link leads to the page’s own contact section (#contact): following it keeps the visitor on the project page and brings the heading of that section fully into view, below the sticky header', async ({
+  page,
+}) => {
+  /* exampleSite/hugo.toml's main menu points its Contact entry at the home page's #contact
+     ('/fr/#contact', '/en/#contact'); the example site's horloge-astronomique ends with its contact
+     section, after a body long enough to push it below the first screen. */
+  const project = PROJECTS[0];
+  for (const address of [`/fr/projets/${project.slug}/`, `/en/projects/${project.englishSlug}/`]) {
+    await page.goto(address);
+    const heading = page
+      .getByRole('main')
+      .getByRole('region', { name: 'Contact', exact: true })
+      .getByRole('heading', { level: 2 });
+    await expect(heading, `heading of the contact section on ${address}`).toHaveCount(1);
+    /* Below the first screen on load, so that the link has to bring it into view. */
+    await expect(heading, `heading of the contact section on load on ${address}`).not.toBeInViewport();
+    const link = page.locator('header nav').getByRole('link', { name: 'Contact', exact: true });
+    await expect(link, `the header’s Contact link on ${address}`).toHaveAttribute('href', '#contact');
+    await link.click();
+    /* Still on the project page: same path, now at the anchor. */
+    await expect(page, `the page reached from the Contact link of ${address}`).toHaveURL(`${address}#contact`);
+    await expect(heading, `the heading is fully in view on ${address}`).toBeInViewport({ ratio: 1 });
+    /* Below the sticky header, not hidden under it; polled, as the scroll may be smooth. */
+    await expect
+      .poll(
+        async () => {
+          const headerBox = (await page.locator('header').boundingBox())!;
+          const headingBox = (await heading.boundingBox())!;
+          return headingBox.y - (headerBox.y + headerBox.height);
+        },
+        { message: `gap between the bottom of the header and the top of the heading on ${address}` },
+      )
+      .toBeGreaterThanOrEqual(0);
+  }
+});
