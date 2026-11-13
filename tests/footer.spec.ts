@@ -258,6 +258,29 @@ test.describe('site whose home pages are not written', () => {
   });
 });
 
+test("on a page shorter than the screen, the error page, the footer sits at the bottom of the screen, not right below the page's content", async ({
+  page,
+}) => {
+  /* Run on every project, at its own window size: a phone's and a desktop's. */
+  await page.goto('/fr/page-qui-n-existe-pas/');
+  await expect(footerNote(page)).toBeVisible();
+
+  const viewportHeight = await page.evaluate(() => window.innerHeight);
+  /* The page is shorter than the screen: the whole of it fits without scrolling. */
+  const pageHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+  expect(pageHeight, `page height against the screen height (${viewportHeight} px)`).toBeLessThanOrEqual(
+    viewportHeight + 1,
+  );
+
+  /* Compared with a 1 px tolerance: rendered box positions may carry sub-pixel rounding. */
+  const footerBox = (await page.locator('footer').boundingBox())!;
+  const footerBottom = footerBox.y + footerBox.height;
+  expect(
+    Math.abs(footerBottom - viewportHeight),
+    `footer ends at ${footerBottom} px, the screen at ${viewportHeight} px`,
+  ).toBeLessThanOrEqual(1);
+});
+
 test('the footer displays the site footer note in the page language', async ({ page }) => {
   await page.goto('/fr/');
   const frenchFooter = page.locator('footer');

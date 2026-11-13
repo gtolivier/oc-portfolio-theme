@@ -115,6 +115,8 @@
   /* Space left above an anchor target so the sticky header does not
      hide it: the header's height, plus some breathing room. */
   --sticky-header-clearance: calc(var(--header-height) + 2rem);
+  /* The height of the window; for browsers without svh. */
+  --window-height: 100vh;
   /* Stacking layers: the sticky header sits above positioned content,
      the skip link above the header. */
   --layer-sticky-header: 5;
@@ -136,6 +138,14 @@
   /* How long what waits for the theme script stays hidden when the script never arrives nor
      fails, before showing anyway. */
   --theme-script-stall-delay: 10s;
+}
+
+/* svh: the height left when a phone browser shows its toolbars, so what
+   fills the window is not hidden under them on arrival. */
+@supports (height: 100svh) {
+  :root {
+    --window-height: 100svh;
+  }
 }
 
 /* Without a language switcher, the first row is as tall as the logo on a
@@ -179,6 +189,14 @@ body {
   background: var(--color-ink);
   color: var(--color-paper);
   font-family: var(--font-sans);
+  /* A page shorter than the window keeps the footer at the bottom of it. */
+  display: flex;
+  flex-direction: column;
+  min-height: var(--window-height);
+}
+
+body > .site-footer {
+  margin-top: auto;
 }
 
 h1 {
@@ -454,13 +472,14 @@ h1 {
 }
 
 /* The accent underline of a hovered header link, which the footer's home
-   link, the projects' titles and a project page's links take too, also on
-   keyboard focus. */
+   link, the projects' titles, a project page's links and the error page's
+   home link take too, also on keyboard focus. */
 @media (hover: hover) {
   .site-header nav a:not([aria-current]):hover,
   .site-footer .home-link:hover,
   :is(.engagement, .short-project) h3 a:hover,
   .project-hero .project-back-link:hover,
+  .not-found-home-link:hover,
   .project-links a:hover {
     text-decoration: underline;
     text-decoration-color: var(--color-accent);
@@ -471,6 +490,7 @@ h1 {
 .site-footer .home-link:focus-visible,
 :is(.engagement, .short-project) h3 a:focus-visible,
 .project-hero .project-back-link:focus-visible,
+.not-found-home-link:focus-visible,
 .project-links a:focus-visible {
   text-decoration: underline;
   text-decoration-color: var(--color-accent);
@@ -680,18 +700,9 @@ tick-field > canvas {
    fold; the client band is the strip below it. Without a hero, nothing
    stretches the first screen: the content follows. */
 .first-screen.has-hero {
-  /* The height of the window below the header; for browsers without svh. */
-  --window-below-header: calc(100vh - var(--header-height));
+  --window-below-header: calc(var(--window-height) - var(--header-height));
   display: grid;
   grid-template-rows: minmax(var(--window-below-header), auto) auto;
-}
-
-/* svh: the height left when a phone browser shows its toolbars, so the
-   hero's buttons are not hidden under them on arrival. */
-@supports (height: 100svh) {
-  .first-screen.has-hero {
-    --window-below-header: calc(100svh - var(--header-height));
-  }
 }
 
 .clients {
@@ -1681,6 +1692,12 @@ tick-field > canvas {
   margin-top: 16px;
 }
 
+/* A further intro that stands apart from the one before it, such as the error
+   page's link home below its message. */
+.page-intro + .page-intro.is-apart {
+  margin-top: 36px;
+}
+
 .page-intro > :first-child {
   margin-top: 0;
 }
@@ -1905,8 +1922,11 @@ tick-field > canvas {
 }
 
 /* A project page: a hero on the tick field, like the projects list page's,
-   then the facts and the body on paper, then the contact section on ink. */
-.project-hero .project-back-link {
+   then the facts and the body on paper, then the contact section on ink.
+   The error page's link home, below its message, looks like the project
+   page's link back. */
+.project-hero .project-back-link,
+.not-found-home-link {
   display: inline-block;
   font-family: var(--font-mono);
   font-size: 14px;

@@ -1,6 +1,15 @@
 [skipToContent]
 other = 'Skip to content'
 
+[notFoundTitle]
+other = 'Page not found'
+
+[notFoundMessage]
+other = 'The requested page does not exist or has been moved.'
+
+[notFoundHomeLink]
+other = 'Back to the home page'
+
 [clients]
 other = 'Trusted by'
 
