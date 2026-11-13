@@ -1922,6 +1922,11 @@ tick-field > canvas {
   text-transform: uppercase;
 }
 
+/* Decorative marker, with an empty alternative text. */
+.project-kicker::before {
+  content: '// ' / '';
+}
+
 .project-hero h1 {
   max-width: 900px;
   font-size: clamp(38px, 4.8vw, 76px);

@@ -5,7 +5,7 @@
   <tick-field class="page-hero project-hero">
     <div class="veil" aria-hidden="true"></div>
     {{ partial "projects/all-projects-link.html" . }}
-    <p class="project-kicker">// {{ i18n "caseStudy" }}</p>
+    <p class="project-kicker">{{ i18n "caseStudy" }}</p>
     <h1>{{ .Title }}</h1>
     {{- with .Description }}
     <p class="page-intro">{{ . }}</p>
