@@ -32,6 +32,31 @@ test('on the example site, a project page is served at /fr/projets/<page>/ and i
   }
 });
 
+test('a project page opens with a link back to the projects list of its language, before the project title', async ({
+  page,
+}) => {
+  /* The link's arrow may be decorative: its name is the words alone, or the words after the arrow. */
+  for (const project of PROJECTS) {
+    for (const { url, name, href } of [
+      { url: `/fr/projets/${project.slug}/`, name: /^(←\s*)?Tous les projets$/, href: '/fr/projets/' },
+      { url: `/en/projects/${project.slug}/`, name: /^(←\s*)?All projects$/, href: '/en/projects/' },
+    ]) {
+      await page.goto(url);
+      const main = page.getByRole('main');
+      const backLink = main.getByRole('link', { name });
+      await expect(backLink, `back link on ${url}`).toBeVisible();
+      await expect(backLink, `back link on ${url}`).toHaveAttribute('href', href);
+
+      const heading = await main.getByRole('heading', { level: 1 }).elementHandle();
+      const comesBeforeHeading = await backLink.evaluate(
+        (link, title) => (link.compareDocumentPosition(title!) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+        heading,
+      );
+      expect(comesBeforeHeading, `back link before the main heading on ${url}`).toBe(true);
+    }
+  }
+});
+
 test('on a project page, in French and in English, the Projects navigation link is marked as the current section, and no navigation link as the current page', async ({
   page,
 }) => {
