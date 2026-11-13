@@ -35,12 +35,15 @@
   {{- range $logos }}
   {{- $label := .label }}
   {{- $owner := index $.Params .ownerParam }}
+  {{- $param := .param }}
   {{- with index $.Params .param }}
-  {{- with $.Resources.Get . }}
+  {{- $file := . }}
+  {{- with $.Resources.Get $file }}
   <div>
     <p>{{ i18n $label }}</p>
     <img src="{{ .RelPermalink }}" alt="{{ $owner }}">
   </div>
+  {{- else }}{{ errorf "projects: the %s param of the page %s names %s, which is not an image of its page bundle" $param $.Path $file }}
   {{- end }}
   {{- end }}
   {{- end }}
