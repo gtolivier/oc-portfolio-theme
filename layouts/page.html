@@ -28,6 +28,9 @@
     {{- end }}
     {{- end }}
   </dl>
+  {{- with .Params.stack }}
+  <p>{{ delimit . (partial "stack-separator.html") }}</p>
+  {{- end }}
   {{- end }}
   {{ .Content }}
 {{ end }}
