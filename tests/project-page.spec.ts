@@ -19,6 +19,8 @@ const PROJECTS = [
       'Horloge murale qui affiche les phases de la lune, l’équation du temps et le lever du soleil à la latitude de l’atelier.',
     englishDescription:
       'A wall clock showing the phases of the moon, the equation of time and sunrise at the workshop’s latitude.',
+    frenchRole: 'Horloger principal',
+    englishRole: 'Lead clockmaker',
   },
   {
     slug: 'regulateur-noyer',
@@ -26,6 +28,8 @@ const PROJECTS = [
     englishTitle: 'Walnut floor regulator',
     frenchDescription: 'Régulateur à balancier compensé, logé dans une caisse en noyer massif sculptée à la main.',
     englishDescription: 'A regulator with a compensated pendulum, housed in a hand-carved solid walnut case.',
+    frenchRole: 'Ébéniste et horloger',
+    englishRole: 'Cabinetmaker and clockmaker',
   },
 ];
 
@@ -110,6 +114,31 @@ test('a project page shows the description of its front matter, in its language,
       expect(descriptionBox!.y, `description below the main heading on ${url}`).toBeGreaterThanOrEqual(
         headingBox!.y + headingBox!.height - 1,
       );
+    }
+  }
+});
+
+test('a project page lists its role in a list of facts, labelled "Rôle" (English: "Role"), in its language', async ({
+  page,
+}) => {
+  /* A list of facts is a description list: each fact is a term (its label) followed by its
+     definition (its value), as assistive technologies announce them. */
+  for (const project of PROJECTS) {
+    for (const { url, label, role } of [
+      { url: `/fr/projets/${project.slug}/`, label: 'Rôle', role: project.frenchRole },
+      { url: `/en/projects/${project.slug}/`, label: 'Role', role: project.englishRole },
+    ]) {
+      await page.goto(url);
+      const term = page
+        .getByRole('main')
+        .getByRole('term')
+        .filter({ hasText: new RegExp(`^\\s*${label}\\s*$`) });
+      await expect(term, `"${label}" term on ${url}`).toHaveCount(1);
+      await expect(term, `"${label}" term on ${url}`).toBeVisible();
+      const value = term.locator('xpath=following-sibling::*[1]');
+      await expect(value, `value of "${label}" on ${url}`).toHaveRole('definition');
+      await expect(value, `value of "${label}" on ${url}`).toHaveText(role);
+      await expect(value, `value of "${label}" on ${url}`).toBeVisible();
     }
   }
 });
