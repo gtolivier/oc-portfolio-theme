@@ -541,6 +541,68 @@ test('a project page shows its body, in its language: its section headings, para
   }
 });
 
+test('on a phone (390 px), a project page fits within the screen width, without horizontal scrolling, its facts above its body; on a desktop (1280 px), the facts column sits to the left of the body, their tops aligned', async ({
+  page,
+  isMobile,
+}) => {
+  /* The example site's horloge-astronomique has a list of facts, its client and agency logos and
+     a stack (its facts), then a body that opens on its first section heading, "Le besoin". */
+  const url = '/fr/projets/horloge-astronomique/';
+  const PHONE = { width: 390, height: 844 };
+  const DESKTOP = { width: 1280, height: 900 };
+
+  /* The extent, in the page, of the facts: the terms and values of the list of facts, the logos and
+     the stack; the bottom of the first fact, the topmost of them; and the box of the body's first
+     section heading. */
+  async function factsAndBody() {
+    const main = page.getByRole('main');
+    const facts = [
+      ...(await main.getByRole('term').all()),
+      ...(await main.getByRole('definition').all()),
+      main.getByRole('img', { name: 'Musée des Arts du Temps', exact: true }),
+      main.getByRole('img', { name: 'Balancier & Associés', exact: true }),
+      main.getByText('Laiton · Acier · Verre', { exact: true }),
+    ];
+    const boxes = [];
+    for (const fact of facts) boxes.push((await fact.boundingBox())!);
+    const extent = {
+      left: Math.min(...boxes.map((box) => box.x)),
+      right: Math.max(...boxes.map((box) => box.x + box.width)),
+      top: Math.min(...boxes.map((box) => box.y)),
+      bottom: Math.max(...boxes.map((box) => box.y + box.height)),
+    };
+    const firstFact = boxes.reduce((topmost, box) => (box.y < topmost.y ? box : topmost));
+    const firstFactBottom = firstFact.y + firstFact.height;
+    const body = (await main.getByRole('heading', { level: 2, name: 'Le besoin', exact: true }).boundingBox())!;
+    return { facts: extent, firstFactBottom, body };
+  }
+
+  /* On mobile projects, the device's own screen counts as a phone too. */
+  const phones = isMobile ? [page.viewportSize()!, PHONE] : [PHONE];
+  for (const viewport of phones) {
+    const { width } = viewport;
+    await page.setViewportSize(viewport);
+    await page.goto(url);
+    const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect.soft(pageWidth, `at ${width} px, width of the page content`).toBeLessThanOrEqual(width);
+    const { facts, body } = await factsAndBody();
+    expect.soft(facts.bottom, `at ${width} px, facts above the body`).toBeLessThanOrEqual(body.y + 1);
+  }
+
+  await page.setViewportSize(DESKTOP);
+  await page.goto(url);
+  const { facts, firstFactBottom, body } = await factsAndBody();
+  expect.soft(facts.right, 'at 1280 px, facts column to the left of the body').toBeLessThanOrEqual(body.x + 1);
+  /* Tops aligned: the first fact and the body's first heading face each other, each starting
+     above the other's bottom. */
+  expect
+    .soft(facts.top, 'at 1280 px, top of the facts above the bottom of the body’s first heading')
+    .toBeLessThan(body.y + body.height);
+  expect
+    .soft(body.y, 'at 1280 px, top of the body’s first heading above the bottom of the first fact')
+    .toBeLessThan(firstFactBottom);
+});
+
 test('after its body, a project page shows a link back to the projects list of its language and a "Discuter d’un projet similaire" link (English: "Discuss a similar project") to the contact section of the page', async ({
   page,
 }) => {
