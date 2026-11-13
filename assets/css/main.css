@@ -115,6 +115,8 @@
   /* Space left above an anchor target so the sticky header does not
      hide it: the header's height, plus some breathing room. */
   --sticky-header-clearance: calc(var(--header-height) + 2rem);
+  /* The height of the window; for browsers without svh. */
+  --window-height: 100vh;
   /* Stacking layers: the sticky header sits above positioned content,
      the skip link above the header. */
   --layer-sticky-header: 5;
@@ -136,6 +138,14 @@
   /* How long what waits for the theme script stays hidden when the script never arrives nor
      fails, before showing anyway. */
   --theme-script-stall-delay: 10s;
+}
+
+/* svh: the height left when a phone browser shows its toolbars, so what
+   fills the window is not hidden under them on arrival. */
+@supports (height: 100svh) {
+  :root {
+    --window-height: 100svh;
+  }
 }
 
 /* Without a language switcher, the first row is as tall as the logo on a
@@ -182,13 +192,7 @@ body {
   /* A page shorter than the window keeps the footer at the bottom of it. */
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-}
-
-@supports (height: 100svh) {
-  body {
-    min-height: 100svh;
-  }
+  min-height: var(--window-height);
 }
 
 body > .site-footer {
@@ -696,18 +700,9 @@ tick-field > canvas {
    fold; the client band is the strip below it. Without a hero, nothing
    stretches the first screen: the content follows. */
 .first-screen.has-hero {
-  /* The height of the window below the header; for browsers without svh. */
-  --window-below-header: calc(100vh - var(--header-height));
+  --window-below-header: calc(var(--window-height) - var(--header-height));
   display: grid;
   grid-template-rows: minmax(var(--window-below-header), auto) auto;
-}
-
-/* svh: the height left when a phone browser shows its toolbars, so the
-   hero's buttons are not hidden under them on arrival. */
-@supports (height: 100svh) {
-  .first-screen.has-hero {
-    --window-below-header: calc(100svh - var(--header-height));
-  }
 }
 
 .clients {
