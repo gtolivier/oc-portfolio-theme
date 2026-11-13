@@ -13,3 +13,6 @@
 <meta http-equiv="refresh" content="0; url={{ .FirstSection.RelPermalink }}">
 {{- end }}
 {{- end }}
+{{- if eq .Kind "404" }}
+<meta name="robots" content="noindex">
+{{- end }}
