@@ -59,6 +59,7 @@
   {{- if $isProject }}
   {{ partial "projects/all-projects-link.html" . }}
   <a href="#contact">{{ i18n "discussSimilarProject" }} →</a>
-  {{ partial "contact.html" (dict "home" site.Home "level" 3) }}
+  {{- /* A level-3 heading keeps the contact section out of the level-2 headings of the project's body. */}}
+  {{ partial "contact.html" (dict "home" site.Home "headingLevel" 3) }}
   {{- end }}
 {{ end }}

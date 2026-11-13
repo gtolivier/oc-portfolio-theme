@@ -1,12 +1,11 @@
-{{- /* The contact section of a home page: the context is a dict with the home page and the level of the heading. */}}
+{{- /* The contact section of a home page: the context is a dict with the home page and the level of the section's heading. */}}
 {{- $lang := site.Language.Lang }}
-{{- $level := .level }}
+{{- $headingLevel := .headingLevel }}
 {{- with .home.Params.contact }}
 {{- $sent := .sent }}
 {{- with .intro }}
 <section class="contact" id="contact" aria-labelledby="contact-heading">
-  {{- /* On a project page, a level-3 heading keeps the section out of the level-2 headings of the page body. */}}
-  <h{{ $level }} id="contact-heading">{{ i18n "contact" }}</h{{ $level }}>
+  <h{{ $headingLevel }} id="contact-heading">{{ i18n "contact" }}</h{{ $headingLevel }}>
   <p class="contact-intro">{{ . }}</p>
   <p class="contact-sent" id="contact-sent">{{ $sent | default (i18n "contactSent") }}</p>
   <p class="contact-error" id="contact-error">{{ i18n "contactError" }}</p>
