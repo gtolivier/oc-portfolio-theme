@@ -2957,7 +2957,11 @@ test.describe('home page of another site, featuring only projects of one subsect
     await serveSite(context, site, siteDirectory);
     /* tests/fixtures/projects-in-a-subsection/content/_index.md features two projects, both in
        content/projects/horlogerie/ (title "Horlogerie", published at /fr/projets/horlogerie/). */
-    const subsectionResponse = await page.goto(`${site.origin}/fr/projets/horlogerie/`);
+    /* The subsection's page redirects to the projects list with a meta refresh: opened in a page
+       of its own, closed before the next navigation, its refresh cannot interrupt that one. */
+    const subsectionPage = await context.newPage();
+    const subsectionResponse = await subsectionPage.goto(`${site.origin}/fr/projets/horlogerie/`);
+    await subsectionPage.close();
     expect(subsectionResponse?.status(), 'status of the subsection page').toBe(200);
     await page.goto(`${site.origin}/fr/`);
     const section = projectsSection(page);

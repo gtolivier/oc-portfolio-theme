@@ -147,7 +147,11 @@ test.describe('pages of another site, whose projects are filed in a subsection o
     const siteDirectory = buildSite(site);
     try {
       await serveSite(context, site, siteDirectory);
-      const subsectionResponse = await page.goto(`${site.origin}/fr/projets/horlogerie/`);
+      /* The subsection's page redirects to the projects list with a meta refresh: opened in a page
+         of its own, closed before the next navigation, its refresh cannot interrupt that one. */
+      const subsectionPage = await context.newPage();
+      const subsectionResponse = await subsectionPage.goto(`${site.origin}/fr/projets/horlogerie/`);
+      await subsectionPage.close();
       expect(subsectionResponse?.status(), 'status of the subsection page').toBe(200);
       const url = `${site.origin}/fr/projets/horlogerie/pendule-de-voyage/`;
       const response = await page.goto(url);
