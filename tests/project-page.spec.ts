@@ -213,6 +213,78 @@ test('a project page lists, in this order and only those filled in, the facts Cl
   }
 });
 
+test('a project page whose clientLogo and agencyLogo params name images of its page bundle shows both logos, under the labels "Client" and "Agence" (English: "Client", "Agency"), each with the client’s or the agency’s name as its alternative text; without either, it shows no logo box', async ({
+  page,
+}) => {
+  /* The example site's horloge-astronomique is a page bundle (content/projects/horloge-astronomique/)
+     whose clientLogo and agencyLogo params name its logo-musee.svg and logo-balancier.svg;
+     regulateur-noyer sets neither. A logo sits under its label: the last text before the image, in
+     reading order, is the label, shown above it. */
+  const pagesWithLogos = [
+    {
+      url: '/fr/projets/horloge-astronomique/',
+      logos: [
+        ['Client', 'Musée des Arts du Temps'],
+        ['Agence', 'Balancier & Associés'],
+      ],
+    },
+    {
+      url: '/en/projects/horloge-astronomique/',
+      logos: [
+        ['Client', 'Museum of the Arts of Time'],
+        ['Agency', 'Balancier & Partners'],
+      ],
+    },
+  ];
+  for (const { url, logos } of pagesWithLogos) {
+    await page.goto(url);
+    const main = page.getByRole('main');
+    for (const [label, name] of logos) {
+      const logo = main.getByRole('img', { name, exact: true });
+      await expect(logo, `"${label}" logo on ${url}`).toHaveCount(1);
+      await logo.scrollIntoViewIfNeeded();
+      await expect(logo, `"${label}" logo on ${url}`).toBeVisible();
+      await expect
+        .poll(
+          () => logo.evaluate((image) => image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0),
+          { message: `"${label}" logo loaded on ${url}` },
+        )
+        .toBe(true);
+
+      const { previousText, labelBottom, logoTop } = await logo.evaluate((image) => {
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        let previous: Node | null = null;
+        for (
+          let node = walker.nextNode();
+          node && (node.compareDocumentPosition(image) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+          node = walker.nextNode()
+        ) {
+          if (node.textContent!.trim() !== '') previous = node;
+        }
+        return {
+          previousText: previous?.textContent!.trim() ?? null,
+          labelBottom: previous?.parentElement?.getBoundingClientRect().bottom ?? null,
+          logoTop: image.getBoundingClientRect().top,
+        };
+      });
+      expect(previousText, `label before the "${label}" logo on ${url}`).toBe(label);
+      expect(labelBottom!, `"${label}" label above its logo on ${url}`).toBeLessThanOrEqual(logoTop + 1);
+    }
+  }
+
+  for (const { url, clientLabel, agencyLabel } of [
+    { url: '/fr/projets/regulateur-noyer/', clientLabel: 'Client', agencyLabel: 'Agence' },
+    { url: '/en/projects/regulateur-noyer/', clientLabel: 'Client', agencyLabel: 'Agency' },
+  ]) {
+    await page.goto(url);
+    const main = page.getByRole('main');
+    await expect(main.getByRole('img'), `logos on ${url}`).toHaveCount(0);
+    /* Only the list of facts names the client, and nothing names an agency. */
+    await expect(main.getByText(clientLabel, { exact: true }), `"${clientLabel}" labels on ${url}`).toHaveCount(1);
+    await expect(main.getByText(agencyLabel, { exact: true }), `"${agencyLabel}" labels on ${url}`).toHaveCount(0);
+  }
+});
+
 test('an engagement’s page lists, after its period, its duration and its contract mode, labelled "Durée" and "Contrat" (English: "Duration", "Contract"), each with its value', async ({
   page,
 }) => {
