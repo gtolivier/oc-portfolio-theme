@@ -1419,6 +1419,11 @@ main:not(:has(.projects)) .background + .contact {
   --section-number: '02 // ';
 }
 
+/* Alone in the main content, the contact section is the first one. */
+main:not(:has(.projects, .background, .engagements, .short-projects)) .contact {
+  --section-number: '01 // ';
+}
+
 .contact > h2 {
   margin: 0 0 24px;
   font-family: var(--font-mono);
