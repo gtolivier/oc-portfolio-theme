@@ -3,9 +3,9 @@
   {{ $shortKind := "short" }}
   {{ $engagementKind := "engagement" }}
   {{ $projectsSection := partialCached "projects/section.html" . site.Language.Lang }}
-  {{ $isProjectsSection := partial "projects/is-list.html" . }}
+  {{ $isProjectsList := partial "projects/is-list.html" . }}
   {{- /* Only the projects section is the projects list. */}}
-  {{ $listedPages := cond $isProjectsSection .RegularPages slice }}
+  {{ $listedPages := cond $isProjectsList .RegularPages slice }}
   {{ $featuredReferences := site.Home.Params.projects }}
   {{- /* A featured project's stack is already reported by the featured projects, when the home page that features it is written. */}}
   {{ $homeFeaturesProjects := and (partial "is-published.html" site.Home) (reflect.IsSlice $featuredReferences) }}
@@ -59,7 +59,7 @@
       </div>
     </section>
   {{ end }}
-  {{ if $isProjectsSection }}
+  {{ if $isProjectsList }}
     {{ partial "contact.html" (dict "home" site.Home "introOverride" .Params.contactIntro) }}
   {{ end }}
 {{ end }}
