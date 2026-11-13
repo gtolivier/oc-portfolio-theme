@@ -10,26 +10,20 @@
   <p>{{ .Description }}</p>
   {{- end }}
   {{- if $isProject }}
+  {{- $facts := slice
+    (dict "param" "client" "label" "client")
+    (dict "param" "agency" "label" "agency")
+    (dict "param" "role" "label" "role")
+    (dict "param" "years" "label" "period")
+    (dict "param" "format" "label" "format")
+  }}
   <dl>
-    {{- with .Params.client }}
-    <dt>{{ i18n "client" }}</dt>
+    {{- range $facts }}
+    {{- $label := .label }}
+    {{- with index $.Params .param }}
+    <dt>{{ i18n $label }}</dt>
     <dd>{{ . }}</dd>
     {{- end }}
-    {{- with .Params.agency }}
-    <dt>{{ i18n "agency" }}</dt>
-    <dd>{{ . }}</dd>
-    {{- end }}
-    {{- with .Params.role }}
-    <dt>{{ i18n "role" }}</dt>
-    <dd>{{ . }}</dd>
-    {{- end }}
-    {{- with .Params.years }}
-    <dt>{{ i18n "period" }}</dt>
-    <dd>{{ . }}</dd>
-    {{- end }}
-    {{- with .Params.format }}
-    <dt>{{ i18n "format" }}</dt>
-    <dd>{{ . }}</dd>
     {{- end }}
   </dl>
   {{- end }}
