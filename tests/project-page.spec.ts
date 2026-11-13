@@ -585,6 +585,95 @@ test('after its body, a project page shows a link back to the projects list of i
   }
 });
 
+test.describe('project page in a browser without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('a project page ends with the contact section of the home page of its language: after the "Discuter d’un projet similaire" link, the intro that home page declares, above a form that posts the email, the message and the page’s language to the address the site’s contactAction param gives', async ({
+    page,
+    baseURL,
+  }) => {
+    /* The example site's home pages declare their contact intro in content/_index.md and
+       content/_index.en.md ([params.contact] table, intro key); exampleSite/hugo.toml gives the
+       form the address /api/contact. No endpoint answers on the test servers: the post gets a page
+       here, so that the browser has somewhere to land. */
+    const contactAction = '/api/contact';
+    await page.route(`**${contactAction}`, (route) =>
+      route.fulfill({ status: 200, contentType: 'text/html', body: '<p>Merci</p>' }),
+    );
+    for (const { url, lang, intro, otherIntro, discussName } of [
+      {
+        url: '/fr/projets/horloge-astronomique/',
+        lang: 'fr',
+        intro: 'Disponible pour de nouvelles restaurations, à l’atelier ou à domicile. Parlons de votre pendule.',
+        otherIntro: 'Available for new restorations, at the workshop or at your home. Let us talk about your clock.',
+        discussName: /^Discuter d['’]un projet similaire(\s*→)?$/,
+      },
+      {
+        url: '/en/projects/horloge-astronomique/',
+        lang: 'en',
+        intro: 'Available for new restorations, at the workshop or at your home. Let us talk about your clock.',
+        otherIntro: 'Disponible pour de nouvelles restaurations, à l’atelier ou à domicile. Parlons de votre pendule.',
+        discussName: /^Discuss a similar project(\s*→)?$/,
+      },
+    ]) {
+      await page.goto(url);
+      const main = page.getByRole('main');
+      /* The contact section, a region named by its title, as on the home page. */
+      const section = main.getByRole('region', { name: 'Contact', exact: true });
+      await expect(section, `contact section on ${url}`).toHaveCount(1);
+
+      /* It ends the page: after the "Discuss a similar project" link, and nothing of the main
+         content shows after it. */
+      const discussLink = await main.getByRole('link', { name: discussName }).elementHandle();
+      const place = await section.evaluate((contact, link) => {
+        const mainElement = contact.closest('main')!;
+        const walker = document.createTreeWalker(mainElement, NodeFilter.SHOW_TEXT);
+        const textAfter: string[] = [];
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const isAfter =
+            !contact.contains(node) && (contact.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+          if (isAfter && node.textContent!.trim() !== '') textAfter.push(node.textContent!.trim());
+        }
+        return {
+          afterDiscussLink: (link!.compareDocumentPosition(contact) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+          textAfter,
+        };
+      }, discussLink);
+      expect(place.afterDiscussLink, `contact section after the contact link on ${url}`).toBe(true);
+      expect(place.textAfter, `text of the main content after the contact section on ${url}`).toEqual([]);
+
+      /* The intro of the home page of the page's language, not the other language's, above the form. */
+      const introText = section.getByText(intro, { exact: true });
+      await introText.scrollIntoViewIfNeeded();
+      await expect(introText, `contact intro on ${url}`).toBeVisible();
+      await expect(section.getByText(otherIntro), `the other language's intro on ${url}`).toHaveCount(0);
+      const form = section.getByRole('form');
+      await expect(form, `contact form on ${url}`).toBeVisible();
+      const introBox = (await introText.boundingBox())!;
+      const formBox = (await form.boundingBox())!;
+      expect(introBox.y + introBox.height, `contact intro above the form on ${url}`).toBeLessThanOrEqual(formBox.y + 1);
+
+      /* Sent as a visitor would: the email and the message, with the page's language, posted to the
+         contactAction address. */
+      await form.locator('[name="email"]').fill('marie.horloge@exemple.fr');
+      await form.locator('[name="message"]').fill('Bonjour, ma pendule de cheminée retarde de dix minutes par jour.');
+      const [request] = await Promise.all([
+        page.waitForRequest((sent) => sent.method() === 'POST'),
+        form.getByRole('button').click(),
+      ]);
+      expect(request.url(), `the address the form posts to from ${url}`).toBe(new URL(contactAction, baseURL).href);
+      const body = Object.fromEntries(new URLSearchParams(request.postData() ?? ''));
+      expect(body, `the data sent from ${url}`).toEqual(
+        expect.objectContaining({
+          email: 'marie.horloge@exemple.fr',
+          message: 'Bonjour, ma pendule de cheminée retarde de dix minutes par jour.',
+          lang,
+        }),
+      );
+    }
+  });
+});
+
 test('a page outside the projects section keeps the plain layout, without a link back to the projects list', async ({
   page,
 }) => {
