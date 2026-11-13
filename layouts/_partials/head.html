@@ -1,14 +1,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width">
 {{- /* The error page has no title of its own: Hugo's default is in English, whatever the language. */}}
-{{- $isNotFound := eq .Kind "404" }}
-{{- $pageTitle := cond $isNotFound (i18n "notFoundTitle") .Title }}
+{{- $isErrorPage := partial "is-error-page.html" . }}
+{{- $pageTitle := cond $isErrorPage (i18n "notFoundTitle") .Title }}
 <title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ printf "%s | %s" $pageTitle site.Title }}{{ end }}</title>
 {{ partialCached "head/css.html" . }}
 {{ partialCached "head/js.html" . }}
 {{- /* A subsection of the projects section is not a list of its own: it sends the visitor to the projects list, and stays out of search engines. */}}
 {{- $isProjectsSubsection := and .IsSection (not .Parent.IsHome) (eq .Section (partialCached "projects/section.html" . site.Language.Lang).name) }}
-{{- if or $isNotFound $isProjectsSubsection }}
+{{- if or $isErrorPage $isProjectsSubsection }}
 <meta name="robots" content="noindex">
 {{- end }}
 {{- /* When Hugo does not write the list, there is nowhere to send the visitor. */}}
