@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
+import { SITE_WITH_UNWRITTEN_HOME_PAGES, buildSite, removeDirectory, serveSite } from './helpers/built-site';
 
 /* Addresses the example site has no page for, under each language. */
 const FRENCH_UNKNOWN_ADDRESS = '/fr/page-qui-n-existe-pas/';
@@ -161,4 +162,31 @@ test('the error pages, opened at /fr/404.html and /en/404.html, ask search engin
       `the robots directives of the document served at ${url}: ${JSON.stringify(robots)}`,
     ).toBe(true);
   }
+});
+
+test.describe('site whose home pages are not written', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_UNWRITTEN_HOME_PAGES);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test("when a language's home page is not written (render = 'never' or 'link'), its error page has no link back to it in its main content, as the footer has none", async ({
+    page,
+    context,
+  }) => {
+    await serveSite(context, SITE_WITH_UNWRITTEN_HOME_PAGES, siteDirectory);
+    for (const url of ['/fr/404.html', '/en/404.html']) {
+      const response = await page.goto(`${SITE_WITH_UNWRITTEN_HOME_PAGES.origin}${url}`);
+      expect(response?.ok(), `the response for ${url}`).toBe(true);
+      const main = page.getByRole('main');
+      /* The error page is displayed, its heading in its main content… */
+      await expect(main.getByRole('heading', { level: 1 }), `heading on ${url}`).toBeVisible();
+      await expect(main.getByRole('heading', { level: 1 }), `heading on ${url}`).not.toHaveText('');
+      /* …without a link to the home page, which does not exist. */
+      await expect(main.getByRole('link'), `link in the main content of ${url}`).toHaveCount(0);
+    }
+  });
 });
