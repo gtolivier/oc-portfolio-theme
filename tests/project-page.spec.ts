@@ -607,8 +607,8 @@ test('after its body, a project page shows a link back to the projects list of i
   page,
 }) => {
   /* The example site's horloge-astronomique ends its body with a capture. The links' arrows may be
-     decorative: each name is the words alone, or the words with their arrow. The page has no
-     contact section yet: the second link must lead to the #contact fragment of the page itself. */
+     decorative: each name is the words alone, or the words with their arrow. The second link must
+     lead to the #contact fragment of the page itself, where its contact section sits. */
   for (const { url, backName, discussName, href, lastCapture } of [
     {
       url: '/fr/projets/horloge-astronomique/',
@@ -651,6 +651,40 @@ test('after its body, a project page shows a link back to the projects list of i
 test.describe('project page in a browser without JavaScript', () => {
   test.use({ javaScriptEnabled: false });
 
+  /* The example site's horloge-astronomique, in each language: what its page shows (its title,
+     description and role, the first heading and paragraph of its body), the contact intro of the
+     home page of its language and of the other one, and the name of its "Discuss a similar
+     project" link. */
+  const astronomicalClock = PROJECTS[0];
+  const ASTRONOMICAL_CLOCK_PAGES = [
+    {
+      url: '/fr/projets/horloge-astronomique/',
+      lang: 'fr',
+      title: astronomicalClock.frenchTitle,
+      description: astronomicalClock.frenchDescription,
+      role: astronomicalClock.frenchRole,
+      bodyHeading: 'Le besoin',
+      bodyParagraph:
+        'Le musée voulait une horloge qui raconte le ciel de l’atelier, lisible par un visiteur pressé comme par un astronome.',
+      intro: 'Disponible pour de nouvelles restaurations, à l’atelier ou à domicile. Parlons de votre pendule.',
+      otherIntro: 'Available for new restorations, at the workshop or at your home. Let us talk about your clock.',
+      discussName: /^Discuter d['’]un projet similaire(\s*→)?$/,
+    },
+    {
+      url: '/en/projects/horloge-astronomique/',
+      lang: 'en',
+      title: astronomicalClock.englishTitle,
+      description: astronomicalClock.englishDescription,
+      role: astronomicalClock.englishRole,
+      bodyHeading: 'The need',
+      bodyParagraph:
+        'The museum wanted a clock that tells the sky above the workshop, readable by a hurried visitor as well as by an astronomer.',
+      intro: 'Available for new restorations, at the workshop or at your home. Let us talk about your clock.',
+      otherIntro: 'Disponible pour de nouvelles restaurations, à l’atelier ou à domicile. Parlons de votre pendule.',
+      discussName: /^Discuss a similar project(\s*→)?$/,
+    },
+  ];
+
   test('a project page ends with the contact section of the home page of its language: after the "Discuter d’un projet similaire" link, the intro that home page declares, above a form that posts the email, the message and the page’s language to the address the site’s contactAction param gives', async ({
     page,
     baseURL,
@@ -663,22 +697,7 @@ test.describe('project page in a browser without JavaScript', () => {
     await page.route(`**${contactAction}`, (route) =>
       route.fulfill({ status: 200, contentType: 'text/html', body: '<p>Merci</p>' }),
     );
-    for (const { url, lang, intro, otherIntro, discussName } of [
-      {
-        url: '/fr/projets/horloge-astronomique/',
-        lang: 'fr',
-        intro: 'Disponible pour de nouvelles restaurations, à l’atelier ou à domicile. Parlons de votre pendule.',
-        otherIntro: 'Available for new restorations, at the workshop or at your home. Let us talk about your clock.',
-        discussName: /^Discuter d['’]un projet similaire(\s*→)?$/,
-      },
-      {
-        url: '/en/projects/horloge-astronomique/',
-        lang: 'en',
-        intro: 'Available for new restorations, at the workshop or at your home. Let us talk about your clock.',
-        otherIntro: 'Disponible pour de nouvelles restaurations, à l’atelier ou à domicile. Parlons de votre pendule.',
-        discussName: /^Discuss a similar project(\s*→)?$/,
-      },
-    ]) {
+    for (const { url, lang, intro, otherIntro, discussName } of ASTRONOMICAL_CLOCK_PAGES) {
       await page.goto(url);
       const main = page.getByRole('main');
       /* The contact section, a region named by its title, as on the home page. */
@@ -739,29 +758,9 @@ test.describe('project page in a browser without JavaScript', () => {
   test('without JavaScript, a project page shows its title, its description, its facts, its body and the contact form, in its language', async ({
     page,
   }) => {
-    /* The example site's horloge-astronomique: its role is one of its facts, and its body opens on
-       a level-2 heading and a paragraph. Each element is scrolled to, then must be visible: nothing
-       may wait for a script to show it. */
-    for (const { url, title, description, role, bodyHeading, bodyParagraph } of [
-      {
-        url: '/fr/projets/horloge-astronomique/',
-        title: PROJECTS[0].frenchTitle,
-        description: PROJECTS[0].frenchDescription,
-        role: PROJECTS[0].frenchRole,
-        bodyHeading: 'Le besoin',
-        bodyParagraph:
-          'Le musée voulait une horloge qui raconte le ciel de l’atelier, lisible par un visiteur pressé comme par un astronome.',
-      },
-      {
-        url: '/en/projects/horloge-astronomique/',
-        title: PROJECTS[0].englishTitle,
-        description: PROJECTS[0].englishDescription,
-        role: PROJECTS[0].englishRole,
-        bodyHeading: 'The need',
-        bodyParagraph:
-          'The museum wanted a clock that tells the sky above the workshop, readable by a hurried visitor as well as by an astronomer.',
-      },
-    ]) {
+    /* The role is one of the page's facts, and its body opens on a level-2 heading and a paragraph.
+       Each element is scrolled to, then must be visible: nothing may wait for a script to show it. */
+    for (const { url, title, description, role, bodyHeading, bodyParagraph } of ASTRONOMICAL_CLOCK_PAGES) {
       await page.goto(url);
       const main = page.getByRole('main');
       const shown = [
