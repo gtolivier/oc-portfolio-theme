@@ -6,7 +6,8 @@ defaultContentLanguageInSubdir = true
 disableKinds = ['taxonomy', 'term']
 
 # `hugo server` serves each language's 404 page for unknown addresses only
-# through these redirects (a production host does it on its own).
+# through these redirects. They apply to `hugo server` alone: a production
+# host needs its own rules to serve these pages.
 [[server.redirects]]
   from = '/fr/**'
   to = '/fr/404.html'
@@ -15,7 +16,9 @@ disableKinds = ['taxonomy', 'term']
   from = '/en/**'
   to = '/en/404.html'
   status = 404
-# An address with no language prefix gets the default language's page.
+# An address with no language prefix gets the French page, the default
+# language's: the redirects are fixed and cannot follow
+# `defaultContentLanguage`.
 [[server.redirects]]
   from = '/**'
   to = '/fr/404.html'
