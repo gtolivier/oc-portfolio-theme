@@ -735,6 +735,54 @@ test.describe('project page in a browser without JavaScript', () => {
       );
     }
   });
+
+  test('without JavaScript, a project page shows its title, its description, its facts, its body and the contact form, in its language', async ({
+    page,
+  }) => {
+    /* The example site's horloge-astronomique: its role is one of its facts, and its body opens on
+       a level-2 heading and a paragraph. Each element is scrolled to, then must be visible: nothing
+       may wait for a script to show it. */
+    for (const { url, title, description, role, bodyHeading, bodyParagraph } of [
+      {
+        url: '/fr/projets/horloge-astronomique/',
+        title: PROJECTS[0].frenchTitle,
+        description: PROJECTS[0].frenchDescription,
+        role: PROJECTS[0].frenchRole,
+        bodyHeading: 'Le besoin',
+        bodyParagraph:
+          'Le musée voulait une horloge qui raconte le ciel de l’atelier, lisible par un visiteur pressé comme par un astronome.',
+      },
+      {
+        url: '/en/projects/horloge-astronomique/',
+        title: PROJECTS[0].englishTitle,
+        description: PROJECTS[0].englishDescription,
+        role: PROJECTS[0].englishRole,
+        bodyHeading: 'The need',
+        bodyParagraph:
+          'The museum wanted a clock that tells the sky above the workshop, readable by a hurried visitor as well as by an astronomer.',
+      },
+    ]) {
+      await page.goto(url);
+      const main = page.getByRole('main');
+      const shown = [
+        { what: 'title', element: main.getByRole('heading', { level: 1 }) },
+        { what: 'description', element: main.getByText(description, { exact: true }) },
+        { what: 'role', element: main.getByRole('definition').filter({ hasText: role }) },
+        { what: 'body heading', element: main.getByRole('heading', { level: 2, name: bodyHeading, exact: true }) },
+        { what: 'body paragraph', element: main.getByText(bodyParagraph, { exact: true }) },
+        { what: 'contact form', element: main.getByRole('form') },
+        { what: 'email field', element: main.getByRole('form').locator('[name="email"]') },
+        { what: 'message field', element: main.getByRole('form').locator('[name="message"]') },
+        { what: 'send button', element: main.getByRole('form').getByRole('button') },
+      ];
+      await expect(shown[0].element, `title on ${url}`).toHaveText(title);
+      for (const { what, element } of shown) {
+        await expect(element, `${what} on ${url}`).toHaveCount(1);
+        await element.scrollIntoViewIfNeeded();
+        await expect(element, `${what} on ${url}`).toBeVisible();
+      }
+    }
+  });
 });
 
 test('a project page whose contactIntro param is set shows it as the contact intro, in its language, instead of the intro of the home page', async ({
