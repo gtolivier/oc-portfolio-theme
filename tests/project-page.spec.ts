@@ -1,10 +1,12 @@
 import { test, expect } from '@playwright/test';
 import {
   SITE_WITH_LOGOS_MISSING_FROM_THE_PAGE_BUNDLE,
+  SITE_WITH_PROJECT_FACTS_NOT_AS_TEXTS,
   SITE_WITH_PROJECTS_IN_A_SUBSECTION,
   SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION,
   TEMPLATE_EXECUTION_ERROR,
   buildSite,
+  languageCodePattern,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
   serveSite,
@@ -326,6 +328,50 @@ test.describe('project pages whose logo params name no image of their page bundl
     expect(build.errors, 'no template execution error should follow the error messages').not.toMatch(
       TEMPLATE_EXECUTION_ERROR,
     );
+  });
+});
+
+test.describe('project pages whose facts are not texts: build failure', () => {
+  runBuildTestsInOneProjectOnly();
+
+  test('a project page whose client, agency, role, years, duration, mode or format param is not a text makes the site build fail, with an error message that cites that param, the page and its language', () => {
+    /* tests/fixtures/facts-not-as-texts/content/projects/ holds two bilingual engagements, each of
+       whose versions writes some facts as a number, a list or a table rather than a text (see
+       SITE_WITH_PROJECT_FACTS_NOT_AS_TEXTS). Rather than a list of facts showing "[1887 1889]" or
+       "map[title:Clockmaker]", the person building the site must get, for each such fact, a
+       failure whose message, on one line, cites the param, the page by its path and the page's
+       language, looked for as a word that no other word follows, whatever the rest of the
+       wording. The same param of the other version of the page, written as a text, must not be
+       reported in that version's language. Two pages, both languages and all seven params, so
+       that no fixed message passes. */
+    const build = tryToBuildSite(SITE_WITH_PROJECT_FACTS_NOT_AS_TEXTS);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    const lines = build.errors.split('\n');
+    const messagesAbout = (page: string, param: string, language: string) =>
+      lines.filter(
+        (line) =>
+          line.includes(page) &&
+          new RegExp(`\\b${param}\\b`).test(line) &&
+          new RegExp(languageCodePattern(language), 'u').test(line),
+      );
+    for (const { page, param, language, otherLanguage } of [
+      { page: 'projects/sonnerie-quarts', param: 'client', language: 'fr', otherLanguage: 'en' },
+      { page: 'projects/sonnerie-quarts', param: 'years', language: 'fr', otherLanguage: 'en' },
+      { page: 'projects/sonnerie-quarts', param: 'role', language: 'en', otherLanguage: 'fr' },
+      { page: 'projects/sonnerie-quarts', param: 'format', language: 'en', otherLanguage: 'fr' },
+      { page: 'projects/remontoir-egalite', param: 'agency', language: 'fr', otherLanguage: 'en' },
+      { page: 'projects/remontoir-egalite', param: 'duration', language: 'fr', otherLanguage: 'en' },
+      { page: 'projects/remontoir-egalite', param: 'mode', language: 'en', otherLanguage: 'fr' },
+    ]) {
+      expect(
+        messagesAbout(page, param, language),
+        `one error message citing ${param}, ${page} and ${language}, in:\n${build.errors}`,
+      ).toHaveLength(1);
+      expect(
+        messagesAbout(page, param, otherLanguage),
+        `no error message citing ${param}, ${page} and ${otherLanguage}, whose ${param} is a text, in:\n${build.errors}`,
+      ).toEqual([]);
+    }
   });
 });
 

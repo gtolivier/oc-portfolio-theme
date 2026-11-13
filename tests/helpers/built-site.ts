@@ -1461,6 +1461,16 @@ export const SITE_WITH_UNWRITTEN_HOME_PAGES = testSite('unwritten-home-pages');
    agencyLogo = 'logo-atelier-naval.svg', which it does not. */
 export const SITE_WITH_LOGOS_MISSING_FROM_THE_PAGE_BUNDLE = testSite('logos-missing-from-the-bundle');
 
+/* The example site's projects write each of their facts (client, agency, role, years, duration, mode,
+   format) as a text: this site adds to its projects section the bilingual engagements of
+   tests/fixtures/facts-not-as-texts/content, whose versions each write some facts as another
+   value, the others as texts. "Sonnerie des quarts de l’hôtel de ville"
+   (projects/sonnerie-quarts.md) sets client = 1887 and years = [1887, 1889]; its English version
+   (.en.md) sets role = { title = 'Clockmaker' } and format = 3. "Remontoir d’égalité du
+   régulateur" (projects/remontoir-egalite.md) sets agency = ['Atelier Brun', 'Atelier Noir'] and
+   duration = 18; its English version sets mode = 2. Neither home page features them. */
+export const SITE_WITH_PROJECT_FACTS_NOT_AS_TEXTS = testSite('facts-not-as-texts');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
