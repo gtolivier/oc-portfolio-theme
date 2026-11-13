@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import {
   SITE_WITH_HOME_PAGES_WITHOUT_CONTACT_INTRO,
   SITE_WITH_LOGOS_MISSING_FROM_THE_PAGE_BUNDLE,
+  SITE_WITH_LOGOS_THAT_ARE_NOT_IMAGES,
   SITE_WITH_PROJECT_FACTS_NOT_AS_TEXTS,
   SITE_WITH_PROJECT_FACTS_READ_AS_EMPTY,
   SITE_WITH_PROJECTS_IN_A_SUBSECTION,
@@ -330,6 +331,35 @@ test.describe('project pages whose logo params name no image of their page bundl
     expect(build.errors, 'no template execution error should follow the error messages').not.toMatch(
       TEMPLATE_EXECUTION_ERROR,
     );
+  });
+
+  test('a project page whose clientLogo or agencyLogo param names a file of its page bundle that is not an image makes the site build fail, with an error message that cites that param, the file it names and the page', () => {
+    /* tests/fixtures/logos-not-images-in-the-bundle/content/projects/ holds two page bundles whose
+       logo params each name, once, a file the bundle holds but that is not an image:
+       sonnerie-angelus's clientLogo names devis-paroisse.pdf, montre-gousset's agencyLogo names
+       notice-atelier.txt. Rather than a page showing an <img> that points to that file, the
+       person building the site must get, for each, a failure whose message, on one line, cites
+       the param, the file it names and the page by its path, whatever the rest of the wording,
+       and not the other logo param, which names an image the bundle holds. Neither of those
+       images may be reported. Two pages, two params and two kinds of files, so that neither a
+       fixed message nor a check for one kind of file passes. */
+    const build = tryToBuildSite(SITE_WITH_LOGOS_THAT_ARE_NOT_IMAGES);
+    expect(build.succeeded, 'the site build should fail').toBe(false);
+    for (const { page, param, otherParam, file } of [
+      { page: 'projects/sonnerie-angelus', param: 'clientLogo', otherParam: 'agencyLogo', file: 'devis-paroisse.pdf' },
+      { page: 'projects/montre-gousset', param: 'agencyLogo', otherParam: 'clientLogo', file: 'notice-atelier.txt' },
+    ]) {
+      const messages = build.errors
+        .split('\n')
+        .filter((line) => line.includes(page) && line.includes(file) && new RegExp(`\\b${param}\\b`).test(line));
+      expect(messages, `one error message citing ${param}, ${file} and ${page}, in:\n${build.errors}`).toHaveLength(1);
+      expect(messages[0], `the error message about ${page} should not cite ${otherParam}`).not.toMatch(
+        new RegExp(`\\b${otherParam}\\b`),
+      );
+    }
+    for (const file of ['logo-ebenisterie.svg', 'logo-collection.svg']) {
+      expect(build.errors, `${file}, an image its page bundle holds, should not be reported`).not.toContain(file);
+    }
   });
 });
 

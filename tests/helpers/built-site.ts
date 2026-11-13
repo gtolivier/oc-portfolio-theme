@@ -1461,6 +1461,15 @@ export const SITE_WITH_UNWRITTEN_HOME_PAGES = testSite('unwritten-home-pages');
    agencyLogo = 'logo-atelier-naval.svg', which it does not. */
 export const SITE_WITH_LOGOS_MISSING_FROM_THE_PAGE_BUNDLE = testSite('logos-missing-from-the-bundle');
 
+/* Like SITE_WITH_LOGOS_MISSING_FROM_THE_PAGE_BUNDLE, but the files the logo params name are in the
+   page bundle and are not images: this site adds to its projects section the French-only page
+   bundles of tests/fixtures/logos-not-images-in-the-bundle/content. "Sonnerie de l’angélus"
+   (projects/sonnerie-angelus/) sets clientLogo = 'devis-paroisse.pdf', a PDF its bundle holds,
+   and agencyLogo = 'logo-ebenisterie.svg', an image it holds; "Montre de gousset"
+   (projects/montre-gousset/) sets clientLogo = 'logo-collection.svg', an image it holds, and
+   agencyLogo = 'notice-atelier.txt', a text file it holds. */
+export const SITE_WITH_LOGOS_THAT_ARE_NOT_IMAGES = testSite('logos-not-images-in-the-bundle');
+
 /* The example site's projects write each of their facts (client, agency, role, years, duration, mode,
    format) as a text: this site adds to its projects section the bilingual engagements of
    tests/fixtures/facts-not-as-texts/content, whose versions each write some facts as another
