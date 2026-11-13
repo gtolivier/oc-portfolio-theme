@@ -1,4 +1,4 @@
-{{- /* The hero that opens a section page or a project page: the veil, the page's title and its description as an intro, in one place so that both pages keep the same hero. The context is a dict with the page and, optionally, a description that stands in for the page's own (the error page has none of its own), a class added to the hero's, a lead shown before the title, a content shown as a further intro after the description and a class added to that further intro's. */ -}}
+{{- /* The hero that opens a section page, a project page or the error page: the veil, the page's title and its description as an intro, in one place so that these pages keep the same hero. The context is a dict with the page and, optionally, a description that stands in for the page's own (the error page has none of its own), a class added to the hero's, a lead shown before the title, a content shown as a further intro after the description and a class added to that further intro's. */ -}}
 <tick-field class="page-hero{{ with .class }} {{ . }}{{ end }}">
     <div class="veil" aria-hidden="true"></div>
     {{- with .lead }}{{ . }}{{ end }}
