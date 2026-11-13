@@ -1414,6 +1414,11 @@ main:not(:has(.projects)) .background {
   --section-number: '02 // ';
 }
 
+/* Without the projects section, the contact section follows the background. */
+main:not(:has(.projects)) .background + .contact {
+  --section-number: '02 // ';
+}
+
 .contact > h2 {
   margin: 0 0 24px;
   font-family: var(--font-mono);
