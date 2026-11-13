@@ -143,6 +143,72 @@ test('a project page lists its role in a list of facts, labelled "Rôle" (Englis
   }
 });
 
+test('a project page lists, in this order and only those filled in, the facts Client, Agence, Rôle, Période and Format (English: Client, Agency, Role, Period, Format), each with its value', async ({
+  page,
+}) => {
+  /* The example site's horloge-astronomique fills in all five facts; regulateur-noyer has no
+     agency and no format. Other facts (an engagement's mode or duration, for instance) may sit
+     among them: only these five labels are checked, in their relative order. */
+  const pages = [
+    {
+      url: '/fr/projets/horloge-astronomique/',
+      labels: ['Client', 'Agence', 'Rôle', 'Période', 'Format'],
+      facts: [
+        ['Client', 'Musée des Arts du Temps'],
+        ['Agence', 'Balancier & Associés'],
+        ['Rôle', 'Horloger principal'],
+        ['Période', '2016 – 2018'],
+        ['Format', 'Pièce unique'],
+      ],
+    },
+    {
+      url: '/en/projects/horloge-astronomique/',
+      labels: ['Client', 'Agency', 'Role', 'Period', 'Format'],
+      facts: [
+        ['Client', 'Museum of the Arts of Time'],
+        ['Agency', 'Balancier & Partners'],
+        ['Role', 'Lead clockmaker'],
+        ['Period', '2016 – 2018'],
+        ['Format', 'One-off piece'],
+      ],
+    },
+    {
+      url: '/fr/projets/regulateur-noyer/',
+      labels: ['Client', 'Agence', 'Rôle', 'Période', 'Format'],
+      facts: [
+        ['Client', 'Famille Duvernoy'],
+        ['Rôle', 'Ébéniste et horloger'],
+        ['Période', '2022 – 2024'],
+      ],
+    },
+    {
+      url: '/en/projects/regulateur-noyer/',
+      labels: ['Client', 'Agency', 'Role', 'Period', 'Format'],
+      facts: [
+        ['Client', 'The Duvernoy family'],
+        ['Role', 'Cabinetmaker and clockmaker'],
+        ['Period', '2022 – 2024'],
+      ],
+    },
+  ];
+  for (const { url, labels, facts } of pages) {
+    await page.goto(url);
+    const terms = page.getByRole('main').getByRole('term');
+    const shownLabels = (await terms.allTextContents())
+      .map((text) => text.trim())
+      .filter((text) => labels.includes(text));
+    expect(shownLabels, `facts listed on ${url}`).toEqual(facts.map(([label]) => label));
+    for (const [label, value] of facts) {
+      const term = terms.filter({ hasText: new RegExp(`^\\s*${label}\\s*$`) });
+      await expect(term, `"${label}" term on ${url}`).toBeVisible();
+      const definition = term.locator('xpath=following-sibling::*[1]');
+      await expect(definition, `value of "${label}" on ${url}`).toHaveRole('definition');
+      await expect(definition, `value of "${label}" on ${url}`).toHaveText(value);
+      await expect(definition, `value of "${label}" on ${url}`).toBeVisible();
+    }
+  }
+});
+
 test('a page outside the projects section keeps the plain layout, without a link back to the projects list', async ({
   page,
 }) => {

@@ -4,6 +4,7 @@ description = 'A regulator with a compensated pendulum, housed in a hand-carved 
 
 [params]
   kind = 'short'
+  client = 'The Duvernoy family'
   role = 'Cabinetmaker and clockmaker'
   years = '2022 – 2024'
   stack = ['Walnut', 'Invar', 'Brass']
