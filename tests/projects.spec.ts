@@ -139,8 +139,10 @@ const FEATURED_PROJECTS = [
 ];
 
 /* The same projects, as the English home page features them: the title and description their
-   English pages (content/projects/<slug>.en.md) declare, each different from the French one. Their
-   English pages live in the projects/ section's English address, /en/projects/<slug>/. */
+   English pages (content/projects/<page>.en.md) declare, each different from the French one. Their
+   English pages live in the projects/ section's English address, /en/projects/<slug>/, where the
+   slug is the page's file name unless its front matter sets one: horloge-astronomique's English
+   page sets slug = 'astronomical-clock'. */
 const FEATURED_PROJECTS_IN_ENGLISH = [
   {
     slug: 'restauration-pendule',
@@ -154,7 +156,7 @@ const FEATURED_PROJECTS_IN_ENGLISH = [
     description: 'A perpetual calendar and minute repeater calibre, designed then assembled part by part.',
   },
   {
-    slug: 'horloge-astronomique',
+    slug: 'astronomical-clock',
     title: 'The workshop’s astronomical clock',
     description:
       'A wall clock showing the phases of the moon, the equation of time and sunrise at the workshop’s latitude.',
@@ -2957,7 +2959,11 @@ test.describe('home page of another site, featuring only projects of one subsect
     await serveSite(context, site, siteDirectory);
     /* tests/fixtures/projects-in-a-subsection/content/_index.md features two projects, both in
        content/projects/horlogerie/ (title "Horlogerie", published at /fr/projets/horlogerie/). */
-    const subsectionResponse = await page.goto(`${site.origin}/fr/projets/horlogerie/`);
+    /* The subsection's page redirects to the projects list with a meta refresh: opened in a page
+       of its own, closed before the next navigation, its refresh cannot interrupt that one. */
+    const subsectionPage = await context.newPage();
+    const subsectionResponse = await subsectionPage.goto(`${site.origin}/fr/projets/horlogerie/`);
+    await subsectionPage.close();
     expect(subsectionResponse?.status(), 'status of the subsection page').toBe(200);
     await page.goto(`${site.origin}/fr/`);
     const section = projectsSection(page);

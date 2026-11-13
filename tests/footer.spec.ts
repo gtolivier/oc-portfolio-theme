@@ -206,7 +206,7 @@ test("on every page but the home page, the footer has a link back to the home pa
     { url: '/fr/projets/', lang: 'fr' },
     { url: '/en/projects/', lang: 'en' },
     { url: '/fr/projets/horloge-astronomique/', lang: 'fr' },
-    { url: '/en/projects/horloge-astronomique/', lang: 'en' },
+    { url: '/en/projects/astronomical-clock/', lang: 'en' },
     { url: '/fr/page-longue/', lang: 'fr' },
   ] as const) {
     await page.goto(url);
@@ -245,7 +245,7 @@ test.describe('site whose home pages are not written', () => {
       { url: '/fr/projets/horloge-astronomique/', lang: 'fr' },
       { url: '/fr/page-longue/', lang: 'fr' },
       { url: '/en/projects/', lang: 'en' },
-      { url: '/en/projects/horloge-astronomique/', lang: 'en' },
+      { url: '/en/projects/astronomical-clock/', lang: 'en' },
     ] as const) {
       await page.goto(`${SITE_WITH_UNWRITTEN_HOME_PAGES.origin}${url}`);
       const footer = page.locator('footer');

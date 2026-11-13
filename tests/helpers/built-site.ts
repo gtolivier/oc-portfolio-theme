@@ -1451,6 +1451,75 @@ export const SITE_WITH_A_KINDLESS_PROJECT_OUTSIDE_THE_CONFIGURED_SECTION = testS
    in both languages, are unchanged. */
 export const SITE_WITH_UNWRITTEN_HOME_PAGES = testSite('unwritten-home-pages');
 
+/* The example site's one project with logos, horloge-astronomique, names images its page bundle
+   holds: this site adds to its projects section the French-only page bundles of
+   tests/fixtures/logos-missing-from-the-bundle/content, two short projects whose logo params each
+   name, once, an image their bundle does not hold. "Carillon du beffroi"
+   (projects/carillon-beffroi/) sets clientLogo = 'logo-ville.png' while its bundle holds
+   logo-ville.svg, and agencyLogo = 'logo-fonderie.svg', which it holds; "Chronomètre de marine"
+   (projects/chronometre-marine/) sets clientLogo = 'logo-port.svg', which it holds, and
+   agencyLogo = 'logo-atelier-naval.svg', which it does not. */
+export const SITE_WITH_LOGOS_MISSING_FROM_THE_PAGE_BUNDLE = testSite('logos-missing-from-the-bundle');
+
+/* Like SITE_WITH_LOGOS_MISSING_FROM_THE_PAGE_BUNDLE, but the files the logo params name are in the
+   page bundle and are not images: this site adds to its projects section the French-only page
+   bundles of tests/fixtures/logos-not-images-in-the-bundle/content. "Sonnerie de l’angélus"
+   (projects/sonnerie-angelus/) sets clientLogo = 'devis-paroisse.pdf', a PDF its bundle holds,
+   and agencyLogo = 'logo-ebenisterie.svg', an image it holds; "Montre de gousset"
+   (projects/montre-gousset/) sets clientLogo = 'logo-collection.svg', an image it holds, and
+   agencyLogo = 'notice-atelier.txt', a text file it holds. */
+export const SITE_WITH_LOGOS_THAT_ARE_NOT_IMAGES = testSite('logos-not-images-in-the-bundle');
+
+/* The example site's projects write each of their facts (client, agency, role, years, duration, mode,
+   format) as a text: this site adds to its projects section the bilingual engagements of
+   tests/fixtures/facts-not-as-texts/content, whose versions each write some facts as another
+   value, the others as texts. "Sonnerie des quarts de l’hôtel de ville"
+   (projects/sonnerie-quarts.md) sets client = 1887 and years = [1887, 1889]; its English version
+   (.en.md) sets role = { title = 'Clockmaker' } and format = 3. "Remontoir d’égalité du
+   régulateur" (projects/remontoir-egalite.md) sets agency = ['Atelier Brun', 'Atelier Noir'] and
+   duration = 18; its English version sets mode = 2. Neither home page features them. */
+export const SITE_WITH_PROJECT_FACTS_NOT_AS_TEXTS = testSite('facts-not-as-texts');
+
+/* Like SITE_WITH_PROJECT_FACTS_NOT_AS_TEXTS, but the facts that are not texts are values Go
+   templates treat as empty: this site adds to its projects section the bilingual engagement of
+   tests/fixtures/facts-read-as-empty/content. "Échappement à ancre de la pendule du notaire"
+   (projects/echappement-ancre.md) sets role = false and duration = 0; its English version
+   (.en.md) sets client = [] and mode = false. Each version writes its other facts as texts.
+   Neither home page features it. */
+export const SITE_WITH_PROJECT_FACTS_READ_AS_EMPTY = testSite('facts-read-as-empty');
+
+/* The example site's projects write their front matter in TOML: this site adds to its projects
+   section the project of tests/fixtures/workshop-left-unset-in-yaml/content, "Pendule de voyage
+   du capitaine" (projects/pendule-voyage.md), in French only, whose front matter, written in
+   YAML, fills in client, role and years as texts and leaves its agency: line without a value,
+   which YAML reads as null. Neither home page features it. */
+export const SITE_WITH_A_PROJECT_AGENCY_LEFT_BLANK_IN_YAML = testSite('workshop-left-unset-in-yaml');
+
+/* Every project of the example site fills in some facts (a role, a period, a stack…): this site
+   adds to its projects section the project of tests/fixtures/project-without-facts/content,
+   "Horloge de clocher du village" (projects/horloge-clocher.md), in French only, which sets its
+   kind and nothing else: no logo, no client, agency, role, years, duration, mode or format, no
+   stack. Its body opens on a level-2 heading, "Le mécanisme". Neither home page features it. */
+export const SITE_WITH_A_PROJECT_WITHOUT_FACTS = testSite('project-without-facts');
+
+/* The example site's home pages both declare a contact intro ([params.contact] table, intro key):
+   this site replaces them with those of tests/fixtures/home-pages-without-contact-intro/content,
+   which declare none. The French one has no contact params at all; the English one has a
+   [params.contact] table that gives a sent text but no intro. The example site's projects are
+   unchanged: regulateur-noyer still sets its own contactIntro param, in both languages,
+   horloge-astronomique none. */
+export const SITE_WITH_HOME_PAGES_WITHOUT_CONTACT_INTRO = testSite('home-pages-without-contact-intro');
+
+/* The example site's one project with logos, horloge-astronomique, shows both its client's and
+   its agency's: this site adds to its projects section the page bundles of
+   tests/fixtures/one-logo-per-project/content, two short projects, in French and English, that
+   each fill in both their client and their agency but show only one of their logos.
+   "Pendule de cheminée en marbre" (projects/pendule-cheminee/, English slug mantel-clock) sets
+   clientLogo = 'logo-chateau.svg' and no agencyLogo; "Horloge de gare à double cadran"
+   (projects/horloge-gare/, English slug station-clock) sets agencyLogo = 'logo-quai-nord.svg' and
+   no clientLogo. */
+export const SITE_WITH_PROJECTS_SHOWING_ONE_LOGO = testSite('one-logo-per-project');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

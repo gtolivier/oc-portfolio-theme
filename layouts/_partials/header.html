@@ -5,7 +5,8 @@
 {{- if .hasMainMenu }}
 <nav>
   {{- range site.Menus.main }}
-  <a href="{{ .URL }}"{{ if eq .URL $page.RelPermalink }} aria-current="page"{{ end }}>{{ .Name }}</a>
+  {{- $isInSection := and .Page (not .Page.IsHome) ($page.IsDescendant .Page) }}
+  <a href="{{ .URL }}"{{ if eq .URL $page.RelPermalink }} aria-current="page"{{ else if $isInSection }} aria-current="true"{{ end }}>{{ .Name }}</a>
   {{- end }}
 </nav>
 {{- end }}

@@ -1,4 +1,106 @@
 {{ define "main" }}
+  {{- $projectsSection := partialCached "projects/section.html" . site.Language.Lang }}
+  {{- $isProject := and (not .Parent.IsHome) (eq .Section $projectsSection.name) }}
+  {{- if $isProject }}
+  {{- $allProjectsLink := partial "projects/all-projects-link.html" . }}
+  {{ partial "page-hero.html" (dict "page" . "class" "project-hero" "lead" (partial "inline/project-hero-lead.html" (dict "allProjectsLink" $allProjectsLink))) }}
+  {{- $facts := slice
+    (dict "param" "client" "label" "client")
+    (dict "param" "agency" "label" "agency")
+    (dict "param" "role" "label" "role")
+    (dict "param" "years" "label" "period")
+    (dict "param" "duration" "label" "duration")
+    (dict "param" "mode" "label" "contract")
+    (dict "param" "format" "label" "format")
+  }}
+  {{- /* The owner's param name is also the i18n key of the logo's label and the suffix of its CSS class. */}}
+  {{- $logoParams := slice
+    (dict "param" "clientLogo" "ownerParam" "client")
+    (dict "param" "agencyLogo" "ownerParam" "agency")
+  }}
+  {{- $logos := slice }}
+  {{- /* A shown logo's alternative text gives the owner's name: no fact repeats it. */}}
+  {{- $shownLogoOwnerParams := slice }}
+  {{- range $logoParams }}
+  {{- $ownerParam := .ownerParam }}
+  {{- $owner := index $.Params $ownerParam }}
+  {{- $param := .param }}
+  {{- with index $.Params .param }}
+  {{- $file := . }}
+  {{- $logo := $.Resources.Get $file }}
+  {{- if not $logo }}{{ errorf "projects: the %s param of the page %s names %s, which is not an image of its page bundle" $param $.Path $file }}
+  {{- else if ne $logo.MediaType.MainType "image" }}{{ errorf "projects: the %s param of the page %s names %s, which is not an image" $param $.Path $file }}
+  {{- else }}
+  {{- $logos = $logos | append (dict "ownerParam" $ownerParam "owner" $owner "image" $logo) }}
+  {{- $shownLogoOwnerParams = $shownLogoOwnerParams | append $ownerParam }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+  {{- /* Without a contact section, no link to it. */}}
+  {{- $contact := partial "contact.html" (dict "home" site.Home "introOverride" $.Params.contactIntro) }}
+  {{- $filledFacts := slice }}
+  {{- range $facts }}
+  {{- $param := .param }}
+  {{- $fact := index $.Params $param }}
+  {{- /* YAML reads a fact line left without a value as null, like an omitted key: a fact not filled in. */}}
+  {{- if and (ne $fact nil) (eq (partial "text-problem.html" $fact) "not-text") }}{{ errorf "projects: the %s param of the page %s must be a text (language: %s)" $param $.Path $.Language.Lang }}
+  {{- else if and $fact (not (in $shownLogoOwnerParams $param)) }}
+  {{- $filledFacts = $filledFacts | append (dict "label" .label "value" $fact) }}
+  {{- end }}
+  {{- end }}
+  <div class="project-page">
+    {{- /* Nothing to show beside the body: no facts column. */}}
+    {{- if or $logos $filledFacts .Params.stack }}
+    <div class="project-facts">
+      {{- with $logos }}
+      <div class="project-logos">
+        {{- range . }}
+        <div class="project-logo-{{ .ownerParam }}">
+          <p>{{ i18n .ownerParam }}</p>
+          <img src="{{ .image.RelPermalink }}" alt="{{ .owner }}">
+        </div>
+        {{- end }}
+      </div>
+      {{- end }}
+      {{- with $filledFacts }}
+      <dl>
+        {{- range . }}
+        <dt>{{ i18n .label }}</dt>
+        <dd>{{ .value }}</dd>
+        {{- end }}
+      </dl>
+      {{- end }}
+      {{- with .Params.stack }}
+      <p class="project-stack">{{ delimit . (partial "stack-separator.html") }}</p>
+      {{- end }}
+    </div>
+    {{- end }}
+    <div class="project-main">
+      {{- with .Content }}
+      <div class="project-body">
+        {{ . }}
+      </div>
+      {{- end }}
+      {{- /* No links row without a link in it. */}}
+      {{- if or $allProjectsLink $contact }}
+      <div class="project-links">
+        {{ $allProjectsLink }}
+        {{- with $contact }}
+        <a class="project-contact-link" href="#contact">{{ i18n "discussSimilarProject" }} <span aria-hidden="true">→</span></a>
+        {{- end }}
+      </div>
+      {{- end }}
+    </div>
+  </div>
+  {{ $contact }}
+  {{- else }}
   <h1>{{ .Title }}</h1>
   {{ .Content }}
+  {{- end }}
 {{ end }}
+
+{{- /* What a project's hero shows before its title: the link back to the projects list, already rendered, and the kicker. */}}
+{{- define "_partials/inline/project-hero-lead.html" }}
+    {{ .allProjectsLink }}
+    <p class="project-kicker">{{ i18n "caseStudy" }}</p>
+{{- end }}

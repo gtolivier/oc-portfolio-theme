@@ -40,6 +40,12 @@ other = 'Projets sélectionnés'
 [allProjects]
 other = 'Tous les projets'
 
+[discussSimilarProject]
+other = 'Discuter d’un projet similaire'
+
+[caseStudy]
+other = 'Étude de cas'
+
 [seeDetail]
 other = 'Voir le détail'
 
@@ -54,3 +60,24 @@ other = 'Langue'
 
 [home]
 other = 'Accueil'
+
+[role]
+other = 'Rôle'
+
+[client]
+other = 'Client'
+
+[agency]
+other = 'Agence'
+
+[period]
+other = 'Période'
+
+[duration]
+other = 'Durée'
+
+[contract]
+other = 'Contrat'
+
+[format]
+other = 'Format'
