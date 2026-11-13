@@ -7,6 +7,9 @@ other = 'Page not found'
 [notFoundMessage]
 other = 'The page you are looking for does not exist or has been moved.'
 
+[notFoundHomeLink]
+other = 'Back to the home page'
+
 [clients]
 other = 'Trusted by'
 

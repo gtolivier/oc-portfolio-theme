@@ -7,6 +7,9 @@ other = 'Page introuvable'
 [notFoundMessage]
 other = 'La page que vous cherchez n’existe pas ou a été déplacée.'
 
+[notFoundHomeLink]
+other = 'Retour à l’accueil'
+
 [clients]
 other = 'Ils me font confiance'
 
