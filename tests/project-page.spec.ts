@@ -57,6 +57,17 @@ test('a project page opens with a link back to the projects list of its language
   }
 });
 
+test('a page outside the projects section keeps the plain layout, without a link back to the projects list', async ({
+  page,
+}) => {
+  const url = '/fr/page-longue/';
+  const response = await page.goto(url);
+  expect(response?.status(), url).toBe(200);
+  const main = page.getByRole('main');
+  await expect(main.getByRole('heading', { level: 1 }), `main heading on ${url}`).toBeVisible();
+  await expect(main.getByRole('link', { name: /^(←\s*)?Tous les projets$/ }), `back link on ${url}`).toHaveCount(0);
+});
+
 test('on a project page, in French and in English, the Projects navigation link is marked as the current section, and no navigation link as the current page', async ({
   page,
 }) => {
