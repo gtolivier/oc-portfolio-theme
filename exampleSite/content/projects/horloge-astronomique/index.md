@@ -15,3 +15,19 @@ description = 'Horloge murale qui affiche les phases de la lune, l’équation d
   duration = '26 mois'
   stack = ['Laiton', 'Acier', 'Verre']
 +++
+
+## Le besoin
+
+Le musée voulait une horloge qui raconte le ciel de l’atelier, lisible par un visiteur pressé comme par un astronome.
+
+![Cadran lunaire de l’horloge, l’aiguille des phases sur le premier croissant](cadran-lunaire.svg)
+
+## Le mécanisme
+
+Un train d’engrenages dédié corrige chaque jour l’écart entre le temps solaire et le temps moyen.
+
+- Une came en acier trempé pour l’équation du temps
+- Un rouage de 59 dents pour la lunaison
+- Un disque de verre gravé pour le lever du soleil
+
+![Rouages de l’équation du temps, vus de dos, la came en avant-plan](rouages-equation.svg)

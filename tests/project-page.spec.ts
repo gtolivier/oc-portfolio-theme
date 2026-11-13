@@ -461,6 +461,85 @@ test('a project page shows the stack of its front matter, in its language, after
   }
 });
 
+test('a project page shows its body, in its language: its section headings, paragraphs, list and captures, each capture loaded with its alternative text', async ({
+  page,
+}) => {
+  /* The example site's horloge-astronomique has a Markdown body in each language: two sections,
+     each a level-2 heading, a paragraph, then a list or a capture, an image of its page bundle
+     (cadran-lunaire.svg, rouages-equation.svg) whose alternative text is written in the page's
+     language. */
+  const pages = [
+    {
+      url: '/fr/projets/horloge-astronomique/',
+      headings: ['Le besoin', 'Le mécanisme'],
+      paragraphs: [
+        'Le musée voulait une horloge qui raconte le ciel de l’atelier, lisible par un visiteur pressé comme par un astronome.',
+        'Un train d’engrenages dédié corrige chaque jour l’écart entre le temps solaire et le temps moyen.',
+      ],
+      listItems: [
+        'Une came en acier trempé pour l’équation du temps',
+        'Un rouage de 59 dents pour la lunaison',
+        'Un disque de verre gravé pour le lever du soleil',
+      ],
+      captures: [
+        'Cadran lunaire de l’horloge, l’aiguille des phases sur le premier croissant',
+        'Rouages de l’équation du temps, vus de dos, la came en avant-plan',
+      ],
+    },
+    {
+      url: '/en/projects/horloge-astronomique/',
+      headings: ['The need', 'The mechanism'],
+      paragraphs: [
+        'The museum wanted a clock that tells the sky above the workshop, readable by a hurried visitor as well as by an astronomer.',
+        'A dedicated gear train corrects, every day, the gap between solar time and mean time.',
+      ],
+      listItems: [
+        'A hardened steel cam for the equation of time',
+        'A 59-tooth wheel for the lunar month',
+        'An engraved glass disc for sunrise',
+      ],
+      captures: [
+        'The clock’s lunar dial, the phase hand on the first crescent',
+        'The equation-of-time gearing, seen from the back, the cam in the foreground',
+      ],
+    },
+  ];
+  for (const { url, headings, paragraphs, listItems, captures } of pages) {
+    await page.goto(url);
+    const main = page.getByRole('main');
+    const sectionHeadings = main.getByRole('heading', { level: 2 });
+    await expect(sectionHeadings, `section headings on ${url}`).toHaveText(headings);
+    for (const heading of await sectionHeadings.all()) {
+      await heading.scrollIntoViewIfNeeded();
+      await expect(heading, `section heading on ${url}`).toBeVisible();
+    }
+    for (const paragraph of paragraphs) {
+      const text = main.getByText(paragraph, { exact: true });
+      await expect(text, `paragraph on ${url}`).toHaveCount(1);
+      await text.scrollIntoViewIfNeeded();
+      await expect(text, `paragraph on ${url}`).toBeVisible();
+    }
+    const list = main.getByRole('list').filter({ hasText: listItems[0] });
+    await expect(list, `list on ${url}`).toHaveCount(1);
+    await expect(list.getByRole('listitem'), `list items on ${url}`).toHaveText(listItems);
+    await list.scrollIntoViewIfNeeded();
+    await expect(list, `list on ${url}`).toBeVisible();
+    for (const name of captures) {
+      const capture = main.getByRole('img', { name, exact: true });
+      await expect(capture, `capture "${name}" on ${url}`).toHaveCount(1);
+      await capture.scrollIntoViewIfNeeded();
+      await expect(capture, `capture "${name}" on ${url}`).toBeVisible();
+      await expect
+        .poll(
+          () =>
+            capture.evaluate((image) => image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0),
+          { message: `capture "${name}" loaded on ${url}` },
+        )
+        .toBe(true);
+    }
+  }
+});
+
 test('a page outside the projects section keeps the plain layout, without a link back to the projects list', async ({
   page,
 }) => {

@@ -15,3 +15,19 @@ description = 'A wall clock showing the phases of the moon, the equation of time
   duration = '26 months'
   stack = ['Brass', 'Steel', 'Glass']
 +++
+
+## The need
+
+The museum wanted a clock that tells the sky above the workshop, readable by a hurried visitor as well as by an astronomer.
+
+![The clock’s lunar dial, the phase hand on the first crescent](cadran-lunaire.svg)
+
+## The mechanism
+
+A dedicated gear train corrects, every day, the gap between solar time and mean time.
+
+- A hardened steel cam for the equation of time
+- A 59-tooth wheel for the lunar month
+- An engraved glass disc for sunrise
+
+![The equation-of-time gearing, seen from the back, the cam in the foreground](rouages-equation.svg)
