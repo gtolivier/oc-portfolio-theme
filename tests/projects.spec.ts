@@ -72,6 +72,7 @@ import {
   SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_UNRENDERED_HOME_PAGES,
   SITE_WITH_A_PROJECTS_LIST_WITHOUT_CONTACT_INTRO,
   SITE_WITH_HOME_PAGES_WITHOUT_CONTACT_INTRO,
+  SITE_WITH_A_SECTION_SETTING_A_CONTACT_INTRO,
   TEMPLATE_EXECUTION_ERROR,
   type BuiltSite,
   buildSite,
@@ -2607,6 +2608,57 @@ test.describe('projects section of another site, whose home pages declare no con
         await expect(page.locator('#contact'), `#contact anchor on ${url}`).toHaveCount(0);
         await expect(main.getByRole('form'), `contact form on ${url}`).toHaveCount(0);
         for (const intro of intros) {
+          await expect(page.getByText(intro), `contact intro "${intro}" on ${url}`).toHaveCount(0);
+        }
+      }
+    } finally {
+      removeDirectory(siteDirectory);
+    }
+  });
+});
+
+test.describe('section of another site that is not the projects list, setting a contactIntro param', () => {
+  test('a section page other than the projects list shows no contact section, in each language, even when it sets its own contactIntro param, while the projects list of the same site shows one', async ({
+    page,
+    context,
+  }) => {
+    /* SITE_WITH_A_SECTION_SETTING_A_CONTACT_INTRO: the example site, whose home pages declare a
+       contact intro, plus a journal/ section whose pages each set a contactIntro. Only the
+       absence of the contact section on the journal can tell it from the projects list. */
+    const site = SITE_WITH_A_SECTION_SETTING_A_CONTACT_INTRO;
+    const journalIntros = [
+      'Une question sur ces notes ? Écrivez-moi depuis le journal.',
+      'A question about these notes? Write to me from the journal.',
+    ];
+    const siteDirectory = buildSite(site);
+    try {
+      await serveSite(context, site, siteDirectory);
+      for (const { journal, projectsList } of [
+        { journal: '/fr/journal/', projectsList: '/fr/projets/' },
+        { journal: '/en/journal/', projectsList: '/en/projects/' },
+      ]) {
+        /* The projects list of the same site still ends with the contact section… */
+        const listUrl = `${site.origin}${projectsList}`;
+        expect((await page.goto(listUrl))?.status(), listUrl).toBe(200);
+        await expect(
+          page.getByRole('main').getByRole('region', { name: 'Contact', exact: true }),
+          `contact section on ${listUrl}`,
+        ).toHaveCount(1);
+        await expect(page.locator('#contact'), `#contact anchor on ${listUrl}`).toHaveCount(1);
+
+        /* …while the journal, a section page, offers no contact: no section, no anchor, no form,
+           none of its intros. */
+        const url = `${site.origin}${journal}`;
+        expect((await page.goto(url))?.status(), url).toBe(200);
+        const main = page.getByRole('main');
+        await expect(main.getByRole('heading', { level: 1 }), `title of ${url}`).toHaveCount(1);
+        await expect(
+          main.getByRole('region', { name: 'Contact', exact: true }),
+          `contact section on ${url}`,
+        ).toHaveCount(0);
+        await expect(page.locator('#contact'), `#contact anchor on ${url}`).toHaveCount(0);
+        await expect(main.getByRole('form'), `contact form on ${url}`).toHaveCount(0);
+        for (const intro of journalIntros) {
           await expect(page.getByText(intro), `contact intro "${intro}" on ${url}`).toHaveCount(0);
         }
       }

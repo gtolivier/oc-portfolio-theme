@@ -1528,6 +1528,13 @@ export const SITE_WITH_PROJECTS_SHOWING_ONE_LOGO = testSite('one-logo-per-projec
    example site's projects still sit directly in projects/. */
 export const SITE_WITH_A_PROJECTS_LIST_WITHOUT_CONTACT_INTRO = testSite('projects-list-without-contact-intro');
 
+/* The example site has one section, projects/, the projects list, which ends with the contact
+   section: this site adds tests/fixtures/section-with-a-contact-intro/content, another section,
+   journal/, titled "Journal d’atelier" and "Workshop journal", published at /fr/journal/ and
+   /en/journal/, whose pages each set a contactIntro param in their own language. The example
+   site's home pages, which declare a contact intro, and its projects list are unchanged. */
+export const SITE_WITH_A_SECTION_SETTING_A_CONTACT_INTRO = testSite('section-with-a-contact-intro');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
