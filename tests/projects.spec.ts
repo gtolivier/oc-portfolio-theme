@@ -70,6 +70,7 @@ import {
   SITE_WITH_LISTED_PROJECT_STACKS_AS_A_TEXT,
   SITE_WITH_AN_UNRENDERED_HOME_FEATURING_A_PROJECT_STACK_AS_A_TEXT,
   SITE_WITH_A_PROJECTS_SECTION_PARAM_NAMING_NO_SECTION_AND_UNRENDERED_HOME_PAGES,
+  SITE_WITH_A_PROJECTS_LIST_WITHOUT_CONTACT_INTRO,
   TEMPLATE_EXECUTION_ERROR,
   type BuiltSite,
   buildSite,
@@ -2508,6 +2509,53 @@ test.describe('projects section’s page without JavaScript', () => {
           lang,
         }),
       );
+    }
+  });
+});
+
+test.describe('projects section of another site, whose projects list sets no contactIntro', () => {
+  test('when the projects list sets no contactIntro param, its contact section shows, in each language, the intro the home page of its language declares', async ({
+    page,
+    context,
+  }) => {
+    /* SITE_WITH_A_PROJECTS_LIST_WITHOUT_CONTACT_INTRO: neither projects list sets contactIntro;
+       each home page declares a violin maker's intro in its own language, unlike the example
+       site's clockmaker's intros. */
+    const site = SITE_WITH_A_PROJECTS_LIST_WITHOUT_CONTACT_INTRO;
+    const homeIntros = [
+      'Ouvert aux commandes de violons et d’altos, neufs ou restaurés. Écrivez-moi pour une visite de l’atelier.',
+      'Open to orders for new or restored violins and violas. Write to me to visit the workshop.',
+    ];
+    /* The example site's intros: those of its home pages and those its projects list sets. */
+    const exampleSiteIntros = [
+      'Disponible pour de nouvelles restaurations, à l’atelier ou à domicile. Parlons de votre pendule.',
+      'Available for new restorations, at the workshop or at your home. Let us talk about your clock.',
+      'Un projet similaire ? Parlons-en.',
+      "A similar project in mind? Let's talk.",
+    ];
+    const siteDirectory = buildSite(site);
+    try {
+      await serveSite(context, site, siteDirectory);
+      for (const { address, intro } of [
+        { address: '/fr/projets/', intro: homeIntros[0] },
+        { address: '/en/projects/', intro: homeIntros[1] },
+      ]) {
+        const url = `${site.origin}${address}`;
+        const response = await page.goto(url);
+        expect(response?.status(), url).toBe(200);
+        /* The contact section, a region named by its title, as on the home page and a project page. */
+        const section = page.getByRole('main').getByRole('region', { name: 'Contact', exact: true });
+        await expect(section, `contact section on ${url}`).toHaveCount(1);
+        const introText = section.getByText(intro, { exact: true });
+        await introText.scrollIntoViewIfNeeded();
+        await expect(introText, `home page’s contact intro on ${url}`).toBeVisible();
+        for (const other of [...homeIntros, ...exampleSiteIntros].filter((text) => text !== intro)) {
+          await expect(section.getByText(other), `another intro on ${url}`).toHaveCount(0);
+        }
+        await expect(section.getByRole('form'), `contact form on ${url}`).toBeVisible();
+      }
+    } finally {
+      removeDirectory(siteDirectory);
     }
   });
 });
