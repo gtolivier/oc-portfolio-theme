@@ -2409,6 +2409,107 @@ test.describe('projects section’s page without JavaScript', () => {
       }
     }
   });
+
+  test('the projects section’s page ends, in each language, with the contact section (anchor #contact) after its projects, showing the contactIntro its front matter sets instead of the home page’s intro, above a form that posts the email, the message and the page’s language to the address the site’s contactAction param gives', async ({
+    page,
+    baseURL,
+  }) => {
+    /* exampleSite/content/projects/_index.md and _index.en.md set contactIntro, each in its own
+       language; the home pages declare their own intro in content/_index.md and _index.en.md
+       ([params.contact] intro). exampleSite/hugo.toml gives the form the address /api/contact.
+       No endpoint answers on the test servers: the post gets a page here, so that the browser has
+       somewhere to land. */
+    const contactAction = '/api/contact';
+    await page.route(`**${contactAction}`, (route) =>
+      route.fulfill({ status: 200, contentType: 'text/html', body: '<p>Merci</p>' }),
+    );
+    const homeIntros = [
+      'Disponible pour de nouvelles restaurations, à l’atelier ou à domicile. Parlons de votre pendule.',
+      'Available for new restorations, at the workshop or at your home. Let us talk about your clock.',
+    ];
+    const listIntros = ['Un projet similaire ? Parlons-en.', "A similar project in mind? Let's talk."];
+    const sections = [
+      {
+        address: '/fr/projets/',
+        lang: 'fr',
+        intro: listIntros[0],
+        projectTitles: ['Restauration d’une pendule de cheminée', 'Régulateur de parquet en noyer'],
+      },
+      {
+        address: '/en/projects/',
+        lang: 'en',
+        intro: listIntros[1],
+        projectTitles: ['Restoration of a mantel clock', 'Walnut floor regulator'],
+      },
+    ];
+    for (const { address, lang, intro, projectTitles } of sections) {
+      await page.goto(address);
+      const main = page.getByRole('main');
+      /* The contact section, a region named by its title, as on the home page and a project page. */
+      const section = main.getByRole('region', { name: 'Contact', exact: true });
+      await expect(section, `contact section on ${address}`).toHaveCount(1);
+      await expect(section, `anchor of the contact section on ${address}`).toHaveAttribute('id', 'contact');
+
+      /* It ends the page: after the projects, an engagement and a short project, and nothing of
+         the main content shows after it. */
+      for (const title of projectTitles) {
+        const projectHeading = await main.getByRole('heading', { level: 3, name: title, exact: true }).elementHandle();
+        expect(
+          await section.evaluate(
+            (contact, heading) =>
+              (heading!.compareDocumentPosition(contact) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0 &&
+              !contact.contains(heading),
+            projectHeading,
+          ),
+          `contact section after ${title} on ${address}`,
+        ).toBe(true);
+      }
+      const textAfter = await section.evaluate((contact) => {
+        const walker = document.createTreeWalker(contact.closest('main')!, NodeFilter.SHOW_TEXT);
+        const found: string[] = [];
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const isAfter =
+            !contact.contains(node) && (contact.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+          if (isAfter && node.textContent!.trim() !== '') found.push(node.textContent!.trim());
+        }
+        return found;
+      });
+      expect(textAfter, `text of the main content after the contact section on ${address}`).toEqual([]);
+
+      /* The list's own intro, not the home pages' nor the other language's, above the form. */
+      const introText = section.getByText(intro, { exact: true });
+      await introText.scrollIntoViewIfNeeded();
+      await expect(introText, `contact intro on ${address}`).toBeVisible();
+      for (const other of [...homeIntros, ...listIntros].filter((text) => text !== intro)) {
+        await expect(section.getByText(other), `another intro on ${address}`).toHaveCount(0);
+      }
+      const form = section.getByRole('form');
+      await expect(form, `contact form on ${address}`).toBeVisible();
+      const introBox = (await introText.boundingBox())!;
+      const formBox = (await form.boundingBox())!;
+      expect(introBox.y + introBox.height, `contact intro above the form on ${address}`).toBeLessThanOrEqual(
+        formBox.y + 1,
+      );
+
+      /* Sent as a visitor would: the email and the message, with the page's language, posted to
+         the contactAction address. */
+      await form.locator('[name="email"]').fill('marie.horloge@exemple.fr');
+      await form.locator('[name="message"]').fill('Bonjour, je cherche une restauration comme celles de la liste.');
+      const [request] = await Promise.all([
+        page.waitForRequest((sent) => sent.method() === 'POST'),
+        form.getByRole('button').click(),
+      ]);
+      expect(request.url(), `the address the form posts to from ${address}`).toBe(new URL(contactAction, baseURL).href);
+      const body = Object.fromEntries(new URLSearchParams(request.postData() ?? ''));
+      expect(body, `the data sent from ${address}`).toEqual(
+        expect.objectContaining({
+          email: 'marie.horloge@exemple.fr',
+          message: 'Bonjour, je cherche une restauration comme celles de la liste.',
+          lang,
+        }),
+      );
+    }
+  });
 });
 
 test.describe('projects section of another site, named by its projectsSection site param instead of projects, holding projects of one kind only in each language', () => {
