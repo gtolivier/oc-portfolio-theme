@@ -57,16 +57,10 @@
   <p>{{ delimit . (partial "stack-separator.html") }}</p>
   {{- end }}
   </div>
-  {{- end }}
-  {{- if $isProject }}
   <div class="project-body">
   {{ .Content }}
   </div>
   </div>
-  {{- else }}
-  {{ .Content }}
-  {{- end }}
-  {{- if $isProject }}
   {{ partial "projects/all-projects-link.html" . }}
   {{- /* The contact section needs the home page's contact intro: without it, no section and no link to it. */}}
   {{- with site.Home.Params.contact }}
@@ -76,5 +70,7 @@
   {{ partial "contact.html" (dict "home" site.Home "headingLevel" 3 "introOverride" $.Params.contactIntro) }}
   {{- end }}
   {{- end }}
+  {{- else }}
+  {{ .Content }}
   {{- end }}
 {{ end }}
