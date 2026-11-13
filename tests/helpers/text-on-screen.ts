@@ -17,8 +17,24 @@ export async function textOnScreen(element: Locator): Promise<string> {
    whitespace becomes a single space, as the browser renders it, and leading and trailing
    whitespace is dropped. */
 async function renderedText(element: Locator, onScreenOnly: boolean): Promise<string> {
-  const text = await element.evaluate((root, onScreenOnly) => {
-    type Pseudo = '::before' | '::after';
+  const pieces = await renderedPieces(element, onScreenOnly);
+  return pieces
+    .map(({ text }) => text)
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+type Pseudo = '::before' | '::after';
+
+/* A piece of the text an element displays: a text node, as written, or the generated content of
+   a ::before or ::after (pseudo). `element` is the index of the element that holds it among the
+   root and its descendants, in document order (`[root, ...root.querySelectorAll('*')]`). */
+export type DisplayedPiece = { text: string; element: number; pseudo: Pseudo | null };
+
+/* The pieces of the text of textOnScreen (onScreenOnly) or displayedText, in rendering order. */
+async function renderedPieces(element: Locator, onScreenOnly: boolean): Promise<DisplayedPiece[]> {
+  return element.evaluate((root, onScreenOnly) => {
     const STRING = /"(?:[^"\\]|\\.)*"/.source;
     /* An element or pseudo-element that is not displayed or invisible shows nothing, nor, on
        screen, one fully transparent. */
@@ -145,18 +161,25 @@ async function renderedText(element: Locator, onScreenOnly: boolean): Promise<st
       }
       return text;
     };
-    const walk = (el: Element): string => {
-      if (hides(el)) return '';
-      let result = generated(el, '::before');
+    const indexes = new Map([root, ...Array.from(root.querySelectorAll('*'))].map((el, index) => [el, index]));
+    const pieces: DisplayedPiece[] = [];
+    const walk = (el: Element) => {
+      if (hides(el)) return;
+      const element = indexes.get(el)!;
+      const addGenerated = (pseudo: Pseudo) => {
+        const text = generated(el, pseudo);
+        if (text) pieces.push({ text, element, pseudo });
+      };
+      addGenerated('::before');
       for (const child of Array.from(el.childNodes)) {
-        if (child.nodeType === Node.TEXT_NODE) result += child.textContent ?? '';
-        else if (child.nodeType === Node.ELEMENT_NODE) result += walk(child as Element);
+        if (child.nodeType === Node.TEXT_NODE) pieces.push({ text: child.textContent ?? '', element, pseudo: null });
+        else if (child.nodeType === Node.ELEMENT_NODE) walk(child as Element);
       }
-      return result + generated(el, '::after');
+      addGenerated('::after');
     };
-    return walk(root);
+    walk(root);
+    return pieces;
   }, onScreenOnly);
-  return text.replace(/\s+/g, ' ').trim();
 }
 
 /* The opacity an element is seen with: the product of its own opacity and those of its
@@ -179,4 +202,9 @@ export async function effectiveOpacity(element: Locator): Promise<number> {
    and pseudo-elements that are not displayed or invisible are left out. */
 export async function displayedText(element: Locator): Promise<string> {
   return renderedText(element, false);
+}
+
+/* The pieces of displayedText, in rendering order, each with the element that holds it. */
+export async function displayedPieces(element: Locator): Promise<DisplayedPiece[]> {
+  return renderedPieces(element, false);
 }

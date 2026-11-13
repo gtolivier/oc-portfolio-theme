@@ -30,7 +30,7 @@ import {
   serveSite,
   tryToBuildSite,
 } from './helpers/built-site';
-import { displayedText, textOnScreen } from './helpers/text-on-screen';
+import { displayedPieces, displayedText, textOnScreen } from './helpers/text-on-screen';
 import { type Rgb, colorComponents, contrastRatio } from './helpers/colors';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { holdRequests, themeScriptUrl } from './helpers/held-requests';
@@ -1153,56 +1153,38 @@ function effectiveBackground(backgrounds: string[]): Rgb {
 }
 
 /* Every text an element displays — its text nodes and the generated content of the ::before and
-   ::after pseudo-elements of it and its descendants — hidden elements excluded, each with its
-   text color, the background colors behind it, nearest first, its font size in px and its font
-   weight. As in projects.spec.ts, with the size and weight that tell large text. */
+   ::after pseudo-elements of it and its descendants, read as displayedText reads them — hidden
+   elements excluded, each with its text color, the background colors behind it, nearest first,
+   its font size in px and its font weight. As in projects.spec.ts, with the size and weight that
+   tell large text. */
 async function displayedTexts(
   root: Locator,
 ): Promise<{ text: string; color: string; backgrounds: string[]; fontSize: number; fontWeight: number }[]> {
-  return root.evaluate((rootElement) => {
+  const pieces = await displayedPieces(root);
+  return root.evaluate((rootElement, pieces) => {
+    const elements = [rootElement, ...Array.from(rootElement.querySelectorAll('*'))];
     const chainOf = (el: Element) => {
       const chain: string[] = [];
       for (let current: Element | null = el; current; current = current.parentElement)
         chain.push(getComputedStyle(current).backgroundColor);
       return chain;
     };
-    const texts: { text: string; color: string; backgrounds: string[]; fontSize: number; fontWeight: number }[] = [];
-    const walk = (el: Element) => {
-      const style = getComputedStyle(el);
-      if (style.display === 'none' || style.visibility === 'hidden') return;
-      for (const pseudo of ['::before', '::after'] as const) {
-        const pseudoStyle = getComputedStyle(el, pseudo);
-        const strings = pseudoStyle.content.split(/\s+\/\s+/)[0].match(/"(?:[^"\\]|\\.)*"/g) ?? [];
-        const text = strings
-          .map((string) => JSON.parse(string) as string)
-          .join('')
-          .trim();
-        if (text)
-          texts.push({
-            text: `${pseudo} ${text}`,
-            color: pseudoStyle.color,
-            backgrounds: [pseudoStyle.backgroundColor, ...chainOf(el)],
-            fontSize: parseFloat(pseudoStyle.fontSize),
-            fontWeight: parseFloat(pseudoStyle.fontWeight),
-          });
-      }
-      for (const child of Array.from(el.childNodes)) {
-        if (child.nodeType === Node.TEXT_NODE) {
-          const text = (child.textContent ?? '').replace(/\s+/g, ' ').trim();
-          if (text)
-            texts.push({
-              text,
-              color: style.color,
-              backgrounds: chainOf(el),
-              fontSize: parseFloat(style.fontSize),
-              fontWeight: parseFloat(style.fontWeight),
-            });
-        } else if (child.nodeType === Node.ELEMENT_NODE) walk(child as Element);
-      }
-    };
-    walk(rootElement);
-    return texts;
-  });
+    return pieces.flatMap(({ text, element, pseudo }) => {
+      const el = elements[element];
+      const style = getComputedStyle(el, pseudo);
+      const shown = pseudo ? text.trim() : text.replace(/\s+/g, ' ').trim();
+      if (!shown) return [];
+      return [
+        {
+          text: pseudo ? `${pseudo} ${shown}` : shown,
+          color: style.color,
+          backgrounds: pseudo ? [style.backgroundColor, ...chainOf(el)] : chainOf(el),
+          fontSize: parseFloat(style.fontSize),
+          fontWeight: parseFloat(style.fontWeight),
+        },
+      ];
+    });
+  }, pieces);
 }
 
 /* Large text, as WCAG defines it: at least 18pt (24px), or at least 14pt (about 18.67px) bold. */

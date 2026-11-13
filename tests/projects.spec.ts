@@ -95,7 +95,7 @@ import {
   verticalBands,
 } from './helpers/pixels';
 import { type Rgb, colorComponents, contrastRatio } from './helpers/colors';
-import { displayedText, effectiveOpacity } from './helpers/text-on-screen';
+import { displayedPieces, displayedText, effectiveOpacity } from './helpers/text-on-screen';
 import { tabUntilFocused } from './helpers/keyboard';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { DELAY_AFTER_MOVE_MS, moveToScreenOfDensity } from './helpers/screen-density';
@@ -311,10 +311,13 @@ async function backgroundChain(element: Locator): Promise<string[]> {
 }
 
 /* Every text an element displays — its text nodes and the generated content of the ::before and
-   ::after pseudo-elements of it and its descendants — hidden elements excluded, each with its
-   text color and the background colors behind it, nearest first. */
+   ::after pseudo-elements of it and its descendants, read as displayedText reads them — hidden
+   elements excluded, each with its text color and the background colors behind it, nearest
+   first. */
 async function displayedTexts(root: Locator): Promise<{ text: string; color: string; backgrounds: string[] }[]> {
-  return root.evaluate((rootElement) => {
+  const pieces = await displayedPieces(root);
+  return root.evaluate((rootElement, pieces) => {
+    const elements = [rootElement, ...Array.from(rootElement.querySelectorAll('*'))];
     /* As backgroundChain, inside the page. */
     const chainOf = (el: Element) => {
       const chain: string[] = [];
@@ -322,34 +325,20 @@ async function displayedTexts(root: Locator): Promise<{ text: string; color: str
         chain.push(getComputedStyle(current).backgroundColor);
       return chain;
     };
-    const texts: { text: string; color: string; backgrounds: string[] }[] = [];
-    const walk = (el: Element) => {
-      const style = getComputedStyle(el);
-      if (style.display === 'none' || style.visibility === 'hidden') return;
-      for (const pseudo of ['::before', '::after'] as const) {
-        const pseudoStyle = getComputedStyle(el, pseudo);
-        const strings = pseudoStyle.content.split(/\s+\/\s+/)[0].match(/"(?:[^"\\]|\\.)*"/g) ?? [];
-        const text = strings
-          .map((string) => JSON.parse(string) as string)
-          .join('')
-          .trim();
-        if (text)
-          texts.push({
-            text: `${pseudo} ${text}`,
-            color: pseudoStyle.color,
-            backgrounds: [pseudoStyle.backgroundColor, ...chainOf(el)],
-          });
-      }
-      for (const child of Array.from(el.childNodes)) {
-        if (child.nodeType === Node.TEXT_NODE) {
-          const text = (child.textContent ?? '').replace(/\s+/g, ' ').trim();
-          if (text) texts.push({ text, color: style.color, backgrounds: chainOf(el) });
-        } else if (child.nodeType === Node.ELEMENT_NODE) walk(child as Element);
-      }
-    };
-    walk(rootElement);
-    return texts;
-  });
+    return pieces.flatMap(({ text, element, pseudo }) => {
+      const el = elements[element];
+      const style = getComputedStyle(el, pseudo);
+      const shown = pseudo ? text.trim() : text.replace(/\s+/g, ' ').trim();
+      if (!shown) return [];
+      return [
+        {
+          text: pseudo ? `${pseudo} ${shown}` : shown,
+          color: style.color,
+          backgrounds: pseudo ? [style.backgroundColor, ...chainOf(el)] : chainOf(el),
+        },
+      ];
+    });
+  }, pieces);
 }
 
 /* Measured inside a card's tick pattern, this far from each edge of its box, so that a border, a
