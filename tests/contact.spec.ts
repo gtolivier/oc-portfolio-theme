@@ -1011,6 +1011,27 @@ test.describe('home page of another site, with another contact intro', () => {
     await expect(section.getByText(CONTACT_INTRO), 'the example site’s intro').toHaveCount(0);
   });
 
+  test('on a home page with neither featured projects nor the section "Parcours", the heading of the section "Contact", the only numbered section, shows the section number "01 //" before its title', async ({
+    page,
+    context,
+  }) => {
+    await serveSite(context, SITE_WITH_ANOTHER_CONTACT_INTRO, siteDirectory);
+    await page.goto(`${SITE_WITH_ANOTHER_CONTACT_INTRO.origin}/fr/`);
+    const main = page.getByRole('main');
+    /* tests/fixtures/other-contact/content/_index.md declares a contact intro, and neither featured
+       projects nor a background: the main content holds one section, "Contact". */
+    const section = contactSection(page);
+    await expect(section).toBeVisible();
+    await expect(main.getByRole('region', { name: 'Projets sélectionnés' })).toHaveCount(0);
+    await expect(main.getByRole('region', { name: 'Parcours' })).toHaveCount(0);
+    await expect(main.getByRole('region')).toHaveCount(1);
+    /* On screen: the first number, then the title (its case left to the stylesheet); for assistive
+       technologies, the title alone. */
+    const heading = section.getByRole('heading', { level: 2 });
+    await expect.poll(() => displayedText(heading), 'text displayed by the heading').toMatch(/^01 ?\/\/ ?Contact$/i);
+    await expect(heading).toHaveAccessibleName('Contact');
+  });
+
   test('with JavaScript, after a successful send from the French home page of another site, whose contact params give a sent text, the section shows that text as the confirmation, and not the theme’s default one', async ({
     page,
     context,
