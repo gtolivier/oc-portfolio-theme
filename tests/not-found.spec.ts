@@ -21,6 +21,28 @@ test('an unknown address under /fr/ answers with a 404 status and the theme’s 
   await expect(main.getByRole('paragraph').first()).not.toHaveText('');
 });
 
+test('an unknown address with no language prefix answers with a 404 status and the French error page, the default language’s: the same heading and message as under /fr/, the page in French', async ({
+  page,
+}) => {
+  /* The French error page's heading and message, which this page must show. */
+  await page.goto('/fr/page-qui-n-existe-pas/');
+  const frenchMain = page.getByRole('main');
+  const frenchHeading = (await frenchMain.getByRole('heading', { level: 1 }).textContent())?.trim() ?? '';
+  const frenchMessage = (await frenchMain.getByRole('paragraph').first().textContent())?.trim() ?? '';
+  expect(frenchHeading).not.toBe('');
+  expect(frenchMessage).not.toBe('');
+
+  const response = await page.goto('/page-qui-n-existe-pas/');
+  expect(response?.status()).toBe(404);
+  /* A page of the French site, not Hugo's own "Page Not Found" page. */
+  await expect(page.locator('html')).toHaveAttribute('lang', 'fr-FR');
+  /* The French error page's heading and message. */
+  const main = page.getByRole('main');
+  await expect(main.getByRole('heading', { level: 1 })).toHaveCount(1);
+  await expect(main.getByRole('heading', { level: 1 })).toHaveText(frenchHeading);
+  await expect(main.getByRole('paragraph').first()).toHaveText(frenchMessage);
+});
+
 test('an unknown address under /en/ answers with a 404 status and the English error page: its heading and message in English, the page in English', async ({
   page,
 }) => {
