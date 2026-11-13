@@ -1,5 +1,5 @@
 {{ define "main" }}
-  {{ partial "page-hero.html" (dict "page" . "description" (i18n "notFoundMessage") "content" (partial "inline/not-found-home-link.html" .) "contentClass" "is-apart") }}
+  {{ partial "page-hero.html" (dict "page" . "description" (i18n "notFoundMessage") "content" (cond (partialCached "is-published.html" site.Home site.Language.Lang) (partial "inline/not-found-home-link.html" .) "") "contentClass" "is-apart") }}
 {{ end }}
 
 {{- define "_partials/inline/not-found-home-link.html" }}
