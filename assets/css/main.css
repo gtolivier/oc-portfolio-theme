@@ -461,6 +461,7 @@ h1 {
   .site-footer .home-link:hover,
   :is(.engagement, .short-project) h3 a:hover,
   .project-hero .project-back-link:hover,
+  .not-found-home-link:hover,
   .project-links a:hover {
     text-decoration: underline;
     text-decoration-color: var(--color-accent);
@@ -471,6 +472,7 @@ h1 {
 .site-footer .home-link:focus-visible,
 :is(.engagement, .short-project) h3 a:focus-visible,
 .project-hero .project-back-link:focus-visible,
+.not-found-home-link:focus-visible,
 .project-links a:focus-visible {
   text-decoration: underline;
   text-decoration-color: var(--color-accent);
@@ -1681,6 +1683,11 @@ tick-field > canvas {
   margin-top: 16px;
 }
 
+/* The error page's link home stands apart from its message. */
+.page-intro:has(> .not-found-home-link) {
+  margin-top: 36px;
+}
+
 .page-intro > :first-child {
   margin-top: 0;
 }
@@ -1905,8 +1912,11 @@ tick-field > canvas {
 }
 
 /* A project page: a hero on the tick field, like the projects list page's,
-   then the facts and the body on paper, then the contact section on ink. */
-.project-hero .project-back-link {
+   then the facts and the body on paper, then the contact section on ink.
+   The error page's link home, below its message, looks like the project
+   page's link back. */
+.project-hero .project-back-link,
+.not-found-home-link {
   display: inline-block;
   font-family: var(--font-mono);
   font-size: 14px;

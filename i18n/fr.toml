@@ -5,7 +5,7 @@ other = 'Aller au contenu'
 other = 'Page introuvable'
 
 [notFoundMessage]
-other = 'La page que vous cherchez n’existe pas ou a été déplacée.'
+other = 'La page demandée n’existe pas ou a été déplacée.'
 
 [notFoundHomeLink]
 other = 'Retour à l’accueil'

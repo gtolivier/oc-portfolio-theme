@@ -1,5 +1,8 @@
 {{ define "main" }}
-  <h1>{{ i18n "notFoundTitle" }}</h1>
-  <p>{{ i18n "notFoundMessage" }}</p>
-  <a href="{{ site.Home.RelPermalink }}">{{ i18n "notFoundHomeLink" }}</a>
+  {{- /* Hugo's own title of the error page is in English, whatever the language. */}}
+  {{ partial "page-hero.html" (dict "page" . "title" (i18n "notFoundTitle") "description" (i18n "notFoundMessage") "content" (partial "inline/not-found-home-link.html" .)) }}
 {{ end }}
+
+{{- define "_partials/inline/not-found-home-link.html" }}
+<a class="not-found-home-link" href="{{ site.Home.RelPermalink }}">{{ i18n "notFoundHomeLink" }}</a>
+{{- end }}
