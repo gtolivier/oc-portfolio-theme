@@ -1,0 +1,2 @@
+{{- /* Whether the page is a project's page: a regular page of the projects section or one of its subsections, not a page at the content root. */}}
+{{- return and .IsPage (not .Parent.IsHome) (eq .Section (partialCached "projects/section.html" . site.Language.Lang).name) }}

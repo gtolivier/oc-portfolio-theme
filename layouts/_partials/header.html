@@ -6,10 +6,8 @@
 <nav>
   {{- $contactAnchor := "#contact" }}
   {{- $homeContactURL := printf "%s%s" site.Home.RelPermalink $contactAnchor }}
-  {{- /* The projects list ends with its own contact section: the Contact entry pointing at the home page's contact section stays on the list. */}}
-  {{- $projectsSection := partialCached "projects/section.html" $page site.Language.Lang }}
-  {{- $isProject := and $page.IsPage (not $page.Parent.IsHome) (eq $page.Section $projectsSection.name) }}
-  {{- $hasOwnContactSection := and (or (partial "projects/is-list.html" $page) $isProject) site.Home.Params.contact.intro }}
+  {{- /* The projects list and each project's page end with their own contact section: the Contact entry pointing at the home page's contact section stays on the page. */}}
+  {{- $hasOwnContactSection := and (or (partial "projects/is-list.html" $page) (partial "projects/is-project.html" $page)) site.Home.Params.contact.intro }}
   {{- range site.Menus.main }}
   {{- $isInSection := and .Page (not .Page.IsHome) ($page.IsDescendant .Page) }}
   {{- $url := .URL }}
