@@ -454,11 +454,14 @@ h1 {
 }
 
 /* The accent underline of a hovered header link, which the footer's home
-   link and the projects' titles take too, also on keyboard focus. */
+   link, the projects' titles and a project page's links take too, also on
+   keyboard focus. */
 @media (hover: hover) {
   .site-header nav a:not([aria-current]):hover,
   .site-footer .home-link:hover,
-  :is(.engagement, .short-project) h3 a:hover {
+  :is(.engagement, .short-project) h3 a:hover,
+  .project-hero .project-back-link:hover,
+  .project-links a:hover {
     text-decoration: underline;
     text-decoration-color: var(--color-accent);
     text-underline-offset: 5px;
@@ -466,7 +469,9 @@ h1 {
 }
 
 .site-footer .home-link:focus-visible,
-:is(.engagement, .short-project) h3 a:focus-visible {
+:is(.engagement, .short-project) h3 a:focus-visible,
+.project-hero .project-back-link:focus-visible,
+.project-links a:focus-visible {
   text-decoration: underline;
   text-decoration-color: var(--color-accent);
   text-underline-offset: 5px;
@@ -2124,22 +2129,6 @@ tick-field > canvas {
   text-decoration: none;
 }
 
-@media (hover: hover) {
-  .project-hero .project-back-link:hover,
-  .project-links a:hover {
-    text-decoration: underline;
-    text-decoration-color: var(--color-accent);
-    text-underline-offset: 5px;
-  }
-}
-
-.project-hero .project-back-link:focus-visible,
-.project-links a:focus-visible {
-  text-decoration: underline;
-  text-decoration-color: var(--color-accent);
-  text-underline-offset: 5px;
-}
-
 @media (min-width: 768px) {
   .project-page {
     padding-block: 72px 80px;
@@ -2171,7 +2160,6 @@ tick-field > canvas {
 /* The contact section that ends a project page is on ink, below the paper
    body, with a small label as its heading. */
 .project-page ~ .contact {
-  --section-number-color: var(--color-paper);
   background: var(--color-ink);
   color: var(--color-paper);
 }
