@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import {
+  SITE_WITH_HOME_PAGES_WITHOUT_CONTACT_INTRO,
   SITE_WITH_LOGOS_MISSING_FROM_THE_PAGE_BUNDLE,
   SITE_WITH_PROJECT_FACTS_NOT_AS_TEXTS,
   SITE_WITH_PROJECTS_IN_A_SUBSECTION,
@@ -700,6 +701,52 @@ test('a project page whose contactIntro param is set shows it as the contact int
       await expect(section.getByText(other), `another intro on ${url}`).toHaveCount(0);
     }
   }
+});
+
+test.describe('project pages of another site, whose home pages declare no contact intro', () => {
+  test('when the home page of its language declares no contact intro, a project page shows neither the contact section nor the "Discuter d’un projet similaire" link (English: "Discuss a similar project"), even when it sets its own contactIntro param, and keeps its links back to the projects list', async ({
+    page,
+    context,
+  }) => {
+    /* SITE_WITH_HOME_PAGES_WITHOUT_CONTACT_INTRO: the French home page has no contact params, the
+       English one contact params without an intro. horloge-astronomique sets no contactIntro;
+       regulateur-noyer sets one in each language, which must not bring the section back. */
+    const site = SITE_WITH_HOME_PAGES_WITHOUT_CONTACT_INTRO;
+    const siteDirectory = buildSite(site);
+    try {
+      await serveSite(context, site, siteDirectory);
+      for (const { path: address, backName, discussName } of [
+        ...['horloge-astronomique', 'regulateur-noyer'].map((slug) => ({
+          path: `/fr/projets/${slug}/`,
+          backName: /^(←\s*)?Tous les projets$/,
+          discussName: /^Discuter d['’]un projet similaire(\s*→)?$/,
+        })),
+        ...['horloge-astronomique', 'regulateur-noyer'].map((slug) => ({
+          path: `/en/projects/${slug}/`,
+          backName: /^(←\s*)?All projects$/,
+          discussName: /^Discuss a similar project(\s*→)?$/,
+        })),
+      ]) {
+        const url = `${site.origin}${address}`;
+        const response = await page.goto(url);
+        expect(response?.status(), url).toBe(200);
+        const main = page.getByRole('main');
+        await expect(main.getByRole('heading', { level: 1 }), `main heading on ${url}`).toBeVisible();
+        /* The page still opens and ends with its links back to the projects list… */
+        await expect(main.getByRole('link', { name: backName }), `back links on ${url}`).toHaveCount(2);
+        /* …but offers no contact: no section, no form, no link to a #contact that would lead nowhere. */
+        await expect(
+          main.getByRole('region', { name: 'Contact', exact: true }),
+          `contact section on ${url}`,
+        ).toHaveCount(0);
+        await expect(page.locator('#contact'), `#contact anchor on ${url}`).toHaveCount(0);
+        await expect(main.getByRole('form'), `contact form on ${url}`).toHaveCount(0);
+        await expect(main.getByRole('link', { name: discussName }), `contact link on ${url}`).toHaveCount(0);
+      }
+    } finally {
+      removeDirectory(siteDirectory);
+    }
+  });
 });
 
 test('a page outside the projects section keeps the plain layout, without a link back to the projects list', async ({

@@ -1471,6 +1471,14 @@ export const SITE_WITH_LOGOS_MISSING_FROM_THE_PAGE_BUNDLE = testSite('logos-miss
    duration = 18; its English version sets mode = 2. Neither home page features them. */
 export const SITE_WITH_PROJECT_FACTS_NOT_AS_TEXTS = testSite('facts-not-as-texts');
 
+/* The example site's home pages both declare a contact intro ([params.contact] table, intro key):
+   this site replaces them with those of tests/fixtures/home-pages-without-contact-intro/content,
+   which declare none. The French one has no contact params at all; the English one has a
+   [params.contact] table that gives a sent text but no intro. The example site's projects are
+   unchanged: regulateur-noyer still sets its own contactIntro param, in both languages,
+   horloge-astronomique none. */
+export const SITE_WITH_HOME_PAGES_WITHOUT_CONTACT_INTRO = testSite('home-pages-without-contact-intro');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */
