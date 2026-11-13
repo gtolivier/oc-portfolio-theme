@@ -1,4 +1,10 @@
 import { test, expect } from '@playwright/test';
+import {
+  SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION,
+  buildSite,
+  removeDirectory,
+  serveSite,
+} from './helpers/built-site';
 
 /* Two projects of the example site (content/projects/<slug>.md and its .en.md translation): the
    slug is the page's file name, and each title differs from the other project's and from its
@@ -66,6 +72,42 @@ test('a page outside the projects section keeps the plain layout, without a link
   const main = page.getByRole('main');
   await expect(main.getByRole('heading', { level: 1 }), `main heading on ${url}`).toBeVisible();
   await expect(main.getByRole('link', { name: /^(←\s*)?Tous les projets$/ }), `back link on ${url}`).toHaveCount(0);
+});
+
+test.describe('pages of another site, whose projectsSection param names the section of its projects', () => {
+  test('the pages of the section named by the projectsSection param open with the link back to the projects list, and the pages of the projects/ section do not', async ({
+    page,
+    context,
+  }) => {
+    /* tests/fixtures/projects-in-the-configured-section/hugo.toml sets projectsSection =
+       'realisations'; its content/realisations/ holds two projects, published at
+       /fr/realisations/<page>/. The example site's projects/ section is still built: its pages
+       are no longer project pages, so the link back to the projects list has no place there. */
+    const site = SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION;
+    const siteDirectory = buildSite(site);
+    const name = /^(←\s*)?Tous les projets$/;
+    try {
+      await serveSite(context, site, siteDirectory);
+      for (const slug of ['pendule-de-voyage', 'horloge-de-parquet']) {
+        const url = `${site.origin}/fr/realisations/${slug}/`;
+        const response = await page.goto(url);
+        expect(response?.status(), url).toBe(200);
+        const backLink = page.getByRole('main').getByRole('link', { name });
+        await expect(backLink, `back link on ${url}`).toBeVisible();
+        await expect(backLink, `back link on ${url}`).toHaveAttribute('href', '/fr/realisations/');
+      }
+      for (const slug of ['horloge-astronomique', 'regulateur-noyer']) {
+        const url = `${site.origin}/fr/projets/${slug}/`;
+        const response = await page.goto(url);
+        expect(response?.status(), url).toBe(200);
+        const main = page.getByRole('main');
+        await expect(main.getByRole('heading', { level: 1 }), `main heading on ${url}`).toBeVisible();
+        await expect(main.getByRole('link', { name }), `back link on ${url}`).toHaveCount(0);
+      }
+    } finally {
+      removeDirectory(siteDirectory);
+    }
+  });
 });
 
 test('on a project page, in French and in English, the Projects navigation link is marked as the current section, and no navigation link as the current page', async ({
