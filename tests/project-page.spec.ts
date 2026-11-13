@@ -674,6 +674,34 @@ test.describe('project page in a browser without JavaScript', () => {
   });
 });
 
+test('a project page whose contactIntro param is set shows it as the contact intro, in its language, instead of the intro of the home page', async ({
+  page,
+}) => {
+  /* The example site's regulateur-noyer sets contactIntro in its French and English front matter,
+     each in its own language; horloge-astronomique sets none, and the test above checks it keeps
+     the home page's intro. */
+  const homeIntros = [
+    'Disponible pour de nouvelles restaurations, à l’atelier ou à domicile. Parlons de votre pendule.',
+    'Available for new restorations, at the workshop or at your home. Let us talk about your clock.',
+  ];
+  const projectIntros = [
+    'Une caisse de régulateur à restaurer ou à sculpter ? L’atelier travaille le noyer comme le mouvement.',
+    'A regulator case to restore or to carve? The workshop works the walnut as well as the movement.',
+  ];
+  for (const { url, intro } of [
+    { url: '/fr/projets/regulateur-noyer/', intro: projectIntros[0] },
+    { url: '/en/projects/regulateur-noyer/', intro: projectIntros[1] },
+  ]) {
+    await page.goto(url);
+    const section = page.getByRole('main').getByRole('region', { name: 'Contact', exact: true });
+    await expect(section, `contact section on ${url}`).toHaveCount(1);
+    await expect(section.getByText(intro, { exact: true }), `the page's contact intro on ${url}`).toBeVisible();
+    for (const other of [...homeIntros, ...projectIntros].filter((text) => text !== intro)) {
+      await expect(section.getByText(other), `another intro on ${url}`).toHaveCount(0);
+    }
+  }
+});
+
 test('a page outside the projects section keeps the plain layout, without a link back to the projects list', async ({
   page,
 }) => {
