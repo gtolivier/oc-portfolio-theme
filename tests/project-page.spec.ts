@@ -5,6 +5,7 @@ import {
   SITE_WITH_LOGOS_THAT_ARE_NOT_IMAGES,
   SITE_WITH_PROJECT_FACTS_NOT_AS_TEXTS,
   SITE_WITH_PROJECT_FACTS_READ_AS_EMPTY,
+  SITE_WITH_A_SUBSECTION_OF_AN_UNWRITTEN_PROJECTS_LIST,
   SITE_WITH_PROJECTS_IN_A_SUBSECTION,
   SITE_WITH_PROJECTS_IN_THE_CONFIGURED_SECTION,
   TEMPLATE_EXECUTION_ERROR,
@@ -1075,6 +1076,45 @@ test.describe('pages of another site, whose projects are filed in a subsection o
       await backLink.click();
       await expect(page).toHaveURL(`${site.origin}/fr/projets/`);
       await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toHaveText('Projets');
+    } finally {
+      removeDirectory(siteDirectory);
+    }
+  });
+});
+
+test.describe('pages of another site, whose projects list Hugo does not publish', () => {
+  test('when the projects list is not published ([build] render = "never" or "link"), a project page shows no link back to the projects list, neither above its title nor after its body', async ({
+    page,
+    context,
+  }) => {
+    /* In tests/fixtures/unwritten-projects-list/content/projects/, the French list declares
+       render = 'never' (no address at all) and the English one render = 'link' (an address, but
+       nothing written there). The example site's projects still sit directly in projects/, with
+       their pages: a link back to the list would lead nowhere, or to a missing page. */
+    const site = SITE_WITH_A_SUBSECTION_OF_AN_UNWRITTEN_PROJECTS_LIST;
+    const siteDirectory = buildSite(site);
+    try {
+      await serveSite(context, site, siteDirectory);
+      for (const project of PROJECTS) {
+        for (const { url, title, backName } of [
+          {
+            url: `${site.origin}/fr/projets/${project.slug}/`,
+            title: project.frenchTitle,
+            backName: /^(←\s*)?Tous les projets$/,
+          },
+          {
+            url: `${site.origin}/en/projects/${project.slug}/`,
+            title: project.englishTitle,
+            backName: /^(←\s*)?All projects$/,
+          },
+        ]) {
+          const response = await page.goto(url);
+          expect(response?.status(), url).toBe(200);
+          const main = page.getByRole('main');
+          await expect(main.getByRole('heading', { level: 1 }), `main heading on ${url}`).toHaveText(title);
+          await expect(main.getByRole('link', { name: backName }), `back links on ${url}`).toHaveCount(0);
+        }
+      }
     } finally {
       removeDirectory(siteDirectory);
     }
