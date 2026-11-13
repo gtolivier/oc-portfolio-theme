@@ -1561,6 +1561,13 @@ export const SITE_WITH_SHORT_PROJECTS_ONLY_AND_CONTACT = testSite('short-project
    site's projects/ section is still built. */
 export const SITE_WITH_AN_EMPTY_PROJECTS_LIST_AND_CONTACT = testSite('empty-projects-list-and-contact');
 
+/* The example site's French home page shows its featured projects, its background, then its
+   contact section: this site replaces that home page with the one of
+   tests/fixtures/background-and-contact-without-projects/content, without a hero, clients nor
+   featured projects, which declares a fictional bookbinder's background and contact intro, so
+   that the contact section comes right after the background. */
+export const SITE_WITH_BACKGROUND_AND_CONTACT_WITHOUT_PROJECTS = testSite('background-and-contact-without-projects');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

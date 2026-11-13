@@ -5,6 +5,7 @@ import {
   SITE_WITH_ANOTHER_CONTACT_INTRO,
   SITE_WITHOUT_CONTACT_ACTION,
   SITE_WITH_PROJECTS_AND_CONTACT_WITHOUT_BACKGROUND,
+  SITE_WITH_BACKGROUND_AND_CONTACT_WITHOUT_PROJECTS,
   buildSite,
   removeDirectory,
   runBuildTestsInOneProjectOnly,
@@ -1095,6 +1096,39 @@ test.describe('home page of another site, with featured projects and a contact s
     await expect(main.getByRole('region').last()).toHaveAccessibleName('Contact');
     /* On screen: the next number after the featured projects' "01 //", then the title (its case
        left to the stylesheet); for assistive technologies, the title alone. */
+    const heading = section.getByRole('heading', { level: 2 });
+    await expect.poll(() => displayedText(heading), 'text displayed by the heading').toMatch(/^02 ?\/\/ ?Contact$/i);
+    await expect(heading).toHaveAccessibleName('Contact');
+  });
+});
+
+test.describe('home page of another site, with a background and a contact section but no featured projects', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_BACKGROUND_AND_CONTACT_WITHOUT_PROJECTS);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a home page without featured projects, the heading of the section "Contact", right after the section "Parcours", shows the section number "02 //" before its title', async ({
+    page,
+    context,
+  }) => {
+    await serveSite(context, SITE_WITH_BACKGROUND_AND_CONTACT_WITHOUT_PROJECTS, siteDirectory);
+    await page.goto(`${SITE_WITH_BACKGROUND_AND_CONTACT_WITHOUT_PROJECTS.origin}/fr/`);
+    const main = page.getByRole('main');
+    /* tests/fixtures/background-and-contact-without-projects/content/_index.md declares a background
+       and a contact intro, and no featured projects: the main content holds two sections, "Parcours",
+       then "Contact". */
+    const section = contactSection(page);
+    await expect(section).toBeVisible();
+    await expect(main.getByRole('region', { name: 'Projets sélectionnés' })).toHaveCount(0);
+    await expect(main.getByRole('region')).toHaveCount(2);
+    await expect(main.getByRole('region').first()).toHaveAccessibleName('Parcours');
+    await expect(main.getByRole('region').last()).toHaveAccessibleName('Contact');
+    /* On screen: the next number after the background's "01 //", then the title (its case left to
+       the stylesheet); for assistive technologies, the title alone. */
     const heading = section.getByRole('heading', { level: 2 });
     await expect.poll(() => displayedText(heading), 'text displayed by the heading').toMatch(/^02 ?\/\/ ?Contact$/i);
     await expect(heading).toHaveAccessibleName('Contact');
