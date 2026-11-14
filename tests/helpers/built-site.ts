@@ -1535,6 +1535,48 @@ export const SITE_WITH_A_PROJECTS_LIST_WITHOUT_CONTACT_INTRO = testSite('project
    site's home pages, which declare a contact intro, and its projects list are unchanged. */
 export const SITE_WITH_A_SECTION_SETTING_A_CONTACT_INTRO = testSite('section-with-a-contact-intro');
 
+/* The example site's French home page shows its featured projects, its background, then its
+   contact section: this site replaces that home page with the one of
+   tests/fixtures/projects-and-contact-without-background/content, without a hero, clients nor
+   background, which features two of the example site's projects and declares a fictional
+   clockmaker's contact intro, so that the contact section comes right after the featured
+   projects. */
+export const SITE_WITH_PROJECTS_AND_CONTACT_WITHOUT_BACKGROUND = testSite('projects-and-contact-without-background');
+
+/* The example site's projects list holds engagements, then short projects, then its contact
+   section: this site names ateliers/ in its projectsSection site param (see
+   tests/fixtures/short-projects-and-contact/hugo.toml), replaces both home pages with ones that
+   feature no projects but declare a fictional clockmaker's contact intro, and adds that section,
+   titled "Ateliers" and published at /fr/ateliers/, which holds, in French only, two short
+   projects (kind = 'short'), "Pendule de voyage" and "Coucou de chalet", and no engagement: its
+   page shows the short projects, then the contact section. The example site's projects/ section is
+   still built. */
+export const SITE_WITH_SHORT_PROJECTS_ONLY_AND_CONTACT = testSite('short-projects-and-contact');
+
+/* Like SITE_WITH_SHORT_PROJECTS_ONLY_AND_CONTACT, this site names ateliers/ in its projectsSection
+   site param (see tests/fixtures/empty-projects-list-and-contact/hugo.toml) and replaces both home
+   pages with ones that feature no projects but declare a fictional clockmaker's contact intro; but
+   the section it adds, titled "Ateliers" and published at /fr/ateliers/, holds no project at all:
+   its page shows neither engagements nor short projects, only the contact section. The example
+   site's projects/ section is still built. */
+export const SITE_WITH_AN_EMPTY_PROJECTS_LIST_AND_CONTACT = testSite('empty-projects-list-and-contact');
+
+/* Like SITE_WITH_SHORT_PROJECTS_ONLY_AND_CONTACT, this site names ateliers/ in its projectsSection
+   site param (see tests/fixtures/engagements-and-contact/hugo.toml) and replaces both home pages
+   with ones that feature no projects but declare a fictional clockmaker's contact intro; but the
+   section it adds, titled "Ateliers" and published at /fr/ateliers/, holds, in French only, two
+   engagements (kind = 'engagement'), "Horloge de clocher" and "Régulateur de gare", and no short
+   project: its page shows the engagements, then the contact section. The example site's projects/
+   section is still built. */
+export const SITE_WITH_ENGAGEMENTS_ONLY_AND_CONTACT = testSite('engagements-and-contact');
+
+/* The example site's French home page shows its featured projects, its background, then its
+   contact section: this site replaces that home page with the one of
+   tests/fixtures/background-and-contact-without-projects/content, without a hero, clients nor
+   featured projects, which declares a fictional bookbinder's background and contact intro, so
+   that the contact section comes right after the background. */
+export const SITE_WITH_BACKGROUND_AND_CONTACT_WITHOUT_PROJECTS = testSite('background-and-contact-without-projects');
+
 /* Hugo only reads a configuration from a file: the one that mounts the
    fixture's content is written to a separate temporary directory, so that
    it does not end up among the built pages, and removed after the build. */

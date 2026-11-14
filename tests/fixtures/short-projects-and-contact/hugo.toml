@@ -1,0 +1,6 @@
+# Configuration added to exampleSite/hugo.toml by the test of a projects
+# list that holds short projects only, followed by its contact section: this
+# file names that section, ateliers, in the projectsSection site param, and
+# the fixture's content/ adds it and replaces both home pages.
+[params]
+  projectsSection = 'ateliers'

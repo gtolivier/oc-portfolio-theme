@@ -73,6 +73,9 @@ import {
   SITE_WITH_A_PROJECTS_LIST_WITHOUT_CONTACT_INTRO,
   SITE_WITH_HOME_PAGES_WITHOUT_CONTACT_INTRO,
   SITE_WITH_A_SECTION_SETTING_A_CONTACT_INTRO,
+  SITE_WITH_SHORT_PROJECTS_ONLY_AND_CONTACT,
+  SITE_WITH_AN_EMPTY_PROJECTS_LIST_AND_CONTACT,
+  SITE_WITH_ENGAGEMENTS_ONLY_AND_CONTACT,
   TEMPLATE_EXECUTION_ERROR,
   type BuiltSite,
   buildSite,
@@ -92,7 +95,7 @@ import {
   verticalBands,
 } from './helpers/pixels';
 import { type Rgb, colorComponents, contrastRatio } from './helpers/colors';
-import { displayedText, effectiveOpacity } from './helpers/text-on-screen';
+import { displayedText, displayedTexts, effectiveOpacity } from './helpers/text-on-screen';
 import { tabUntilFocused } from './helpers/keyboard';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { DELAY_AFTER_MOVE_MS, moveToScreenOfDensity } from './helpers/screen-density';
@@ -304,48 +307,6 @@ async function backgroundChain(element: Locator): Promise<string[]> {
     for (let current: Element | null = el; current; current = current.parentElement)
       chain.push(getComputedStyle(current).backgroundColor);
     return chain;
-  });
-}
-
-/* Every text an element displays — its text nodes and the generated content of the ::before and
-   ::after pseudo-elements of it and its descendants — hidden elements excluded, each with its
-   text color and the background colors behind it, nearest first. */
-async function displayedTexts(root: Locator): Promise<{ text: string; color: string; backgrounds: string[] }[]> {
-  return root.evaluate((rootElement) => {
-    /* As backgroundChain, inside the page. */
-    const chainOf = (el: Element) => {
-      const chain: string[] = [];
-      for (let current: Element | null = el; current; current = current.parentElement)
-        chain.push(getComputedStyle(current).backgroundColor);
-      return chain;
-    };
-    const texts: { text: string; color: string; backgrounds: string[] }[] = [];
-    const walk = (el: Element) => {
-      const style = getComputedStyle(el);
-      if (style.display === 'none' || style.visibility === 'hidden') return;
-      for (const pseudo of ['::before', '::after'] as const) {
-        const pseudoStyle = getComputedStyle(el, pseudo);
-        const strings = pseudoStyle.content.split(/\s+\/\s+/)[0].match(/"(?:[^"\\]|\\.)*"/g) ?? [];
-        const text = strings
-          .map((string) => JSON.parse(string) as string)
-          .join('')
-          .trim();
-        if (text)
-          texts.push({
-            text: `${pseudo} ${text}`,
-            color: pseudoStyle.color,
-            backgrounds: [pseudoStyle.backgroundColor, ...chainOf(el)],
-          });
-      }
-      for (const child of Array.from(el.childNodes)) {
-        if (child.nodeType === Node.TEXT_NODE) {
-          const text = (child.textContent ?? '').replace(/\s+/g, ' ').trim();
-          if (text) texts.push({ text, color: style.color, backgrounds: chainOf(el) });
-        } else if (child.nodeType === Node.ELEMENT_NODE) walk(child as Element);
-      }
-    };
-    walk(rootElement);
-    return texts;
   });
 }
 
@@ -2901,6 +2862,115 @@ test.describe('projects section of another site, holding several weighted projec
       }
       expect(titlesUnderGroup, `the titles under "${group.heading}", in the page's order`).toEqual(group.titles);
     }
+  });
+});
+
+test.describe('projects section of another site, holding short projects only, followed by its contact section', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_SHORT_PROJECTS_ONLY_AND_CONTACT);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a projects list with only short projects, the heading of the group "Projets courts" shows the section number "01 //" and the heading of the contact section after it "02 //", while assistive technologies get the titles alone', async ({
+    page,
+    context,
+  }) => {
+    /* tests/fixtures/short-projects-and-contact/content/ateliers/ holds two short projects and no
+       engagement, and its home page declares a contact intro: the list shows the short projects'
+       group, the first numbered section, then the contact section. The group heading is found by
+       its name, the only handle it has. */
+    const site = SITE_WITH_SHORT_PROJECTS_ONLY_AND_CONTACT;
+    await serveSite(context, site, siteDirectory);
+    await page.goto(`${site.origin}/fr/ateliers/`);
+    const main = page.getByRole('main');
+    await expect(main.getByRole('heading', { level: 2, name: 'Missions & applications métier' })).toHaveCount(0);
+    const groupHeading = main.getByRole('heading', { level: 2, name: 'Projets courts & interactifs', exact: true });
+    await expect(groupHeading).toBeVisible();
+    const contactHeading = contactSection(page).getByRole('heading', { level: 2 });
+    await expect(contactHeading).toBeVisible();
+    /* On screen: the first number, then the group's title; the next number, then "Contact" (its
+       case left to the stylesheet). For assistive technologies, the titles alone. */
+    await expect
+      .poll(() => displayedText(groupHeading), 'text displayed by the short projects heading')
+      .toMatch(/^01 ?\/\/ ?Projets courts & interactifs$/i);
+    await expect
+      .poll(() => displayedText(contactHeading), 'text displayed by the contact heading')
+      .toMatch(/^02 ?\/\/ ?Contact$/i);
+    await expect(groupHeading).toHaveAccessibleName('Projets courts & interactifs');
+    await expect(contactHeading).toHaveAccessibleName('Contact');
+  });
+});
+
+test.describe('projects section of another site, holding no project, followed by its contact section', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_AN_EMPTY_PROJECTS_LIST_AND_CONTACT);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a projects list with no project, the heading of its contact section, the only numbered section, shows the section number "01 //", while assistive technologies get the title alone', async ({
+    page,
+    context,
+  }) => {
+    /* tests/fixtures/empty-projects-list-and-contact/content/ateliers/ holds no project, and its
+       home page declares a contact intro: the list shows no project group, only the contact
+       section, which is then the first numbered section. */
+    const site = SITE_WITH_AN_EMPTY_PROJECTS_LIST_AND_CONTACT;
+    await serveSite(context, site, siteDirectory);
+    await page.goto(`${site.origin}/fr/ateliers/`);
+    const main = page.getByRole('main');
+    await expect(main.getByRole('heading', { level: 3 }), 'no project title').toHaveCount(0);
+    const contactHeading = contactSection(page).getByRole('heading', { level: 2 });
+    await expect(contactHeading).toBeVisible();
+    await expect(main.getByRole('heading', { level: 2 }), 'the contact heading, the only section heading').toHaveCount(
+      1,
+    );
+    /* On screen: the first number, then "Contact" (its case left to the stylesheet). For assistive
+       technologies, the title alone. */
+    await expect
+      .poll(() => displayedText(contactHeading), 'text displayed by the contact heading')
+      .toMatch(/^01 ?\/\/ ?Contact$/i);
+    await expect(contactHeading).toHaveAccessibleName('Contact');
+  });
+});
+
+test.describe('projects section of another site, holding engagements only, followed by its contact section', () => {
+  let siteDirectory: string;
+  test.beforeAll(() => {
+    siteDirectory = buildSite(SITE_WITH_ENGAGEMENTS_ONLY_AND_CONTACT);
+  });
+  test.afterAll(() => {
+    removeDirectory(siteDirectory);
+  });
+
+  test('on a projects list with engagements but no short projects, the heading of the contact section after the engagements shows the section number "02 //", while assistive technologies get the title alone', async ({
+    page,
+    context,
+  }) => {
+    /* tests/fixtures/engagements-and-contact/content/ateliers/ holds two engagements and no short
+       project, and its home page declares a contact intro: the list shows the engagements' group,
+       the first numbered section, then the contact section, the second one. The group heading is
+       found by its name, the only handle it has. */
+    const site = SITE_WITH_ENGAGEMENTS_ONLY_AND_CONTACT;
+    await serveSite(context, site, siteDirectory);
+    await page.goto(`${site.origin}/fr/ateliers/`);
+    const main = page.getByRole('main');
+    await expect(main.getByRole('heading', { level: 2, name: 'Projets courts & interactifs' })).toHaveCount(0);
+    const groupHeading = main.getByRole('heading', { level: 2, name: 'Missions & applications métier', exact: true });
+    await expect(groupHeading).toBeVisible();
+    const contactHeading = contactSection(page).getByRole('heading', { level: 2 });
+    await expect(contactHeading).toBeVisible();
+    /* On screen: the next number after the engagements' one, then "Contact" (its case left to the
+       stylesheet). For assistive technologies, the title alone. */
+    await expect
+      .poll(() => displayedText(contactHeading), 'text displayed by the contact heading')
+      .toMatch(/^02 ?\/\/ ?Contact$/i);
+    await expect(contactHeading).toHaveAccessibleName('Contact');
   });
 });
 

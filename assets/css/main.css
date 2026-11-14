@@ -960,22 +960,29 @@ tick-field > canvas {
   font-weight: 600;
 }
 
-/* The section number is decorative: its empty alternative text keeps it out
-   of the heading's accessible name, and so out of the region's. Each section,
-   and each group of the projects list page, sets its number and colour. */
-.projects h2::before,
+/* Sections are numbered from 01 in the order they appear, so that a section
+   left out leaves no gap. The number is decorative: its empty alternative
+   text keeps it out of the heading's accessible name, and so out of the
+   region's. Only each section's own heading counts it, so that the sections
+   are listed once and a heading nested further in does not shift them. Each
+   section, and each group of the projects list page, sets its colour. */
+main {
+  counter-reset: page-section;
+}
+
+.projects-header > h2::before,
 .background > h2::before,
 .contact > h2::before,
-.engagements h2::before,
-.short-projects h2::before {
-  content: var(--section-number) / '';
+.engagements > h2::before,
+.short-projects > h2::before {
+  counter-increment: page-section;
+  content: counter(page-section, decimal-leading-zero) ' // ' / '';
   color: var(--section-number-color);
 }
 
 /* Dark section, below the light projects section. Each part is a direct
    child, spaced by its top margin, so that a part left out leaves no gap. */
 .background {
-  --section-number: '02 // ';
   --section-number-color: var(--color-accent);
   /* From the heading to the first part. */
   --background-heading-space: 40px;
@@ -1188,7 +1195,6 @@ tick-field > canvas {
 /* Light section: dark cards on the paper background. The header takes a
    line of its own, then the cards fill one line each, two from 1024 px. */
 .projects {
-  --section-number: '01 // ';
   --section-number-color: var(--color-accent-dark);
   /* Between two cards, and between two lines of the section. */
   --projects-gap: 24px;
@@ -1398,7 +1404,6 @@ tick-field > canvas {
 /* Light section, after the dark background one. Its heading is a small
    label rather than a title, as in the mockup. */
 .contact {
-  --section-number: '03 // ';
   --section-number-color: var(--color-accent-dark);
   background: var(--color-paper);
   color: var(--color-ink);
@@ -1730,14 +1735,12 @@ tick-field > canvas {
 }
 
 .engagements {
-  --section-number: '01 // ';
   --section-number-color: var(--color-accent);
   background: var(--color-paper);
   color: var(--color-ink);
 }
 
 .short-projects {
-  --section-number: '02 // ';
   --section-number-color: var(--color-accent);
   background: var(--color-ink);
   color: var(--color-paper);
@@ -2248,8 +2251,10 @@ tick-field > canvas {
   color: inherit;
 }
 
-/* Decorative, as the home page's section numbers are. */
+/* Decorative, as the home page's section numbers are. Shows no number, so
+   does not count. */
 .project-page ~ .contact > h2::before {
+  counter-increment: none;
   content: '// ' / '';
   color: inherit;
 }

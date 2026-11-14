@@ -30,7 +30,7 @@ import {
   serveSite,
   tryToBuildSite,
 } from './helpers/built-site';
-import { displayedText, textOnScreen } from './helpers/text-on-screen';
+import { displayedText, displayedTexts, textOnScreen } from './helpers/text-on-screen';
 import { type Rgb, colorComponents, contrastRatio } from './helpers/colors';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { holdRequests, themeScriptUrl } from './helpers/held-requests';
@@ -1152,59 +1152,6 @@ function effectiveBackground(backgrounds: string[]): Rgb {
     .reduce<Rgb>((below, color) => paintOver(color, below), { red: 255, green: 255, blue: 255 });
 }
 
-/* Every text an element displays — its text nodes and the generated content of the ::before and
-   ::after pseudo-elements of it and its descendants — hidden elements excluded, each with its
-   text color, the background colors behind it, nearest first, its font size in px and its font
-   weight. As in projects.spec.ts, with the size and weight that tell large text. */
-async function displayedTexts(
-  root: Locator,
-): Promise<{ text: string; color: string; backgrounds: string[]; fontSize: number; fontWeight: number }[]> {
-  return root.evaluate((rootElement) => {
-    const chainOf = (el: Element) => {
-      const chain: string[] = [];
-      for (let current: Element | null = el; current; current = current.parentElement)
-        chain.push(getComputedStyle(current).backgroundColor);
-      return chain;
-    };
-    const texts: { text: string; color: string; backgrounds: string[]; fontSize: number; fontWeight: number }[] = [];
-    const walk = (el: Element) => {
-      const style = getComputedStyle(el);
-      if (style.display === 'none' || style.visibility === 'hidden') return;
-      for (const pseudo of ['::before', '::after'] as const) {
-        const pseudoStyle = getComputedStyle(el, pseudo);
-        const strings = pseudoStyle.content.split(/\s+\/\s+/)[0].match(/"(?:[^"\\]|\\.)*"/g) ?? [];
-        const text = strings
-          .map((string) => JSON.parse(string) as string)
-          .join('')
-          .trim();
-        if (text)
-          texts.push({
-            text: `${pseudo} ${text}`,
-            color: pseudoStyle.color,
-            backgrounds: [pseudoStyle.backgroundColor, ...chainOf(el)],
-            fontSize: parseFloat(pseudoStyle.fontSize),
-            fontWeight: parseFloat(pseudoStyle.fontWeight),
-          });
-      }
-      for (const child of Array.from(el.childNodes)) {
-        if (child.nodeType === Node.TEXT_NODE) {
-          const text = (child.textContent ?? '').replace(/\s+/g, ' ').trim();
-          if (text)
-            texts.push({
-              text,
-              color: style.color,
-              backgrounds: chainOf(el),
-              fontSize: parseFloat(style.fontSize),
-              fontWeight: parseFloat(style.fontWeight),
-            });
-        } else if (child.nodeType === Node.ELEMENT_NODE) walk(child as Element);
-      }
-    };
-    walk(rootElement);
-    return texts;
-  });
-}
-
 /* Large text, as WCAG defines it: at least 18pt (24px), or at least 14pt (about 18.67px) bold. */
 function isLargeText(fontSize: number, fontWeight: number): boolean {
   return fontSize >= 24 || (fontSize >= (14 * 4) / 3 && fontWeight >= 700);
@@ -1398,6 +1345,26 @@ test.describe('home page of another site, with another background', () => {
     for (const text of exampleTexts) {
       await expect(section.getByText(text), `the example site's "${text}"`).toHaveCount(0);
     }
+  });
+
+  test('on a home page without featured projects, the heading of the section "Parcours", the first numbered section, shows the section number "01 //" before its title', async ({
+    page,
+    context,
+  }) => {
+    await serveSite(context, SITE_WITH_ANOTHER_BACKGROUND, siteDirectory);
+    await page.goto(`${SITE_WITH_ANOTHER_BACKGROUND.origin}/fr/`);
+    const main = page.getByRole('main');
+    /* tests/fixtures/other-background/content/_index.md declares a background and no featured
+       projects: "Parcours" is the first region of the main content, with no "Projets sélectionnés"
+       before it. */
+    const section = backgroundSection(page);
+    await expect(section).toBeVisible();
+    await expect(main.getByRole('region', { name: 'Projets sélectionnés' })).toHaveCount(0);
+    await expect(main.getByRole('region').first()).toHaveAccessibleName('Parcours');
+    /* On screen: the first number, then the title; for assistive technologies, the title alone. */
+    const heading = section.getByRole('heading', { level: 2 });
+    await expect.poll(() => displayedText(heading), 'text displayed by the heading').toMatch(/^01 ?\/\/ ?Parcours$/);
+    await expect(heading).toHaveAccessibleName('Parcours');
   });
 });
 
