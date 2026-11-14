@@ -30,7 +30,7 @@ import {
   serveSite,
   tryToBuildSite,
 } from './helpers/built-site';
-import { displayedPieces, displayedText, textOnScreen } from './helpers/text-on-screen';
+import { displayedText, displayedTexts, textOnScreen } from './helpers/text-on-screen';
 import { type Rgb, colorComponents, contrastRatio } from './helpers/colors';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { holdRequests, themeScriptUrl } from './helpers/held-requests';
@@ -1150,22 +1150,6 @@ function effectiveBackground(backgrounds: string[]): Rgb {
   return [...backgrounds]
     .reverse()
     .reduce<Rgb>((below, color) => paintOver(color, below), { red: 255, green: 255, blue: 255 });
-}
-
-/* Every text an element displays — its text nodes and the generated content of the ::before and
-   ::after pseudo-elements of it and its descendants, read as displayedText reads them — hidden
-   elements excluded, each with its text color, the background colors behind it, nearest first,
-   its font size in px and its font weight. As in projects.spec.ts, with the size and weight that
-   tell large text. */
-async function displayedTexts(
-  root: Locator,
-): Promise<{ text: string; color: string; backgrounds: string[]; fontSize: number; fontWeight: number }[]> {
-  const pieces = await displayedPieces(root);
-  return pieces.flatMap(({ text, pseudo, color, backgrounds, fontSize, fontWeight }) => {
-    const shown = pseudo ? text.trim() : text.replace(/\s+/g, ' ').trim();
-    if (!shown) return [];
-    return [{ text: pseudo ? `${pseudo} ${shown}` : shown, color, backgrounds, fontSize, fontWeight }];
-  });
 }
 
 /* Large text, as WCAG defines it: at least 18pt (24px), or at least 14pt (about 18.67px) bold. */

@@ -95,7 +95,7 @@ import {
   verticalBands,
 } from './helpers/pixels';
 import { type Rgb, colorComponents, contrastRatio } from './helpers/colors';
-import { displayedPieces, displayedText, effectiveOpacity } from './helpers/text-on-screen';
+import { displayedText, displayedTexts, effectiveOpacity } from './helpers/text-on-screen';
 import { tabUntilFocused } from './helpers/keyboard';
 import { stopClockBeforeLoad } from './helpers/clock';
 import { DELAY_AFTER_MOVE_MS, moveToScreenOfDensity } from './helpers/screen-density';
@@ -307,19 +307,6 @@ async function backgroundChain(element: Locator): Promise<string[]> {
     for (let current: Element | null = el; current; current = current.parentElement)
       chain.push(getComputedStyle(current).backgroundColor);
     return chain;
-  });
-}
-
-/* Every text an element displays — its text nodes and the generated content of the ::before and
-   ::after pseudo-elements of it and its descendants, read as displayedText reads them — hidden
-   elements excluded, each with its text color and the background colors behind it, nearest
-   first. */
-async function displayedTexts(root: Locator): Promise<{ text: string; color: string; backgrounds: string[] }[]> {
-  const pieces = await displayedPieces(root);
-  return pieces.flatMap(({ text, pseudo, color, backgrounds }) => {
-    const shown = pseudo ? text.trim() : text.replace(/\s+/g, ' ').trim();
-    if (!shown) return [];
-    return [{ text: pseudo ? `${pseudo} ${shown}` : shown, color, backgrounds }];
   });
 }
 

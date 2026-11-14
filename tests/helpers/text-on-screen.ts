@@ -74,7 +74,10 @@ async function renderedPieces(
        whose name it lacks, valued as they stand at the box just before it in document order.
        Then its counter-reset creates new instances (replacing one a sibling created), its
        counter-increment and counter-set change the innermost instance of their name (created
-       at 0 when there is none). Replayed over the whole document, once, on the first counter. */
+       at 0 when there is none). Replayed over the whole document, once, on the first counter. A
+       counter-reset `reversed(name)` without an integer (that of an <ol reversed>) starts from a
+       value that depends on the number of list items, which the replay does not count: its value
+       is unknown (NaN), an error only if a counter shows it. */
     type Counter = { name: string; value: number; origin: object; originParent: object | null };
     const countersOf = (
       style: CSSStyleDeclaration,
@@ -99,13 +102,20 @@ async function renderedPieces(
         const counter = innermost(name)!;
         counter.value = update(counter.value);
       };
-      /* The `name [integer]` pairs of a computed counter property, with the default integer. */
+      /* The `name [integer]` pairs of a computed counter property, with the default integer. A
+         `reversed(name) [integer]` pair stands for name, valued NaN without an integer; any other
+         function cannot be read. */
       const pairs = (property: string, implicit: number) => {
         const value = style.getPropertyValue(property);
-        if (value.includes('(')) throw new Error(`text-on-screen: cannot read ${property}: ${value}`);
-        return Array.from(value.matchAll(/([\w-]+)(?:\s+(-?\d+))?/g))
-          .filter(([, name]) => name !== 'none')
-          .map(([, name, integer]) => [name, integer === undefined ? implicit : Number(integer)] as const);
+        const reversed = /reversed\(\s*([\w-]+)\s*\)/.source;
+        if (value.replace(new RegExp(reversed, 'g'), '').includes('('))
+          throw new Error(`text-on-screen: cannot read ${property}: ${value}`);
+        return Array.from(value.matchAll(new RegExp(`(?:${reversed}|([\\w-]+))(?:\\s+(-?\\d+))?`, 'g')))
+          .filter(([, , name]) => name !== 'none')
+          .map(([, reversedName, name, integer]) => {
+            const fallback = reversedName === undefined ? implicit : NaN;
+            return [reversedName ?? name, integer === undefined ? fallback : Number(integer)] as const;
+          });
       };
       for (const [name, value] of pairs('counter-reset', 0)) instantiate(name, value);
       for (const [name, value] of pairs('counter-increment', 1)) change(name, (current) => current + value);
@@ -146,23 +156,29 @@ async function renderedPieces(
     let counterSets: ReturnType<typeof replay> | undefined;
     const format = (value: number, listStyle: string) => {
       if (listStyle === 'none') return '';
+      if (Number.isNaN(value))
+        throw new Error(
+          'text-on-screen: cannot show a counter reset by reversed() without an integer: its value depends on the number of list items',
+        );
       if (listStyle === 'decimal') return String(value);
       if (listStyle === 'decimal-leading-zero')
         return (value < 0 ? '-' : '') + String(Math.abs(value)).padStart(2, '0');
       throw new Error(`text-on-screen: the counter style ${listStyle} is not supported`);
     };
     /* The text of a counter(name, style?) or counters(name, "separator", style?) of a
-       pseudo-element: a counter it does not have is 0. */
+       pseudo-element: a counter it does not have is 0. Only the instances it shows are formatted:
+       the innermost for counter(), all of them for counters(). */
     const counterText = (el: Element, pseudo: Pseudo, fn: string, args: string) => {
       const match = args.match(new RegExp(`^\\s*([\\w-]+)\\s*(?:,\\s*(${STRING})\\s*)?(?:,\\s*([\\w-]+)\\s*)?$`));
       if (!match) throw new Error(`text-on-screen: cannot read ${fn}(${args})`);
       const [, name, separator, listStyle = 'decimal'] = match;
       counterSets ??= replay();
-      const values = (counterSets[pseudo].get(el) ?? []).filter((counter) => counter.name === name);
-      const texts = (values.length ? values.map(({ value }) => value) : [0]).map((value) => format(value, listStyle));
-      return fn === 'counter'
-        ? texts[texts.length - 1]
-        : texts.join(separator ? (JSON.parse(separator) as string) : '');
+      const values = (counterSets[pseudo].get(el) ?? [])
+        .filter((counter) => counter.name === name)
+        .map(({ value }) => value);
+      if (!values.length) values.push(0);
+      if (fn === 'counter') return format(values[values.length - 1], listStyle);
+      return values.map((value) => format(value, listStyle)).join(separator ? (JSON.parse(separator) as string) : '');
     };
 
     /* The generated content of a pseudo-element that shows: its strings and counters, up to the
@@ -242,4 +258,22 @@ export async function displayedText(element: Locator): Promise<string> {
 /* The pieces of displayedText, in rendering order, each with how it is painted. */
 export async function displayedPieces(element: Locator): Promise<DisplayedPiece[]> {
   return renderedPieces(element, { onScreenOnly: false, painted: true });
+}
+
+/* A text of displayedTexts with how it is painted (see DisplayedPiece). */
+export type DisplayedTextPiece = Omit<DisplayedPiece, 'pseudo'>;
+
+/* Every text an element displays — its text nodes and the generated content of the ::before and
+   ::after pseudo-elements of it and its descendants, read as displayedText reads them — hidden
+   elements excluded, each with how it is painted: its text color, the background colors behind
+   it, nearest first, its font size in px and its font weight. A text node's whitespace is
+   collapsed and trimmed, a pseudo-element's trimmed and its text prefixed with the
+   pseudo-element (`::before …`); texts left empty are dropped. */
+export async function displayedTexts(root: Locator): Promise<DisplayedTextPiece[]> {
+  const pieces = await displayedPieces(root);
+  return pieces.flatMap(({ text, pseudo, ...painting }) => {
+    const shown = pseudo ? text.trim() : text.replace(/\s+/g, ' ').trim();
+    if (!shown) return [];
+    return [{ text: pseudo ? `${pseudo} ${shown}` : shown, ...painting }];
+  });
 }
