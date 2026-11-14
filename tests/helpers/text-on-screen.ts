@@ -35,7 +35,7 @@ type Piece = { text: string; pseudo: Pseudo | null };
    it, nearest first (for a pseudo-element, its own, then those of the element that holds it and
    its ancestors; for a text node, those of its element and its ancestors), its font size in px
    and its font weight. */
-export type DisplayedPiece = Piece & { color: string; backgrounds: string[]; fontSize: number; fontWeight: number };
+type DisplayedPiece = Piece & { color: string; backgrounds: string[]; fontSize: number; fontWeight: number };
 
 /* The pieces of the text of textOnScreen (onScreenOnly) or displayedText, in rendering order,
    with how each is painted when asked (painted). */
@@ -50,6 +50,8 @@ async function renderedPieces(
 ): Promise<Piece[]> {
   return element.evaluate((root, { onScreenOnly, painted }) => {
     const STRING = /"(?:[^"\\]|\\.)*"/.source;
+    /* A counter or counter style name, which can hold non-ASCII characters (`étape`). */
+    const IDENTIFIER = /(?:[\w-]|[^\x00-\x7F])+/.source;
     /* An element or pseudo-element that is not displayed or invisible shows nothing, nor, on
        screen, one fully transparent. */
     const invisible = (style: CSSStyleDeclaration) =>
@@ -77,7 +79,9 @@ async function renderedPieces(
        at 0 when there is none). Replayed over the whole document, once, on the first counter. A
        counter-reset `reversed(name)` without an integer (that of an <ol reversed>) starts from a
        value that depends on the number of list items, which the replay does not count: its value
-       is unknown (NaN), an error only if a counter shows it. */
+       is unknown (NaN), an error only if a counter shows it. The replay reads only the computed
+       counter properties, so it misses the list-item counter that list items increment
+       implicitly: showing list-item is an error. */
     type Counter = { name: string; value: number; origin: object; originParent: object | null };
     const countersOf = (
       style: CSSStyleDeclaration,
@@ -107,10 +111,10 @@ async function renderedPieces(
          function cannot be read. */
       const pairs = (property: string, implicit: number) => {
         const value = style.getPropertyValue(property);
-        const reversed = /reversed\(\s*([\w-]+)\s*\)/.source;
+        const reversed = `reversed\\(\\s*(${IDENTIFIER})\\s*\\)`;
         if (value.replace(new RegExp(reversed, 'g'), '').includes('('))
           throw new Error(`text-on-screen: cannot read ${property}: ${value}`);
-        return Array.from(value.matchAll(new RegExp(`(?:${reversed}|([\\w-]+))(?:\\s+(-?\\d+))?`, 'g')))
+        return Array.from(value.matchAll(new RegExp(`(?:${reversed}|(${IDENTIFIER}))(?:\\s+(-?\\d+))?`, 'g')))
           .filter(([, , name]) => name !== 'none')
           .map(([, reversedName, name, integer]) => {
             const fallback = reversedName === undefined ? implicit : NaN;
@@ -123,8 +127,7 @@ async function renderedPieces(
       return set;
     };
     const replay = () => {
-      const sets: Record<'' | Pseudo, Map<Element, Counter[]>> = {
-        '': new Map(),
+      const sets: Record<Pseudo, Map<Element, Counter[]>> = {
         '::before': new Map(),
         '::after': new Map(),
       };
@@ -134,7 +137,6 @@ async function renderedPieces(
         const style = getComputedStyle(el);
         if (style.display === 'none') return null;
         const own = countersOf(style, el, el.parentElement, inherited);
-        sets[''].set(el, own);
         let [sibling, last] = [[] as Counter[], own];
         const pseudo = (which: Pseudo) => {
           const pseudoStyle = getComputedStyle(el, which);
@@ -161,17 +163,24 @@ async function renderedPieces(
           'text-on-screen: cannot show a counter reset by reversed() without an integer: its value depends on the number of list items',
         );
       if (listStyle === 'decimal') return String(value);
-      if (listStyle === 'decimal-leading-zero')
-        return (value < 0 ? '-' : '') + String(Math.abs(value)).padStart(2, '0');
+      /* The pad is reduced by the length of the negative sign (CSS Counter Styles 3), so a
+         negative value shows unpadded. */
+      if (listStyle === 'decimal-leading-zero') return value < 0 ? String(value) : String(value).padStart(2, '0');
       throw new Error(`text-on-screen: the counter style ${listStyle} is not supported`);
     };
     /* The text of a counter(name, style?) or counters(name, "separator", style?) of a
        pseudo-element: a counter it does not have is 0. Only the instances it shows are formatted:
        the innermost for counter(), all of them for counters(). */
     const counterText = (el: Element, pseudo: Pseudo, fn: string, args: string) => {
-      const match = args.match(new RegExp(`^\\s*([\\w-]+)\\s*(?:,\\s*(${STRING})\\s*)?(?:,\\s*([\\w-]+)\\s*)?$`));
+      const match = args.match(
+        new RegExp(`^\\s*(${IDENTIFIER})\\s*(?:,\\s*(${STRING})\\s*)?(?:,\\s*(${IDENTIFIER})\\s*)?$`),
+      );
       if (!match) throw new Error(`text-on-screen: cannot read ${fn}(${args})`);
       const [, name, separator, listStyle = 'decimal'] = match;
+      if (name === 'list-item')
+        throw new Error(
+          `text-on-screen: cannot show ${fn}(${args}): list items increment the list-item counter implicitly, which the replay does not see`,
+        );
       counterSets ??= replay();
       const values = (counterSets[pseudo].get(el) ?? [])
         .filter((counter) => counter.name === name)
@@ -223,8 +232,12 @@ async function renderedPieces(
       };
       addGenerated('::before');
       for (const child of Array.from(el.childNodes)) {
-        if (child.nodeType === Node.TEXT_NODE) add(el, child.textContent ?? '', null);
-        else if (child.nodeType === Node.ELEMENT_NODE) walk(child as Element);
+        if (child.nodeType === Node.TEXT_NODE) {
+          const text = child.textContent ?? '';
+          /* Unpainted, whitespace separates words; painted, a blank text is dropped anyway, so
+             its painting is not worth reading. */
+          if (!painted || text.trim()) add(el, text, null);
+        } else if (child.nodeType === Node.ELEMENT_NODE) walk(child as Element);
       }
       addGenerated('::after');
     };
@@ -255,11 +268,6 @@ export async function displayedText(element: Locator): Promise<string> {
   return renderedText(element, false);
 }
 
-/* The pieces of displayedText, in rendering order, each with how it is painted. */
-export async function displayedPieces(element: Locator): Promise<DisplayedPiece[]> {
-  return renderedPieces(element, { onScreenOnly: false, painted: true });
-}
-
 /* A text of displayedTexts with how it is painted (see DisplayedPiece). */
 export type DisplayedTextPiece = Omit<DisplayedPiece, 'pseudo'>;
 
@@ -270,7 +278,7 @@ export type DisplayedTextPiece = Omit<DisplayedPiece, 'pseudo'>;
    collapsed and trimmed, a pseudo-element's trimmed and its text prefixed with the
    pseudo-element (`::before …`); texts left empty are dropped. */
 export async function displayedTexts(root: Locator): Promise<DisplayedTextPiece[]> {
-  const pieces = await displayedPieces(root);
+  const pieces = await renderedPieces(root, { onScreenOnly: false, painted: true });
   return pieces.flatMap(({ text, pseudo, ...painting }) => {
     const shown = pseudo ? text.trim() : text.replace(/\s+/g, ' ').trim();
     if (!shown) return [];
