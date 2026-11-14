@@ -963,18 +963,11 @@ tick-field > canvas {
 /* Sections are numbered from 01 in the order they appear, so that a section
    left out leaves no gap. The number is decorative: its empty alternative
    text keeps it out of the heading's accessible name, and so out of the
-   region's. Each section, and each group of the projects list page, sets its
-   colour. */
+   region's. Each section's single heading counts it, so that the sections
+   are listed once. Each section, and each group of the projects list page,
+   sets its colour. */
 main {
   counter-reset: page-section;
-}
-
-.projects,
-.background,
-.contact,
-.engagements,
-.short-projects {
-  counter-increment: page-section;
 }
 
 .projects h2::before,
@@ -982,6 +975,7 @@ main {
 .contact > h2::before,
 .engagements h2::before,
 .short-projects h2::before {
+  counter-increment: page-section;
   content: counter(page-section, decimal-leading-zero) ' // ' / '';
   color: var(--section-number-color);
 }
@@ -2257,8 +2251,10 @@ main {
   color: inherit;
 }
 
-/* Decorative, as the home page's section numbers are. */
+/* Decorative, as the home page's section numbers are. Shows no number, so
+   does not count. */
 .project-page ~ .contact > h2::before {
+  counter-increment: none;
   content: '// ' / '';
   color: inherit;
 }
